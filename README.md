@@ -1,197 +1,121 @@
 # 🪷 Lotus
 
-> **Lotus** — Local AI Translation App for macOS & Windows  
-> Supports Google Gemini, Anthropic Claude, and OpenAI GPT  
-> API Keys stored **only** in OS Keychain — 100% private, no backend server
+**Lotus** is a desktop AI translation app for macOS and Windows.  
+Supports Google Gemini, Anthropic Claude, and OpenAI GPT — with API keys stored securely in the OS Keychain.
 
 ---
 
-## ✨ Features
+## Download
 
-- 🤖 **Multiple AI Providers**: Google Gemini, Anthropic Claude, OpenAI GPT
-- 🔒 **Secure Key Storage**: API keys stored in macOS Keychain / Windows Credential Manager
-- ⚡ **Auto Translate**: Automatically translates as you type (debounced)
-- 🔄 **Language Swap**: Swap source/target languages instantly
-- 📋 **One-tap Copy**: Copy translation result with one click
-- 🌍 **20+ Languages**: Vietnamese, English, Chinese, Japanese, Korean, and more
-- 🎨 **Japanese Furigana**: Show furigana (reading) for Japanese translations
-- 📝 **Translation History**: Browse and reuse previous translations
-- 🌐 **Multi-language UI**: Interface available in English, Vietnamese, Japanese
-- 🌙 **Dark Mode**: Automatic dark/light mode based on system settings
-- 🎯 **Translation Styles**: Standard, Casual, Formal, Message, Technical
+| Platform | Link |
+|----------|------|
+| macOS (Apple Silicon) | [Lotus-1.0.2-arm64.dmg](https://github.com/trunghieupham59/lotus-translate/releases/download/v1.0.2/Lotus-1.0.2-arm64.dmg) |
+| macOS (Intel x64) | [Lotus-1.0.2.dmg](https://github.com/trunghieupham59/lotus-translate/releases/download/v1.0.2/Lotus-1.0.2.dmg) |
+| Windows (x64) | [Lotus Setup 1.0.2.exe](https://github.com/trunghieupham59/lotus-translate/releases/download/v1.0.2/Lotus.Setup.1.0.2.exe) |
+
+> Or view all releases: [github.com/trunghieupham59/lotus-translate/releases](https://github.com/trunghieupham59/lotus-translate/releases)
 
 ---
 
-## 📦 Download
+## Features
 
-| Platform | File | Architecture |
-|----------|------|-------------|
-| macOS (Apple Silicon) | `Lotus-1.0.2-arm64.dmg` | M1/M2/M3/M4 |
-| macOS (Intel) | `Lotus-1.0.2.dmg` | Intel x64 |
-| Windows | `Lotus Setup 1.0.2.exe` | x64 |
+- **Multiple AI Providers** — Google Gemini, Anthropic Claude, OpenAI GPT
+- **Image Translation** — Translate text from images using AI vision
+- **Voice Input** — Record and transcribe audio for translation
+- **Text-to-Speech** — Listen to translation results
+- **Auto Translate** — Translates as you type (debounced)
+- **Translation Styles** — Standard, Casual, Formal, Technical, Message
+- **Japanese Furigana** — Reading aid for Japanese output
+- **Translation History** — Browse and reuse past translations
+- **20+ Languages** — Vietnamese, English, Japanese, Korean, Chinese, and more
+- **Multi-language UI** — Interface in English, Vietnamese, Japanese
+- **Secure Key Storage** — API keys stored in macOS Keychain / Windows Credential Manager, never in any file
+- **Dark Mode** — Follows system appearance
 
 ---
 
-## 🚀 Quick Start (Development)
+## Development
 
 ### Prerequisites
-- Node.js v18+ (tested with v25.9.0)
-- npm v9+ (tested with v11.12.1)
+
+- Node.js v18+
 - macOS or Windows
 
-### 1. Install Dependencies
+### Setup
+
 ```bash
 npm install
+npm run rebuild       # Rebuild keytar for your Electron version
+npm run dev           # Start dev server + Electron
 ```
 
-### 2. Rebuild Native Modules (keytar)
+### Build
+
 ```bash
-npm run rebuild
-```
-> This rebuilds `keytar` for your specific Electron version so Keychain access works.
-
-### 3. Start Development Server
-```bash
-npm run dev
-```
-
-This will:
-1. Start Vite dev server at `http://localhost:5173`
-2. Wait for Vite to be ready
-3. Compile Electron TypeScript
-4. Launch Electron window with DevTools
-
----
-
-## 🔨 Build for Distribution
-
-### macOS — Apple Silicon (arm64)
-```bash
-npm run build:mac
-# Output: release/Lotus-1.0.2-arm64.dmg
-```
-
-### macOS — Intel (x64)
-```bash
-npm run build:mac
-# Output: release/Lotus-1.0.2.dmg
-```
-
-> Both Mac builds are produced by `npm run build:mac` (builds arm64 + x64 simultaneously)
-
-### Windows — NSIS Installer (x64)
-```bash
-npm run build:win
-# Output: release/Lotus Setup 1.0.2.exe
+npm run build:mac     # macOS (arm64 + x64)
+npm run build:win     # Windows NSIS installer
 ```
 
 ---
 
-## ⚙️ Configuration
+## API Keys
 
-### Getting API Keys
+| Provider | Dashboard |
+|----------|-----------|
+| Google Gemini | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
+| Anthropic Claude | [console.anthropic.com](https://console.anthropic.com) |
+| OpenAI GPT | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
 
-| Provider | Where to Get Key | Key Format |
-|----------|-----------------|------------|
-| Google Gemini | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | `AIza...` |
-| Anthropic Claude | [console.anthropic.com](https://console.anthropic.com) | `sk-ant-...` |
-| OpenAI GPT | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) | `sk-...` |
-
-### Adding Keys in App
-1. Open Lotus
-2. Click the provider icon in the sidebar (Gemini / Claude / OpenAI)
-3. Paste your API key in the relevant section
-4. Click **Save Key** — stored in OS Keychain, never in any file
+To add a key: open Lotus → click the provider icon in the sidebar → paste your key → **Save Key**.
 
 ---
 
-## 🔒 Security & Privacy
+## Security
 
-| What | How |
-|------|-----|
-| API Key storage | OS Keychain (macOS) / Credential Manager (Windows) |
-| Key transmission | Only sent directly to the AI provider's API |
-| Data storage | Nothing stored — no database, no logs |
-| Network | Direct HTTPS to AI API only |
-
-> **Renderer process (UI) never sees raw API keys.** Keys are read in the Electron main process and used directly to call APIs.
+API keys are stored in the OS Keychain (macOS) or Credential Manager (Windows). They are only used in the Electron main process to call the provider's API directly — they are never exposed to the renderer process, never stored in files, and never sent to any third-party server.
 
 ---
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 lotus/
-├── README.md
-├── package.json
-├── tsconfig.json              # React/Vite TypeScript config
-├── tsconfig.electron.json     # Electron main process TypeScript config
-├── vite.config.ts
-├── tailwind.config.js
-│
-├── electron/                  # Electron Main Process (Node.js)
-│   ├── main.ts               # App entry, window creation
-│   ├── preload.ts            # contextBridge API
+├── electron/                  # Main process (Node.js)
+│   ├── main.ts
+│   ├── preload.ts
 │   └── ipc/
-│       ├── keychain.ts       # OS Keychain operations via keytar
-│       ├── models.ts         # Fetch available AI models
-│       └── translate.ts      # AI API calls (Gemini/Claude/OpenAI)
-│
-└── src/                       # React Renderer (Browser)
-    ├── App.tsx
-    ├── i18n/                  # Internationalization (en/vi/ja)
+│       ├── keychain.ts
+│       ├── translate.ts
+│       ├── imageTranslate.ts
+│       ├── transcribe.ts
+│       ├── tts.ts
+│       └── models.ts
+└── src/                       # Renderer (React)
     ├── pages/
-    │   ├── TranslatePage.tsx
-    │   ├── HistoryPage.tsx
-    │   └── SettingsPage.tsx
     ├── components/
-    │   ├── Sidebar.tsx
-    │   ├── LanguageSelector.tsx
-    │   ├── ModelSelector.tsx
-    │   ├── ApiKeyInput.tsx
-    │   └── FuriganaText.tsx
     ├── store/
-    │   └── useAppStore.ts     # Zustand state management
-    ├── types/index.ts
-    └── constants/providers.ts
+    ├── i18n/
+    ├── types/
+    └── constants/
 ```
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-| Technology | Version | Purpose |
-|-----------|---------|---------|
-| Electron | v33 | Desktop shell |
-| React | v18 | UI framework |
-| TypeScript | v5 | Type safety |
-| Vite | v5 | Build tool + dev server |
-| Tailwind CSS | v3 | Styling |
-| Zustand | v5 | State management |
-| keytar | v7 | OS Keychain access |
-| electron-builder | v25 | App packaging |
-
----
-
-## 🐛 Troubleshooting
-
-### "Keychain not available"
-```bash
-npm run rebuild
-```
-keytar needs to be compiled for your Electron version.
-
-### App shows blank screen
-Make sure Vite is running: `npm run dev:vite` in one terminal, then `npm run dev:electron` in another.
-
-### API key not saving
-Check macOS Keychain Access or Windows Credential Manager — look for service "Lotus".
-
-### Build fails on Windows
-Make sure you have Visual Studio Build Tools installed for native modules.
+| | |
+|---|---|
+| Electron v33 | Desktop shell |
+| React v18 | UI |
+| TypeScript v5 | Type safety |
+| Vite v5 | Build tool |
+| Tailwind CSS v3 | Styling |
+| Zustand v5 | State management |
+| keytar v7 | OS Keychain |
+| electron-builder v25 | Packaging |
 
 ---
 
-## 📄 License
+## License
 
-MIT — Free to use, modify, and distribute.
+MIT
