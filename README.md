@@ -26,9 +26,9 @@
 
 | Platform | File | Architecture |
 |----------|------|-------------|
-| macOS (Apple Silicon) | `Lotus-1.0.0-arm64.dmg` | M1/M2/M3/M4 |
-| macOS (Intel) | `Lotus-1.0.0.dmg` | Intel x64 |
-| Windows | `Lotus Setup 1.0.0.exe` | x64 |
+| macOS (Apple Silicon) | `Lotus-1.0.2-arm64.dmg` | M1/M2/M3/M4 |
+| macOS (Intel) | `Lotus-1.0.2.dmg` | Intel x64 |
+| Windows | `Lotus Setup 1.0.2.exe` | x64 |
 
 ---
 
@@ -68,13 +68,13 @@ This will:
 ### macOS — Apple Silicon (arm64)
 ```bash
 npm run build:mac
-# Output: release/Lotus-1.0.0-arm64.dmg
+# Output: release/Lotus-1.0.2-arm64.dmg
 ```
 
 ### macOS — Intel (x64)
 ```bash
 npm run build:mac
-# Output: release/Lotus-1.0.0.dmg
+# Output: release/Lotus-1.0.2.dmg
 ```
 
 > Both Mac builds are produced by `npm run build:mac` (builds arm64 + x64 simultaneously)
@@ -82,7 +82,7 @@ npm run build:mac
 ### Windows — NSIS Installer (x64)
 ```bash
 npm run build:win
-# Output: release/Lotus Setup 1.0.0.exe
+# Output: release/Lotus Setup 1.0.2.exe
 ```
 
 ---
