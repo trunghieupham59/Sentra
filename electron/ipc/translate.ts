@@ -121,7 +121,7 @@ async function translateWithOpenAI(
         content: buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style),
       },
     ],
-    max_tokens: 4096,
+    max_completion_tokens: 4096,
   })
   return (completion.choices[0]?.message?.content ?? '').trim()
 }
@@ -153,7 +153,7 @@ async function verifyOpenAIKey(apiKey: string): Promise<void> {
   const completion = await client.chat.completions.create({
     model: 'gpt-4o-mini',
     messages: [{ role: 'user', content: 'Say "ok".' }],
-    max_tokens: 5,
+    max_completion_tokens: 5,
   })
   if (!completion.choices[0]) throw new Error('No response from OpenAI')
 }
