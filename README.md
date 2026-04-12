@@ -11,7 +11,7 @@ Supports Google Gemini, Anthropic Claude, and OpenAI GPT — with API keys store
 |----------|------|
 | macOS (Apple Silicon) | [Lotus-1.0.2-arm64.dmg](https://github.com/trunghieupham59/lotus-translate/releases/download/v1.0.2/Lotus-1.0.2-arm64.dmg) |
 | macOS (Intel x64) | [Lotus-1.0.2.dmg](https://github.com/trunghieupham59/lotus-translate/releases/download/v1.0.2/Lotus-1.0.2.dmg) |
-| Windows (x64) | [Lotus Setup 1.0.2.exe](https://github.com/trunghieupham59/lotus-translate/releases/download/v1.0.2/Lotus.Setup.1.0.2.exe) |
+| Windows (x64) | [Lotus.Setup.1.0.2.exe](https://github.com/trunghieupham59/lotus-translate/releases/download/v1.0.2/Lotus.Setup.1.0.2.exe) |
 
 > Or view all releases: [github.com/trunghieupham59/lotus-translate/releases](https://github.com/trunghieupham59/lotus-translate/releases)
 
