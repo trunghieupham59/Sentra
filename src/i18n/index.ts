@@ -6,6 +6,7 @@ export interface Translations {
   nav_history: string
   nav_settings: string
   nav_new_chat: string
+  nav_chat: string
 
   // Translate page
   translate_placeholder: string
@@ -110,6 +111,17 @@ export interface Translations {
   settings_about_supports: string
   settings_about_footer: string
 
+  // Image translation
+  image_translate_title: string
+  image_translate_btn: string
+  image_translate_upload_hint: string
+  image_translate_processing: string
+  image_translate_no_text: string
+  image_translate_download: string
+  image_translate_result_label: string
+  image_translate_change: string
+  image_translate_error_no_key: string
+
   // History page
   history_title: string
   history_empty: string
@@ -120,13 +132,57 @@ export interface Translations {
   history_reuse: string
   history_chars_source: string
   history_chars_result: string
+  history_tab_translate: string
+  history_tab_chat: string
+  history_chat_empty: string
+  history_chat_empty_desc: string
+  history_chat_messages: string
+  history_chat_open: string
+  history_chat_delete: string
+
+  // Chat page
+  chat_placeholder: string
+  chat_send: string
+  chat_clear: string
+  chat_new_session: string
+  chat_thinking: string
+  chat_error_no_key: string
+  chat_error_open_settings: string
+  chat_attach_image: string
+  chat_remove_image: string
+  chat_copy: string
+  chat_copied: string
+  chat_voice_record: string
+  chat_voice_stop: string
+  chat_empty_title: string
+  chat_empty_desc: string
+  chat_system_prompt: string
+  chat_system_prompt_placeholder: string
+  chat_regenerate: string
+
+  // Settings — AI Chat section
+  settings_chat_section: string
+  settings_chat_section_desc: string
+  settings_chat_go_to_chat: string
+  settings_chat_presets: string
+  settings_chat_presets_empty: string
+  settings_chat_preset_add: string
+  settings_chat_preset_name: string
+  settings_chat_preset_name_placeholder: string
+  settings_chat_preset_content: string
+  settings_chat_preset_set_default: string
+  settings_chat_preset_is_default: string
+  settings_chat_preset_delete: string
+  settings_chat_preset_save: string
+  settings_chat_preset_cancel: string
 }
 
 const en: Translations = {
-  nav_translate: 'Translate',
+  nav_translate: 'Translate with AI',
   nav_history: 'History',
   nav_settings: 'Settings',
   nav_new_chat: 'New Chat',
+  nav_chat: 'Chat with AI',
   translate_placeholder: 'Enter text to translate…',
   translate_result_placeholder: 'Translation will appear here…',
   translate_btn: 'Translate',
@@ -240,6 +296,15 @@ const en: Translations = {
   settings_about_platform: 'Platform',
   settings_about_supports: 'Supports',
   settings_about_footer: '🔒 100% local · No server · No telemetry · API keys stay on your device',
+  image_translate_title: 'Translate Image',
+  image_translate_btn: 'Translate Image',
+  image_translate_upload_hint: 'Drop an image here or click to browse\nJPEG, PNG, WebP — large images are auto-resized',
+  image_translate_processing: 'Analyzing & translating…',
+  image_translate_no_text: 'No text found in image',
+  image_translate_download: 'Download',
+  image_translate_result_label: 'Translated image',
+  image_translate_change: 'Change image',
+  image_translate_error_no_key: 'No API key configured. Go to Settings to add one.',
   history_title: 'Translation History',
   history_empty: 'No history yet',
   history_empty_desc: 'Your translation history will appear here.',
@@ -249,13 +314,53 @@ const en: Translations = {
   history_reuse: 'Use this',
   history_chars_source: 'source chars',
   history_chars_result: 'result chars',
+  history_tab_translate: 'Translations',
+  history_tab_chat: 'Chat Sessions',
+  history_chat_empty: 'No chat sessions yet',
+  history_chat_empty_desc: 'Your AI chat sessions will appear here.',
+  history_chat_messages: 'messages',
+  history_chat_open: 'Open',
+  history_chat_delete: 'Delete',
+  chat_placeholder: 'Type a message…',
+  chat_send: 'Send',
+  chat_clear: 'Clear',
+  chat_new_session: 'New Chat',
+  chat_thinking: 'Thinking…',
+  chat_error_no_key: 'No API key configured. Go to Settings to add one.',
+  chat_error_open_settings: 'Open Settings',
+  chat_attach_image: 'Attach image',
+  chat_remove_image: 'Remove image',
+  chat_copy: 'Copy',
+  chat_copied: 'Copied!',
+  chat_voice_record: 'Record voice',
+  chat_voice_stop: 'Stop recording',
+  chat_empty_title: 'Chat with AI',
+  chat_empty_desc: 'Ask anything, attach images, or record your voice.',
+  chat_system_prompt: 'System prompt',
+  chat_system_prompt_placeholder: 'You are a helpful assistant…',
+  chat_regenerate: 'Regenerate response',
+  settings_chat_section: 'AI Chat',
+  settings_chat_section_desc: 'Configure default system prompt and manage chat sessions.',
+  settings_chat_go_to_chat: 'Open AI Chat',
+  settings_chat_presets: 'System Prompt Presets',
+  settings_chat_presets_empty: 'No presets yet. Add one below.',
+  settings_chat_preset_add: 'Add Preset',
+  settings_chat_preset_name: 'Name',
+  settings_chat_preset_name_placeholder: 'e.g. Coding Assistant',
+  settings_chat_preset_content: 'Prompt',
+  settings_chat_preset_set_default: 'Set as default',
+  settings_chat_preset_is_default: 'Default',
+  settings_chat_preset_delete: 'Delete',
+  settings_chat_preset_save: 'Save',
+  settings_chat_preset_cancel: 'Cancel',
 }
 
 const vi: Translations = {
-  nav_translate: 'Dịch thuật',
+  nav_translate: 'Dịch với AI',
   nav_history: 'Lịch sử',
   nav_settings: 'Cài đặt',
   nav_new_chat: 'Chat mới',
+  nav_chat: 'Chat với AI',
   translate_placeholder: 'Nhập văn bản cần dịch…',
   translate_result_placeholder: 'Bản dịch sẽ hiển thị ở đây…',
   translate_btn: 'Dịch',
@@ -369,6 +474,15 @@ const vi: Translations = {
   settings_about_platform: 'Nền tảng',
   settings_about_supports: 'Hỗ trợ',
   settings_about_footer: '🔒 100% cục bộ · Không có server · Không theo dõi · API key ở lại thiết bị',
+  image_translate_title: 'Dịch ảnh',
+  image_translate_btn: 'Dịch ảnh',
+  image_translate_upload_hint: 'Kéo ảnh vào đây hoặc nhấn để chọn\nJPEG, PNG, WebP — ảnh lớn sẽ tự động thu nhỏ',
+  image_translate_processing: 'Đang phân tích & dịch…',
+  image_translate_no_text: 'Không tìm thấy văn bản trong ảnh',
+  image_translate_download: 'Tải xuống',
+  image_translate_result_label: 'Ảnh đã dịch',
+  image_translate_change: 'Đổi ảnh',
+  image_translate_error_no_key: 'Chưa có API key. Vào Cài đặt để thêm.',
   history_title: 'Lịch sử dịch thuật',
   history_empty: 'Chưa có lịch sử',
   history_empty_desc: 'Lịch sử dịch thuật sẽ xuất hiện ở đây.',
@@ -378,13 +492,53 @@ const vi: Translations = {
   history_reuse: 'Dùng lại',
   history_chars_source: 'ký tự gốc',
   history_chars_result: 'ký tự dịch',
+  history_tab_translate: 'Dịch thuật',
+  history_tab_chat: 'Chat với AI',
+  history_chat_empty: 'Chưa có cuộc trò chuyện',
+  history_chat_empty_desc: 'Lịch sử chat AI sẽ hiển thị tại đây.',
+  history_chat_messages: 'tin nhắn',
+  history_chat_open: 'Mở',
+  history_chat_delete: 'Xóa',
+  chat_placeholder: 'Nhập tin nhắn…',
+  chat_send: 'Gửi',
+  chat_clear: 'Xóa',
+  chat_new_session: 'Chat mới',
+  chat_thinking: 'Đang suy nghĩ…',
+  chat_error_no_key: 'Chưa có API key. Vào Cài đặt để thêm.',
+  chat_error_open_settings: 'Mở Cài đặt',
+  chat_attach_image: 'Đính kèm ảnh',
+  chat_remove_image: 'Xóa ảnh',
+  chat_copy: 'Sao chép',
+  chat_copied: 'Đã sao chép!',
+  chat_voice_record: 'Thu âm giọng nói',
+  chat_voice_stop: 'Dừng thu âm',
+  chat_empty_title: 'Chat với AI',
+  chat_empty_desc: 'Hỏi bất kỳ điều gì, đính kèm ảnh, hoặc thu âm giọng nói.',
+  chat_system_prompt: 'System prompt',
+  chat_system_prompt_placeholder: 'Bạn là trợ lý hữu ích…',
+  chat_regenerate: 'Tạo lại phản hồi',
+  settings_chat_section: 'AI Chat',
+  settings_chat_section_desc: 'Cấu hình system prompt mặc định và quản lý cuộc trò chuyện.',
+  settings_chat_go_to_chat: 'Mở AI Chat',
+  settings_chat_presets: 'System Prompt Presets',
+  settings_chat_presets_empty: 'Chưa có preset. Thêm preset bên dưới.',
+  settings_chat_preset_add: 'Thêm Preset',
+  settings_chat_preset_name: 'Tên',
+  settings_chat_preset_name_placeholder: 'VD: Trợ lý lập trình',
+  settings_chat_preset_content: 'Nội dung prompt',
+  settings_chat_preset_set_default: 'Đặt làm mặc định',
+  settings_chat_preset_is_default: 'Mặc định',
+  settings_chat_preset_delete: 'Xóa',
+  settings_chat_preset_save: 'Lưu',
+  settings_chat_preset_cancel: 'Hủy',
 }
 
 const ja: Translations = {
-  nav_translate: '翻訳',
+  nav_translate: 'AIで翻訳',
   nav_history: '履歴',
   nav_settings: '設定',
   nav_new_chat: '新規チャット',
+  nav_chat: 'AIチャット',
   translate_placeholder: '翻訳するテキストを入力…',
   translate_result_placeholder: '翻訳結果がここに表示されます…',
   translate_btn: '翻訳',
@@ -498,6 +652,15 @@ const ja: Translations = {
   settings_about_platform: 'プラットフォーム',
   settings_about_supports: '対応',
   settings_about_footer: '🔒 完全ローカル · サーバーなし · 追跡なし · APIキーはデバイスに留まる',
+  image_translate_title: '画像翻訳',
+  image_translate_btn: '画像を翻訳',
+  image_translate_upload_hint: '画像をここにドロップ、またはクリックして選択\nJPEG, PNG, WebP — 大きな画像は自動リサイズされます',
+  image_translate_processing: '解析・翻訳中…',
+  image_translate_no_text: '画像にテキストが見つかりません',
+  image_translate_download: 'ダウンロード',
+  image_translate_result_label: '翻訳済み画像',
+  image_translate_change: '画像を変更',
+  image_translate_error_no_key: 'APIキーが設定されていません。設定で追加してください。',
   history_title: '翻訳履歴',
   history_empty: '履歴がありません',
   history_empty_desc: '翻訳履歴がここに表示されます。',
@@ -507,6 +670,45 @@ const ja: Translations = {
   history_reuse: '再利用',
   history_chars_source: '元の文字数',
   history_chars_result: '翻訳文字数',
+  history_tab_translate: '翻訳履歴',
+  history_tab_chat: 'AIチャット',
+  history_chat_empty: 'チャット履歴がありません',
+  history_chat_empty_desc: 'AIチャットセッションがここに表示されます。',
+  history_chat_messages: 'メッセージ',
+  history_chat_open: '開く',
+  history_chat_delete: '削除',
+  chat_placeholder: 'メッセージを入力…',
+  chat_send: '送信',
+  chat_clear: 'クリア',
+  chat_new_session: '新規チャット',
+  chat_thinking: '考え中…',
+  chat_error_no_key: 'APIキーが設定されていません。設定で追加してください。',
+  chat_error_open_settings: '設定を開く',
+  chat_attach_image: '画像を添付',
+  chat_remove_image: '画像を削除',
+  chat_copy: 'コピー',
+  chat_copied: 'コピーしました！',
+  chat_voice_record: '音声録音',
+  chat_voice_stop: '録音停止',
+  chat_empty_title: 'AIとチャット',
+  chat_empty_desc: '何でも質問、画像を添付、または音声で入力できます。',
+  chat_system_prompt: 'システムプロンプト',
+  chat_system_prompt_placeholder: 'あなたは親切なアシスタントです…',
+  chat_regenerate: '応答を再生成',
+  settings_chat_section: 'AIチャット',
+  settings_chat_section_desc: 'デフォルトのシステムプロンプトを設定し、チャットセッションを管理します。',
+  settings_chat_go_to_chat: 'AIチャットを開く',
+  settings_chat_presets: 'システムプロンプト プリセット',
+  settings_chat_presets_empty: 'プリセットがありません。下に追加してください。',
+  settings_chat_preset_add: 'プリセット追加',
+  settings_chat_preset_name: '名前',
+  settings_chat_preset_name_placeholder: '例: コーディングアシスタント',
+  settings_chat_preset_content: 'プロンプト内容',
+  settings_chat_preset_set_default: 'デフォルトに設定',
+  settings_chat_preset_is_default: 'デフォルト',
+  settings_chat_preset_delete: '削除',
+  settings_chat_preset_save: '保存',
+  settings_chat_preset_cancel: 'キャンセル',
 }
 
 export const TRANSLATIONS: Record<AppLocale, Translations> = { en, vi, ja }

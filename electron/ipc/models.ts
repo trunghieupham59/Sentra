@@ -96,7 +96,7 @@ async function fetchGeminiModels(apiKey: string): Promise<FetchedModel[]> {
         !id.includes('embedding') &&
         !id.includes('aqa') &&
         !id.includes('exp') &&
-        !id.includes('preview') &&
+        // Allow preview models — they include newer vision-capable variants (e.g. Gemini 2.5 Flash)
         !id.includes('thinking') &&
         !id.includes('learnlm')
       )
@@ -138,13 +138,19 @@ async function fetchOpenAIModels(apiKey: string): Promise<FetchedModel[]> {
   const OpenAI = (await import('openai')).default
   const client = new OpenAI({ apiKey })
   const response = await client.models.list()
-  const excluded = ['embedding', 'tts', 'whisper', 'dall-e', 'davinci-002',
+  const excluded = [
+    'embedding', 'tts', 'whisper', 'dall-e', 'davinci-002',
     'babbage', 'moderation', 'text-search', 'text-similarity', 'code-search',
-    'instruct', 'realtime', 'audio', 'transcribe']
+    'instruct', 'realtime', 'audio', 'transcribe',
+    // Image generation models — do NOT support chat/completions endpoint
+    'image',
+    // Codex — completions-only, not chat
+    'codex',
+  ]
   return response.data
     .filter((m) => {
       const id = m.id.toLowerCase()
-      // Chỉ lấy GPT models (bỏ reasoning models o1/o3/o4 vì không hỗ trợ max_tokens)
+      // Only GPT chat models
       const isGpt = id.startsWith('gpt-')
       const notExcluded = !excluded.some((e) => id.includes(e))
       return isGpt && notExcluded

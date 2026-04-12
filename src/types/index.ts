@@ -86,6 +86,27 @@ export interface TtsResult {
   errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | string
 }
 
+export interface ImageTextRegion {
+  x: number        // 0.0–1.0 fraction of image width
+  y: number        // 0.0–1.0 fraction of image height
+  width: number    // 0.0–1.0 fraction of image width
+  height: number   // 0.0–1.0 fraction of image height
+  originalText: string
+  translatedText: string
+  fontSize: number  // 0.0–1.0 fraction of image height
+  bgColor: string
+  textColor: string
+}
+
+export interface ImageTranslateResult {
+  success: boolean
+  regions?: ImageTextRegion[]
+  /** base64 of the fully edited image (returned when Gemini image-edit is used) */
+  editedImageBase64?: string
+  error?: string
+  errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'NO_VISION' | string
+}
+
 export interface FetchModelsResult {
   success: boolean
   models: FetchedModel[]
@@ -94,6 +115,53 @@ export interface FetchModelsResult {
   error?: string
   errorCode?: 'NO_API_KEY' | string
 }
+
+// ─── Chat types ───────────────────────────────────────────────────────────────
+
+export interface SystemPromptPreset {
+  id: string
+  name: string
+  content: string
+  isDefault?: boolean
+}
+
+export interface ChatMessageContent {
+  type: 'text' | 'image'
+  text?: string
+  imageBase64?: string
+  imageMimeType?: string
+  /** Preview URL for display only (not sent to API) */
+  imagePreviewUrl?: string
+  imageFileName?: string
+}
+
+export interface ChatMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: ChatMessageContent[]
+  timestamp: number
+  isLoading?: boolean
+  error?: string
+}
+
+export interface ChatSession {
+  id: string
+  title: string
+  provider: Provider
+  model: string
+  messages: ChatMessage[]
+  createdAt: number
+  updatedAt: number
+}
+
+export interface ChatResult {
+  success: boolean
+  reply?: string
+  error?: string
+  errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'NETWORK' | string
+}
+
+// ─── History ──────────────────────────────────────────────────────────────────
 
 export interface HistoryItem {
   id: string
@@ -106,7 +174,8 @@ export interface HistoryItem {
   translatedText: string
 }
 
-// Window API (exposed via contextBridge)
+// ─── Window API (exposed via contextBridge) ───────────────────────────────────
+
 export interface WindowApi {
   keychain: {
     save: (provider: string, key: string) => Promise<KeychainResult>
@@ -126,6 +195,28 @@ export interface WindowApi {
     text: string
     voice?: TtsVoice
   }) => Promise<TtsResult>
+  translateImage: (params: {
+    provider: string
+    model: string
+    imageBase64: string
+    imageMimeType: string
+    sourceLang: string
+    targetLang: string
+  }) => Promise<ImageTranslateResult>
+  chat: (params: {
+    provider: string
+    model: string
+    messages: Array<{
+      role: 'user' | 'assistant'
+      content: Array<{
+        type: 'text' | 'image'
+        text?: string
+        imageBase64?: string
+        imageMimeType?: string
+      }>
+    }>
+    systemPrompt?: string
+  }) => Promise<ChatResult>
   platform: string
   version: string
 }

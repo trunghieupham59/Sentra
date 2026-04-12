@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAppStore, useT } from '../store/useAppStore'
 import { ApiKeyInput } from '../components/ApiKeyInput'
 import { PROVIDERS } from '../constants/providers'
-import { Provider, TtsVoice } from '../types'
+import { Provider, TtsVoice, SystemPromptPreset } from '../types'
 import { AppLogoIcon } from '../components/AppLogo'
 import { AppLocale, LOCALE_NAMES } from '../i18n'
 
@@ -21,8 +21,41 @@ export function SettingsPage() {
     setDynamicModels, keyStatus,
     ttsVoice, setTtsVoice,
     fontSize, setFontSize,
+    systemPromptPresets, addSystemPromptPreset, updateSystemPromptPreset,
+    deleteSystemPromptPreset, setDefaultSystemPromptPreset,
+    setChatSystemPrompt,
   } = useAppStore()
   const t = useT()
+
+  // Preset form state
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [newPresetName, setNewPresetName] = useState('')
+  const [newPresetContent, setNewPresetContent] = useState('')
+  const [editingPresetId, setEditingPresetId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editContent, setEditContent] = useState('')
+
+  const handleAddPreset = () => {
+    if (!newPresetName.trim() || !newPresetContent.trim()) return
+    addSystemPromptPreset({ name: newPresetName.trim(), content: newPresetContent.trim() })
+    setNewPresetName('')
+    setNewPresetContent('')
+    setShowAddForm(false)
+  }
+
+  const startEdit = (preset: SystemPromptPreset) => {
+    setEditingPresetId(preset.id)
+    setEditName(preset.name)
+    setEditContent(preset.content)
+  }
+
+  const saveEdit = () => {
+    if (!editingPresetId || !editName.trim() || !editContent.trim()) return
+    updateSystemPromptPreset(editingPresetId, { name: editName.trim(), content: editContent.trim() })
+    setEditingPresetId(null)
+  }
+
+  const cancelEdit = () => setEditingPresetId(null)
 
   const [keyData, setKeyData] = useState<Record<string, { exists: boolean; masked: string | null }>>({
     gemini: { exists: false, masked: null },
@@ -318,6 +351,190 @@ export function SettingsPage() {
                 </button>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* AI Chat */}
+        <section className="space-y-3">
+          <h2 className="section-label">{t.settings_chat_section}</h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">{t.settings_chat_section_desc}</p>
+          <div className="card divide-y divide-gray-100 dark:divide-gray-700">
+
+
+            {/* System Prompt Presets */}
+            <div className="px-4 py-3.5 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_chat_presets}</p>
+                <button
+                  type="button"
+                  onClick={() => { setShowAddForm((v) => !v); setEditingPresetId(null) }}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium
+                             bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400
+                             hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors cursor-pointer border border-blue-200 dark:border-blue-800"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  {t.settings_chat_preset_add}
+                </button>
+              </div>
+
+              {/* Add form */}
+              {showAddForm && (
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 space-y-2 border border-gray-200 dark:border-gray-700">
+                  <input
+                    type="text"
+                    value={newPresetName}
+                    onChange={(e) => setNewPresetName(e.target.value)}
+                    placeholder={t.settings_chat_preset_name_placeholder}
+                    className="w-full text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600
+                               rounded-lg px-3 py-1.5 outline-none focus:border-blue-400 dark:focus:border-blue-600
+                               text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500"
+                  />
+                  <textarea
+                    value={newPresetContent}
+                    onChange={(e) => setNewPresetContent(e.target.value)}
+                    placeholder={t.chat_system_prompt_placeholder}
+                    rows={3}
+                    className="w-full text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600
+                               rounded-lg px-3 py-1.5 outline-none resize-none focus:border-blue-400 dark:focus:border-blue-600
+                               text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500"
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => { setShowAddForm(false); setNewPresetName(''); setNewPresetContent('') }}
+                      className="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600
+                                 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                    >
+                      {t.settings_chat_preset_cancel}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddPreset}
+                      disabled={!newPresetName.trim() || !newPresetContent.trim()}
+                      className="px-3 py-1 text-xs rounded-lg bg-blue-600 hover:bg-blue-700 text-white
+                                 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    >
+                      {t.settings_chat_preset_save}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Preset list */}
+              {systemPromptPresets.length === 0 && !showAddForm ? (
+                <p className="text-xs text-gray-400 dark:text-gray-600 text-center py-2">{t.settings_chat_presets_empty}</p>
+              ) : (
+                <div className="space-y-2">
+                  {systemPromptPresets.map((preset) => (
+                    <div key={preset.id} className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                      {editingPresetId === preset.id ? (
+                        /* Edit mode */
+                        <div className="bg-gray-50 dark:bg-gray-800 p-3 space-y-2">
+                          <input
+                            type="text"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            placeholder={t.settings_chat_preset_name_placeholder}
+                            className="w-full text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600
+                                       rounded-lg px-3 py-1.5 outline-none focus:border-blue-400 dark:focus:border-blue-600
+                                       text-gray-800 dark:text-gray-200 placeholder-gray-400"
+                          />
+                          <textarea
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            rows={3}
+                            className="w-full text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600
+                                       rounded-lg px-3 py-1.5 outline-none resize-none focus:border-blue-400 dark:focus:border-blue-600
+                                       text-gray-800 dark:text-gray-200"
+                          />
+                          <div className="flex gap-2 justify-end">
+                            <button type="button" onClick={cancelEdit}
+                              className="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600
+                                         text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                              {t.settings_chat_preset_cancel}
+                            </button>
+                            <button type="button" onClick={saveEdit}
+                              disabled={!editName.trim() || !editContent.trim()}
+                              className="px-3 py-1 text-xs rounded-lg bg-blue-600 hover:bg-blue-700 text-white
+                                         disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer">
+                              {t.settings_chat_preset_save}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* View mode */
+                        <div className="flex items-start gap-2 px-3 py-2.5 bg-white dark:bg-gray-800/50">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{preset.name}</span>
+                              {preset.isDefault && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 font-medium">
+                                  {t.settings_chat_preset_is_default}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">{preset.content}</p>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {/* Set default */}
+                            {!preset.isDefault && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDefaultSystemPromptPreset(preset.id)
+                                  setChatSystemPrompt(preset.content)
+                                }}
+                                title={t.settings_chat_preset_set_default}
+                                className="p-1.5 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors cursor-pointer"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              </button>
+                            )}
+                            {/* Apply to current prompt */}
+                            <button
+                              type="button"
+                              onClick={() => setChatSystemPrompt(preset.content)}
+                              title="Use this prompt"
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-950 transition-colors cursor-pointer"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                              </svg>
+                            </button>
+                            {/* Edit */}
+                            <button
+                              type="button"
+                              onClick={() => startEdit(preset)}
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors cursor-pointer"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            {/* Delete */}
+                            <button
+                              type="button"
+                              onClick={() => deleteSystemPromptPreset(preset.id)}
+                              title={t.settings_chat_preset_delete}
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-colors cursor-pointer"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
           </div>
         </section>
 

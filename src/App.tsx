@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { PROVIDERS } from './constants/providers'
 import type { AppLocale } from './i18n'
+import { ChatPage } from './pages/ChatPage'
 import { HistoryPage } from './pages/HistoryPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { TranslatePage } from './pages/TranslatePage'
@@ -67,6 +68,8 @@ function App() {
         <main className="flex-1 overflow-hidden">
           {activePage === 'translate' ? (
             <TranslatePage />
+          ) : activePage === 'chat' ? (
+            <ChatPage />
           ) : activePage === 'history' ? (
             <HistoryPage />
           ) : (

@@ -1,12 +1,94 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { FuriganaText } from '../components/FuriganaText'
+import { ImageTranslator } from '../components/ImageTranslator'
+import type { ImageAttachment } from '../components/ImageTranslator'
 import { LanguageSelector } from '../components/LanguageSelector'
 import { ModelSelector } from '../components/ModelSelector'
 import { VoiceRecorder } from '../components/VoiceRecorder'
 import { useAppStore, useT } from '../store/useAppStore'
-import type { HistoryItem, TranslationStyle } from '../types'
+import type { HistoryItem, ImageTextRegion, TranslationStyle } from '../types'
 
 const MAX_CHARS = 5000
+
+// ─── Canvas helpers for image translation overlay ─────────────────────────────
+
+/** Split `text` into lines that fit within `maxWidth` pixels on the given ctx. */
+function canvasWrapText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+): string[] {
+  if (!text) return []
+  // CJK characters have no word boundaries — split per character
+  const isCJK = /[\u1100-\u11ff\u2e80-\u9fff\uac00-\ud7af\uf900-\ufaff]/.test(text)
+  const tokens = isCJK ? [...text] : text.split(/\s+/)
+  const sep = isCJK ? '' : ' '
+  const lines: string[] = []
+  let cur = ''
+  for (const tok of tokens) {
+    const candidate = cur ? cur + sep + tok : tok
+    if (ctx.measureText(candidate).width <= maxWidth) {
+      cur = candidate
+    } else {
+      if (cur) lines.push(cur)
+      cur = tok // even if single token is wider, start a new line
+    }
+  }
+  if (cur) lines.push(cur)
+  return lines.length ? lines : [text]
+}
+
+/**
+ * Draw translated-text overlays onto a canvas that already has the source image drawn.
+ * Each region rectangle is filled with a fully-opaque background, then the translated
+ * text is rendered with automatic multi-line wrapping.
+ */
+function renderTranslatedRegions(
+  ctx: CanvasRenderingContext2D,
+  regions: ImageTextRegion[],
+  cw: number,
+  ch: number,
+) {
+  for (const r of regions) {
+    const rx = r.x * cw
+    const ry = r.y * ch
+    const rw = r.width * cw
+    const rh = r.height * ch
+
+    // Fully-opaque background so original text is completely hidden
+    ctx.globalAlpha = 1.0
+    ctx.fillStyle = r.bgColor ?? '#1a1a1a'
+    ctx.fillRect(rx, ry, rw, rh)
+
+    if (!r.translatedText) continue
+
+    const maxTextW = rw * 0.92
+    ctx.globalAlpha = 1.0
+    ctx.fillStyle = r.textColor ?? '#ffffff'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+
+    // Start with a font size proportional to region height; shrink until lines fit
+    let fs = Math.max(10, rh * 0.5)
+    ctx.font = `${fs}px sans-serif`
+    let lines = canvasWrapText(ctx, r.translatedText, maxTextW)
+
+    // Reduce font size until all lines fit vertically inside the region
+    while (fs > 8 && lines.length * fs * 1.3 > rh * 0.92) {
+      fs -= 1
+      ctx.font = `${fs}px sans-serif`
+      lines = canvasWrapText(ctx, r.translatedText, maxTextW)
+    }
+
+    const lineH = fs * 1.3
+    const totalH = lines.length * lineH
+    const startY = ry + rh / 2 - totalH / 2 + lineH / 2
+
+    for (let i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i], rx + rw / 2, startY + i * lineH)
+    }
+  }
+}
 
 /** Map app language codes → BCP-47 tags understood by SpeechSynthesis */
 const LANG_TO_BCP47: Record<string, string> = {
@@ -23,8 +105,8 @@ export function TranslatePage() {
     isTranslating, translateError,
     selectedProvider, selectedModels, autoTranslate, autoTranslateDelay, keyStatus, showFurigana, translationStyle,
     ttsVoice,
-    setSourceText, setTranslatedText, setPhoneticText, setSourceLang, setTargetLang,
-    swapLanguages, setIsTranslating, setTranslateError, setActivePage, setShowFurigana, setTranslationStyle, addHistory,
+    setSourceText, setTranslatedText, setPhoneticText, setTargetLang,
+    setIsTranslating, setTranslateError, setActivePage, setShowFurigana, setTranslationStyle, addHistory,
   } = useAppStore()
   const t = useT()
 
@@ -110,6 +192,20 @@ export function TranslatePage() {
     window.speechSynthesis.speak(utter)
   }, [speakingPanel, speakLoading, ttsVoice, stopSpeak])
 
+  // Image attachment state (set when user uploads an image via the popup)
+  const [imageAttachment, setImageAttachment] = useState<ImageAttachment | null>(null)
+  // Regions returned by AI when translating an image (fallback approach)
+  const [imageRegions, setImageRegions] = useState<ImageTextRegion[] | null>(null)
+  // Rendered translated image via canvas (used only for download)
+  const [translatedImageUrl, setTranslatedImageUrl] = useState<string | null>(null)
+  // Edited image returned directly by Gemini image-edit model
+  const [editedImageUrl, setEditedImageUrl] = useState<string | null>(null)
+  // Image translator modal state
+  const [showImageTranslator, setShowImageTranslator] = useState(false)
+  // Stable ref so lang-change effect can check imageAttachment without re-subscribing
+  const imageAttachmentRef = useRef(imageAttachment)
+  imageAttachmentRef.current = imageAttachment
+
   // Voice recording state
   const [isVoiceActive, setIsVoiceActive] = useState(false)
   const [isVoiceInterim, setIsVoiceInterim] = useState(false)
@@ -134,14 +230,52 @@ export function TranslatePage() {
   }, [setSourceText])
 
   const handleTranslate = useCallback(async () => {
-    if (!sourceText.trim() || isTranslating) return
-    if (!hasKey) {
-      setTranslateError(t.translate_error_no_key)
-      return
-    }
+    if (isTranslating) return
+    if (!hasKey) { setTranslateError(t.translate_error_no_key); return }
+
     setIsTranslating(true)
     setTranslateError(null)
-    setPhoneticText('') // Clear old phonetic while re-translating
+    setPhoneticText('')
+
+    // ── IMAGE mode: translate the attached image ──────────────────────────
+    if (imageAttachment) {
+      try {
+        const result = await window.api.translateImage({
+          provider:      selectedProvider,
+          model:         selectedModels[selectedProvider],
+          imageBase64:   imageAttachment.base64,
+          imageMimeType: imageAttachment.mimeType,
+          sourceLang,
+          targetLang,
+        })
+        if (result.success && result.editedImageBase64) {
+          // ── Gemini image-edit: show the directly edited image ──
+          const mimeType = imageAttachment.mimeType
+          setEditedImageUrl(`data:${mimeType};base64,${result.editedImageBase64}`)
+          setTranslatedText('✓') // non-empty so copy/speak buttons appear
+          setImageRegions(null)
+        } else if (result.success && result.regions && result.regions.length > 0) {
+          // ── Fallback (Claude/OpenAI): compile translated text from regions ──
+          const text = result.regions.map(r => r.translatedText).filter(Boolean).join('\n')
+          setTranslatedText(text)
+          setImageRegions(result.regions)
+          setEditedImageUrl(null)
+        } else if (result.success) {
+          setTranslatedText('')
+          setTranslateError('No text found in image')
+        } else {
+          setTranslateError(result.error || 'Image translation failed')
+        }
+      } catch (err) {
+        setTranslateError(err instanceof Error ? err.message : 'Unexpected error')
+      } finally {
+        setIsTranslating(false)
+      }
+      return
+    }
+
+    // ── TEXT mode: normal translation ─────────────────────────────────────
+    if (!sourceText.trim()) { setIsTranslating(false); return }
     try {
       const baseParams = {
         provider: selectedProvider,
@@ -152,15 +286,14 @@ export function TranslatePage() {
         translationStyle,
       }
 
-      // Step 1: Plain translation first — show result to user immediately
       const plainResult = await window.api.translate({ ...baseParams, showFurigana: false })
 
       if (plainResult.success && plainResult.translatedText) {
         const plainText = plainResult.translatedText
         setTranslatedText(plainText)
-        setIsTranslating(false) // Unblock UI right away
+        setIsTranslating(false)
 
-        const item: HistoryItem = {
+        addHistory({
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           timestamp: Date.now(),
           provider: selectedProvider,
@@ -169,25 +302,11 @@ export function TranslatePage() {
           targetLang,
           sourceText,
           translatedText: plainText,
-        }
-        addHistory(item)
-
-        // Step 2: Fetch phonetic silently in the background (non-blocking).
-        // Pass the already-translated plainText so the AI only adds phonetic
-        // annotations without re-translating — keeping phonetic in sync with
-        // the translation shown to the user.
-        window.api.translate({
-          ...baseParams,
-          sourceText: plainText,
-          showFurigana: true,
-          phoneticOnly: true,
         })
-          .then((res) => {
-            if (res.success && res.translatedText) {
-              setPhoneticText(res.translatedText)
-            }
-          })
-          .catch(() => { /* ignore phonetic errors silently */ })
+
+        window.api.translate({ ...baseParams, sourceText: plainText, showFurigana: true, phoneticOnly: true })
+          .then((res) => { if (res.success && res.translatedText) setPhoneticText(res.translatedText) })
+          .catch(() => {})
       } else {
         setTranslateError(plainResult.error || 'Translation failed')
       }
@@ -196,8 +315,27 @@ export function TranslatePage() {
     } finally {
       setIsTranslating(false)
     }
-  }, [sourceText, sourceLang, targetLang, selectedProvider, selectedModels, isTranslating, hasKey,
-      translationStyle, setIsTranslating, setTranslateError, setTranslatedText, setPhoneticText, addHistory, t])
+  }, [imageAttachment, sourceText, sourceLang, targetLang, selectedProvider, selectedModels,
+      isTranslating, hasKey, translationStyle, setIsTranslating, setTranslateError,
+      setTranslatedText, setPhoneticText, addHistory, t])
+
+  /** Download the translated image (original + text regions overlaid) */
+  const handleDownloadTranslatedImage = useCallback(async () => {
+    if (!imageAttachment || !imageRegions) return
+    const canvas  = document.createElement('canvas')
+    canvas.width  = imageAttachment.width
+    canvas.height = imageAttachment.height
+    const ctx = canvas.getContext('2d')!
+    const img = new Image()
+    img.src = imageAttachment.previewDataUrl
+    await new Promise<void>(resolve => { img.onload = () => resolve() })
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+    renderTranslatedRegions(ctx, imageRegions, canvas.width, canvas.height)
+    const a = document.createElement('a')
+    a.href = canvas.toDataURL('image/png')
+    a.download = `translated_${Date.now()}.png`
+    a.click()
+  }, [imageAttachment, imageRegions])
 
   // Auto-translate debounce (only when autoTranslate is enabled)
   // Skip while voice is recording — interim results would spam the API.
@@ -210,9 +348,19 @@ export function TranslatePage() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [autoTranslate, autoTranslateDelay, sourceText, isVoiceActive])
 
+  // Auto-translate when an image is attached — image has no text to debounce on
+  // biome-ignore lint/correctness/useExhaustiveDependencies: imageAttachment change is the trigger; handleTranslate via stable ref
+  useEffect(() => {
+    if (!imageAttachment) return
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => { handleTranslateRef.current() }, 300)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [imageAttachment])
+
   // Stable refs for effects below (avoids stale closures without re-triggering effects)
   const styleInitRef = useRef(false)
   const langInitRef = useRef(false)
+  const modelInitRef = useRef(false)
   const handleTranslateRef = useRef(handleTranslate)
   const sourceTextRef = useRef(sourceText)
   handleTranslateRef.current = handleTranslate
@@ -221,6 +369,7 @@ export function TranslatePage() {
   useLayoutEffect(() => {
     styleInitRef.current = false
     langInitRef.current = false
+    modelInitRef.current = false
   }, [])
 
   // Re-translate when style changes (skip first render)
@@ -231,13 +380,46 @@ export function TranslatePage() {
   }, [translationStyle])
 
   // Re-translate when target or source language changes (skip first render)
-  // This fires whenever the user switches the target/source language dropdown.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: lang changes are the triggers; sourceText/handleTranslate accessed via stable refs
+  // Also fires when image is attached — imageAttachmentRef accessed via stable ref
+  // biome-ignore lint/correctness/useExhaustiveDependencies: lang changes are the triggers; sourceText/imageAttachment/handleTranslate accessed via stable refs
   useEffect(() => {
     if (!langInitRef.current) { langInitRef.current = true; return }
-    if (!sourceTextRef.current.trim()) return
+    if (!sourceTextRef.current.trim() && !imageAttachmentRef.current) return
     handleTranslateRef.current()
   }, [targetLang, sourceLang])
+
+  // Re-translate when provider or model changes (skip first render)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: provider/model changes are the triggers; handleTranslate via stable ref
+  useEffect(() => {
+    if (!modelInitRef.current) { modelInitRef.current = true; return }
+    if (!sourceTextRef.current.trim() && !imageAttachmentRef.current) return
+    handleTranslateRef.current()
+  }, [selectedProvider, selectedModels[selectedProvider]])
+
+  // Render translated image whenever regions change (image output for result panel)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: imageAttachment + imageRegions are the triggers
+  useEffect(() => {
+    if (!imageAttachment || !imageRegions || imageRegions.length === 0) {
+      setTranslatedImageUrl(null)
+      return
+    }
+    let cancelled = false
+    const render = async () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = imageAttachment.width
+      canvas.height = imageAttachment.height
+      const ctx = canvas.getContext('2d')!
+      const img = new Image()
+      img.src = imageAttachment.previewDataUrl
+      await new Promise<void>(resolve => { img.onload = () => resolve() })
+      if (cancelled) return
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      renderTranslatedRegions(ctx, imageRegions, canvas.width, canvas.height)
+      if (!cancelled) setTranslatedImageUrl(canvas.toDataURL('image/png'))
+    }
+    render().catch(() => {})
+    return () => { cancelled = true }
+  }, [imageAttachment, imageRegions])
 
   const handleCopy = async () => {
     const textToCopy = showFurigana && phoneticText ? phoneticText : translatedText
@@ -310,26 +492,26 @@ export function TranslatePage() {
       </div>
 
       {/* Language bar */}
-      <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2
+      <div className="flex-shrink-0 flex items-center gap-3 px-4 py-2
                       bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
-        <div className="flex-1">
-          <LanguageSelector value={sourceLang} onChange={setSourceLang} includeAuto={true} />
+        {/* Source: auto-detect badge */}
+        <div className="flex-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg
+                        bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700
+                        text-sm text-gray-500 dark:text-gray-400 select-none">
+          <svg className="w-3.5 h-3.5 flex-shrink-0 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+            <circle cx="11" cy="11" r="8" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11 8v3m0 0v3m0-3h3m-3 0H8" />
+          </svg>
+          <span className="truncate">{t.lang_auto}</span>
         </div>
 
-        <button
-          type="button"
-          onClick={swapLanguages}
-          title={t.translate_swap}
-          className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg
-                     text-gray-400 hover:text-gray-600 hover:bg-gray-100
-                     dark:hover:text-gray-300 dark:hover:bg-gray-800 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-          </svg>
-        </button>
+        {/* Arrow separator */}
+        <svg className="flex-shrink-0 w-4 h-4 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+        </svg>
 
+        {/* Target language selector */}
         <div className="flex-1">
           <LanguageSelector value={targetLang} onChange={setTargetLang} includeAuto={false} />
         </div>
@@ -338,7 +520,7 @@ export function TranslatePage() {
         {/* Text panels */}
       <div className="flex flex-1 min-h-0 divide-x divide-gray-200 dark:divide-gray-800">
         {/* Source panel */}
-        <div className="flex-1 flex flex-col min-w-0 relative">
+        <div className="flex-1 basis-0 flex flex-col min-w-0 relative">
 
           {/* ── Listening overlay (shown while voice is active) ── */}
           {isVoiceActive && (
@@ -397,8 +579,44 @@ export function TranslatePage() {
             </div>
           )}
 
+          {/* ── Image attachment preview (shown when an image is attached) ── */}
+          {imageAttachment && !isVoiceActive && (
+            <div className="flex-shrink-0 mx-4 mt-3 relative rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800
+                            border border-gray-200 dark:border-gray-700 max-h-48 flex items-center justify-center">
+              <img
+                src={imageAttachment.previewDataUrl}
+                alt={imageAttachment.fileName}
+                className="max-w-full max-h-48 object-contain"
+              />
+              {/* × to remove image */}
+              <button
+                type="button"
+                onClick={() => {
+                  setImageAttachment(null)
+                  setImageRegions(null)
+                  setEditedImageUrl(null)
+                  setTranslatedText('')
+                  setPhoneticText('')
+                  setTranslateError(null)
+                }}
+                title="Remove image"
+                className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center
+                           rounded-full bg-black/50 hover:bg-black/70 text-white cursor-pointer z-10"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              {/* File name */}
+              <div className="absolute bottom-0 inset-x-0 px-2 py-1
+                              bg-black/40 text-white text-[10px] truncate">
+                {imageAttachment.fileName}
+              </div>
+            </div>
+          )}
+
           {/* Normal text input (hidden behind overlay when voice active) */}
-          <div className="flex-1 p-4 overflow-auto">
+          <div className="flex-1 flex flex-col p-4 min-h-0">
             <textarea
               value={sourceText}
               onChange={(e) => {
@@ -414,10 +632,9 @@ export function TranslatePage() {
               }}
               placeholder={t.translate_placeholder}
               className={[
-                'textarea-field transition-colors duration-150',
+                'textarea-field transition-colors duration-150 flex-1 overflow-auto',
                 isVoiceInterim ? 'text-gray-400 dark:text-gray-500 italic' : '',
               ].join(' ')}
-              style={{ minHeight: '100%' }}
             />
           </div>
 
@@ -436,6 +653,24 @@ export function TranslatePage() {
                 useWhisper={keyStatus.openai}
                 disabled={isOverLimit}
               />
+
+              {/* Image translation button */}
+              <button
+                type="button"
+                onClick={() => setShowImageTranslator(true)}
+                title={t.image_translate_title}
+                className="relative flex items-center justify-center w-8 h-8 rounded-full
+                           transition-all duration-200 cursor-pointer
+                           text-gray-400 hover:text-emerald-500 hover:bg-emerald-50
+                           dark:hover:bg-emerald-950 dark:hover:text-emerald-400"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
+                </svg>
+              </button>
+
               {!isVoiceActive && (
                 <span className={`text-xs tabular-nums ${isOverLimit ? 'text-red-500' : 'text-gray-400'}`}>
                   {charCount.toLocaleString()}&thinsp;/&thinsp;{MAX_CHARS.toLocaleString()}
@@ -488,7 +723,7 @@ export function TranslatePage() {
         </div>
 
         {/* Result panel */}
-        <div className="flex-1 flex flex-col min-w-0 bg-gray-50 dark:bg-gray-900/50">
+        <div className="flex-1 basis-0 flex flex-col min-w-0 bg-gray-50 dark:bg-gray-900/50">
           <div className="flex-1 p-4 overflow-auto relative">
             {isTranslating ? (
               <div className="absolute inset-0 flex items-center justify-center">
@@ -517,6 +752,13 @@ export function TranslatePage() {
                   </button>
                 )}
               </div>
+            ) : editedImageUrl ? (
+              /* ── Gemini image-edit result: show the translated image directly ── */
+              <img
+                src={editedImageUrl}
+                alt="Translated"
+                className="max-w-full rounded-lg fade-in"
+              />
             ) : translatedText ? (
               <FuriganaText
                 text={showFurigana && phoneticText ? phoneticText : translatedText}
@@ -532,12 +774,12 @@ export function TranslatePage() {
           <div className="flex-shrink-0 flex items-center justify-between px-4 h-12
                           border-t border-gray-100 dark:border-gray-800">
             <span className="text-xs text-gray-400 tabular-nums">
-              {translatedText ? `${translatedText.length.toLocaleString()} ${t.translate_chars}` : ''}
+              {translatedText && !editedImageUrl ? `${translatedText.length.toLocaleString()} ${t.translate_chars}` : ''}
             </span>
-            {translatedText && (
+            {(translatedText || editedImageUrl) && (
               <div className="flex items-center gap-2">
-                {/* Speak translated text */}
-                <button
+                {/* Speak translated text — hide when showing Gemini-edited image */}
+                {!editedImageUrl && <button
                   type="button"
                   onClick={() => handleSpeak(translatedText, targetLang, 'translated')}
                   title={speakingPanel === 'translated' ? t.translate_speak_stop : t.translate_speak}
@@ -566,8 +808,45 @@ export function TranslatePage() {
                       <path d="M15.932 7.757a.75.75 0 011.061 0 6 6 0 010 8.486.75.75 0 01-1.06-1.061 4.5 4.5 0 000-6.364.75.75 0 010-1.06z" />
                     </svg>
                   )}
-                </button>
-                <button type="button" onClick={handleCopy} className={`btn-ghost py-1 px-2 text-xs transition-all ${copied ? 'text-green-600' : ''}`}>
+                </button>}
+                {/* Download edited image (Gemini image-edit result) */}
+                {editedImageUrl && (
+                  <button
+                    type="button"
+                    title={t.image_translate_download}
+                    onClick={() => {
+                      const a = document.createElement('a')
+                      a.href = editedImageUrl
+                      a.download = `translated_${Date.now()}.png`
+                      a.click()
+                    }}
+                    className="relative flex items-center justify-center w-8 h-8 rounded-full
+                               transition-all duration-200 cursor-pointer
+                               text-gray-400 hover:text-emerald-500 hover:bg-emerald-50
+                               dark:hover:bg-emerald-950 dark:hover:text-emerald-400"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  </button>
+                )}
+                {/* Download canvas-overlay image (regions fallback) */}
+                {imageRegions && imageAttachment && !editedImageUrl && (
+                  <button
+                    type="button"
+                    onClick={handleDownloadTranslatedImage}
+                    title={t.image_translate_download}
+                    className="relative flex items-center justify-center w-8 h-8 rounded-full
+                               transition-all duration-200 cursor-pointer
+                               text-gray-400 hover:text-emerald-500 hover:bg-emerald-50
+                               dark:hover:bg-emerald-950 dark:hover:text-emerald-400"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  </button>
+                )}
+                {!editedImageUrl && <button type="button" onClick={handleCopy} className={`btn-ghost py-1 px-2 text-xs transition-all ${copied ? 'text-green-600' : ''}`}>
                   {copied ? (
                     <>
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -584,13 +863,27 @@ export function TranslatePage() {
                       {t.translate_copy}
                     </>
                   )}
-                </button>
+                </button>}
               </div>
             )}
           </div>
         </div>
       </div>
 
+      {/* Image translator modal — opens popup, resizes image, attaches to translate area */}
+      {showImageTranslator && (
+        <ImageTranslator
+          onImageReady={(attachment) => {
+            setImageAttachment(attachment)
+            setImageRegions(null)
+            setEditedImageUrl(null)
+            setTranslatedText('')
+            setPhoneticText('')
+            setTranslateError(null)
+          }}
+          onClose={() => setShowImageTranslator(false)}
+        />
+      )}
     </div>
   )
 }

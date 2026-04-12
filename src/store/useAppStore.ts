@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { Provider, FetchedModel, HistoryItem, TranslationStyle, TtsVoice } from '../types'
+import { Provider, FetchedModel, HistoryItem, TranslationStyle, TtsVoice, ChatMessage, ChatSession, SystemPromptPreset } from '../types'
 import { DEFAULT_SETTINGS } from '../constants/providers'
 import { AppLocale, TRANSLATIONS, Translations } from '../i18n'
 
@@ -42,10 +42,16 @@ interface AppState {
   localeAuto: boolean
 
   // Active page
-  activePage: 'translate' | 'history' | 'settings'
+  activePage: 'translate' | 'history' | 'settings' | 'chat'
 
   // Translation history
   history: HistoryItem[]
+
+  // Chat state
+  chatSessions: ChatSession[]
+  activeChatSessionId: string | null
+  chatSystemPrompt: string
+  systemPromptPresets: SystemPromptPreset[]
 
   // Actions
   setSourceText: (text: string) => void
@@ -73,13 +79,27 @@ interface AppState {
   /** Set locale from system detection — does NOT disable auto-follow */
   setLocaleFromSystem: (locale: AppLocale) => void
   setLocaleAuto: (v: boolean) => void
-  setActivePage: (page: 'translate' | 'history' | 'settings') => void
+  setActivePage: (page: 'translate' | 'history' | 'settings' | 'chat') => void
   clearTranslation: () => void
 
   // History actions
   addHistory: (item: HistoryItem) => void
   deleteHistoryItem: (id: string) => void
   clearHistory: () => void
+
+  // Chat actions
+  createChatSession: (provider: Provider, model: string) => string
+  deleteChatSession: (id: string) => void
+  setActiveChatSession: (id: string | null) => void
+  addChatMessage: (sessionId: string, message: ChatMessage) => void
+  updateChatMessage: (sessionId: string, messageId: string, updates: Partial<ChatMessage>) => void
+  clearChatSession: (sessionId: string) => void
+  setChatSystemPrompt: (prompt: string) => void
+  // System prompt presets
+  addSystemPromptPreset: (preset: Omit<SystemPromptPreset, 'id'>) => string
+  updateSystemPromptPreset: (id: string, updates: Partial<Omit<SystemPromptPreset, 'id'>>) => void
+  deleteSystemPromptPreset: (id: string) => void
+  setDefaultSystemPromptPreset: (id: string | null) => void
 
   // Computed
   t: Translations
@@ -112,6 +132,10 @@ export const useAppStore = create<AppState>()(
       localeAuto: true,
       activePage: 'translate',
       history: [],
+      chatSessions: [],
+      activeChatSessionId: null,
+      chatSystemPrompt: '',
+      systemPromptPresets: [],
 
       // Computed getter — current translations
       get t() {
@@ -183,6 +207,101 @@ export const useAppStore = create<AppState>()(
           history: state.history.filter((h) => h.id !== id),
         })),
       clearHistory: () => set({ history: [] }),
+
+      // Chat actions
+      createChatSession: (provider, model) => {
+        const id = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+        const session: ChatSession = {
+          id,
+          title: 'New Chat',
+          messages: [],
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          provider,
+          model,
+        }
+        set((state) => ({ chatSessions: [session, ...state.chatSessions], activeChatSessionId: id }))
+        return id
+      },
+      deleteChatSession: (id) =>
+        set((state) => ({
+          chatSessions: state.chatSessions.filter((s) => s.id !== id),
+          activeChatSessionId: state.activeChatSessionId === id ? null : state.activeChatSessionId,
+        })),
+      setActiveChatSession: (id) => set({ activeChatSessionId: id }),
+      addChatMessage: (sessionId, message) =>
+        set((state) => ({
+          chatSessions: state.chatSessions.map((s) =>
+            s.id === sessionId
+              ? { ...s, messages: [...s.messages, message], updatedAt: Date.now() }
+              : s
+          ),
+        })),
+      updateChatMessage: (sessionId, messageId, updates) =>
+        set((state) => ({
+          chatSessions: state.chatSessions.map((s) =>
+            s.id === sessionId
+              ? {
+                  ...s,
+                  messages: s.messages.map((m) => (m.id === messageId ? { ...m, ...updates } : m)),
+                  updatedAt: Date.now(),
+                }
+              : s
+          ),
+        })),
+      clearChatSession: (sessionId) =>
+        set((state) => ({
+          chatSessions: state.chatSessions.map((s) =>
+            s.id === sessionId ? { ...s, messages: [], updatedAt: Date.now() } : s
+          ),
+        })),
+      setChatSystemPrompt: (prompt) => set({ chatSystemPrompt: prompt }),
+
+      // System prompt presets
+      addSystemPromptPreset: (preset) => {
+        const id = `preset-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+        const newPreset: SystemPromptPreset = { ...preset, id }
+        set((state) => {
+          // If this new preset is default, clear default from others
+          const presets = preset.isDefault
+            ? state.systemPromptPresets.map((p) => ({ ...p, isDefault: false }))
+            : [...state.systemPromptPresets]
+          presets.push(newPreset)
+          const updates: Partial<typeof state> = { systemPromptPresets: presets }
+          if (preset.isDefault) updates.chatSystemPrompt = preset.content
+          return updates
+        })
+        return id
+      },
+      updateSystemPromptPreset: (id, updates) =>
+        set((state) => {
+          let presets = state.systemPromptPresets.map((p) => {
+            if (p.id !== id) {
+              // If the update sets isDefault true, clear others
+              return updates.isDefault ? { ...p, isDefault: false } : p
+            }
+            return { ...p, ...updates }
+          })
+          const updated = presets.find((p) => p.id === id)
+          const extra: Partial<typeof state> = { systemPromptPresets: presets }
+          if (updated?.isDefault) extra.chatSystemPrompt = updated.content
+          return extra
+        }),
+      deleteSystemPromptPreset: (id) =>
+        set((state) => ({
+          systemPromptPresets: state.systemPromptPresets.filter((p) => p.id !== id),
+          // Clear system prompt if this was the default
+          chatSystemPrompt: state.systemPromptPresets.find((p) => p.id === id)?.isDefault
+            ? ''
+            : state.chatSystemPrompt,
+        })),
+      setDefaultSystemPromptPreset: (id) =>
+        set((state) => ({
+          systemPromptPresets: state.systemPromptPresets.map((p) => ({ ...p, isDefault: p.id === id })),
+          chatSystemPrompt: id
+            ? (state.systemPromptPresets.find((p) => p.id === id)?.content ?? state.chatSystemPrompt)
+            : state.chatSystemPrompt,
+        })),
     }),
     {
       name: 'translate-app-settings',
@@ -199,6 +318,9 @@ export const useAppStore = create<AppState>()(
         locale: state.locale,
         localeAuto: state.localeAuto,
         history: state.history,
+        chatSessions: state.chatSessions,
+        chatSystemPrompt: state.chatSystemPrompt,
+        systemPromptPresets: state.systemPromptPresets,
       }),
     }
   )

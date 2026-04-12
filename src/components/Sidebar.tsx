@@ -47,7 +47,7 @@ export function Sidebar() {
 
   const hasAnyKey = PROVIDERS.some((p) => keyStatus[p.id as Provider])
 
-  const handleNewChat = () => {
+  const handleNewTranslate = () => {
     clearTranslation()
     setActivePage('translate')
   }
@@ -64,15 +64,28 @@ export function Sidebar() {
       {/* Divider */}
       <div className="w-8 h-px bg-gray-100 dark:bg-gray-800 mb-0.5" />
 
-      {/* New Chat */}
+      {/* Translate */}
       <SidebarItem
-        label={t.nav_new_chat}
+        label={t.nav_translate}
         active={activePage === 'translate'}
-        onClick={handleNewChat}
+        onClick={handleNewTranslate}
+        icon={
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round"
+              d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+          </svg>
+        }
+      />
+
+      {/* Chat with AI */}
+      <SidebarItem
+        label={t.nav_chat}
+        active={activePage === 'chat'}
+        onClick={() => setActivePage('chat')}
         icon={
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
           </svg>
         }
       />

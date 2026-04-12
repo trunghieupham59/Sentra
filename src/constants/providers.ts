@@ -10,7 +10,9 @@ export const PROVIDERS: ProviderConfig[] = [
     docsUrl: 'https://aistudio.google.com/apikey',
     models: [
       // ★ When adding a new Gemini model, mark the fastest/best translation model as tag:'recommended'
-      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Latest & fastest', tag: 'recommended' },
+      { id: 'gemini-2.5-flash-preview-04-17', name: 'Gemini 2.5 Flash', description: 'Newest & fastest', tag: 'recommended' },
+      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Fast & capable', tag: 'balanced' },
+      { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash-Lite', description: 'Ultra fast & light', tag: 'balanced' },
       { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: 'Fast & efficient', tag: 'balanced' },
       { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: 'Most capable', tag: 'powerful' },
     ],

@@ -45,6 +45,32 @@ contextBridge.exposeInMainWorld('api', {
     voice?: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
   }) => ipcRenderer.invoke('audio:tts', params),
 
+  // Image translation — extracts text regions from image and returns translated regions
+  translateImage: (params: {
+    provider: string
+    model: string
+    imageBase64: string
+    imageMimeType: string
+    sourceLang: string
+    targetLang: string
+  }) => ipcRenderer.invoke('image:translate', params),
+
+  // AI Chat — supports text + image messages, multi-turn conversation
+  chat: (params: {
+    provider: string
+    model: string
+    messages: Array<{
+      role: 'user' | 'assistant'
+      content: Array<{
+        type: 'text' | 'image'
+        text?: string
+        imageBase64?: string
+        imageMimeType?: string
+      }>
+    }>
+    systemPrompt?: string
+  }) => ipcRenderer.invoke('chat:send', params),
+
   // App info
   platform: process.platform,
   version: process.env.npm_package_version || '1.0.0',

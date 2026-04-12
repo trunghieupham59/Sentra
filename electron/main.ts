@@ -1,10 +1,12 @@
 import { app, BrowserWindow, ipcMain, shell, nativeTheme, nativeImage } from 'electron'
 import path from 'path'
 import { registerKeychainHandlers } from './ipc/keychain'
+import { registerImageTranslateHandlers } from './ipc/imageTranslate'
 import { registerModelsHandlers } from './ipc/models'
 import { registerTranscribeHandlers } from './ipc/transcribe'
 import { registerTranslateHandlers } from './ipc/translate'
 import { registerTtsHandlers } from './ipc/tts'
+import { registerChatHandlers } from './ipc/chat'
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 
@@ -95,6 +97,8 @@ app.whenReady().then(() => {
   registerModelsHandlers(ipcMain)
   registerTranscribeHandlers(ipcMain)
   registerTtsHandlers(ipcMain)
+  registerImageTranslateHandlers(ipcMain)
+  registerChatHandlers(ipcMain)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
