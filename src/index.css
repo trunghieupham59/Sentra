@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    user-select: none;
+    background-color: #f8fafc;
+    color: #0f172a;
+  }
+
+  textarea, input, [contenteditable] {
+    user-select: text;
+  }
+
+  /* macOS titlebar drag region */
+  .titlebar-drag {
+    -webkit-app-region: drag;
+  }
+}
+
+@layer components {
+  /* ── Buttons ─────────────────────────────── */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2
+           bg-blue-600 text-white text-sm font-medium rounded-lg
+           hover:bg-blue-700 active:bg-blue-800
+           disabled:opacity-40 disabled:cursor-not-allowed
+           transition-colors duration-100 select-none;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5 px-3 py-1.5
+           text-gray-500 text-sm rounded-md
+           hover:bg-gray-100 hover:text-gray-700 active:bg-gray-200
+           disabled:opacity-40 disabled:cursor-not-allowed
+           transition-colors duration-100 select-none
+           dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200;
+  }
+
+  /* ── Select ──────────────────────────────── */
+  .select-field {
+    @apply block w-full px-3 py-2 bg-white border border-gray-200 rounded-lg
+           text-sm text-gray-700 appearance-none cursor-pointer
+           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+           transition-colors duration-100
+           dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200
+           dark:focus:border-blue-400;
+  }
+
+  /* ── Cards ───────────────────────────────── */
+  .card {
+    @apply bg-white border border-gray-200 rounded-xl
+           dark:bg-gray-800 dark:border-gray-700;
+  }
+
+  /* ── Text areas ──────────────────────────── */
+  .textarea-field {
+    @apply w-full h-full resize-none bg-transparent
+           text-gray-800 dark:text-gray-100
+           text-[15px] leading-relaxed
+           placeholder-gray-300 dark:placeholder-gray-600
+           focus:outline-none;
+  }
+
+  /* ── Section label ───────────────────────── */
+  .section-label {
+    @apply text-xs font-semibold text-gray-400 uppercase tracking-widest
+           dark:text-gray-500;
+  }
+}
+
+/* ── Scrollbar ──────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background-color: #e2e8f0;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background-color: #cbd5e1; }
+
+/* ── Spinner ────────────────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { animation: spin 0.75s linear infinite; }
+
+/* ── Fade in ────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadeIn 0.15s ease-out; }
