@@ -2,6 +2,8 @@ export type Provider = 'gemini' | 'claude' | 'openai'
 
 export type TranslationStyle = 'standard' | 'casual' | 'formal' | 'message' | 'technical'
 
+export type TtsVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
+
 export interface ProviderConfig {
   id: Provider
   name: string
@@ -38,6 +40,8 @@ export interface TranslateParams {
   targetLang: string
   showFurigana?: boolean
   translationStyle?: TranslationStyle
+  /** When true, skip translation — only add phonetic annotations to the already-translated sourceText */
+  phoneticOnly?: boolean
 }
 
 export interface TranslateResult {
@@ -65,6 +69,21 @@ export interface FetchedModel {
   id: string
   name: string
   description: string
+}
+
+export interface TranscribeResult {
+  success: boolean
+  text?: string
+  error?: string
+  errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | string
+}
+
+export interface TtsResult {
+  success: boolean
+  /** base64-encoded MP3 audio (avoids IPC ArrayBuffer serialization issues) */
+  audioBase64?: string
+  error?: string
+  errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | string
 }
 
 export interface FetchModelsResult {
@@ -98,6 +117,15 @@ export interface WindowApi {
   fetchModels: (provider: string) => Promise<FetchModelsResult>
   verifyKey: (provider: string, apiKey: string) => Promise<VerifyResult>
   translate: (params: TranslateParams) => Promise<TranslateResult>
+  transcribeAudio: (params: {
+    audioData: ArrayBuffer
+    mimeType: string
+    language?: string
+  }) => Promise<TranscribeResult>
+  speakText: (params: {
+    text: string
+    voice?: TtsVoice
+  }) => Promise<TtsResult>
   platform: string
   version: string
 }

@@ -32,6 +32,19 @@ contextBridge.exposeInMainWorld('api', {
     targetLang: string
   }) => ipcRenderer.invoke('translate', params),
 
+  // Audio transcription via OpenAI Whisper (avoids Google Speech API dependency)
+  transcribeAudio: (params: {
+    audioData: ArrayBuffer
+    mimeType: string
+    language?: string
+  }) => ipcRenderer.invoke('audio:transcribe', params),
+
+  // AI Text-to-Speech via OpenAI TTS (multilingual, natural-sounding)
+  speakText: (params: {
+    text: string
+    voice?: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
+  }) => ipcRenderer.invoke('audio:tts', params),
+
   // App info
   platform: process.platform,
   version: process.env.npm_package_version || '1.0.0',

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { Provider, FetchedModel, HistoryItem, TranslationStyle } from '../types'
+import { Provider, FetchedModel, HistoryItem, TranslationStyle, TtsVoice } from '../types'
 import { DEFAULT_SETTINGS } from '../constants/providers'
 import { AppLocale, TRANSLATIONS, Translations } from '../i18n'
 
@@ -25,6 +25,8 @@ interface AppState {
   autoTranslateDelay: number
   showFurigana: boolean
   translationStyle: TranslationStyle
+  ttsVoice: TtsVoice
+  fontSize: 'small' | 'medium' | 'large'
 
   // Key status cache
   keyStatus: Record<Provider, boolean>
@@ -60,6 +62,8 @@ interface AppState {
   setAutoTranslateDelay: (ms: number) => void
   setShowFurigana: (v: boolean) => void
   setTranslationStyle: (style: TranslationStyle) => void
+  setTtsVoice: (voice: TtsVoice) => void
+  setFontSize: (size: 'small' | 'medium' | 'large') => void
   setKeyStatus: (provider: Provider, hasKey: boolean) => void
   setDynamicModels: (provider: Provider, models: FetchedModel[]) => void
   setModelsLoading: (provider: Provider, loading: boolean) => void
@@ -98,6 +102,8 @@ export const useAppStore = create<AppState>()(
       autoTranslateDelay: DEFAULT_SETTINGS.autoTranslateDelay,
       showFurigana: false,
       translationStyle: 'standard' as TranslationStyle,
+      ttsVoice: 'nova' as TtsVoice,
+      fontSize: 'medium' as const,
       keyStatus: { gemini: false, claude: false, openai: false },
       dynamicModels: { gemini: [], claude: [], openai: [] },
       modelsLoading: { gemini: false, claude: false, openai: false },
@@ -121,12 +127,15 @@ export const useAppStore = create<AppState>()(
 
       swapLanguages: () =>
         set((state) => {
-          if (state.sourceLang === 'auto') return {}
+          // When source is 'auto', use targetLang as the new source and fall back to 'ja' for target
+          const newSourceLang = state.sourceLang === 'auto' ? state.targetLang : state.targetLang
+          const newTargetLang = state.sourceLang === 'auto' ? 'ja' : state.sourceLang
           return {
-            sourceLang: state.targetLang,
-            targetLang: state.sourceLang,
+            sourceLang: newSourceLang,
+            targetLang: newTargetLang,
             sourceText: state.translatedText,
             translatedText: state.sourceText,
+            phoneticText: '',
           }
         }),
 
@@ -142,6 +151,8 @@ export const useAppStore = create<AppState>()(
       setAutoTranslateDelay: (ms) => set({ autoTranslateDelay: ms }),
       setShowFurigana: (v) => set({ showFurigana: v }),
       setTranslationStyle: (style) => set({ translationStyle: style }),
+      setTtsVoice: (voice) => set({ ttsVoice: voice }),
+      setFontSize: (size) => set({ fontSize: size }),
       setKeyStatus: (provider, hasKey) =>
         set((state) => ({ keyStatus: { ...state.keyStatus, [provider]: hasKey } })),
 
@@ -180,10 +191,11 @@ export const useAppStore = create<AppState>()(
         targetLang: state.targetLang,
         selectedProvider: state.selectedProvider,
         selectedModels: state.selectedModels,
-        autoTranslate: state.autoTranslate,
         autoTranslateDelay: state.autoTranslateDelay,
         showFurigana: state.showFurigana,
         translationStyle: state.translationStyle,
+        ttsVoice: state.ttsVoice,
+        fontSize: state.fontSize,
         locale: state.locale,
         localeAuto: state.localeAuto,
         history: state.history,

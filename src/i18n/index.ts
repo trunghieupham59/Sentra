@@ -29,6 +29,15 @@ export interface Translations {
   translate_style_formal: string
   translate_style_message: string
   translate_style_technical: string
+  translate_speak: string
+  translate_speak_stop: string
+
+  // Voice recording
+  voice_record: string
+  voice_stop: string
+  voice_listening: string
+  voice_transcribing: string
+  voice_whisper_mode: string
 
   // Model selector
   model_no_key: string
@@ -52,6 +61,7 @@ export interface Translations {
   settings_configured: string
   settings_get_key: string
   settings_key_saved: string
+  settings_key_invalid: string
   settings_no_key: string
   settings_verify_save: string
   settings_verifying: string
@@ -78,8 +88,22 @@ export interface Translations {
   settings_app_language_desc: string
   settings_locale_auto: string
   settings_locale_auto_desc: string
+  settings_font_size: string
+  settings_font_size_desc: string
+  settings_font_size_small: string
+  settings_font_size_medium: string
+  settings_font_size_large: string
   settings_furigana: string
   settings_furigana_desc: string
+  settings_tts_section: string
+  settings_tts_voice: string
+  settings_tts_voice_desc: string
+  settings_tts_voice_alloy: string
+  settings_tts_voice_echo: string
+  settings_tts_voice_fable: string
+  settings_tts_voice_onyx: string
+  settings_tts_voice_nova: string
+  settings_tts_voice_shimmer: string
   settings_about: string
   settings_about_version: string
   settings_about_platform: string
@@ -124,6 +148,13 @@ const en: Translations = {
   translate_style_formal: 'Formal',
   translate_style_message: 'Message',
   translate_style_technical: 'Technical',
+  translate_speak: 'Read aloud',
+  translate_speak_stop: 'Stop reading',
+  voice_record: 'Record voice',
+  voice_stop: 'Stop recording',
+  voice_listening: 'Listening…',
+  voice_transcribing: 'Transcribing…',
+  voice_whisper_mode: 'Recording…',
   model_no_key: 'No API key',
   model_loading: 'Loading models…',
   model_load_error: 'Failed to load',
@@ -160,9 +191,10 @@ const en: Translations = {
   settings_api_keys: 'API Keys',
   settings_configured: 'configured',
   settings_get_key: 'Get API key ↗',
-  settings_key_saved: 'Key saved',
+  settings_key_saved: 'Verified',
+  settings_key_invalid: 'Unavailable',
   settings_no_key: 'No key',
-  settings_verify_save: 'Verify & Save',
+  settings_verify_save: 'Verify',
   settings_verifying: 'Verifying…',
   settings_verified: 'Verified!',
   settings_try_again: 'Try Again',
@@ -187,8 +219,22 @@ const en: Translations = {
   settings_app_language_desc: 'Language for the application interface',
   settings_locale_auto: 'Follow System',
   settings_locale_auto_desc: 'Automatically use the system language',
-  settings_furigana: 'Furigana (ふりがな)',
-  settings_furigana_desc: 'Show reading guides above kanji when translating to Japanese',
+  settings_font_size: 'Font Size',
+  settings_font_size_desc: 'Adjust the text size of the application',
+  settings_font_size_small: 'Small',
+  settings_font_size_medium: 'Medium',
+  settings_font_size_large: 'Large',
+  settings_furigana: 'Phonetic Reading',
+  settings_furigana_desc: 'Show phonetic guides in translations (furigana for Japanese, pinyin for Chinese, romanization for Korean, IPA for others)',
+  settings_tts_section: 'Text-to-Speech',
+  settings_tts_voice: 'Voice',
+  settings_tts_voice_desc: 'Voice used for read-aloud (requires OpenAI API key)',
+  settings_tts_voice_alloy: 'Alloy — Neutral, balanced',
+  settings_tts_voice_echo: 'Echo — Deep, resonant',
+  settings_tts_voice_fable: 'Fable — Warm, narrative',
+  settings_tts_voice_onyx: 'Onyx — Deep, authoritative',
+  settings_tts_voice_nova: 'Nova — Warm, natural (default)',
+  settings_tts_voice_shimmer: 'Shimmer — Soft, gentle',
   settings_about: 'About',
   settings_about_version: 'Version 1.0.0 · Local AI Translation',
   settings_about_platform: 'Platform',
@@ -231,6 +277,13 @@ const vi: Translations = {
   translate_style_formal: 'Trang trọng',
   translate_style_message: 'Tin nhắn',
   translate_style_technical: 'Kỹ thuật',
+  translate_speak: 'Đọc to',
+  translate_speak_stop: 'Dừng đọc',
+  voice_record: 'Thu âm giọng nói',
+  voice_stop: 'Dừng thu âm',
+  voice_listening: 'Đang nghe…',
+  voice_transcribing: 'Đang chuyển văn bản…',
+  voice_whisper_mode: 'Đang thu âm…',
   model_no_key: 'Chưa có key',
   model_loading: 'Đang tải model…',
   model_load_error: 'Tải thất bại',
@@ -267,9 +320,10 @@ const vi: Translations = {
   settings_api_keys: 'API Keys',
   settings_configured: 'đã cấu hình',
   settings_get_key: 'Lấy API key ↗',
-  settings_key_saved: 'Đã lưu key',
+  settings_key_saved: 'Đã xác minh',
+  settings_key_invalid: 'Không khả dụng',
   settings_no_key: 'Chưa có key',
-  settings_verify_save: 'Xác minh & Lưu',
+  settings_verify_save: 'Xác minh',
   settings_verifying: 'Đang xác minh…',
   settings_verified: 'Đã xác minh!',
   settings_try_again: 'Thử lại',
@@ -294,8 +348,22 @@ const vi: Translations = {
   settings_app_language_desc: 'Ngôn ngữ giao diện ứng dụng',
   settings_locale_auto: 'Theo hệ thống',
   settings_locale_auto_desc: 'Tự động dùng ngôn ngữ hệ thống',
-  settings_furigana: 'Furigana (ふりがな)',
-  settings_furigana_desc: 'Hiển thị cách đọc phía trên chữ Hán khi dịch sang tiếng Nhật',
+  settings_font_size: 'Cỡ chữ',
+  settings_font_size_desc: 'Điều chỉnh kích thước chữ trong ứng dụng',
+  settings_font_size_small: 'Nhỏ',
+  settings_font_size_medium: 'Vừa',
+  settings_font_size_large: 'Lớn',
+  settings_furigana: 'Phiên Âm',
+  settings_furigana_desc: 'Hiển thị phiên âm trong bản dịch (furigana cho tiếng Nhật, pinyin cho tiếng Trung, romanization cho tiếng Hàn...)',
+  settings_tts_section: 'Đọc to (TTS)',
+  settings_tts_voice: 'Giọng đọc',
+  settings_tts_voice_desc: 'Giọng dùng khi đọc to văn bản (cần OpenAI API key)',
+  settings_tts_voice_alloy: 'Alloy — Trung tính, cân bằng',
+  settings_tts_voice_echo: 'Echo — Trầm, vang',
+  settings_tts_voice_fable: 'Fable — Ấm áp, kể chuyện',
+  settings_tts_voice_onyx: 'Onyx — Trầm, uy quyền',
+  settings_tts_voice_nova: 'Nova — Ấm áp, tự nhiên (mặc định)',
+  settings_tts_voice_shimmer: 'Shimmer — Nhẹ nhàng, mềm mại',
   settings_about: 'Thông tin',
   settings_about_version: 'Phiên bản 1.0.0 · Dịch thuật AI cục bộ',
   settings_about_platform: 'Nền tảng',
@@ -338,6 +406,13 @@ const ja: Translations = {
   translate_style_formal: 'フォーマル',
   translate_style_message: 'メッセージ',
   translate_style_technical: '専門',
+  translate_speak: '読み上げ',
+  translate_speak_stop: '読み上げ停止',
+  voice_record: '音声録音',
+  voice_stop: '録音停止',
+  voice_listening: '聞き取り中…',
+  voice_transcribing: '文字起こし中…',
+  voice_whisper_mode: '録音中…',
   model_no_key: 'キーなし',
   model_loading: 'モデル読み込み中…',
   model_load_error: '読み込み失敗',
@@ -374,9 +449,10 @@ const ja: Translations = {
   settings_api_keys: 'APIキー',
   settings_configured: '設定済み',
   settings_get_key: 'APIキーを取得 ↗',
-  settings_key_saved: 'キー保存済み',
+  settings_key_saved: '確認済み',
+  settings_key_invalid: '利用不可',
   settings_no_key: 'キーなし',
-  settings_verify_save: '確認して保存',
+  settings_verify_save: '確認',
   settings_verifying: '確認中…',
   settings_verified: '確認済み！',
   settings_try_again: '再試行',
@@ -401,8 +477,22 @@ const ja: Translations = {
   settings_app_language_desc: 'アプリケーションインターフェースの言語',
   settings_locale_auto: 'システムに従う',
   settings_locale_auto_desc: 'システム言語を自動的に使用',
-  settings_furigana: 'ふりがな (Furigana)',
-  settings_furigana_desc: '日本語翻訳時に漢字の上に読み仮名を表示する',
+  settings_font_size: '文字サイズ',
+  settings_font_size_desc: 'アプリのテキストサイズを調整します',
+  settings_font_size_small: '小',
+  settings_font_size_medium: '中',
+  settings_font_size_large: '大',
+  settings_furigana: 'フォネティック（読み方）',
+  settings_furigana_desc: '翻訳に読み方ガイドを表示します（日本語: ふりがな / 中国語: ピンイン / 韓国語: ローマ字）',
+  settings_tts_section: '読み上げ（TTS）',
+  settings_tts_voice: '音声',
+  settings_tts_voice_desc: '読み上げに使用する音声（OpenAI APIキーが必要）',
+  settings_tts_voice_alloy: 'Alloy — ニュートラル、バランス',
+  settings_tts_voice_echo: 'Echo — 低音、響き',
+  settings_tts_voice_fable: 'Fable — 温かみ、語り',
+  settings_tts_voice_onyx: 'Onyx — 低音、権威的',
+  settings_tts_voice_nova: 'Nova — 温かみ、自然（デフォルト）',
+  settings_tts_voice_shimmer: 'Shimmer — 柔らか、穏やか',
   settings_about: 'アプリについて',
   settings_about_version: 'バージョン 1.0.0 · ローカルAI翻訳',
   settings_about_platform: 'プラットフォーム',

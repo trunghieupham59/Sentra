@@ -62,9 +62,9 @@ export function ModelSelector() {
   const displayModels = currentDynamic.length > 0 ? currentDynamic : staticModels
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <div className="flex items-center gap-2 min-w-0 flex-shrink overflow-hidden">
       {/* Provider tabs */}
-      <div className="flex items-center gap-0.5 p-0.5 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+      <div className="flex items-center gap-0.5 p-0.5 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 flex-shrink-0">
         {PROVIDERS.map((p) => {
           const isActive = p.id === selectedProvider
           const c = PROVIDER_COLORS[p.id as Provider]
@@ -75,7 +75,7 @@ export function ModelSelector() {
               type="button"
               onClick={() => setSelectedProvider(p.id as Provider)}
               title={noKey ? `${p.name} — ${t.model_no_key}` : p.name}
-              className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold
+              className={`relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold
                           transition-all duration-100 ${
                 isActive
                   ? `bg-white dark:bg-gray-700 shadow-sm ${c.text} border border-gray-200 dark:border-gray-600`
@@ -83,7 +83,7 @@ export function ModelSelector() {
               }`}
             >
               <ProviderIcon provider={p.id as Provider} size={14} />
-              <span className="hidden sm:inline">{p.name}</span>
+              <span className="hidden lg:inline">{p.name}</span>
               {noKey && (
                 <span className="w-1.5 h-1.5 rounded-full bg-orange-400 flex-shrink-0" />
               )}
@@ -93,13 +93,13 @@ export function ModelSelector() {
       </div>
 
       {/* Separator */}
-      <span className="text-gray-200 dark:text-gray-700 text-lg font-thin select-none">|</span>
+      <span className="text-gray-200 dark:text-gray-700 text-lg font-thin select-none flex-shrink-0">|</span>
 
       {/* Model dropdown */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 min-w-0">
         {isLoading ? (
-          <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-400">
-            <svg className="w-3.5 h-3.5 spinner" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-400 whitespace-nowrap">
+            <svg className="w-3.5 h-3.5 spinner flex-shrink-0" fill="none" viewBox="0 0 24 24" aria-hidden="true">
               <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
@@ -117,11 +117,11 @@ export function ModelSelector() {
             </button>
           </div>
         ) : (
-          <div className="relative">
+          <div className="relative min-w-0">
             <select
               value={selectedModels[selectedProvider]}
               onChange={(e) => setSelectedModel(selectedProvider, e.target.value)}
-              className="select-field pr-8 pl-3 py-1.5 text-xs w-[240px]"
+              className="select-field pr-8 pl-3 py-1.5 text-xs w-[140px] lg:w-[200px] xl:w-[240px]"
             >
               {displayModels.map((m) => (
                 <option key={m.id} value={m.id}>

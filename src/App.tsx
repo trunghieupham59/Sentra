@@ -15,8 +15,14 @@ function detectSystemLocale(): AppLocale {
   return SUPPORTED_LOCALES.includes(lang as AppLocale) ? (lang as AppLocale) : 'en'
 }
 
+const FONT_SIZE_MAP = {
+  small:  '13px',
+  medium: '15px',
+  large:  '17px',
+}
+
 function App() {
-  const { activePage, localeAuto, setKeyStatus, setLocaleFromSystem } = useAppStore()
+  const { activePage, localeAuto, setKeyStatus, setLocaleFromSystem, fontSize } = useAppStore()
 
   // Auto-detect system language on startup (only when localeAuto is enabled)
   useEffect(() => {
@@ -25,6 +31,11 @@ function App() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Only run once on mount
+
+  // Apply font size to document root
+  useEffect(() => {
+    document.documentElement.style.fontSize = FONT_SIZE_MAP[fontSize ?? 'medium']
+  }, [fontSize])
 
   // On startup, check which API keys exist in keychain
   useEffect(() => {

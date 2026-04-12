@@ -12,6 +12,8 @@ interface TranslateParams {
   targetLang: string
   showFurigana?: boolean
   translationStyle?: TranslationStyle
+  /** When true, skip translation — only add phonetic annotations to the already-translated sourceText */
+  phoneticOnly?: boolean
 }
 
 async function getApiKey(provider: string): Promise<string | null> {
@@ -31,7 +33,22 @@ const STYLE_INSTRUCTIONS: Record<TranslationStyle, string> = {
   technical: ' Use precise technical language with appropriate domain-specific terminology. Maintain accuracy over readability.',
 }
 
-function buildPrompt(sourceText: string, sourceLang: string, targetLang: string, showFurigana = false, style: TranslationStyle = 'standard'): string {
+function buildPrompt(sourceText: string, sourceLang: string, targetLang: string, showFurigana = false, style: TranslationStyle = 'standard', phoneticOnly = false): string {
+  // phoneticOnly mode: add phonetic annotations to already-translated text without re-translating
+  if (phoneticOnly && showFurigana) {
+    let phoneticInstruction = ''
+    if (targetLang === 'ja') {
+      phoneticInstruction = 'For every kanji word or phrase, wrap it with its furigana reading in the format {kanji|reading} (e.g. {東京|とうきょう}). Apply to ALL kanji including standalone characters.'
+    } else if (targetLang === 'zh' || targetLang === 'zh-TW') {
+      phoneticInstruction = 'For every Chinese word or character, wrap it with its pinyin reading in the format {character|pīnyīn} (e.g. {北京|Běijīng}). Apply to ALL Chinese characters.'
+    } else if (targetLang === 'ko') {
+      phoneticInstruction = 'For every Korean word, wrap it with its romanization in the format {한국어|romanization} (e.g. {서울|Seoul}). Apply to ALL Korean words.'
+    } else {
+      phoneticInstruction = 'For every word, wrap it with its pronunciation or phonetic transcription in the format {word|pronunciation} (e.g. {hello|həˈloʊ}). Use IPA notation where applicable.'
+    }
+    return `Add phonetic annotations to the following ${targetLang} text. Do NOT translate or change the text content in any way — only add phonetic annotations. Return only the annotated text, no explanations, no notes.\n\n${phoneticInstruction}\n\nText to annotate:\n${sourceText}`
+  }
+
   const sourceName = sourceLang === 'auto' ? 'the detected language' : sourceLang
   const styleInstruction = STYLE_INSTRUCTIONS[style] ?? ''
   let phoneticInstruction = ''
@@ -56,7 +73,8 @@ async function translateWithGemini(
   sourceLang: string,
   targetLang: string,
   showFurigana: boolean,
-  style: TranslationStyle
+  style: TranslationStyle,
+  phoneticOnly: boolean
 ): Promise<string> {
   const { GoogleGenerativeAI } = await import('@google/generative-ai')
   const genAI = new GoogleGenerativeAI(apiKey)
@@ -65,7 +83,7 @@ async function translateWithGemini(
     systemInstruction:
       'You are a professional translator. Translate accurately and naturally. Return only the translated text.',
   })
-  const result = await genModel.generateContent(buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style))
+  const result = await genModel.generateContent(buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style, phoneticOnly))
   return result.response.text().trim()
 }
 
@@ -76,7 +94,8 @@ async function translateWithClaude(
   sourceLang: string,
   targetLang: string,
   showFurigana: boolean,
-  style: TranslationStyle
+  style: TranslationStyle,
+  phoneticOnly: boolean
 ): Promise<string> {
   const Anthropic = (await import('@anthropic-ai/sdk')).default
   const client = new Anthropic({ apiKey })
@@ -88,7 +107,7 @@ async function translateWithClaude(
     messages: [
       {
         role: 'user',
-        content: buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style),
+        content: buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style, phoneticOnly),
       },
     ],
   })
@@ -104,7 +123,8 @@ async function translateWithOpenAI(
   sourceLang: string,
   targetLang: string,
   showFurigana: boolean,
-  style: TranslationStyle
+  style: TranslationStyle,
+  phoneticOnly: boolean
 ): Promise<string> {
   const OpenAI = (await import('openai')).default
   const client = new OpenAI({ apiKey })
@@ -118,7 +138,7 @@ async function translateWithOpenAI(
       },
       {
         role: 'user',
-        content: buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style),
+        content: buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style, phoneticOnly),
       },
     ],
     max_completion_tokens: 4096,
@@ -195,7 +215,7 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
   })
 
   ipcMain.handle('translate', async (_event, params: TranslateParams) => {
-    const { provider, model, sourceText, sourceLang, targetLang, showFurigana, translationStyle } = params
+    const { provider, model, sourceText, sourceLang, targetLang, showFurigana, translationStyle, phoneticOnly } = params
 
     if (!sourceText.trim()) {
       return { success: false, error: 'Source text is empty' }
@@ -215,13 +235,13 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
 
       switch (provider) {
         case 'gemini':
-          translatedText = await translateWithGemini(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'standard')
+          translatedText = await translateWithGemini(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'standard', !!phoneticOnly)
           break
         case 'claude':
-          translatedText = await translateWithClaude(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'standard')
+          translatedText = await translateWithClaude(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'standard', !!phoneticOnly)
           break
         case 'openai':
-          translatedText = await translateWithOpenAI(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'standard')
+          translatedText = await translateWithOpenAI(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'standard', !!phoneticOnly)
           break
         default:
           return { success: false, error: `Unknown provider: ${provider}` }

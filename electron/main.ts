@@ -1,8 +1,10 @@
 import { app, BrowserWindow, ipcMain, shell, nativeTheme, nativeImage } from 'electron'
 import path from 'path'
 import { registerKeychainHandlers } from './ipc/keychain'
-import { registerTranslateHandlers } from './ipc/translate'
 import { registerModelsHandlers } from './ipc/models'
+import { registerTranscribeHandlers } from './ipc/transcribe'
+import { registerTranslateHandlers } from './ipc/translate'
+import { registerTtsHandlers } from './ipc/tts'
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 
@@ -15,8 +17,8 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 700,
-    minWidth: 1100,
-    minHeight: 580,
+    minWidth: 780,
+    minHeight: 520,
     title: 'Lotus',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 16, y: 16 },
@@ -44,6 +46,15 @@ function createWindow() {
     mainWindow?.show()
   })
 
+  // Disable default Cmd+=/Cmd+- zoom shortcuts
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    const isMac = process.platform === 'darwin'
+    const ctrlOrCmd = isMac ? input.meta : input.control
+    if (ctrlOrCmd && (input.key === '+' || input.key === '=' || input.key === '-' || input.key === '_' || input.key === '0')) {
+      event.preventDefault()
+    }
+  })
+
   // Open external links in browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)
@@ -64,14 +75,14 @@ app.whenReady().then(() => {
       const iconBase64: string = require(path.join(__dirname, '..', 'build', 'icon-base64.js'))
       const icon = nativeImage.createFromDataURL(iconBase64)
       if (!icon.isEmpty()) {
-        app.dock.setIcon(icon)
+        app.dock?.setIcon(icon)
       }
     } catch {
       // Fallback to file path
       const iconPath = path.join(__dirname, '..', 'build', 'icon.png')
       const icon = nativeImage.createFromPath(iconPath)
       if (!icon.isEmpty()) {
-        app.dock.setIcon(icon)
+        app.dock?.setIcon(icon)
       }
     }
   }
@@ -82,6 +93,8 @@ app.whenReady().then(() => {
   registerKeychainHandlers(ipcMain)
   registerTranslateHandlers(ipcMain)
   registerModelsHandlers(ipcMain)
+  registerTranscribeHandlers(ipcMain)
+  registerTtsHandlers(ipcMain)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
