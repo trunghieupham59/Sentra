@@ -73,7 +73,7 @@
            text-gray-800 dark:text-gray-100
            text-[15px] leading-relaxed
            placeholder-gray-300 dark:placeholder-gray-600
-           focus:outline-none;
+           focus:outline-none select-text;
   }
 
   /* ── Section label ───────────────────────── */

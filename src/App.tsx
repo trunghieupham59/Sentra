@@ -1,12 +1,12 @@
 import { useEffect } from 'react'
-import { useAppStore } from './store/useAppStore'
 import { Sidebar } from './components/Sidebar'
-import { TranslatePage } from './pages/TranslatePage'
+import { PROVIDERS } from './constants/providers'
+import type { AppLocale } from './i18n'
 import { HistoryPage } from './pages/HistoryPage'
 import { SettingsPage } from './pages/SettingsPage'
-import { Provider } from './types'
-import { PROVIDERS } from './constants/providers'
-import { AppLocale } from './i18n'
+import { TranslatePage } from './pages/TranslatePage'
+import { useAppStore } from './store/useAppStore'
+import type { Provider } from './types'
 
 const SUPPORTED_LOCALES: AppLocale[] = ['en', 'vi', 'ja']
 
@@ -25,11 +25,11 @@ function App() {
   const { activePage, localeAuto, setKeyStatus, setLocaleFromSystem, fontSize } = useAppStore()
 
   // Auto-detect system language on startup (only when localeAuto is enabled)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally run only once on mount
   useEffect(() => {
     if (localeAuto) {
       setLocaleFromSystem(detectSystemLocale())
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Only run once on mount
 
   // Apply font size to document root
