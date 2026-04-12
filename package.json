@@ -1,6 +1,6 @@
 {
   "name": "lotus-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Lotus - Local AI Translation - macOS & Windows",
   "main": "dist-electron/main.js",
   "scripts": {
