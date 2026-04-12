@@ -1,7 +1,7 @@
 {
   "name": "lotus-app",
   "version": "1.0.0",
-  "description": "LOTUS APP - Local AI Translation - macOS & Windows",
+  "description": "Lotus - Local AI Translation - macOS & Windows",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "concurrently -k -n \"VITE,ELECTRON\" -c \"cyan,yellow\" \"npm run dev:vite\" \"npm run dev:electron\"",
@@ -55,7 +55,7 @@
   },
   "build": {
     "appId": "com.lotusapp.vietnam",
-    "productName": "LOTUS APP",
+    "productName": "Lotus",
     "directories": {
       "output": "release"
     },
@@ -68,7 +68,7 @@
       "icon": "build/icon.icns",
       "target": [
         {
-          "target": "dir",
+          "target": "dmg",
           "arch": [
             "arm64",
             "x64"

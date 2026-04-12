@@ -22,6 +22,13 @@ export interface Translations {
   translate_swap: string
   translate_error_no_key: string
   translate_error_open_settings: string
+  translate_phonetic: string
+  translate_style_label: string
+  translate_style_standard: string
+  translate_style_casual: string
+  translate_style_formal: string
+  translate_style_message: string
+  translate_style_technical: string
 
   // Model selector
   model_no_key: string
@@ -71,6 +78,8 @@ export interface Translations {
   settings_app_language_desc: string
   settings_locale_auto: string
   settings_locale_auto_desc: string
+  settings_furigana: string
+  settings_furigana_desc: string
   settings_about: string
   settings_about_version: string
   settings_about_platform: string
@@ -108,6 +117,13 @@ const en: Translations = {
   translate_swap: 'Swap languages',
   translate_error_no_key: 'No API key configured. Go to Settings to add one.',
   translate_error_open_settings: 'Open Settings',
+  translate_phonetic: 'Phonetic',
+  translate_style_label: 'Style',
+  translate_style_standard: 'Standard',
+  translate_style_casual: 'Casual',
+  translate_style_formal: 'Formal',
+  translate_style_message: 'Message',
+  translate_style_technical: 'Technical',
   model_no_key: 'No API key',
   model_loading: 'Loading models…',
   model_load_error: 'Failed to load',
@@ -171,6 +187,8 @@ const en: Translations = {
   settings_app_language_desc: 'Language for the application interface',
   settings_locale_auto: 'Follow System',
   settings_locale_auto_desc: 'Automatically use the system language',
+  settings_furigana: 'Furigana (ふりがな)',
+  settings_furigana_desc: 'Show reading guides above kanji when translating to Japanese',
   settings_about: 'About',
   settings_about_version: 'Version 1.0.0 · Local AI Translation',
   settings_about_platform: 'Platform',
@@ -206,6 +224,13 @@ const vi: Translations = {
   translate_swap: 'Hoán đổi ngôn ngữ',
   translate_error_no_key: 'Chưa có API key. Vào Cài đặt để thêm.',
   translate_error_open_settings: 'Mở Cài đặt',
+  translate_phonetic: 'Phiên âm',
+  translate_style_label: 'Phong cách',
+  translate_style_standard: 'Chuẩn',
+  translate_style_casual: 'Thân mật',
+  translate_style_formal: 'Trang trọng',
+  translate_style_message: 'Tin nhắn',
+  translate_style_technical: 'Kỹ thuật',
   model_no_key: 'Chưa có key',
   model_loading: 'Đang tải model…',
   model_load_error: 'Tải thất bại',
@@ -269,6 +294,8 @@ const vi: Translations = {
   settings_app_language_desc: 'Ngôn ngữ giao diện ứng dụng',
   settings_locale_auto: 'Theo hệ thống',
   settings_locale_auto_desc: 'Tự động dùng ngôn ngữ hệ thống',
+  settings_furigana: 'Furigana (ふりがな)',
+  settings_furigana_desc: 'Hiển thị cách đọc phía trên chữ Hán khi dịch sang tiếng Nhật',
   settings_about: 'Thông tin',
   settings_about_version: 'Phiên bản 1.0.0 · Dịch thuật AI cục bộ',
   settings_about_platform: 'Nền tảng',
@@ -304,6 +331,13 @@ const ja: Translations = {
   translate_swap: '言語を入れ替え',
   translate_error_no_key: 'APIキーが設定されていません。設定で追加してください。',
   translate_error_open_settings: '設定を開く',
+  translate_phonetic: '読み方',
+  translate_style_label: 'スタイル',
+  translate_style_standard: '標準',
+  translate_style_casual: 'カジュアル',
+  translate_style_formal: 'フォーマル',
+  translate_style_message: 'メッセージ',
+  translate_style_technical: '専門',
   model_no_key: 'キーなし',
   model_loading: 'モデル読み込み中…',
   model_load_error: '読み込み失敗',
@@ -367,6 +401,8 @@ const ja: Translations = {
   settings_app_language_desc: 'アプリケーションインターフェースの言語',
   settings_locale_auto: 'システムに従う',
   settings_locale_auto_desc: 'システム言語を自動的に使用',
+  settings_furigana: 'ふりがな (Furigana)',
+  settings_furigana_desc: '日本語翻訳時に漢字の上に読み仮名を表示する',
   settings_about: 'アプリについて',
   settings_about_version: 'バージョン 1.0.0 · ローカルAI翻訳',
   settings_about_platform: 'プラットフォーム',

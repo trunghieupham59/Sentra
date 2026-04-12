@@ -2,12 +2,16 @@ import { IpcMain } from 'electron'
 
 const KEYCHAIN_SERVICE = 'TranslateApp'
 
+type TranslationStyle = 'standard' | 'casual' | 'formal' | 'message' | 'technical'
+
 interface TranslateParams {
   provider: string
   model: string
   sourceText: string
   sourceLang: string
   targetLang: string
+  showFurigana?: boolean
+  translationStyle?: TranslationStyle
 }
 
 async function getApiKey(provider: string): Promise<string | null> {
@@ -19,9 +23,30 @@ async function getApiKey(provider: string): Promise<string | null> {
   }
 }
 
-function buildPrompt(sourceText: string, sourceLang: string, targetLang: string): string {
+const STYLE_INSTRUCTIONS: Record<TranslationStyle, string> = {
+  standard: '',
+  casual: ' Use casual, friendly, and natural everyday language. Avoid stiff or formal expressions.',
+  formal: ' Use formal, professional language suitable for business documents, emails, and official contexts.',
+  message: ' Use brief, conversational language as if writing a quick message on Slack or a chat app. Keep it concise and informal.',
+  technical: ' Use precise technical language with appropriate domain-specific terminology. Maintain accuracy over readability.',
+}
+
+function buildPrompt(sourceText: string, sourceLang: string, targetLang: string, showFurigana = false, style: TranslationStyle = 'standard'): string {
   const sourceName = sourceLang === 'auto' ? 'the detected language' : sourceLang
-  return `Translate the following text from ${sourceName} to ${targetLang}. Return only the translated text, no explanations, no notes, no alternatives.\n\nText to translate:\n${sourceText}`
+  const styleInstruction = STYLE_INSTRUCTIONS[style] ?? ''
+  let phoneticInstruction = ''
+  if (showFurigana) {
+    if (targetLang === 'ja') {
+      phoneticInstruction = ' For every kanji word or phrase in the translation, wrap it with its furigana reading in the format {kanji|reading} (e.g. {東京|とうきょう}). Apply to ALL kanji including standalone characters.'
+    } else if (targetLang === 'zh' || targetLang === 'zh-TW') {
+      phoneticInstruction = ' For every Chinese word or character in the translation, wrap it with its pinyin reading in the format {character|pīnyīn} (e.g. {北京|Běijīng}). Apply to ALL Chinese characters.'
+    } else if (targetLang === 'ko') {
+      phoneticInstruction = ' For every Korean word in the translation, wrap it with its romanization in the format {한국어|romanization} (e.g. {서울|Seoul}). Apply to ALL Korean words.'
+    } else {
+      phoneticInstruction = ' For every word in the translation, wrap it with its pronunciation or phonetic transcription in the format {word|pronunciation} (e.g. {hello|həˈloʊ}). Use IPA notation where applicable.'
+    }
+  }
+  return `Translate the following text from ${sourceName} to ${targetLang}. Return only the translated text, no explanations, no notes, no alternatives.${styleInstruction}${phoneticInstruction}\n\nText to translate:\n${sourceText}`
 }
 
 async function translateWithGemini(
@@ -29,7 +54,9 @@ async function translateWithGemini(
   model: string,
   sourceText: string,
   sourceLang: string,
-  targetLang: string
+  targetLang: string,
+  showFurigana: boolean,
+  style: TranslationStyle
 ): Promise<string> {
   const { GoogleGenerativeAI } = await import('@google/generative-ai')
   const genAI = new GoogleGenerativeAI(apiKey)
@@ -38,7 +65,7 @@ async function translateWithGemini(
     systemInstruction:
       'You are a professional translator. Translate accurately and naturally. Return only the translated text.',
   })
-  const result = await genModel.generateContent(buildPrompt(sourceText, sourceLang, targetLang))
+  const result = await genModel.generateContent(buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style))
   return result.response.text().trim()
 }
 
@@ -47,7 +74,9 @@ async function translateWithClaude(
   model: string,
   sourceText: string,
   sourceLang: string,
-  targetLang: string
+  targetLang: string,
+  showFurigana: boolean,
+  style: TranslationStyle
 ): Promise<string> {
   const Anthropic = (await import('@anthropic-ai/sdk')).default
   const client = new Anthropic({ apiKey })
@@ -59,7 +88,7 @@ async function translateWithClaude(
     messages: [
       {
         role: 'user',
-        content: buildPrompt(sourceText, sourceLang, targetLang),
+        content: buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style),
       },
     ],
   })
@@ -73,7 +102,9 @@ async function translateWithOpenAI(
   model: string,
   sourceText: string,
   sourceLang: string,
-  targetLang: string
+  targetLang: string,
+  showFurigana: boolean,
+  style: TranslationStyle
 ): Promise<string> {
   const OpenAI = (await import('openai')).default
   const client = new OpenAI({ apiKey })
@@ -87,7 +118,7 @@ async function translateWithOpenAI(
       },
       {
         role: 'user',
-        content: buildPrompt(sourceText, sourceLang, targetLang),
+        content: buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style),
       },
     ],
     max_tokens: 4096,
@@ -164,7 +195,7 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
   })
 
   ipcMain.handle('translate', async (_event, params: TranslateParams) => {
-    const { provider, model, sourceText, sourceLang, targetLang } = params
+    const { provider, model, sourceText, sourceLang, targetLang, showFurigana, translationStyle } = params
 
     if (!sourceText.trim()) {
       return { success: false, error: 'Source text is empty' }
@@ -184,13 +215,13 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
 
       switch (provider) {
         case 'gemini':
-          translatedText = await translateWithGemini(apiKey, model, sourceText, sourceLang, targetLang)
+          translatedText = await translateWithGemini(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'standard')
           break
         case 'claude':
-          translatedText = await translateWithClaude(apiKey, model, sourceText, sourceLang, targetLang)
+          translatedText = await translateWithClaude(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'standard')
           break
         case 'openai':
-          translatedText = await translateWithOpenAI(apiKey, model, sourceText, sourceLang, targetLang)
+          translatedText = await translateWithOpenAI(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'standard')
           break
         default:
           return { success: false, error: `Unknown provider: ${provider}` }

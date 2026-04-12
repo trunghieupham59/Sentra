@@ -1,5 +1,7 @@
 export type Provider = 'gemini' | 'claude' | 'openai'
 
+export type TranslationStyle = 'standard' | 'casual' | 'formal' | 'message' | 'technical'
+
 export interface ProviderConfig {
   id: Provider
   name: string
@@ -14,6 +16,12 @@ export interface ModelConfig {
   id: string
   name: string
   description: string
+  /**
+   * 'recommended' = best balance of speed + quality for translation (auto-selected as default)
+   * 'balanced'    = good quality, moderate speed
+   * 'powerful'    = highest quality, slower/costlier
+   */
+  tag?: 'recommended' | 'balanced' | 'powerful'
 }
 
 export interface Language {
@@ -28,6 +36,8 @@ export interface TranslateParams {
   sourceText: string
   sourceLang: string
   targetLang: string
+  showFurigana?: boolean
+  translationStyle?: TranslationStyle
 }
 
 export interface TranslateResult {
@@ -60,6 +70,8 @@ export interface FetchedModel {
 export interface FetchModelsResult {
   success: boolean
   models: FetchedModel[]
+  /** Best model for translation auto-selected by scoring algorithm */
+  recommendedModel?: string
   error?: string
   errorCode?: 'NO_API_KEY' | string
 }

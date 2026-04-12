@@ -16,6 +16,7 @@ export function SettingsPage() {
   const {
     setKeyStatus, autoTranslate, autoTranslateDelay,
     setAutoTranslate, setAutoTranslateDelay,
+    showFurigana, setShowFurigana,
     locale, localeAuto, setLocale, setLocaleAuto, setLocaleFromSystem,
     setDynamicModels, keyStatus,
   } = useAppStore()
@@ -212,6 +213,26 @@ export function SettingsPage() {
                   </span>
                 </button>
               </div>
+            </div>
+
+            {/* Furigana toggle */}
+            <div className="flex items-center justify-between px-4 py-3.5">
+              <div>
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_furigana}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_furigana_desc}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowFurigana(!showFurigana)}
+                aria-label={t.settings_furigana}
+                className={`relative inline-flex items-center w-9 h-5 rounded-full transition-colors duration-200 ${
+                  showFurigana ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+                }`}
+              >
+                <span className={`absolute w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
+                  showFurigana ? 'translate-x-[18px]' : 'translate-x-0.5'
+                }`} />
+              </button>
             </div>
 
             {/* Delay slider (only for auto) */}

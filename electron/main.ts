@@ -7,17 +7,17 @@ import { registerModelsHandlers } from './ipc/models'
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 
 // Set app name
-app.setName('LOTUS APP')
+app.setName('Lotus')
 
 let mainWindow: BrowserWindow | null = null
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1000,
-    height: 680,
-    minWidth: 800,
-    minHeight: 560,
-    title: 'LOTUS APP',
+    width: 1200,
+    height: 700,
+    minWidth: 1100,
+    minHeight: 580,
+    title: 'Lotus',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 16, y: 16 },
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#1a1a2e' : '#ffffff',

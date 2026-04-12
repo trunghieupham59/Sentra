@@ -1,4 +1,4 @@
-import { ProviderConfig, Language } from '../types'
+import { ProviderConfig, Language, Provider } from '../types'
 
 export const PROVIDERS: ProviderConfig[] = [
   {
@@ -9,9 +9,10 @@ export const PROVIDERS: ProviderConfig[] = [
     keyPrefix: 'AIza',
     docsUrl: 'https://aistudio.google.com/apikey',
     models: [
-      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Latest & fastest' },
-      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: 'Fast & efficient' },
-      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: 'Most capable' },
+      // ★ When adding a new Gemini model, mark the fastest/best translation model as tag:'recommended'
+      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Latest & fastest', tag: 'recommended' },
+      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: 'Fast & efficient', tag: 'balanced' },
+      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: 'Most capable', tag: 'powerful' },
     ],
   },
   {
@@ -22,9 +23,10 @@ export const PROVIDERS: ProviderConfig[] = [
     keyPrefix: 'sk-ant-',
     docsUrl: 'https://console.anthropic.com',
     models: [
-      { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', description: 'Fast & affordable' },
-      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', description: 'Balanced performance' },
-      { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet', description: 'Most powerful' },
+      // ★ When adding a new Claude model, mark the fastest/best translation model as tag:'recommended'
+      { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', description: 'Fastest & efficient', tag: 'recommended' },
+      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', description: 'Balanced performance', tag: 'balanced' },
+      { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet', description: 'Most powerful', tag: 'powerful' },
     ],
   },
   {
@@ -35,12 +37,30 @@ export const PROVIDERS: ProviderConfig[] = [
     keyPrefix: 'sk-',
     docsUrl: 'https://platform.openai.com/api-keys',
     models: [
-      { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Fast & affordable' },
-      { id: 'gpt-4o', name: 'GPT-4o', description: 'Most capable' },
-      { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Economy' },
+      // ★ When adding a new OpenAI model, mark the fastest/best translation model as tag:'recommended'
+      { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Fast & efficient', tag: 'recommended' },
+      { id: 'gpt-4o', name: 'GPT-4o', description: 'Most capable', tag: 'balanced' },
+      { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Economy', tag: 'powerful' },
     ],
   },
 ]
+
+/**
+ * Returns the ID of the recommended translation model for a given provider.
+ * Falls back to the first model in the list if none is tagged 'recommended'.
+ *
+ * MAINTENANCE: When a provider releases a new, faster/better translation model,
+ * update the PROVIDERS array above:
+ *   1. Set the new model's tag to 'recommended'
+ *   2. Change the previous recommended model's tag to 'balanced' or 'powerful'
+ * This function will automatically pick up the new default.
+ */
+export function getRecommendedModel(providerId: Provider): string {
+  const provider = PROVIDERS.find((p) => p.id === providerId)
+  if (!provider) return ''
+  const recommended = provider.models.find((m) => m.tag === 'recommended')
+  return recommended?.id ?? provider.models[0]?.id ?? ''
+}
 
 export const LANGUAGES: Language[] = [
   { code: 'auto', name: 'Auto Detect', nativeName: 'Auto' },
@@ -71,10 +91,11 @@ export const DEFAULT_SETTINGS = {
   defaultProvider: 'gemini' as const,
   defaultSourceLang: 'auto',
   defaultTargetLang: 'vi',
+  /** Auto-resolved from PROVIDERS using tag:'recommended' — update tags to change defaults */
   defaultModels: {
-    gemini: 'gemini-2.0-flash',
-    claude: 'claude-3-haiku-20240307',
-    openai: 'gpt-4o-mini',
+    gemini: getRecommendedModel('gemini'),
+    claude: getRecommendedModel('claude'),
+    openai: getRecommendedModel('openai'),
   },
   autoTranslate: true,
   autoTranslateDelay: 800,

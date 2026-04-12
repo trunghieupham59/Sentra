@@ -181,7 +181,7 @@ export function ApiKeyInput({ provider, onSave, onDelete, hasKey, maskedKey }: A
         >
           {isVerifying ? (
             <>
-              <svg className="w-4 h-4 spinner" fill="none" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 spinner" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
@@ -193,7 +193,7 @@ export function ApiKeyInput({ provider, onSave, onDelete, hasKey, maskedKey }: A
             t.settings_try_again
           ) : (
             <>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>

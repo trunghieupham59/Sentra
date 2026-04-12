@@ -1,18 +1,19 @@
-import { useEffect, useRef, useCallback, useState } from 'react'
+import { useEffect, useRef, useCallback, useState, useLayoutEffect } from 'react'
 import { useAppStore, useT } from '../store/useAppStore'
 import { LanguageSelector } from '../components/LanguageSelector'
 import { ModelSelector } from '../components/ModelSelector'
-import { HistoryItem } from '../types'
+import { FuriganaText } from '../components/FuriganaText'
+import { HistoryItem, TranslationStyle } from '../types'
 
 const MAX_CHARS = 5000
 
 export function TranslatePage() {
   const {
-    sourceText, translatedText, sourceLang, targetLang,
+    sourceText, translatedText, phoneticText, sourceLang, targetLang,
     isTranslating, translateError,
-    selectedProvider, selectedModels, autoTranslate, autoTranslateDelay, keyStatus,
-    setSourceText, setTranslatedText, setSourceLang, setTargetLang,
-    swapLanguages, setIsTranslating, setTranslateError, setActivePage, setAutoTranslate, addHistory,
+    selectedProvider, selectedModels, autoTranslate, autoTranslateDelay, keyStatus, showFurigana, translationStyle,
+    setSourceText, setTranslatedText, setPhoneticText, setSourceLang, setTargetLang,
+    swapLanguages, setIsTranslating, setTranslateError, setActivePage, setAutoTranslate, setShowFurigana, setTranslationStyle, addHistory,
   } = useAppStore()
   const t = useT()
 
@@ -30,16 +31,25 @@ export function TranslatePage() {
     }
     setIsTranslating(true)
     setTranslateError(null)
+    setPhoneticText('') // Clear old phonetic while re-translating
     try {
-      const result = await window.api.translate({
+      const baseParams = {
         provider: selectedProvider,
         model: selectedModels[selectedProvider],
         sourceText,
         sourceLang,
         targetLang,
-      })
-      if (result.success && result.translatedText) {
-        setTranslatedText(result.translatedText)
+        translationStyle,
+      }
+
+      // Step 1: Plain translation first — show result to user immediately
+      const plainResult = await window.api.translate({ ...baseParams, showFurigana: false })
+
+      if (plainResult.success && plainResult.translatedText) {
+        const plainText = plainResult.translatedText
+        setTranslatedText(plainText)
+        setIsTranslating(false) // Unblock UI right away
+
         const item: HistoryItem = {
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           timestamp: Date.now(),
@@ -48,11 +58,20 @@ export function TranslatePage() {
           sourceLang,
           targetLang,
           sourceText,
-          translatedText: result.translatedText,
+          translatedText: plainText,
         }
         addHistory(item)
+
+        // Step 2: Fetch phonetic silently in the background (non-blocking)
+        window.api.translate({ ...baseParams, showFurigana: true })
+          .then((res) => {
+            if (res.success && res.translatedText) {
+              setPhoneticText(res.translatedText)
+            }
+          })
+          .catch(() => { /* ignore phonetic errors silently */ })
       } else {
-        setTranslateError(result.error || 'Translation failed')
+        setTranslateError(plainResult.error || 'Translation failed')
       }
     } catch (err) {
       setTranslateError(err instanceof Error ? err.message : 'Unexpected error')
@@ -60,7 +79,7 @@ export function TranslatePage() {
       setIsTranslating(false)
     }
   }, [sourceText, sourceLang, targetLang, selectedProvider, selectedModels, isTranslating, hasKey,
-      setIsTranslating, setTranslateError, setTranslatedText, t])
+      translationStyle, setIsTranslating, setTranslateError, setTranslatedText, setPhoneticText, addHistory, t])
 
   // Auto-translate debounce (only when autoTranslate is enabled)
   useEffect(() => {
@@ -70,9 +89,24 @@ export function TranslatePage() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [sourceText, sourceLang, targetLang, selectedProvider, selectedModels[selectedProvider], autoTranslate])
 
+  // Re-translate when style changes (skip first render)
+  const styleInitRef = useRef(false)
+  useLayoutEffect(() => {
+    styleInitRef.current = false
+  }, [])
+  useEffect(() => {
+    if (!styleInitRef.current) {
+      styleInitRef.current = true
+      return
+    }
+    if (!sourceText.trim()) return
+    handleTranslate()
+  }, [translationStyle]) // intentionally only watching style
+
   const handleCopy = async () => {
-    if (!translatedText) return
-    await navigator.clipboard.writeText(translatedText)
+    const textToCopy = showFurigana && phoneticText ? phoneticText : translatedText
+    if (!textToCopy) return
+    await navigator.clipboard.writeText(textToCopy)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
@@ -83,27 +117,56 @@ export function TranslatePage() {
       <div className="flex-shrink-0 flex items-center justify-between px-4 py-2.5
                       bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
         <ModelSelector />
-        {/* Auto / Manual toggle switch */}
-        <button
-          type="button"
-          onClick={() => setAutoTranslate(!autoTranslate)}
-          title={autoTranslate ? t.translate_auto_indicator : t.translate_manual_indicator}
-          className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium
-                      border transition-all duration-200 select-none cursor-pointer
-                      ${autoTranslate
-                        ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100 dark:bg-green-950 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900'
-                        : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700'
-                      }`}
-        >
-          {/* Track */}
-          <span className={`relative inline-flex items-center w-7 h-4 rounded-full transition-colors duration-200
-                            ${autoTranslate ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
-            {/* Thumb */}
-            <span className={`absolute w-3 h-3 bg-white rounded-full shadow transition-transform duration-200
-                              ${autoTranslate ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
-          </span>
-          <span>{autoTranslate ? t.translate_auto_indicator : t.translate_manual_indicator}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Style dropdown */}
+          <div className="hidden sm:flex items-center gap-1.5">
+            <span className="text-xs text-gray-400 whitespace-nowrap">{t.translate_style_label}</span>
+            <div className="relative">
+              <select
+                value={translationStyle}
+                onChange={(e) => setTranslationStyle(e.target.value as TranslationStyle)}
+                className={`text-xs font-medium px-2.5 py-1.5 pr-6 rounded-full border appearance-none cursor-pointer
+                            transition-colors duration-200 outline-none
+                            ${translationStyle !== 'standard'
+                              ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-400'
+                              : 'bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'
+                            }`}
+              >
+                <option value="standard">{t.translate_style_standard}</option>
+                <option value="casual">{t.translate_style_casual}</option>
+                <option value="formal">{t.translate_style_formal}</option>
+                <option value="message">{t.translate_style_message}</option>
+                <option value="technical">{t.translate_style_technical}</option>
+              </select>
+              <div className="pointer-events-none absolute right-2 inset-y-0 flex items-center">
+                <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Phonetic reading toggle — shown for all languages */}
+          <button
+            type="button"
+            onClick={() => setShowFurigana(!showFurigana)}
+            title={t.translate_phonetic}
+            className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium
+                        border transition-all duration-200 select-none cursor-pointer whitespace-nowrap
+                        ${showFurigana
+                          ? 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 dark:bg-purple-950 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-900'
+                          : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700'
+                        }`}
+          >
+            <span className={`relative inline-flex shrink-0 items-center w-7 h-4 rounded-full transition-colors duration-200
+                              ${showFurigana ? 'bg-purple-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
+              <span className={`absolute w-3 h-3 bg-white rounded-full shadow transition-transform duration-200
+                                ${showFurigana ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+            </span>
+            <span>{t.translate_phonetic}</span>
+          </button>
+
+        </div>
       </div>
 
       {/* Language bar */}
@@ -123,7 +186,7 @@ export function TranslatePage() {
                      disabled:opacity-25 disabled:cursor-not-allowed
                      dark:hover:text-gray-300 dark:hover:bg-gray-800 transition-colors"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
           </svg>
@@ -155,7 +218,7 @@ export function TranslatePage() {
             {sourceText && (
               <button
                 type="button"
-                onClick={() => { setSourceText(''); setTranslatedText(''); setTranslateError(null) }}
+                onClick={() => { setSourceText(''); setTranslatedText(''); setPhoneticText(''); setTranslateError(null) }}
                 className="btn-ghost py-1 px-2 text-xs"
               >
                 {t.translate_clear}
@@ -170,7 +233,7 @@ export function TranslatePage() {
             {isTranslating ? (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="flex flex-col items-center gap-3">
-                  <svg className="w-5 h-5 spinner text-blue-500" fill="none" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 spinner text-blue-500" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                     <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
                     <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
@@ -181,7 +244,7 @@ export function TranslatePage() {
               <div className="fade-in flex flex-col gap-3">
                 <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950/30
                                 border border-red-200 dark:border-red-900 rounded-lg">
-                  <svg className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                       d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
@@ -195,7 +258,10 @@ export function TranslatePage() {
                 )}
               </div>
             ) : translatedText ? (
-              <p className="textarea-field whitespace-pre-wrap fade-in">{translatedText}</p>
+              <FuriganaText
+                text={showFurigana && phoneticText ? phoneticText : translatedText}
+                className="textarea-field fade-in"
+              />
             ) : (
               <p className="text-[15px] text-gray-300 dark:text-gray-700 leading-relaxed select-none">
                 {t.translate_result_placeholder}
@@ -212,14 +278,14 @@ export function TranslatePage() {
               <button type="button" onClick={handleCopy} className={`btn-ghost py-1 px-2 text-xs transition-all ${copied ? 'text-green-600' : ''}`}>
                 {copied ? (
                   <>
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     {t.translate_copied}
                   </>
                 ) : (
                   <>
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                         d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                     </svg>
@@ -235,12 +301,6 @@ export function TranslatePage() {
       {/* Action bar */}
       <div className="flex-shrink-0 flex items-center justify-between px-4 py-2.5
                       bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
-        {/* Manual mode note */}
-        {!autoTranslate && (
-          <p className="text-xs text-gray-400">
-            {t.translate_manual_indicator} — {t.settings_translate_mode_desc.split(';')[1]?.trim()}
-          </p>
-        )}
         <div className="ml-auto">
           <button
             type="button"
@@ -250,7 +310,7 @@ export function TranslatePage() {
           >
             {isTranslating ? (
               <>
-                <svg className="w-4 h-4 spinner" fill="none" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 spinner" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                   <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
                   <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
@@ -258,7 +318,7 @@ export function TranslatePage() {
               </>
             ) : (
               <>
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                     d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
                 </svg>

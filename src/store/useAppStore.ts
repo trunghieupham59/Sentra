@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { Provider, FetchedModel, HistoryItem } from '../types'
+import { Provider, FetchedModel, HistoryItem, TranslationStyle } from '../types'
 import { DEFAULT_SETTINGS } from '../constants/providers'
 import { AppLocale, TRANSLATIONS, Translations } from '../i18n'
 
@@ -10,6 +10,7 @@ interface AppState {
   // Translation state
   sourceText: string
   translatedText: string
+  phoneticText: string
   sourceLang: string
   targetLang: string
   isTranslating: boolean
@@ -22,6 +23,8 @@ interface AppState {
   // Settings
   autoTranslate: boolean
   autoTranslateDelay: number
+  showFurigana: boolean
+  translationStyle: TranslationStyle
 
   // Key status cache
   keyStatus: Record<Provider, boolean>
@@ -45,6 +48,7 @@ interface AppState {
   // Actions
   setSourceText: (text: string) => void
   setTranslatedText: (text: string) => void
+  setPhoneticText: (text: string) => void
   setSourceLang: (lang: string) => void
   setTargetLang: (lang: string) => void
   swapLanguages: () => void
@@ -54,6 +58,8 @@ interface AppState {
   setSelectedModel: (provider: Provider, model: string) => void
   setAutoTranslate: (v: boolean) => void
   setAutoTranslateDelay: (ms: number) => void
+  setShowFurigana: (v: boolean) => void
+  setTranslationStyle: (style: TranslationStyle) => void
   setKeyStatus: (provider: Provider, hasKey: boolean) => void
   setDynamicModels: (provider: Provider, models: FetchedModel[]) => void
   setModelsLoading: (provider: Provider, loading: boolean) => void
@@ -81,6 +87,7 @@ export const useAppStore = create<AppState>()(
       // Initial state
       sourceText: '',
       translatedText: '',
+      phoneticText: '',
       sourceLang: DEFAULT_SETTINGS.defaultSourceLang,
       targetLang: DEFAULT_SETTINGS.defaultTargetLang,
       isTranslating: false,
@@ -89,6 +96,8 @@ export const useAppStore = create<AppState>()(
       selectedModels: DEFAULT_SETTINGS.defaultModels,
       autoTranslate: DEFAULT_SETTINGS.autoTranslate,
       autoTranslateDelay: DEFAULT_SETTINGS.autoTranslateDelay,
+      showFurigana: false,
+      translationStyle: 'standard' as TranslationStyle,
       keyStatus: { gemini: false, claude: false, openai: false },
       dynamicModels: { gemini: [], claude: [], openai: [] },
       modelsLoading: { gemini: false, claude: false, openai: false },
@@ -106,6 +115,7 @@ export const useAppStore = create<AppState>()(
       // Actions
       setSourceText: (text) => set({ sourceText: text, translateError: null }),
       setTranslatedText: (text) => set({ translatedText: text }),
+      setPhoneticText: (text) => set({ phoneticText: text }),
       setSourceLang: (lang) => set({ sourceLang: lang }),
       setTargetLang: (lang) => set({ targetLang: lang }),
 
@@ -130,6 +140,8 @@ export const useAppStore = create<AppState>()(
 
       setAutoTranslate: (v) => set({ autoTranslate: v }),
       setAutoTranslateDelay: (ms) => set({ autoTranslateDelay: ms }),
+      setShowFurigana: (v) => set({ showFurigana: v }),
+      setTranslationStyle: (style) => set({ translationStyle: style }),
       setKeyStatus: (provider, hasKey) =>
         set((state) => ({ keyStatus: { ...state.keyStatus, [provider]: hasKey } })),
 
@@ -148,7 +160,7 @@ export const useAppStore = create<AppState>()(
 
       setActivePage: (page) => set({ activePage: page }),
       clearTranslation: () =>
-        set({ sourceText: '', translatedText: '', translateError: null }),
+        set({ sourceText: '', translatedText: '', phoneticText: '', translateError: null }),
 
       // History actions
       addHistory: (item) =>
@@ -170,6 +182,8 @@ export const useAppStore = create<AppState>()(
         selectedModels: state.selectedModels,
         autoTranslate: state.autoTranslate,
         autoTranslateDelay: state.autoTranslateDelay,
+        showFurigana: state.showFurigana,
+        translationStyle: state.translationStyle,
         locale: state.locale,
         localeAuto: state.localeAuto,
         history: state.history,

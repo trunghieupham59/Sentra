@@ -17,6 +17,52 @@ async function getApiKey(provider: string): Promise<string | null> {
   }
 }
 
+/**
+ * Scores a model for translation suitability.
+ * Higher score = better balance of speed + quality for translation.
+ * This runs after every model fetch so new models are automatically evaluated.
+ */
+function scoreModelForTranslation(provider: string, modelId: string): number {
+  const id = modelId.toLowerCase()
+  let score = 0
+
+  if (provider === 'gemini') {
+    // Flash = fast + good quality for translation
+    if (id.includes('flash')) score += 200
+    else if (id.includes('pro')) score += 80
+    else if (id.includes('ultra')) score += 60
+    // Prefer newer generation numbers  (gemini-2 > gemini-1.5 > gemini-1)
+    const gen = id.match(/gemini-(\d+)\.?(\d*)/)
+    if (gen) score += parseFloat(`${gen[1]}.${gen[2] || 0}`) * 20
+    // Avoid experimental / lite variants
+    if (id.includes('lite') || id.includes('nano')) score -= 50
+  } else if (provider === 'claude') {
+    // Haiku = fastest + great for translation
+    if (id.includes('haiku')) score += 200
+    else if (id.includes('sonnet')) score += 100
+    else if (id.includes('opus')) score += 40   // too slow/expensive
+    // Version bonus: claude-3-5 > claude-3
+    const ver = id.match(/claude-(\d+)-?(\d*)/)
+    if (ver) score += parseFloat(`${ver[1]}.${ver[2] || 0}`) * 15
+    // Date bonus: newer release date = higher score
+    const date = id.match(/(\d{8})$/)
+    if (date) score += parseInt(date[1]) / 2000000
+  } else if (provider === 'openai') {
+    // Mini models: fast + good translation quality
+    if (id.includes('mini')) score += 200
+    else if (id.includes('4o')) score += 120
+    else if (id.includes('4')) score += 80
+    else if (id.includes('3.5')) score += 50
+    // Version bonus: 4o > 4 > 3.5
+    if (id.includes('4o')) score += 30
+    if (id.includes('4')) score += 10
+    // Avoid reasoning models
+    if (id.startsWith('o1') || id.startsWith('o3') || id.startsWith('o4')) score = 0
+  }
+
+  return score
+}
+
 function describeModel(id: string): string {
   const lower = id.toLowerCase()
   if (lower.includes('flash')) return 'Fast'
@@ -122,7 +168,13 @@ export function registerModelsHandlers(ipcMain: IpcMain) {
         case 'openai': models = await fetchOpenAIModels(apiKey); break
         default: return { success: false, error: `Unknown provider: ${provider}`, models: [] }
       }
-      return { success: true, models }
+      // Score each model and pick the best one for translation
+      const recommendedModel = models.length > 0
+        ? models.reduce((best, m) =>
+            scoreModelForTranslation(provider, m.id) > scoreModelForTranslation(provider, best.id) ? m : best
+          , models[0]).id
+        : undefined
+      return { success: true, models, recommendedModel }
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error)
       return { success: false, error: msg, models: [] }
