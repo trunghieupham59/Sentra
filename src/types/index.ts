@@ -76,6 +76,16 @@ export interface TranscribeResult {
   text?: string
   error?: string
   errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | string
+  /**
+   * Whisper-internal confidence signals (only present when verbose_json is used).
+   * Use these as a "no-speech gate" before accepting the transcript:
+   *   • noSpeechProb  > 0.65 → model thinks no speech was present → reject
+   *   • avgLogprob    < −1.0 → model is uncertain about the output  → reject
+   *   • compressionRatio > 2.4 → output has unusual repetition     → reject
+   */
+  noSpeechProb?: number
+  avgLogprob?: number
+  compressionRatio?: number
 }
 
 export interface TtsResult {
@@ -193,6 +203,17 @@ export interface HistoryItem {
   translatedText: string
 }
 
+// ─── Subtitle appearance settings ────────────────────────────────────────────
+
+export interface SubtitleSettings {
+  /** Hex color for subtitle text, e.g. '#ffffff' */
+  textColor: string
+  /** Font size in pixels (12–40) */
+  fontSize: number
+  /** Background opacity percentage (0–100) */
+  bgOpacity: number
+}
+
 // ─── Window API (exposed via contextBridge) ───────────────────────────────────
 
 export interface WindowApi {
@@ -238,6 +259,27 @@ export interface WindowApi {
   }) => Promise<ChatResult>
   checkScreenPermission: () => Promise<string>
   openExternal: (url: string) => Promise<void>
+  /**
+   * Streaming translation — each AI token is pushed directly to the subtitle
+   * window in real-time. Returns the full translated text when complete.
+   */
+  translateStream: (params: {
+    provider: string
+    model: string
+    sourceText: string
+    sourceLang: string
+    targetLang: string
+    translationStyle?: string
+  }) => Promise<TranslateResult>
+  /** Floating subtitle overlay — runs in a separate always-on-top OS window */
+  subtitle: {
+    show: () => Promise<void>
+    hide: () => Promise<void>
+    update: (text: string, isTranslating: boolean) => Promise<void>
+    setStyle: (style: SubtitleSettings) => Promise<void>
+    /** Returns a cleanup function that removes the listener */
+    onClosed: (callback: () => void) => () => void
+  }
   platform: string
   version: string
 }

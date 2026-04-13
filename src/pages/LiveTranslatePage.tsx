@@ -3,6 +3,7 @@ import { LanguageSelector } from '../components/LanguageSelector'
 import { MarkdownText } from '../components/MarkdownText'
 import { ModelSelector } from '../components/ModelSelector'
 import { useAppStore, useT } from '../store/useAppStore'
+import type { SubtitleSettings } from '../types'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const CHUNK_DURATION_MS    = 3000  // record 3-second audio windows
@@ -26,9 +27,9 @@ const MAX_PENDING_CHUNKS   = 3
 const CONTEXT_SENTENCES    = 2
 
 /**
- * Voice Activity Detection (VAD) — two-gate system:
+ * Voice Activity Detection (VAD) — three-gate system:
  *
- * Gate 1 — RMS amplitude threshold:
+ * Gate 1 — RMS amplitude threshold (sustained):
  *   Web Audio API getByteTimeDomainData() returns 0-255 centered at 128.
  *   RMS of deviation from 128:
  *     • Pure silence            : ~0-3
@@ -38,16 +39,63 @@ const CONTEXT_SENTENCES    = 2
  *     • Normal speech           : ~20-80
  *
  * Gate 2 — sustained speech requirement:
- *   At least MIN_SPEECH_SAMPLES cumulative samples must exceed the threshold
- *   within a 3-second chunk.  With 80 ms intervals, MIN_SPEECH_SAMPLES=3
- *   ≈ 240 ms of actual speech — permissive enough for short utterances.
+ *   At least MIN_SPEECH_SAMPLES cumulative samples must exceed SPEECH_RMS_THRESHOLD
+ *   within a 3-second chunk.  With 80 ms intervals, MIN_SPEECH_SAMPLES=4
+ *   ≈ 320 ms of sustained audio — filters transient pops/clicks.
+ *
+ * Gate 3 — peak RMS confirmation:
+ *   The highest single-sample RMS in the chunk must exceed PEAK_RMS_THRESHOLD.
+ *   This rules out AC hum (steady low-amplitude noise) that could accumulate
+ *   enough samples to pass Gate 2 while never reaching speech levels.
  *
  * No blob-size fallback: sending silent audio to Whisper always produces
- * hallucinations.  VAD is the single gate — tune the threshold instead.
+ * hallucinations.  VAD is the primary gate — tune the thresholds instead.
  */
-const SPEECH_RMS_THRESHOLD = 5    // sensitivity: captures even quiet speech
-const MIN_SPEECH_SAMPLES   = 2    // 2 × 80 ms = 160 ms — reacts faster
+const SPEECH_RMS_THRESHOLD = 6    // sustained sensitivity — slightly above room hum
+const PEAK_RMS_THRESHOLD   = 14   // peak gate: at least one sample must reach this
+const MIN_SPEECH_SAMPLES   = 4    // 4 × 80 ms = 320 ms sustained speech minimum
 const VAD_SAMPLE_INTERVAL  = 80   // ms between AnalyserNode samples
+
+/**
+ * Upper bound on words Whisper may return for a single CHUNK_DURATION_MS chunk.
+ * Human speech tops out at ~5 words/second; 3 s × 5 × 2.5 safety margin = 37.
+ * Outputs exceeding this are overwhelmingly drift/hallucination ("output more
+ * than the audio contains") and are discarded.
+ */
+const MAX_WORDS_PER_CHUNK  = 40
+
+/**
+ * Upper bound on word-per-second rate within a chunk.
+ * Very fast speech peaks at ~5 words/sec; 7 is a generous safety margin.
+ * If Whisper returns more words per second than this, the output almost
+ * certainly contains fabricated content not present in the audio.
+ */
+const MAX_WORDS_PER_SEC    = 7
+
+/**
+ * Number of consecutive silent chunks (chunks where VAD found no speech)
+ * after which the session context is fully reset.
+ *
+ * At CHUNK_DURATION_MS=3000 ms, 5 chunks ≈ 15 seconds of silence.
+ * After a pause this long, the previous transcript is stale context that
+ * may cause the decoder to continue a sentence that no longer exists.
+ * Resetting prevents "context-conditioned hallucination drift".
+ */
+const SILENCE_RESET_CHUNKS = 5
+
+/**
+ * Whisper confidence gate thresholds (from verbose_json segment signals).
+ *
+ *   NO_SPEECH_PROB_MAX   : Whisper's own estimate that no speech is present.
+ *                          0.65 means "model is ≥65% sure this is silence".
+ *   AVG_LOGPROB_MIN      : Average log-probability of generated tokens.
+ *                          Below −1.0 the model is not confident in any token.
+ *   COMPRESSION_RATIO_MAX: Ratio of raw bytes to compressed bytes for the text.
+ *                          High values indicate repetitive or anomalous output.
+ */
+const NO_SPEECH_PROB_MAX    = 0.65
+const AVG_LOGPROB_MIN       = -1.0
+const COMPRESSION_RATIO_MAX = 2.4
 
 /**
  * Software gain applied to the microphone signal before recording and VAD.
@@ -115,14 +163,34 @@ const HALLUCINATION_PATTERNS: RegExp[] = [
   /^감사합니다[.]?$/,                   // standalone "thank you"
   /자막.*제공/,
   /자막.*제작/,
+
+  // ── Vietnamese ───────────────────────────────────────────────────────────
+  /cảm\s*ơn\s*(các\s*bạn|bạn|quý\s*vị).*xem/i,   // "cảm ơn các bạn đã xem"
+  /cảm\s*ơn.*theo\s*dõi/i,
+  /đăng\s*ký\s*(kênh|channel)/i,
+  /nhấn\s*(like|nút|chuông)/i,
+  /bấm\s*(like|đăng\s*ký|theo\s*dõi)/i,
+  /like\s*(và|&)\s*đăng\s*ký/i,
+  /subscribe.*channel/i,
+  /phụ\s*đề.*cung\s*cấp/i,
+  /phụ\s*đề.*bởi/i,
+  /^xin\s*chào[.!]*$/i,                           // standalone "hello" with nothing else
+  /^cảm\s*ơn[.!]*$/i,                             // standalone "thank you"
+  /^vâng[,.]?\s*$/i,                              // lone filler "vâng"
+  /^ừ[,.]?\s*$/i,                                 // lone filler "ừ"
+  /^\(tiếng\s*(nhạc|vỗ\s*tay|cười)\)$/i,          // bracketed sound effects in Vietnamese
+  /^\[tiếng\s*(nhạc|vỗ\s*tay|cười)\]$/i,
 ]
 
 /**
- * Returns true when the text is a known hallucination OR structurally invalid:
+ * Returns true when the text is a known hallucination OR structurally invalid.
+ *
+ * Checks (in order):
  *   1. Too short (< 4 chars after trimming)
- *   2. Matches a hallucination pattern
- *   3. Made up of a single character repeated ≥ 4 times (e.g. "aaaa", "。。。。")
- *   4. More than 60% of the text is the same single character (noisy repetition)
+ *   2. Matches a known hallucination pattern
+ *   3. Single-character repetition ≥ 4 times covering > 60% of text
+ *   4. Word-level n-gram repetition: any bigram or trigram repeating ≥ 3 times
+ *      (catches "hello hello hello" or "xin chào xin chào xin chào" style loops)
  */
 function isHallucination(text: string): boolean {
   const t = text.trim()
@@ -130,13 +198,49 @@ function isHallucination(text: string): boolean {
 
   if (HALLUCINATION_PATTERNS.some(p => p.test(t))) return true
 
-  // Detect single-character repetition (e.g. "。。。。。" or "はははは")
+  // ── Check 3: single-character flooding ───────────────────────────────────
   const charFreq = new Map<string, number>()
   for (const ch of t) charFreq.set(ch, (charFreq.get(ch) ?? 0) + 1)
-  const maxFreq = Math.max(...charFreq.values())
-  if (maxFreq >= 4 && maxFreq / t.length > 0.6) return true
+  const maxCharFreq = Math.max(...charFreq.values())
+  if (maxCharFreq >= 4 && maxCharFreq / t.length > 0.6) return true
+
+  // ── Check 4: n-gram word repetition ──────────────────────────────────────
+  // Tokenise on whitespace; CJK chars treated as single-char tokens
+  const tokens = t
+    .replace(/[\u3000-\u9fff\uac00-\ud7ff\u3040-\u30ff]/g, c => ` ${c} `)
+    .split(/\s+/)
+    .filter(Boolean)
+
+  if (tokens.length >= 6) {
+    // Check bigrams and trigrams for repetition (≥ 3 occurrences = hallucination)
+    for (const n of [2, 3]) {
+      const ngFreq = new Map<string, number>()
+      for (let i = 0; i <= tokens.length - n; i++) {
+        const gram = tokens.slice(i, i + n).join(' ')
+        ngFreq.set(gram, (ngFreq.get(gram) ?? 0) + 1)
+      }
+      for (const count of ngFreq.values()) {
+        if (count >= 3) return true
+      }
+    }
+  }
 
   return false
+}
+
+/**
+ * Jaccard similarity on word-bag: ratio of shared words to total unique words.
+ * Returns 0.0 (no overlap) … 1.0 (identical bags).
+ */
+function jaccardSimilarity(a: string, b: string): number {
+  const words = (s: string) => new Set(s.toLowerCase().split(/\s+/).filter(Boolean))
+  const setA = words(a)
+  const setB = words(b)
+  if (setA.size === 0 && setB.size === 0) return 1
+  let intersection = 0
+  for (const w of setA) if (setB.has(w)) intersection++
+  const union = setA.size + setB.size - intersection
+  return union === 0 ? 1 : intersection / union
 }
 
 // ── Sentence boundary detection ────────────────────────────────────────────────
@@ -186,6 +290,19 @@ export function LiveTranslatePage() {
   const [copiedRaw,      setCopiedRaw]      = useState(false)
   const [copiedTx,       setCopiedTx]       = useState(false)
 
+  // ── Subtitle overlay state ─────────────────────────────────────────────────
+  const [showSubtitles,      setShowSubtitles]      = useState(false)
+  const [latestSubtitle,     setLatestSubtitle]     = useState('')
+  const [showSubtitleConfig, setShowSubtitleConfig] = useState(false)
+  const [subtitleSettings,   setSubtitleSettings]   = useState<SubtitleSettings>({
+    textColor: '#ffffff',
+    fontSize:  18,
+    bgOpacity: 84,
+  })
+  // Ref so processChunk (a stable useCallback) can read current subtitle state
+  const showSubtitlesRef = useRef(false)
+  useEffect(() => { showSubtitlesRef.current = showSubtitles }, [showSubtitles])
+
   // ── Summary state ──────────────────────────────────────────────────────────
   const [showSummaryBtn,  setShowSummaryBtn]  = useState(false)
   const [summary,         setSummary]         = useState<string | null>(null)
@@ -211,11 +328,15 @@ export function LiveTranslatePage() {
   const activeRef      = useRef(false)
   const queueRef       = useRef<Promise<void>>(Promise.resolve())
 
-  const audioCtxRef      = useRef<AudioContext | null>(null)
-  const analyserRef      = useRef<AnalyserNode | null>(null)
-  const hasSpeechRef     = useRef(false)
-  const speechCountRef   = useRef(0)
-  const vadTimerRef      = useRef<ReturnType<typeof setInterval> | null>(null)
+  const audioCtxRef        = useRef<AudioContext | null>(null)
+  const analyserRef        = useRef<AnalyserNode | null>(null)
+  const hasSpeechRef       = useRef(false)
+  const speechCountRef     = useRef(0)
+  const vadTimerRef        = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Counts consecutive chunks where VAD detected no speech.
+  // When it hits SILENCE_RESET_CHUNKS, the decoder context is wiped so stale
+  // transcript from before a long pause cannot bias the next decode cycle.
+  const silentChunkCountRef = useRef(0)
 
   const rawEndRef        = useRef<HTMLDivElement>(null)
   const txEndRef         = useRef<HTMLDivElement>(null)
@@ -262,26 +383,59 @@ export function LiveTranslatePage() {
 
     const { sourceLang, targetLang, selectedProvider, selectedModels } = paramsRef.current
 
+    // ── STT call — keep reference to full result for confidence gate ──────
     setIsTranscribing(true)
-    let newText = ''
+    let stt: Awaited<ReturnType<typeof window.api.transcribeAudio>> | null = null
     try {
       const buf = await blob.arrayBuffer()
-      const stt = await window.api.transcribeAudio({
+      stt = await window.api.transcribeAudio({
         audioData: buf,
         mimeType,
         language: sourceLang === 'auto' ? undefined : sourceLang,
       })
-      if (stt.success && stt.text?.trim()) newText = stt.text.trim()
     } catch { /* skip */ }
     finally { setIsTranscribing(false) }
 
+    const newText = stt?.success && stt.text?.trim() ? stt.text.trim() : ''
     if (!newText || isHallucination(newText)) return
 
-    // Duplicate / near-duplicate detection
+    // ── Whisper confidence gate (verbose_json segment signals) ────────────
+    // These are Whisper's own internal estimates returned via verbose_json.
+    // They are the most reliable hallucination indicators available from
+    // the OpenAI API and should be treated as mandatory gates.
+    //
+    //  noSpeechProb    > NO_SPEECH_PROB_MAX    → model is ≥65% sure no speech
+    //  avgLogprob      < AVG_LOGPROB_MIN       → model is not confident in tokens
+    //  compressionRatio > COMPRESSION_RATIO_MAX → output is anomalously repetitive
+    if (typeof stt?.noSpeechProb === 'number'    && stt.noSpeechProb    > NO_SPEECH_PROB_MAX)    return
+    if (typeof stt?.avgLogprob === 'number'      && stt.avgLogprob      < AVG_LOGPROB_MIN)       return
+    if (typeof stt?.compressionRatio === 'number' && stt.compressionRatio > COMPRESSION_RATIO_MAX) return
+
+    // ── Max-words-per-chunk guard ─────────────────────────────────────────
+    // A CHUNK_DURATION_MS=3s clip cannot physically contain more than
+    // MAX_WORDS_PER_CHUNK words of real speech. Anything beyond that is very
+    // likely Whisper drifting and filling in content that isn't in the audio.
+    const wordCountGuard = newText.split(/\s+/).filter(Boolean).length
+    if (wordCountGuard > MAX_WORDS_PER_CHUNK) return
+
+    // ── Words-per-second rate guard ───────────────────────────────────────
+    // Independently validates that the density of words is physically possible.
+    // MAX_WORDS_PER_SEC=7 is well above the fastest natural speech (~5 w/s).
+    const wordsPerSec = wordCountGuard / (CHUNK_DURATION_MS / 1000)
+    if (wordsPerSec > MAX_WORDS_PER_SEC) return
+
+    // ── Duplicate / near-duplicate detection (enhanced) ───────────────────
+    // 1. Exact / substring match (fast path)
+    // 2. Jaccard similarity on word bags (catches paraphrase duplicates)
     const normalise = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
     const normNew  = normalise(newText)
     const normLast = normalise(lastChunkTextRef.current)
-    if (normLast && (normNew === normLast || normLast.includes(normNew) || normNew.includes(normLast))) return
+    if (normLast && (
+      normNew === normLast ||
+      normLast.includes(normNew) ||
+      normNew.includes(normLast) ||
+      jaccardSimilarity(normNew, normLast) > 0.82
+    )) return
     lastChunkTextRef.current = newText
 
     const newBuffer = pendingBufferRef.current ? `${pendingBufferRef.current} ${newText}` : newText
@@ -314,19 +468,51 @@ export function LiveTranslatePage() {
         ? `[Context — for reference only, already translated. Do NOT retranslate]:\n"${contextText}"\n\n[Translate to ${targetLang}]:\n${complete}`
         : complete
 
-      const txResult = await window.api.translate({
+      const batchParams = {
         provider: selectedProvider,
         model: selectedModels[selectedProvider],
         sourceText,
         sourceLang,
         targetLang,
-        translationStyle: 'neutral',
+        translationStyle: 'neutral' as const,
         showFurigana: false,
-      })
+      }
+
+      let txResult: { success: boolean; translatedText?: string }
+      let usedStreaming = false
+
+      if (showSubtitlesRef.current) {
+        // Subtitle active → try streaming first; each token is pushed directly
+        // to the subtitle window by the main process in real-time.
+        try {
+          txResult = await window.api.translateStream({
+            provider: selectedProvider,
+            model: selectedModels[selectedProvider],
+            sourceText,
+            sourceLang,
+            targetLang,
+            translationStyle: 'neutral',
+          })
+          usedStreaming = txResult.success
+        } catch {
+          // Streaming unavailable or failed — fall through to batch
+          txResult = { success: false }
+        }
+
+        // Fall back to batch translate if streaming failed
+        if (!txResult.success) {
+          txResult = await window.api.translate(batchParams)
+        }
+      } else {
+        txResult = await window.api.translate(batchParams)
+      }
 
       if (txResult.success && txResult.translatedText) {
         const newTx = txResult.translatedText.trim()
         setTranslation(prev => prev ? `${prev} ${newTx}` : newTx)
+        // Update subtitle via non-streaming fallback path only
+        // (streaming already sent tokens to the subtitle window directly)
+        if (!usedStreaming) setLatestSubtitle(newTx)
         fullTxForSummaryRef.current = fullTxForSummaryRef.current
           ? `${fullTxForSummaryRef.current} ${newTx}`
           : newTx
@@ -353,6 +539,8 @@ export function LiveTranslatePage() {
 
     hasSpeechRef.current   = false
     speechCountRef.current = 0
+    // Peak RMS tracker for Gate 3 — reset each chunk
+    let chunkPeakRms = 0
     if (vadTimerRef.current) clearInterval(vadTimerRef.current)
     vadTimerRef.current = setInterval(() => {
       const analyser = analyserRef.current
@@ -360,9 +548,14 @@ export function LiveTranslatePage() {
       const data = new Uint8Array(analyser.fftSize)
       analyser.getByteTimeDomainData(data)
       const rms = Math.sqrt(data.reduce((sum, v) => sum + (v - 128) ** 2, 0) / data.length)
+      if (rms > chunkPeakRms) chunkPeakRms = rms
       if (rms > SPEECH_RMS_THRESHOLD) {
         speechCountRef.current += 1
-        if (speechCountRef.current >= MIN_SPEECH_SAMPLES) hasSpeechRef.current = true
+        // Gate 2 + Gate 3: must have enough sustained samples AND at least one
+        // sample above the peak threshold to confirm real speech (not AC hum).
+        if (speechCountRef.current >= MIN_SPEECH_SAMPLES && chunkPeakRms >= PEAK_RMS_THRESHOLD) {
+          hasSpeechRef.current = true
+        }
       }
     }, VAD_SAMPLE_INTERVAL)
 
@@ -376,7 +569,21 @@ export function LiveTranslatePage() {
       const blob      = new Blob(audioChunksRef.current, { type: recMime })
 
       if (hadSpeech) {
+        // Speech detected — reset silence counter and queue the chunk
+        silentChunkCountRef.current = 0
         queueRef.current = queueRef.current.then(() => processChunk(blob, recMime))
+      } else {
+        // No speech — increment counter; reset decoder context on long silence
+        silentChunkCountRef.current += 1
+        if (silentChunkCountRef.current >= SILENCE_RESET_CHUNKS) {
+          // ≥15 s of consecutive silence: wipe all context so the next
+          // decode cycle starts fresh and can't drift on stale text.
+          silentChunkCountRef.current  = 0
+          lastChunkTextRef.current     = ''
+          pendingBufferRef.current     = ''
+          pendingChunkCountRef.current = 0
+          recentSentencesRef.current   = []
+        }
       }
 
       if (activeRef.current) startChunk()
@@ -597,7 +804,39 @@ export function LiveTranslatePage() {
     finally { setIsSummarizing(false) }
   }, [updateLiveSession])
 
-  // Cleanup on unmount
+  // ── Subtitle IPC integration ───────────────────────────────────────────────
+  // Register onClosed listener once so the button syncs when user clicks ✕ in the OS window
+  useEffect(() => {
+    const cleanup = window.api.subtitle.onClosed(() => setShowSubtitles(false))
+    return cleanup
+  }, [])
+
+  // Open / close the OS subtitle window whenever the toggle changes
+  useEffect(() => {
+    if (showSubtitles) {
+      window.api.subtitle.show()
+    } else {
+      window.api.subtitle.hide()
+    }
+  }, [showSubtitles])
+
+  // Push latest translation text to the subtitle window whenever it changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: latestSubtitle + isTranslating are the intentional triggers
+  useEffect(() => {
+    if (showSubtitles) {
+      window.api.subtitle.update(latestSubtitle, isTranslating)
+    }
+  }, [latestSubtitle, isTranslating, showSubtitles])
+
+  // Apply appearance settings to the subtitle window whenever they change
+  // biome-ignore lint/correctness/useExhaustiveDependencies: subtitleSettings is the intentional trigger
+  useEffect(() => {
+    if (showSubtitles) {
+      window.api.subtitle.setStyle(subtitleSettings)
+    }
+  }, [subtitleSettings, showSubtitles])
+
+  // Cleanup on unmount — also close the subtitle window if it was open
   useEffect(() => {
     return () => {
       activeRef.current = false
@@ -606,6 +845,8 @@ export function LiveTranslatePage() {
       if (streamRef.current) {
         for (const track of streamRef.current.getTracks()) track.stop()
       }
+      // Close the OS subtitle window when leaving the page
+      window.api.subtitle.hide()
     }
   }, [])
 
@@ -939,10 +1180,148 @@ export function LiveTranslatePage() {
             {t.live_clear}
           </button>
         )}
+
+        {/* Subtitle toggle + settings */}
+        <div className="relative flex items-center gap-1">
+          {/* Toggle button */}
+          <button
+            type="button"
+            onClick={() => { setShowSubtitles(v => !v); setShowSubtitleConfig(false) }}
+            title={showSubtitles ? 'Ẩn subtitles nổi' : 'Hiện subtitles nổi trên màn hình'}
+            className={[
+              'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer select-none',
+              showSubtitles
+                ? 'bg-blue-500 text-white shadow-sm'
+                : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30',
+            ].join(' ')}
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <rect x="2" y="5" width="20" height="14" rx="2" />
+              <path strokeLinecap="round" d="M7 12h4M7 15h2M13 12h4M13 15h2" />
+            </svg>
+            Subtitles
+          </button>
+
+          {/* Settings gear — only visible when subtitles are on */}
+          {showSubtitles && (
+            <button
+              type="button"
+              onClick={() => setShowSubtitleConfig(v => !v)}
+              title="Tuỳ chỉnh subtitle"
+              className={[
+                'p-1.5 rounded-lg transition-all duration-150 cursor-pointer',
+                showSubtitleConfig
+                  ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400'
+                  : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30',
+              ].join(' ')}
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+          )}
+
+          {/* Settings popover */}
+          {showSubtitleConfig && (
+            <div className="absolute bottom-full mb-2 left-0 z-50 w-64
+                            bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700
+                            rounded-xl shadow-xl p-3 flex flex-col gap-3 select-none">
+
+              {/* Màu chữ */}
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">Màu chữ</p>
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { label: 'Trắng',  value: '#ffffff' },
+                    { label: 'Vàng',   value: '#fde047' },
+                    { label: 'Lam',    value: '#22d3ee' },
+                    { label: 'Xanh',   value: '#4ade80' },
+                    { label: 'Cam',    value: '#fb923c' },
+                    { label: 'Hồng',   value: '#f472b6' },
+                  ].map(({ label, value }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      title={label}
+                      onClick={() => setSubtitleSettings(s => ({ ...s, textColor: value }))}
+                      className={[
+                        'w-6 h-6 rounded-full border-2 transition-all duration-100 cursor-pointer',
+                        subtitleSettings.textColor === value
+                          ? 'border-blue-500 scale-110 shadow-sm'
+                          : 'border-gray-200 dark:border-gray-700 hover:scale-110',
+                      ].join(' ')}
+                      style={{ background: value }}
+                      aria-label={label}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Kích cỡ chữ */}
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">
+                  Kích cỡ chữ — {subtitleSettings.fontSize}px
+                </p>
+                <div className="flex gap-1">
+                  {([14, 18, 22, 28, 34] as const).map((size, i) => {
+                    const labels = ['S', 'M', 'L', 'XL', '2X']
+                    return (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => setSubtitleSettings(s => ({ ...s, fontSize: size }))}
+                        className={[
+                          'flex-1 py-1 rounded-lg text-xs font-semibold transition-all duration-100 cursor-pointer',
+                          subtitleSettings.fontSize === size
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-blue-50 dark:hover:bg-blue-950/30',
+                        ].join(' ')}
+                      >
+                        {labels[i]}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Độ mờ nền */}
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">
+                  Độ mờ nền — {subtitleSettings.bgOpacity}%
+                </p>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={subtitleSettings.bgOpacity}
+                  onChange={e => setSubtitleSettings(s => ({ ...s, bgOpacity: Number(e.target.value) }))}
+                  className="w-full accent-blue-500 cursor-pointer"
+                />
+                <div className="flex justify-between text-[9px] text-gray-300 dark:text-gray-600 mt-0.5">
+                  <span>Trong suốt</span>
+                  <span>Đục</span>
+                </div>
+              </div>
+
+              {/* Reset */}
+              <button
+                type="button"
+                onClick={() => setSubtitleSettings({ textColor: '#ffffff', fontSize: 18, bgOpacity: 84 })}
+                className="text-[10px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer text-center transition-colors"
+              >
+                Đặt lại mặc định
+              </button>
+            </div>
+          )}
+        </div>
+
         <span className="ml-auto text-xs text-gray-400 tabular-nums">
           {wordCount > 0 ? `${wordCount.toLocaleString()} ${t.live_words}` : ''}
         </span>
       </div>
+
     </div>
   )
 }
@@ -985,3 +1364,4 @@ function EmptyPanel({ children, icon }: { children: React.ReactNode; icon: 'mic'
     </div>
   )
 }
+
