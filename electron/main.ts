@@ -23,7 +23,7 @@ function createWindow() {
     minHeight: 520,
     title: 'Lotus',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    trafficLightPosition: { x: 16, y: 20 },
+    trafficLightPosition: { x: 16, y: 14 },
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#1a1a2e' : '#ffffff',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -45,6 +45,7 @@ function createWindow() {
   }
 
   mainWindow.once('ready-to-show', () => {
+    mainWindow?.webContents.setZoomLevel(0)
     mainWindow?.show()
   })
 
