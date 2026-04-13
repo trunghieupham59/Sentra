@@ -774,7 +774,7 @@ export function TranslatePage() {
           </div>
 
           <div className="flex-shrink-0 flex items-center justify-between px-4 h-12
-                          border-t border-gray-100 dark:border-gray-800">
+                          border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
             <span className="text-xs text-gray-400 tabular-nums">
               {translatedText && !editedImageUrl ? `${translatedText.length.toLocaleString()} ${t.translate_chars}` : ''}
             </span>

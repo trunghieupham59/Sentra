@@ -620,9 +620,10 @@ export function ChatPage() {
       </div>
 
       {/* ── Messages ── */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center gap-3 select-none">
+          /* Empty state — full-height centered, no siblings to cause overflow */
+          <div className="h-full flex flex-col items-center justify-center text-center gap-3 select-none px-4 py-4">
             <AppLogoIcon size={72} />
             <div>
               <h2 className="text-base font-semibold text-gray-700 dark:text-gray-200">{t.chat_empty_title}</h2>
@@ -642,24 +643,27 @@ export function ChatPage() {
             )}
           </div>
         ) : (
-          messages.map((msg, idx) => {
-            const isLastAssistant =
-              msg.role === 'assistant' &&
-              idx === messages.map((m) => m.role).lastIndexOf('assistant')
-            return (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                onCopy={handleCopy}
-                onRegenerate={isLastAssistant ? handleRegenerate : undefined}
-                isLastAssistant={isLastAssistant}
-                isSending={isSending}
-                regenerateLabel={t.chat_regenerate}
-              />
-            )
-          })
+          /* Messages list — scrollable with proper spacing */
+          <div className="px-4 py-4 space-y-4">
+            {messages.map((msg, idx) => {
+              const isLastAssistant =
+                msg.role === 'assistant' &&
+                idx === messages.map((m) => m.role).lastIndexOf('assistant')
+              return (
+                <MessageBubble
+                  key={msg.id}
+                  message={msg}
+                  onCopy={handleCopy}
+                  onRegenerate={isLastAssistant ? handleRegenerate : undefined}
+                  isLastAssistant={isLastAssistant}
+                  isSending={isSending}
+                  regenerateLabel={t.chat_regenerate}
+                />
+              )
+            })}
+            <div ref={messagesEndRef} />
+          </div>
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* ── Copied toast ── */}
@@ -812,17 +816,6 @@ export function ChatPage() {
           </button>
         </div>
 
-        {/* No key warning */}
-        {!hasKey && messages.length === 0 && (
-          <div className="px-4 pb-2">
-            <p className="text-xs text-orange-500 dark:text-orange-400 text-center">
-              {t.chat_error_no_key}{' '}
-              <button type="button" onClick={() => setActivePage('settings')} className="underline font-medium">
-                {t.chat_error_open_settings}
-              </button>
-            </p>
-          </div>
-        )}
       </div>
     </div>
   )
