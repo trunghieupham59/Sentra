@@ -55,28 +55,22 @@ function App() {
   }, [setKeyStatus])
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
-      {/* macOS title bar drag region */}
-      <div
-        className="titlebar-drag flex-shrink-0 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800"
-        style={{ height: '28px' }}
-      />
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
+      {/* Sidebar handles its own macOS traffic light drag region at the top */}
+      <Sidebar />
 
-      {/* Main layout: Sidebar + Content */}
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
-        <main className="flex-1 overflow-hidden">
-          {activePage === 'translate' ? (
-            <TranslatePage />
-          ) : activePage === 'chat' ? (
-            <ChatPage />
-          ) : activePage === 'history' ? (
-            <HistoryPage />
-          ) : (
-            <SettingsPage />
-          )}
-        </main>
-      </div>
+      {/* Main content */}
+      <main className="flex-1 overflow-hidden">
+        {activePage === 'translate' ? (
+          <TranslatePage />
+        ) : activePage === 'chat' ? (
+          <ChatPage />
+        ) : activePage === 'history' ? (
+          <HistoryPage />
+        ) : (
+          <SettingsPage />
+        )}
+      </main>
     </div>
   )
 }

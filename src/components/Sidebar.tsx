@@ -53,8 +53,11 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex flex-col items-center w-[60px] pt-3 pb-3 gap-1.5 flex-shrink-0
+    <aside className="flex flex-col items-center w-[60px] pb-3 gap-1.5 flex-shrink-0
                       bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800">
+
+      {/* macOS traffic lights zone — drag region, must come before all other content */}
+      <div className="titlebar-drag w-full flex-shrink-0" style={{ height: '40px' }} />
 
       {/* App icon */}
       <div className="mb-1 flex items-center justify-center w-10 h-10">

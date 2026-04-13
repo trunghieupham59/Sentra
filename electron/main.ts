@@ -23,7 +23,7 @@ function createWindow() {
     minHeight: 520,
     title: 'Lotus',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    trafficLightPosition: { x: 16, y: 16 },
+    trafficLightPosition: { x: 16, y: 20 },
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#1a1a2e' : '#ffffff',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
