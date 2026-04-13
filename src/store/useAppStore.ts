@@ -121,7 +121,7 @@ export const useAppStore = create<AppState>()(
       autoTranslate: DEFAULT_SETTINGS.autoTranslate,
       autoTranslateDelay: DEFAULT_SETTINGS.autoTranslateDelay,
       showFurigana: false,
-      translationStyle: 'standard' as TranslationStyle,
+      translationStyle: 'neutral' as TranslationStyle,
       ttsVoice: 'nova' as TtsVoice,
       fontSize: 'medium' as const,
       keyStatus: { gemini: false, claude: false, openai: false },

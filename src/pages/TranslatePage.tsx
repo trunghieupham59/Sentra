@@ -450,15 +450,17 @@ export function TranslatePage() {
                 onChange={(e) => setTranslationStyle(e.target.value as TranslationStyle)}
                 className={`text-xs font-medium px-2.5 py-1.5 pr-6 rounded-full border appearance-none cursor-pointer
                             transition-colors duration-200 outline-none
-                            ${translationStyle !== 'standard'
+                            ${translationStyle !== 'neutral'
                               ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-400'
                               : 'bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'
                             }`}
               >
-                <option value="standard">{t.translate_style_standard}</option>
-                <option value="casual">{t.translate_style_casual}</option>
-                <option value="formal">{t.translate_style_formal}</option>
-                <option value="message">{t.translate_style_message}</option>
+                <option value="friendly">{t.translate_style_friendly}</option>
+                <option value="neutral">{t.translate_style_neutral}</option>
+                <option value="professional">{t.translate_style_professional}</option>
+                <option value="business">{t.translate_style_business}</option>
+                <option value="slack">{t.translate_style_slack}</option>
+                <option value="polite">{t.translate_style_polite}</option>
                 <option value="technical">{t.translate_style_technical}</option>
               </select>
               <div className="pointer-events-none absolute right-2 inset-y-0 flex items-center">

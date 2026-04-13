@@ -25,10 +25,12 @@ export interface Translations {
   translate_error_open_settings: string
   translate_phonetic: string
   translate_style_label: string
-  translate_style_standard: string
-  translate_style_casual: string
-  translate_style_formal: string
-  translate_style_message: string
+  translate_style_friendly: string
+  translate_style_neutral: string
+  translate_style_professional: string
+  translate_style_business: string
+  translate_style_slack: string
+  translate_style_polite: string
   translate_style_technical: string
   translate_speak: string
   translate_speak_stop: string
@@ -199,10 +201,12 @@ const en: Translations = {
   translate_error_open_settings: 'Open Settings',
   translate_phonetic: 'Phonetic',
   translate_style_label: 'Style',
-  translate_style_standard: 'Standard',
-  translate_style_casual: 'Casual',
-  translate_style_formal: 'Formal',
-  translate_style_message: 'Message',
+  translate_style_friendly: 'Friendly',
+  translate_style_neutral: 'Neutral',
+  translate_style_professional: 'Professional',
+  translate_style_business: 'Business',
+  translate_style_slack: 'Slack',
+  translate_style_polite: 'Polite',
   translate_style_technical: 'Technical',
   translate_speak: 'Read aloud',
   translate_speak_stop: 'Stop reading',
@@ -377,10 +381,12 @@ const vi: Translations = {
   translate_error_open_settings: 'Mở Cài đặt',
   translate_phonetic: 'Phiên âm',
   translate_style_label: 'Phong cách',
-  translate_style_standard: 'Chuẩn',
-  translate_style_casual: 'Thân mật',
-  translate_style_formal: 'Trang trọng',
-  translate_style_message: 'Tin nhắn',
+  translate_style_friendly: 'Thân thiện',
+  translate_style_neutral: 'Trung tính',
+  translate_style_professional: 'Chuyên nghiệp',
+  translate_style_business: 'Kinh doanh',
+  translate_style_slack: 'Chat công việc',
+  translate_style_polite: 'Lịch sự',
   translate_style_technical: 'Kỹ thuật',
   translate_speak: 'Đọc to',
   translate_speak_stop: 'Dừng đọc',
@@ -555,10 +561,12 @@ const ja: Translations = {
   translate_error_open_settings: '設定を開く',
   translate_phonetic: '読み方',
   translate_style_label: 'スタイル',
-  translate_style_standard: '標準',
-  translate_style_casual: 'カジュアル',
-  translate_style_formal: 'フォーマル',
-  translate_style_message: 'メッセージ',
+  translate_style_friendly: 'フレンドリー',
+  translate_style_neutral: 'ニュートラル',
+  translate_style_professional: 'プロフェッショナル',
+  translate_style_business: 'ビジネス',
+  translate_style_slack: 'チャット（職場）',
+  translate_style_polite: '丁寧',
   translate_style_technical: '専門',
   translate_speak: '読み上げ',
   translate_speak_stop: '読み上げ停止',

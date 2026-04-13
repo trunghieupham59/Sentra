@@ -2,7 +2,7 @@ import { IpcMain } from 'electron'
 
 const KEYCHAIN_SERVICE = 'TranslateApp'
 
-type TranslationStyle = 'standard' | 'casual' | 'formal' | 'message' | 'technical'
+type TranslationStyle = 'friendly' | 'neutral' | 'professional' | 'business' | 'slack' | 'polite' | 'technical'
 
 interface TranslateParams {
   provider: string
@@ -25,15 +25,19 @@ async function getApiKey(provider: string): Promise<string | null> {
   }
 }
 
-const STYLE_INSTRUCTIONS: Record<TranslationStyle, string> = {
-  standard: '',
-  casual: ' Use casual, friendly, and natural everyday language. Avoid stiff or formal expressions.',
-  formal: ' Use formal, professional language suitable for business documents, emails, and official contexts.',
-  message: ' Use brief, conversational language as if writing a quick message on Slack or a chat app. Keep it concise and informal.',
-  technical: ' Use precise technical language with appropriate domain-specific terminology. Maintain accuracy over readability.',
+const STYLE_TONE: Record<TranslationStyle, string> = {
+  friendly: 'friendly, warm, natural',
+  neutral: 'neutral, clear, natural',
+  professional: 'professional, clear, polished',
+  business: 'business, formal, concise',
+  slack: 'concise workplace chat, natural and direct',
+  polite: 'polite, respectful, natural',
+  technical: 'technical, precise, clear',
 }
 
-function buildPrompt(sourceText: string, sourceLang: string, targetLang: string, showFurigana = false, style: TranslationStyle = 'standard', phoneticOnly = false): string {
+const SYSTEM_PROMPT = 'You are an expert translator. Translate accurately and naturally for native speakers of the target language. Preserve meaning, intent, nuance, and register. Do not add explanations or notes. Keep names, numbers, URLs, email addresses, formatting, and code unchanged unless localization is requested.'
+
+function buildPrompt(sourceText: string, sourceLang: string, targetLang: string, showFurigana = false, style: TranslationStyle = 'neutral', phoneticOnly = false): string {
   // phoneticOnly mode: add phonetic annotations to already-translated text without re-translating
   if (phoneticOnly && showFurigana) {
     let phoneticInstruction = ''
@@ -49,8 +53,7 @@ function buildPrompt(sourceText: string, sourceLang: string, targetLang: string,
     return `Add phonetic annotations to the following ${targetLang} text. Do NOT translate or change the text content in any way — only add phonetic annotations. Return only the annotated text, no explanations, no notes.\n\n${phoneticInstruction}\n\nText to annotate:\n${sourceText}`
   }
 
-  const sourceName = sourceLang === 'auto' ? 'the detected language' : sourceLang
-  const styleInstruction = STYLE_INSTRUCTIONS[style] ?? ''
+  const tone = STYLE_TONE[style] ?? STYLE_TONE.neutral
   let phoneticInstruction = ''
   if (showFurigana) {
     if (targetLang === 'ja') {
@@ -63,7 +66,7 @@ function buildPrompt(sourceText: string, sourceLang: string, targetLang: string,
       phoneticInstruction = ' For every word in the translation, wrap it with its pronunciation or phonetic transcription in the format {word|pronunciation} (e.g. {hello|həˈloʊ}). Use IPA notation where applicable.'
     }
   }
-  return `Translate the following text from ${sourceName} to ${targetLang}. Return only the translated text, no explanations, no notes, no alternatives.${styleInstruction}${phoneticInstruction}\n\nText to translate:\n${sourceText}`
+  return `Translate into ${targetLang}. Tone: ${tone}. Preserve meaning, intent, and nuance exactly. Use natural wording for a native speaker. Keep names, numbers, links, email addresses, code, and formatting unchanged unless localization is requested. Output only the translation.${phoneticInstruction}\n\n${sourceText}`
 }
 
 async function translateWithGemini(
@@ -80,8 +83,7 @@ async function translateWithGemini(
   const genAI = new GoogleGenerativeAI(apiKey)
   const genModel = genAI.getGenerativeModel({
     model,
-    systemInstruction:
-      'You are a professional translator. Translate accurately and naturally. Return only the translated text.',
+    systemInstruction: SYSTEM_PROMPT,
   })
   const result = await genModel.generateContent(buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style, phoneticOnly))
   return result.response.text().trim()
@@ -102,8 +104,7 @@ async function translateWithClaude(
   const message = await client.messages.create({
     model,
     max_tokens: 4096,
-    system:
-      'You are a professional translator. Translate accurately and naturally. Return only the translated text.',
+    system: SYSTEM_PROMPT,
     messages: [
       {
         role: 'user',
@@ -133,8 +134,7 @@ async function translateWithOpenAI(
     messages: [
       {
         role: 'system',
-        content:
-          'You are a professional translator. Translate accurately and naturally. Return only the translated text.',
+        content: SYSTEM_PROMPT,
       },
       {
         role: 'user',

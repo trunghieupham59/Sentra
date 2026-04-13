@@ -1,6 +1,6 @@
 export type Provider = 'gemini' | 'claude' | 'openai'
 
-export type TranslationStyle = 'standard' | 'casual' | 'formal' | 'message' | 'technical'
+export type TranslationStyle = 'friendly' | 'neutral' | 'professional' | 'business' | 'slack' | 'polite' | 'technical'
 
 export type TtsVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
 
