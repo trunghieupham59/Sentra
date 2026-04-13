@@ -405,8 +405,11 @@ export function LiveTranslatePage() {
       if (audioMode === 'system') {
         // Request screen share + system audio via getDisplayMedia.
         // On macOS the user MUST check "Share audio" in the screen picker.
+        // Note: Electron's setDisplayMediaRequestHandler overrides the source,
+        // so we keep video constraints minimal (just `true`) to avoid
+        // "Invalid capture constraints" errors from Chromium's constraint validator.
         const displayStream = await (navigator.mediaDevices as MediaDevices).getDisplayMedia({
-          video: { frameRate: 1 } as MediaTrackConstraints,
+          video: true,
           audio: true,
         } as DisplayMediaStreamOptions)
 
