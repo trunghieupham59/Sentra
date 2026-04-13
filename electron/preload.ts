@@ -39,11 +39,19 @@ contextBridge.exposeInMainWorld('api', {
     language?: string
   }) => ipcRenderer.invoke('audio:transcribe', params),
 
-  // AI Text-to-Speech via OpenAI TTS (multilingual, natural-sounding)
+  // AI Text-to-Speech — tries OpenAI TTS first, then Gemini TTS, falls back to NO_API_KEY
   speakText: (params: {
     text: string
     voice?: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
-  }) => ipcRenderer.invoke('audio:tts', params),
+  }) => ipcRenderer.invoke('audio:tts', params) as Promise<{
+    success: boolean
+    audioBase64?: string
+    /** 'audio/mpeg' (OpenAI) | 'audio/wav' (Gemini) */
+    mimeType?: string
+    provider?: string
+    error?: string
+    errorCode?: string
+  }>,
 
   // Image translation — extracts text regions from image and returns translated regions
   translateImage: (params: {

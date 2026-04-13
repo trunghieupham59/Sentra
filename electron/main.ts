@@ -8,6 +8,9 @@ import { registerTranslateHandlers } from './ipc/translate'
 import { registerTtsHandlers } from './ipc/tts'
 import { registerChatHandlers } from './ipc/chat'
 
+// Allow audio autoplay after async operations (TTS API calls lose user-gesture context)
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
+
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 
 // Set app name

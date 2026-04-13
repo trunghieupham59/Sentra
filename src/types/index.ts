@@ -80,8 +80,12 @@ export interface TranscribeResult {
 
 export interface TtsResult {
   success: boolean
-  /** base64-encoded MP3 audio (avoids IPC ArrayBuffer serialization issues) */
+  /** base64-encoded audio (avoids IPC ArrayBuffer serialization issues) */
   audioBase64?: string
+  /** MIME type of the audio: 'audio/mpeg' (OpenAI) or 'audio/wav' (Gemini) */
+  mimeType?: string
+  /** Which provider produced the audio: 'openai' | 'gemini' */
+  provider?: string
   error?: string
   errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | string
 }
