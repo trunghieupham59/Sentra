@@ -4,6 +4,7 @@ import { PROVIDERS } from './constants/providers'
 import type { AppLocale } from './i18n'
 import { ChatPage } from './pages/ChatPage'
 import { HistoryPage } from './pages/HistoryPage'
+import { LiveTranslatePage } from './pages/LiveTranslatePage'
 import { SettingsPage } from './pages/SettingsPage'
 import { TranslatePage } from './pages/TranslatePage'
 import { useAppStore } from './store/useAppStore'
@@ -69,6 +70,8 @@ function App() {
         <main className="flex-1 overflow-hidden">
           {activePage === 'translate' ? (
             <TranslatePage />
+          ) : activePage === 'live' ? (
+            <LiveTranslatePage />
           ) : activePage === 'chat' ? (
             <ChatPage />
           ) : activePage === 'history' ? (

@@ -42,7 +42,7 @@ interface AppState {
   localeAuto: boolean
 
   // Active page
-  activePage: 'translate' | 'history' | 'settings' | 'chat'
+  activePage: 'translate' | 'history' | 'settings' | 'chat' | 'live'
 
   // Translation history
   history: HistoryItem[]
@@ -79,7 +79,7 @@ interface AppState {
   /** Set locale from system detection — does NOT disable auto-follow */
   setLocaleFromSystem: (locale: AppLocale) => void
   setLocaleAuto: (v: boolean) => void
-  setActivePage: (page: 'translate' | 'history' | 'settings' | 'chat') => void
+  setActivePage: (page: 'translate' | 'history' | 'settings' | 'chat' | 'live') => void
   clearTranslation: () => void
 
   // History actions

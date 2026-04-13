@@ -142,6 +142,29 @@ export interface Translations {
   history_chat_open: string
   history_chat_delete: string
 
+  // Live translate page
+  nav_live_translate: string
+  live_start: string
+  live_stop: string
+  live_status_listening: string
+  live_chunk_hint: string
+  live_empty: string
+  live_empty_desc: string
+  live_entries_label: string
+  live_clear: string
+  live_copy_all: string
+  live_copied: string
+  live_no_openai_key: string
+  live_no_translate_key: string
+  live_status_translating: string
+  live_panel_original: string
+  live_panel_translation: string
+  live_words: string
+  live_summarize: string
+  live_summarize_again: string
+  live_summarizing: string
+  live_summary_title: string
+
   // Chat page
   chat_placeholder: string
   chat_send: string
@@ -325,6 +348,27 @@ const en: Translations = {
   history_chat_messages: 'messages',
   history_chat_open: 'Open',
   history_chat_delete: 'Delete',
+  nav_live_translate: 'Live Translate',
+  live_start: 'Start',
+  live_stop: 'Stop',
+  live_status_listening: 'Listening…',
+  live_chunk_hint: 'translating every 3 s',
+  live_empty: 'Press Start to begin live translation',
+  live_empty_desc: 'Speak into your microphone. Each sentence will be transcribed and translated in real time.',
+  live_entries_label: 'segments',
+  live_clear: 'Clear',
+  live_copy_all: 'Copy All',
+  live_copied: 'Copied!',
+  live_no_openai_key: 'OpenAI API key required for speech recognition (Whisper).',
+  live_no_translate_key: 'No translation API key configured.',
+  live_status_translating: 'Translating…',
+  live_panel_original: 'Original',
+  live_panel_translation: 'Translation',
+  live_words: 'words',
+  live_summarize: 'Summarize Session',
+  live_summarize_again: 'Regenerate',
+  live_summarizing: 'Generating summary…',
+  live_summary_title: 'Session Summary',
   chat_placeholder: 'Type a message…',
   chat_send: 'Send',
   chat_clear: 'Clear',
@@ -505,6 +549,27 @@ const vi: Translations = {
   history_chat_messages: 'tin nhắn',
   history_chat_open: 'Mở',
   history_chat_delete: 'Xóa',
+  nav_live_translate: 'Dịch trực tiếp',
+  live_start: 'Bắt đầu',
+  live_stop: 'Dừng',
+  live_status_listening: 'Đang nghe…',
+  live_chunk_hint: 'dịch mỗi 3 giây',
+  live_empty: 'Nhấn Bắt đầu để dịch trực tiếp',
+  live_empty_desc: 'Nói vào microphone. Mỗi câu sẽ được nhận dạng và dịch gần như tức thì.',
+  live_entries_label: 'đoạn',
+  live_clear: 'Xóa',
+  live_copy_all: 'Sao chép tất cả',
+  live_copied: 'Đã sao chép!',
+  live_no_openai_key: 'Cần OpenAI API key để nhận dạng giọng nói (Whisper).',
+  live_no_translate_key: 'Chưa cấu hình API key để dịch.',
+  live_status_translating: 'Đang dịch…',
+  live_panel_original: 'Nguyên bản',
+  live_panel_translation: 'Bản dịch',
+  live_words: 'từ',
+  live_summarize: 'Tổng hợp nội dung',
+  live_summarize_again: 'Tạo lại',
+  live_summarizing: 'Đang tổng hợp…',
+  live_summary_title: 'Tóm tắt buổi dịch',
   chat_placeholder: 'Nhập tin nhắn…',
   chat_send: 'Gửi',
   chat_clear: 'Xóa',
@@ -685,6 +750,27 @@ const ja: Translations = {
   history_chat_messages: 'メッセージ',
   history_chat_open: '開く',
   history_chat_delete: '削除',
+  nav_live_translate: 'ライブ翻訳',
+  live_start: '開始',
+  live_stop: '停止',
+  live_status_listening: '聞き取り中…',
+  live_chunk_hint: '3秒ごとに翻訳',
+  live_empty: '開始を押してライブ翻訳を始めてください',
+  live_empty_desc: 'マイクに向かって話してください。各文がリアルタイムで書き起こし・翻訳されます。',
+  live_entries_label: '件',
+  live_clear: 'クリア',
+  live_copy_all: 'すべてコピー',
+  live_copied: 'コピーしました！',
+  live_no_openai_key: '音声認識（Whisper）にOpenAI APIキーが必要です。',
+  live_no_translate_key: '翻訳用APIキーが設定されていません。',
+  live_status_translating: '翻訳中…',
+  live_panel_original: '原文',
+  live_panel_translation: '翻訳',
+  live_words: '語',
+  live_summarize: 'セッションを要約',
+  live_summarize_again: '再生成',
+  live_summarizing: '要約生成中…',
+  live_summary_title: 'セッション要約',
   chat_placeholder: 'メッセージを入力…',
   chat_send: '送信',
   chat_clear: 'クリア',
