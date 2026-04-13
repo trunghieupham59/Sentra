@@ -600,7 +600,7 @@ export function TranslatePage() {
                 <span className="absolute w-14 h-14 rounded-full bg-red-300 dark:bg-red-900/50 animate-ping" style={{ animationDuration: '1.1s', animationDelay: '0.1s' }} />
 
                 {/* Microphone circle */}
-                <div className="relative w-16 h-16 rounded-full bg-red-500 dark:bg-red-600 flex items-center justify-center shadow-xl shadow-red-200 dark:shadow-red-900/60">
+                <div className="relative w-16 h-16 rounded-full bg-red-500 dark:bg-red-600 flex items-center justify-center shadow-md">
                   <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2" />
@@ -755,7 +755,7 @@ export function TranslatePage() {
                     'relative flex items-center justify-center w-8 h-8 rounded-full',
                     'transition-all duration-200 cursor-pointer',
                     speakingPanel === 'source'
-                      ? 'bg-blue-500 text-white shadow-lg shadow-blue-200 dark:shadow-blue-900/50 hover:bg-blue-600'
+                      ? 'bg-blue-500 text-white shadow-sm hover:bg-blue-600'
                       : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950 dark:hover:text-blue-400',
                   ].join(' ')}
                 >
@@ -854,7 +854,7 @@ export function TranslatePage() {
                     'relative flex items-center justify-center w-8 h-8 rounded-full',
                     'transition-all duration-200 cursor-pointer',
                     speakingPanel === 'translated'
-                      ? 'bg-blue-500 text-white shadow-lg shadow-blue-200 dark:shadow-blue-900/50 hover:bg-blue-600'
+                      ? 'bg-blue-500 text-white shadow-sm hover:bg-blue-600'
                       : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950 dark:hover:text-blue-400',
                   ].join(' ')}
                 >

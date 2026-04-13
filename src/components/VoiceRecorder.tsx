@@ -351,9 +351,9 @@ export function VoiceRecorder({
           'transition-all duration-200 cursor-pointer',
           'disabled:opacity-40 disabled:cursor-not-allowed',
           isRecording
-            ? 'bg-red-500 text-white shadow-lg shadow-red-200 dark:shadow-red-900/50 hover:bg-red-600'
+            ? 'bg-red-500 text-white shadow-sm hover:bg-red-600'
             : isTranscribing
-              ? 'bg-blue-500 text-white shadow-lg shadow-blue-200 dark:shadow-blue-900/50'
+              ? 'bg-blue-500 text-white shadow-sm'
               : state === 'error'
                 ? 'bg-orange-100 text-orange-500 border border-orange-200 dark:bg-orange-950 dark:border-orange-800 hover:bg-orange-200'
                 : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950 dark:hover:text-blue-400',

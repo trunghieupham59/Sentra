@@ -801,7 +801,7 @@ export function ChatPage() {
                         disabled:opacity-40 disabled:cursor-not-allowed
                         ${isSending
                           ? 'bg-blue-500 text-white'
-                          : 'bg-blue-500 hover:bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-blue-900/50'}`}
+                          : 'bg-blue-500 hover:bg-blue-600 text-white shadow-sm'}`}
           >
             {isSending ? (
               <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">

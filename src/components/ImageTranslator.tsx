@@ -174,7 +174,7 @@ export function ImageTranslator({ onImageReady, onClose }: ImageTranslatorProps)
             <div className="flex flex-col items-center gap-4 py-10">
               <div className="relative w-14 h-14">
                 <div className="absolute inset-0 rounded-full bg-emerald-100 dark:bg-emerald-900/30 animate-ping" style={{ animationDuration: '1.5s' }} />
-                <div className="relative w-14 h-14 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-200 dark:shadow-emerald-900/60">
+                <div className="relative w-14 h-14 rounded-full bg-emerald-500 flex items-center justify-center shadow-md">
                   <svg className="w-6 h-6 text-white animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
                     <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
