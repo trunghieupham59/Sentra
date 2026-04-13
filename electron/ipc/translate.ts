@@ -235,13 +235,13 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
 
       switch (provider) {
         case 'gemini':
-          translatedText = await translateWithGemini(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'standard', !!phoneticOnly)
+          translatedText = await translateWithGemini(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', !!phoneticOnly)
           break
         case 'claude':
-          translatedText = await translateWithClaude(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'standard', !!phoneticOnly)
+          translatedText = await translateWithClaude(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', !!phoneticOnly)
           break
         case 'openai':
-          translatedText = await translateWithOpenAI(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'standard', !!phoneticOnly)
+          translatedText = await translateWithOpenAI(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', !!phoneticOnly)
           break
         default:
           return { success: false, error: `Unknown provider: ${provider}` }
