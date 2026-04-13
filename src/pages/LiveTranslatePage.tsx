@@ -31,60 +31,115 @@ const CONTEXT_SENTENCES    = 2
  *   Web Audio API getByteTimeDomainData() returns 0-255 centered at 128.
  *   RMS of deviation from 128:
  *     • Pure silence            : ~0-3
- *     • AC hum / room noise     : ~3-8
- *     • Quiet breath / rustling : ~8-12
- *     • Quiet speech            : ~12-25
- *     • Normal speech           : ~25-80
+ *     • AC hum / room noise     : ~3-6
+ *     • Quiet breath / rustling : ~6-10
+ *     • Quiet speech            : ~10-20
+ *     • Normal speech           : ~20-80
  *
  * Gate 2 — sustained speech requirement:
- *   At least MIN_SPEECH_SAMPLES consecutive samples must exceed the threshold.
- *   With 80 ms intervals, MIN_SPEECH_SAMPLES=5 ≈ 400 ms of actual speech.
- *   This eliminates brief noise spikes that fool Gate 1.
+ *   At least MIN_SPEECH_SAMPLES cumulative samples must exceed the threshold
+ *   within a 3-second chunk.  With 80 ms intervals, MIN_SPEECH_SAMPLES=3
+ *   ≈ 240 ms of actual speech — permissive enough for short utterances.
  *
- * Both gates must pass before the chunk is sent to Whisper.
+ * No blob-size fallback: sending silent audio to Whisper always produces
+ * hallucinations.  VAD is the single gate — tune the threshold instead.
  */
-const SPEECH_RMS_THRESHOLD = 12   // raised: excludes AC/room noise
-const MIN_SPEECH_SAMPLES   = 5    // 5 × 80 ms = 400 ms sustained speech required
+const SPEECH_RMS_THRESHOLD = 5    // sensitivity: captures even quiet speech
+const MIN_SPEECH_SAMPLES   = 2    // 2 × 80 ms = 160 ms — reacts faster
 const VAD_SAMPLE_INTERVAL  = 80   // ms between AnalyserNode samples
+
+/**
+ * Software gain applied to the microphone signal before recording and VAD.
+ * 1.0 = unity, 2.0 = double amplitude, 3.0 = triple.
+ * A value of 2.5 lifts quiet/distant voices above the VAD threshold without
+ * over-saturating close/loud speech (Web Audio clips at ±1.0 post-GainNode,
+ * but the RMS gate still acts on the amplified waveform, so VAD becomes
+ * proportionally more sensitive).
+ */
+const MIC_GAIN = 2.5
 
 // ── Whisper hallucination filter ──────────────────────────────────────────────
 /**
  * Whisper hallucinates stock phrases from its training data (YouTube/podcast
  * transcripts) when given silent or near-silent audio.  This filter rejects
  * those known patterns as a second line of defence after VAD.
+ *
+ * Covers: English, Japanese, Korean common hallucination phrases, as well as
+ * structural indicators (bracketed sounds, lone punctuation, repetitions).
  */
 const HALLUCINATION_PATTERNS: RegExp[] = [
+  // ── English ──────────────────────────────────────────────────────────────
   /thank(s)? (you )?for watching/i,
   /thank(s)? for (your|the)/i,
   /please (like|subscribe|share|follow)/i,
   /don'?t forget to (like|subscribe|hit|click)/i,
+  /subtitles? by/i,
+  /transcribed by/i,
+  /auto-?generated (caption|subtitle)/i,
+  /^[\s.…,\-–—]+$/,                    // lone punctuation / whitespace
+
+  // ── Bracketed / parenthesized sound effects ───────────────────────────────
+  /^\s*[\[(（【].*[\]）】]\s*$/,          // e.g. [Music], (拍手), 【BGM】
   /\(music\)/i,
   /\[music\]/i,
   /\[applause\]/i,
   /\[laughter\]/i,
-  /subtitles? by/i,
-  /transcribed by/i,
-  /auto-?generated (caption|subtitle)/i,
-  // Very short / empty after trim → definitely not real speech
+  /\[silence\]/i,
+  /\[noise\]/i,
+  /\[inaudible\]/i,
+  /\[crosstalk\]/i,
+
+  // ── Japanese ─────────────────────────────────────────────────────────────
+  /ご視聴ありがとうございました/,
+  /ご視聴ありがとう/,
+  /チャンネル登録/,
+  /高評価.*お願い/,
+  /字幕.*提供/,
+  /字幕.*作成/,
+  /^ありがとうございます[。！]*$/,       // standalone "thank you" (no content)
+  /^ありがとう[。！]*$/,
+  /^どうもありがとう[。！]*$/,
+  /^\(拍手\)$/,
+  /^\[拍手\]$/,
+  /^\(笑\)$/,
+  /^\[笑\]$/,
+  /^\(音楽\)$/,
+  /^\[音楽\]$/,
+
+  // ── Korean ───────────────────────────────────────────────────────────────
+  /시청해\s*주셔서\s*감사합니다/,
+  /시청해\s*주신\s*여러분/,
+  /구독.*좋아요/,
+  /좋아요.*구독/,
+  /^감사합니다[.]?$/,                   // standalone "thank you"
+  /자막.*제공/,
+  /자막.*제작/,
 ]
 
+/**
+ * Returns true when the text is a known hallucination OR structurally invalid:
+ *   1. Too short (< 4 chars after trimming)
+ *   2. Matches a hallucination pattern
+ *   3. Made up of a single character repeated ≥ 4 times (e.g. "aaaa", "。。。。")
+ *   4. More than 60% of the text is the same single character (noisy repetition)
+ */
 function isHallucination(text: string): boolean {
   const t = text.trim()
-  if (t.length < 4) return true  // too short to be real speech
-  return HALLUCINATION_PATTERNS.some(p => p.test(t))
+  if (t.length < 4) return true
+
+  if (HALLUCINATION_PATTERNS.some(p => p.test(t))) return true
+
+  // Detect single-character repetition (e.g. "。。。。。" or "はははは")
+  const charFreq = new Map<string, number>()
+  for (const ch of t) charFreq.set(ch, (charFreq.get(ch) ?? 0) + 1)
+  const maxFreq = Math.max(...charFreq.values())
+  if (maxFreq >= 4 && maxFreq / t.length > 0.6) return true
+
+  return false
 }
 
 // ── Sentence boundary detection ────────────────────────────────────────────────
-/**
- * Split `text` at the last sentence-ending punctuation mark.
- * Returns { complete, pending } where:
- *   complete = everything up to and including the last sentence end
- *   pending  = trailing fragment that hasn't completed yet
- *
- * Handles: English . ! ?  — Japanese 。！？ — ellipsis … — interrobangs ‼ ⁉
- */
 function extractCompleteSentences(text: string): { complete: string; pending: string } {
-  // Match one or more sentence-ending chars followed by whitespace or end-of-string
   const re = /[.!?。！？‼⁉…]+(?:\s|$)/g
   const matches = [...text.matchAll(re)]
   if (matches.length === 0) return { complete: '', pending: text.trim() }
@@ -102,6 +157,9 @@ function getSupportedMimeType(): string {
   return candidates.find(m => MediaRecorder.isTypeSupported(m)) ?? ''
 }
 
+// ── Deep link to macOS Screen Recording settings ──────────────────────────────
+const SCREEN_RECORDING_PREFS = 'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'
+
 // ── Component ─────────────────────────────────────────────────────────────────
 export function LiveTranslatePage() {
   const {
@@ -109,6 +167,10 @@ export function LiveTranslatePage() {
     setSourceLang, setTargetLang, setActivePage,
   } = useAppStore()
   const t = useT()
+
+  // 'mic'    = microphone only (getUserMedia)
+  // 'system' = system audio (getDisplayMedia) + microphone — mixed
+  const [audioMode,      setAudioMode]      = useState<'mic' | 'system'>('mic')
 
   const [isActive,       setIsActive]       = useState(false)
   const [rawTranscript,  setRawTranscript]  = useState('')
@@ -131,15 +193,12 @@ export function LiveTranslatePage() {
     paramsRef.current = { sourceLang, targetLang, selectedProvider, selectedModels }
   }, [sourceLang, targetLang, selectedProvider, selectedModels])
 
-  // Incomplete sentence being accumulated across STT chunks
   const pendingBufferRef     = useRef('')
-  // How many chunks have been added to pendingBuffer without a sentence boundary
   const pendingChunkCountRef = useRef(0)
-  // Last CONTEXT_SENTENCES complete sentences — sent as reference context for next translation
   const recentSentencesRef   = useRef<string[]>([])
-  // Full raw + translated text for the summary (grows forever, never reset)
   const fullRawForSummaryRef = useRef('')
   const fullTxForSummaryRef  = useRef('')
+  const lastChunkTextRef     = useRef('')
 
   const streamRef      = useRef<MediaStream | null>(null)
   const recorderRef    = useRef<MediaRecorder | null>(null)
@@ -147,11 +206,10 @@ export function LiveTranslatePage() {
   const activeRef      = useRef(false)
   const queueRef       = useRef<Promise<void>>(Promise.resolve())
 
-  // VAD: Web Audio API refs
   const audioCtxRef      = useRef<AudioContext | null>(null)
   const analyserRef      = useRef<AnalyserNode | null>(null)
-  const hasSpeechRef     = useRef(false)  // true when MIN_SPEECH_SAMPLES gate passed
-  const speechCountRef   = useRef(0)      // consecutive samples above RMS threshold
+  const hasSpeechRef     = useRef(false)
+  const speechCountRef   = useRef(0)
   const vadTimerRef      = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const rawEndRef = useRef<HTMLDivElement>(null)
@@ -159,8 +217,8 @@ export function LiveTranslatePage() {
 
   const hasOpenAIKey = keyStatus.openai
   const hasAnyKey    = Object.values(keyStatus).some(Boolean)
+  const isMac        = window.api.platform === 'darwin'
 
-  // Auto-scroll panels when text grows
   // biome-ignore lint/correctness/useExhaustiveDependencies: rawTranscript.length is the intentional trigger
   useEffect(() => { rawEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [rawTranscript.length])
   // biome-ignore lint/correctness/useExhaustiveDependencies: translation.length is the intentional trigger
@@ -172,7 +230,6 @@ export function LiveTranslatePage() {
 
     const { sourceLang, targetLang, selectedProvider, selectedModels } = paramsRef.current
 
-    // ── Step 1: STT ────────────────────────────────────────────────────────
     setIsTranscribing(true)
     let newText = ''
     try {
@@ -186,28 +243,27 @@ export function LiveTranslatePage() {
     } catch { /* skip */ }
     finally { setIsTranscribing(false) }
 
-    // Reject empty or known Whisper hallucination strings
     if (!newText || isHallucination(newText)) return
 
-    // ── Buffer accumulation ────────────────────────────────────────────────
-    const newBuffer = pendingBufferRef.current
-      ? `${pendingBufferRef.current} ${newText}`
-      : newText
+    // Duplicate / near-duplicate detection
+    const normalise = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
+    const normNew  = normalise(newText)
+    const normLast = normalise(lastChunkTextRef.current)
+    if (normLast && (normNew === normLast || normLast.includes(normNew) || normNew.includes(normLast))) return
+    lastChunkTextRef.current = newText
 
-    // Show raw transcript immediately (display = completed + pending)
+    const newBuffer = pendingBufferRef.current ? `${pendingBufferRef.current} ${newText}` : newText
+
     fullRawForSummaryRef.current = fullRawForSummaryRef.current
       ? `${fullRawForSummaryRef.current} ${newText}`
       : newText
     setRawTranscript(fullRawForSummaryRef.current)
 
-    // ── Sentence boundary detection ────────────────────────────────────────
     let { complete, pending } = extractCompleteSentences(newBuffer)
 
     if (!complete) {
-      // No sentence boundary yet — check the fallback counter
       pendingChunkCountRef.current += 1
       if (pendingChunkCountRef.current >= MAX_PENDING_CHUNKS) {
-        // Too many chunks without punctuation (e.g. Japanese) → force translate
         complete = newBuffer
         pending  = ''
         pendingChunkCountRef.current = 0
@@ -217,11 +273,8 @@ export function LiveTranslatePage() {
     }
 
     pendingBufferRef.current = pending
+    if (!complete) return
 
-    if (!complete) return // still accumulating — wait for more speech
-
-    // ── Step 2: Translate the completed sentence(s) ────────────────────────
-    // Only called when we have a semantically complete unit — never re-translates.
     setIsTranslating(true)
     try {
       const contextText = recentSentencesRef.current.join(' ')
@@ -249,7 +302,6 @@ export function LiveTranslatePage() {
     } catch { /* keep existing */ }
     finally { setIsTranslating(false) }
 
-    // Update rolling sentence context (for next translation's reference)
     recentSentencesRef.current.push(complete)
     if (recentSentencesRef.current.length > CONTEXT_SENTENCES) recentSentencesRef.current.shift()
   }, [])
@@ -267,7 +319,6 @@ export function LiveTranslatePage() {
     audioChunksRef.current = []
     recorderRef.current = recorder
 
-    // ── VAD: two-gate check every VAD_SAMPLE_INTERVAL ms ──────────────────
     hasSpeechRef.current   = false
     speechCountRef.current = 0
     if (vadTimerRef.current) clearInterval(vadTimerRef.current)
@@ -279,18 +330,13 @@ export function LiveTranslatePage() {
       const rms = Math.sqrt(data.reduce((sum, v) => sum + (v - 128) ** 2, 0) / data.length)
       if (rms > SPEECH_RMS_THRESHOLD) {
         speechCountRef.current += 1
-        // Gate 2: cumulative across the whole 3s window (NOT consecutive).
-        // Natural speech has gaps between words — resetting on silence would
-        // prevent the count from ever reaching the threshold.
         if (speechCountRef.current >= MIN_SPEECH_SAMPLES) hasSpeechRef.current = true
       }
-      // No reset on silence — count is cumulative total for this chunk
     }, VAD_SAMPLE_INTERVAL)
 
     recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
 
     recorder.onstop = () => {
-      // Stop VAD sampler
       if (vadTimerRef.current) { clearInterval(vadTimerRef.current); vadTimerRef.current = null }
 
       const hadSpeech = hasSpeechRef.current
@@ -298,12 +344,9 @@ export function LiveTranslatePage() {
       const blob      = new Blob(audioChunksRef.current, { type: recMime })
 
       if (hadSpeech) {
-        // Speech detected → send to Whisper + translate
         queueRef.current = queueRef.current.then(() => processChunk(blob, recMime))
       }
-      // Silent chunk → skip entirely (prevents Whisper hallucinations)
 
-      // Always start next chunk immediately regardless
       if (activeRef.current) startChunk()
     }
 
@@ -316,26 +359,106 @@ export function LiveTranslatePage() {
     setMicError(null)
     setShowSummaryBtn(false)
     setSummary(null)
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-      streamRef.current = stream
 
-      // ── Set up Web Audio API analyser for VAD ──
+    try {
       const audioCtx = new AudioContext()
-      const source   = audioCtx.createMediaStreamSource(stream)
       const analyser = audioCtx.createAnalyser()
-      analyser.fftSize = 512  // 512 samples for reasonable frequency resolution
-      source.connect(analyser)
+      analyser.fftSize = 512
+
+      let captureStream: MediaStream
+
+      if (audioMode === 'system') {
+        // Request screen share + system audio via getDisplayMedia.
+        // On macOS the user MUST check "Share audio" in the screen picker.
+        const displayStream = await (navigator.mediaDevices as MediaDevices).getDisplayMedia({
+          video: { frameRate: 1 } as MediaTrackConstraints,
+          audio: true,
+        } as DisplayMediaStreamOptions)
+
+        // Stop video tracks — only need audio
+        for (const track of displayStream.getVideoTracks()) track.stop()
+
+        const sysAudioTracks = displayStream.getAudioTracks()
+
+        // Also capture mic so both sides of a conversation are heard
+        let micStream: MediaStream | null = null
+        try {
+          micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+        } catch { /* mic optional */ }
+
+        const dest = audioCtx.createMediaStreamDestination()
+
+        if (sysAudioTracks.length > 0) {
+          const sysSource = audioCtx.createMediaStreamSource(new MediaStream(sysAudioTracks))
+          sysSource.connect(dest)
+          sysSource.connect(analyser)
+          for (const track of sysAudioTracks) dest.stream.addTrack(track)
+        } else {
+          setMicError('System audio not available — please check "Share audio" in the screen sharing dialog, then try again.')
+          audioCtx.close()
+          return
+        }
+
+        if (micStream) {
+          const micSource = audioCtx.createMediaStreamSource(micStream)
+          micSource.connect(dest)
+          for (const track of micStream.getTracks()) dest.stream.addTrack(track)
+        }
+
+        captureStream = dest.stream
+      } else {
+        // Mic-only mode:
+        // • Request autoGainControl so the OS/browser tries to boost quiet mics.
+        // • Then apply an additional software GainNode (MIC_GAIN) so the signal
+        //   is amplified before both VAD analysis and Whisper recording.
+        // • The boosted stream (from MediaStreamDestination) replaces the raw
+        //   mic stream so Whisper receives the louder, clearer audio.
+        const rawMicStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,   // hardware/OS-level boost
+          },
+          video: false,
+        })
+
+        const rawSource = audioCtx.createMediaStreamSource(rawMicStream)
+
+        // Software gain boost
+        const gainNode = audioCtx.createGain()
+        gainNode.gain.value = MIC_GAIN
+
+        // Route: rawSource → gain → analyser (for VAD)
+        rawSource.connect(gainNode)
+        gainNode.connect(analyser)
+
+        // Route: gain → destination stream (for MediaRecorder / Whisper)
+        const micDest = audioCtx.createMediaStreamDestination()
+        gainNode.connect(micDest)
+
+        // Keep raw tracks in our stream ref so they are stopped on handleStop
+        for (const track of rawMicStream.getTracks()) micDest.stream.addTrack(track)
+
+        captureStream = micDest.stream
+      }
+
+      streamRef.current    = captureStream
       audioCtxRef.current  = audioCtx
       analyserRef.current  = analyser
-
-      activeRef.current = true
+      activeRef.current    = true
       setIsActive(true)
       startChunk()
     } catch (err) {
-      setMicError(err instanceof Error ? err.message : 'Microphone access denied')
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('Permission denied') || msg.includes('NotAllowedError')) {
+        setMicError(audioMode === 'system'
+          ? 'Screen Recording permission denied. Enable it in System Settings → Privacy → Screen Recording.'
+          : 'Microphone access denied.')
+      } else if (!msg.includes('cancelled') && !msg.includes('AbortError')) {
+        setMicError(msg)
+      }
     }
-  }, [startChunk])
+  }, [startChunk, audioMode])
 
   const handleStop = useCallback(() => {
     activeRef.current = false
@@ -343,7 +466,6 @@ export function LiveTranslatePage() {
     setIsTranscribing(false)
     setIsTranslating(false)
 
-    // Stop VAD sampler
     if (vadTimerRef.current) { clearInterval(vadTimerRef.current); vadTimerRef.current = null }
 
     if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
@@ -352,12 +474,10 @@ export function LiveTranslatePage() {
       streamRef.current = null
     }
 
-    // Close audio context
     try { audioCtxRef.current?.close() } catch {}
     audioCtxRef.current = null
     analyserRef.current = null
 
-    // Show summarize button if there's content
     if (fullRawForSummaryRef.current.trim()) setShowSummaryBtn(true)
   }, [])
 
@@ -367,6 +487,7 @@ export function LiveTranslatePage() {
     recentSentencesRef.current   = []
     fullRawForSummaryRef.current = ''
     fullTxForSummaryRef.current  = ''
+    lastChunkTextRef.current     = ''
     setRawTranscript('')
     setTranslation('')
     setSummary(null)
@@ -446,7 +567,7 @@ export function LiveTranslatePage() {
         <div className="flex-1 min-w-0 overflow-hidden"><ModelSelector /></div>
       </div>
 
-      {/* Language + Start/Stop bar */}
+      {/* Language + audio source toggle + Start/Stop bar */}
       <div className="flex-shrink-0 flex items-center gap-3 px-4 py-2.5
                       bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
         <div className="flex-1">
@@ -458,6 +579,51 @@ export function LiveTranslatePage() {
         <div className="flex-1">
           <LanguageSelector value={targetLang} onChange={setTargetLang} includeAuto={false} />
         </div>
+
+        {/* Audio source toggle: Mic | System — disabled while recording */}
+        <div className="flex-shrink-0 flex items-center rounded-full border border-gray-200 dark:border-gray-700
+                        bg-gray-50 dark:bg-gray-800 p-0.5 gap-0.5 select-none">
+          <button
+            type="button"
+            disabled={isActive}
+            onClick={() => setAudioMode('mic')}
+            title="Microphone only"
+            className={[
+              'flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-150',
+              audioMode === 'mic'
+                ? 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 shadow-sm'
+                : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400',
+              isActive ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+            ].join(' ')}
+          >
+            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2" />
+            </svg>
+            Mic
+          </button>
+          <button
+            type="button"
+            disabled={isActive}
+            onClick={() => setAudioMode('system')}
+            title="System audio + microphone (requires Screen Recording permission on macOS)"
+            className={[
+              'flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-150',
+              audioMode === 'system'
+                ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400',
+              isActive ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+            ].join(' ')}
+          >
+            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <rect x="2" y="3" width="20" height="14" rx="2" />
+              <path strokeLinecap="round" d="M8 21h8M12 17v4" />
+            </svg>
+            System
+          </button>
+        </div>
+
+        {/* Start / Stop button */}
         <button
           type="button"
           onClick={isActive ? handleStop : handleStart}
@@ -501,6 +667,43 @@ export function LiveTranslatePage() {
           </button>
         </Notice>
       )}
+
+      {/* System audio hint — shown when 'System' mode is selected & not yet recording */}
+      {audioMode === 'system' && !isActive && isMac && (
+        <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2
+                        bg-blue-50 dark:bg-blue-950/20 border-b border-blue-100 dark:border-blue-900/40">
+          <svg className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="text-xs text-blue-600 dark:text-blue-400 flex-1">
+            Cần quyền <strong>Screen Recording</strong> và bật <strong>"Share audio"</strong> trong dialog chia sẻ màn hình.
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              // window.open is intercepted by Electron's setWindowOpenHandler
+              // which calls shell.openExternal — works without needing IPC restart.
+              // Falls back to IPC openExternal if available.
+              if (typeof window.api?.openExternal === 'function') {
+                window.api.openExternal(SCREEN_RECORDING_PREFS)
+              } else {
+                window.open(SCREEN_RECORDING_PREFS)
+              }
+            }}
+            className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium
+                       bg-blue-500 hover:bg-blue-600 text-white transition-colors duration-150 cursor-pointer"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Mở System Settings
+          </button>
+        </div>
+      )}
+
       {micError && <Notice variant="error">{micError}</Notice>}
 
       {/* Active recording status bar */}
@@ -603,7 +806,6 @@ export function LiveTranslatePage() {
       {(showSummaryBtn || summary || isSummarizing) && (
         <div className="flex-shrink-0 border-t-2 border-purple-100 dark:border-purple-900/40
                         bg-purple-50/50 dark:bg-purple-950/10">
-          {/* Summary header + button */}
           <div className="flex items-center gap-3 px-4 py-2.5">
             <svg className="w-4 h-4 text-purple-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -634,7 +836,6 @@ export function LiveTranslatePage() {
             )}
           </div>
 
-          {/* Summary content */}
           {(summary || isSummarizing) && (
             <div className="px-4 pb-4 max-h-44 overflow-y-auto">
               {isSummarizing ? (
@@ -658,7 +859,6 @@ export function LiveTranslatePage() {
       {/* Bottom bar */}
       <div className="flex-shrink-0 flex items-center gap-2 px-4 h-11
                       border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-        {/* Clear button — left side, with trash icon, red hover so it's easy to find */}
         {rawTranscript && (
           <button
             type="button"
@@ -675,7 +875,6 @@ export function LiveTranslatePage() {
             {t.live_clear}
           </button>
         )}
-        {/* Word count — pushed to the right */}
         <span className="ml-auto text-xs text-gray-400 tabular-nums">
           {wordCount > 0 ? `${wordCount.toLocaleString()} ${t.live_words}` : ''}
         </span>

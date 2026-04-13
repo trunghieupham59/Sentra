@@ -79,6 +79,9 @@ contextBridge.exposeInMainWorld('api', {
     systemPrompt?: string
   }) => ipcRenderer.invoke('chat:send', params),
 
+  // Open a URL in the system browser or a macOS Settings deep link
+  openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url),
+
   // App info
   platform: process.platform,
   version: process.env.npm_package_version || '1.0.0',

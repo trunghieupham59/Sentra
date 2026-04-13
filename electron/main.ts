@@ -72,6 +72,18 @@ function createWindow() {
   })
 }
 
+// ── Open external URL (used by renderer to open System Settings deep links) ──
+ipcMain.handle('app:openExternal', async (_event, url: string) => {
+  // Allowlist: only permit known safe URL schemes
+  const allowed = url.startsWith('https://') || url.startsWith('x-apple.systempreferences:')
+  if (!allowed) return
+  try {
+    await shell.openExternal(url)
+  } catch (err) {
+    console.error('[openExternal] failed:', err)
+  }
+})
+
 app.whenReady().then(() => {
   // Set macOS dock icon using base64 (no file path dependency)
   if (process.platform === 'darwin') {

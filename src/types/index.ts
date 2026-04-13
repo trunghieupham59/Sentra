@@ -221,6 +221,7 @@ export interface WindowApi {
     }>
     systemPrompt?: string
   }) => Promise<ChatResult>
+  openExternal: (url: string) => Promise<void>
   platform: string
   version: string
 }
