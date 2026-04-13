@@ -79,6 +79,10 @@ contextBridge.exposeInMainWorld('api', {
     systemPrompt?: string
   }) => ipcRenderer.invoke('chat:send', params),
 
+  // Check macOS Screen Recording permission status
+  // Returns: 'granted' | 'denied' | 'restricted' | 'unknown' | 'not-determined'
+  checkScreenPermission: () => ipcRenderer.invoke('app:checkScreenPermission') as Promise<string>,
+
   // Open a URL in the system browser or a macOS Settings deep link
   openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url),
 

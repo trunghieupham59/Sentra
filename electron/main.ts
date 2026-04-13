@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell, nativeTheme, nativeImage } from 'electron'
+import { app, BrowserWindow, ipcMain, shell, nativeTheme, nativeImage, desktopCapturer, systemPreferences } from 'electron'
 import path from 'path'
 import { registerKeychainHandlers } from './ipc/keychain'
 import { registerImageTranslateHandlers } from './ipc/imageTranslate'
@@ -67,10 +67,33 @@ function createWindow() {
     return { action: 'deny' }
   })
 
+  // Required for getDisplayMedia to work in Electron renderer process.
+  // Without this handler, getDisplayMedia throws "Not supported".
+  // 'loopback' captures system audio on macOS (requires Screen Recording permission).
+  mainWindow.webContents.session.setDisplayMediaRequestHandler((_request, callback) => {
+    desktopCapturer.getSources({ types: ['screen'] }).then((sources) => {
+      if (sources.length > 0) {
+        callback({ video: sources[0], audio: 'loopback' as any })
+      } else {
+        callback({})
+      }
+    }).catch(() => {
+      callback({})
+    })
+  })
+
   mainWindow.on('closed', () => {
     mainWindow = null
   })
 }
+
+// ── Check Screen Recording permission (macOS) ─────────────────────────────────
+ipcMain.handle('app:checkScreenPermission', () => {
+  if (process.platform === 'darwin') {
+    return systemPreferences.getMediaAccessStatus('screen') // 'granted' | 'denied' | 'restricted' | 'unknown' | 'not-determined'
+  }
+  return 'granted'
+})
 
 // ── Open external URL (used by renderer to open System Settings deep links) ──
 ipcMain.handle('app:openExternal', async (_event, url: string) => {

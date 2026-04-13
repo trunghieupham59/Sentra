@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { LanguageSelector } from '../components/LanguageSelector'
+import { MarkdownText } from '../components/MarkdownText'
 import { ModelSelector } from '../components/ModelSelector'
 import { useAppStore, useT } from '../store/useAppStore'
 
@@ -165,12 +166,16 @@ export function LiveTranslatePage() {
   const {
     sourceLang, targetLang, selectedProvider, selectedModels, keyStatus,
     setSourceLang, setTargetLang, setActivePage,
+    addLiveSession, updateLiveSession,
   } = useAppStore()
   const t = useT()
 
   // 'mic'    = microphone only (getUserMedia)
   // 'system' = system audio (getDisplayMedia) + microphone — mixed
   const [audioMode,      setAudioMode]      = useState<'mic' | 'system'>('mic')
+
+  // macOS Screen Recording permission: null = not checked yet
+  const [screenPermission, setScreenPermission] = useState<string | null>(null)
 
   const [isActive,       setIsActive]       = useState(false)
   const [rawTranscript,  setRawTranscript]  = useState('')
@@ -212,12 +217,39 @@ export function LiveTranslatePage() {
   const speechCountRef   = useRef(0)
   const vadTimerRef      = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const rawEndRef = useRef<HTMLDivElement>(null)
-  const txEndRef  = useRef<HTMLDivElement>(null)
+  const rawEndRef        = useRef<HTMLDivElement>(null)
+  const txEndRef         = useRef<HTMLDivElement>(null)
+  const sessionIdRef     = useRef<string | null>(null)
+  const sessionStartRef  = useRef<number>(0)
 
   const hasOpenAIKey = keyStatus.openai
   const hasAnyKey    = Object.values(keyStatus).some(Boolean)
   const isMac        = window.api.platform === 'darwin'
+
+  // ── Check Screen Recording permission ────────────────────────────────────────
+  const checkScreenPermission = useCallback(async () => {
+    if (!isMac) { setScreenPermission('granted'); return }
+    try {
+      const status = await window.api.checkScreenPermission()
+      setScreenPermission(status)
+    } catch {
+      setScreenPermission('unknown')
+    }
+  }, [isMac])
+
+  // Check permission when switching to system mode, and re-check when window regains focus
+  useEffect(() => {
+    if (audioMode === 'system') {
+      checkScreenPermission()
+    }
+  }, [audioMode, checkScreenPermission])
+
+  useEffect(() => {
+    if (audioMode !== 'system' || !isMac) return
+    const onFocus = () => checkScreenPermission()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [audioMode, isMac, checkScreenPermission])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: rawTranscript.length is the intentional trigger
   useEffect(() => { rawEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [rawTranscript.length])
@@ -359,6 +391,9 @@ export function LiveTranslatePage() {
     setMicError(null)
     setShowSummaryBtn(false)
     setSummary(null)
+    // Generate a new session ID for this recording session
+    sessionIdRef.current = `live-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    sessionStartRef.current = Date.now()
 
     try {
       const audioCtx = new AudioContext()
@@ -478,8 +513,27 @@ export function LiveTranslatePage() {
     audioCtxRef.current = null
     analyserRef.current = null
 
-    if (fullRawForSummaryRef.current.trim()) setShowSummaryBtn(true)
-  }, [])
+    const raw = fullRawForSummaryRef.current.trim()
+    if (raw) {
+      setShowSummaryBtn(true)
+      // Auto-save session to history
+      const wc = raw.replace(/· · ·/g, '').split(/\s+/).filter(Boolean).length
+      const { sourceLang, targetLang, selectedProvider, selectedModels } = paramsRef.current
+      if (sessionIdRef.current) {
+        addLiveSession({
+          id: sessionIdRef.current,
+          createdAt: sessionStartRef.current,
+          sourceLang,
+          targetLang,
+          provider: selectedProvider,
+          model: selectedModels[selectedProvider],
+          rawTranscript: raw,
+          translation: fullTxForSummaryRef.current.trim(),
+          wordCount: wc,
+        })
+      }
+    }
+  }, [addLiveSession])
 
   const handleClear = useCallback(() => {
     pendingBufferRef.current     = ''
@@ -529,10 +583,16 @@ export function LiveTranslatePage() {
         }],
       })
 
-      if (result.success && result.reply) setSummary(result.reply)
+      if (result.success && result.reply) {
+        setSummary(result.reply)
+        // Update the saved session with the summary
+        if (sessionIdRef.current) {
+          updateLiveSession(sessionIdRef.current, { summary: result.reply })
+        }
+      }
     } catch { /* ignore */ }
     finally { setIsSummarizing(false) }
-  }, [])
+  }, [updateLiveSession])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -668,8 +728,8 @@ export function LiveTranslatePage() {
         </Notice>
       )}
 
-      {/* System audio hint — shown when 'System' mode is selected & not yet recording */}
-      {audioMode === 'system' && !isActive && isMac && (
+      {/* System audio hint — shown when 'System' mode is selected & NOT yet granted permission */}
+      {audioMode === 'system' && !isActive && isMac && screenPermission !== 'granted' && (
         <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2
                         bg-blue-50 dark:bg-blue-950/20 border-b border-blue-100 dark:border-blue-900/40">
           <svg className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -847,9 +907,10 @@ export function LiveTranslatePage() {
                   {t.live_summarizing}
                 </div>
               ) : summary ? (
-                <p className="text-sm text-purple-800 dark:text-purple-200 leading-relaxed whitespace-pre-wrap">
-                  {summary}
-                </p>
+                <MarkdownText
+                  text={summary}
+                  className="text-purple-800 dark:text-purple-200"
+                />
               ) : null}
             </div>
           )}

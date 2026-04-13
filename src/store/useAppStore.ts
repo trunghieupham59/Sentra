@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { Provider, FetchedModel, HistoryItem, TranslationStyle, TtsVoice, ChatMessage, ChatSession, SystemPromptPreset } from '../types'
+import { Provider, FetchedModel, HistoryItem, LiveSession, TranslationStyle, TtsVoice, ChatMessage, ChatSession, SystemPromptPreset } from '../types'
 import { DEFAULT_SETTINGS } from '../constants/providers'
 import { AppLocale, TRANSLATIONS, Translations } from '../i18n'
 
@@ -47,6 +47,9 @@ interface AppState {
   // Translation history
   history: HistoryItem[]
 
+  // Live session history
+  liveSessions: LiveSession[]
+
   // Chat state
   chatSessions: ChatSession[]
   activeChatSessionId: string | null
@@ -86,6 +89,12 @@ interface AppState {
   addHistory: (item: HistoryItem) => void
   deleteHistoryItem: (id: string) => void
   clearHistory: () => void
+
+  // Live session actions
+  addLiveSession: (session: LiveSession) => void
+  updateLiveSession: (id: string, updates: Partial<LiveSession>) => void
+  deleteLiveSession: (id: string) => void
+  clearLiveSessions: () => void
 
   // Chat actions
   createChatSession: (provider: Provider, model: string) => string
@@ -132,6 +141,7 @@ export const useAppStore = create<AppState>()(
       localeAuto: true,
       activePage: 'translate',
       history: [],
+      liveSessions: [],
       chatSessions: [],
       activeChatSessionId: null,
       chatSystemPrompt: '',
@@ -207,6 +217,21 @@ export const useAppStore = create<AppState>()(
           history: state.history.filter((h) => h.id !== id),
         })),
       clearHistory: () => set({ history: [] }),
+
+      // Live session actions
+      addLiveSession: (session) =>
+        set((state) => ({
+          liveSessions: [session, ...state.liveSessions].slice(0, 50),
+        })),
+      updateLiveSession: (id, updates) =>
+        set((state) => ({
+          liveSessions: state.liveSessions.map((s) => s.id === id ? { ...s, ...updates } : s),
+        })),
+      deleteLiveSession: (id) =>
+        set((state) => ({
+          liveSessions: state.liveSessions.filter((s) => s.id !== id),
+        })),
+      clearLiveSessions: () => set({ liveSessions: [] }),
 
       // Chat actions
       createChatSession: (provider, model) => {
@@ -318,6 +343,7 @@ export const useAppStore = create<AppState>()(
         locale: state.locale,
         localeAuto: state.localeAuto,
         history: state.history,
+        liveSessions: state.liveSessions,
         chatSessions: state.chatSessions,
         chatSystemPrompt: state.chatSystemPrompt,
         systemPromptPresets: state.systemPromptPresets,

@@ -142,6 +142,16 @@ export interface Translations {
   history_chat_open: string
   history_chat_delete: string
 
+  // Live session history
+  history_tab_live: string
+  history_live_empty: string
+  history_live_empty_desc: string
+  history_live_delete: string
+  history_live_view: string
+  history_live_words: string
+  history_live_clear_all: string
+  history_live_clear_confirm: string
+
   // Live translate page
   nav_live_translate: string
   live_start: string
@@ -348,6 +358,14 @@ const en: Translations = {
   history_chat_messages: 'messages',
   history_chat_open: 'Open',
   history_chat_delete: 'Delete',
+  history_tab_live: 'Live Sessions',
+  history_live_empty: 'No live sessions yet',
+  history_live_empty_desc: 'Live translation sessions will be saved here when you stop a session.',
+  history_live_delete: 'Delete',
+  history_live_view: 'View',
+  history_live_words: 'words',
+  history_live_clear_all: 'Clear All',
+  history_live_clear_confirm: 'Clear all live sessions?',
   nav_live_translate: 'Live Translate',
   live_start: 'Start',
   live_stop: 'Stop',
@@ -549,6 +567,14 @@ const vi: Translations = {
   history_chat_messages: 'tin nhắn',
   history_chat_open: 'Mở',
   history_chat_delete: 'Xóa',
+  history_tab_live: 'Dịch trực tiếp',
+  history_live_empty: 'Chưa có buổi dịch nào',
+  history_live_empty_desc: 'Các buổi dịch trực tiếp sẽ được lưu lại ở đây sau khi bạn dừng.',
+  history_live_delete: 'Xóa',
+  history_live_view: 'Xem',
+  history_live_words: 'từ',
+  history_live_clear_all: 'Xóa tất cả',
+  history_live_clear_confirm: 'Xóa toàn bộ buổi dịch?',
   nav_live_translate: 'Dịch trực tiếp',
   live_start: 'Bắt đầu',
   live_stop: 'Dừng',
@@ -750,6 +776,14 @@ const ja: Translations = {
   history_chat_messages: 'メッセージ',
   history_chat_open: '開く',
   history_chat_delete: '削除',
+  history_tab_live: 'ライブセッション',
+  history_live_empty: 'ライブセッションがありません',
+  history_live_empty_desc: 'ライブ翻訳セッションを停止すると、ここに保存されます。',
+  history_live_delete: '削除',
+  history_live_view: '表示',
+  history_live_words: '語',
+  history_live_clear_all: 'すべて削除',
+  history_live_clear_confirm: 'すべてのライブセッションを削除しますか？',
   nav_live_translate: 'ライブ翻訳',
   live_start: '開始',
   live_stop: '停止',

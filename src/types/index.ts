@@ -165,6 +165,21 @@ export interface ChatResult {
   errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'NETWORK' | string
 }
 
+// ─── Live Session History ─────────────────────────────────────────────────────
+
+export interface LiveSession {
+  id: string
+  createdAt: number
+  sourceLang: string
+  targetLang: string
+  provider: string
+  model: string
+  rawTranscript: string
+  translation: string
+  summary?: string
+  wordCount: number
+}
+
 // ─── History ──────────────────────────────────────────────────────────────────
 
 export interface HistoryItem {
@@ -221,6 +236,7 @@ export interface WindowApi {
     }>
     systemPrompt?: string
   }) => Promise<ChatResult>
+  checkScreenPermission: () => Promise<string>
   openExternal: (url: string) => Promise<void>
   platform: string
   version: string
