@@ -56,6 +56,9 @@ export function Sidebar() {
     <aside className="flex flex-col items-center w-[60px] pt-2 pb-3 gap-1.5 flex-shrink-0
                       bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800">
 
+      {/* Spacer for macOS traffic light buttons (close/minimize/maximize) */}
+      <div className="h-8 flex-shrink-0" />
+
       {/* App icon */}
       <div className="mb-1 flex items-center justify-center w-10 h-10">
         <AppLogoIcon size={36} />
