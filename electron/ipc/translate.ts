@@ -172,6 +172,82 @@ async function verifyOpenAIKey(apiKey: string): Promise<void> {
   if (!completion.choices[0]) throw new Error('No response from OpenAI')
 }
 
+// ── Streaming translation — yields tokens via callback ────────────────────────
+/**
+ * Calls the AI provider with streaming enabled and invokes `onToken` for every
+ * generated token.  Returns the full accumulated text when done.
+ *
+ * Note: showFurigana / phoneticOnly are deliberately excluded from the live
+ * streaming path to keep latency minimal.
+ */
+export async function streamTranslation(
+  provider: string,
+  apiKey: string,
+  model: string,
+  sourceText: string,
+  sourceLang: string,
+  targetLang: string,
+  style: TranslationStyle = 'neutral',
+  onToken: (token: string) => void
+): Promise<string> {
+  const prompt = buildPrompt(sourceText, sourceLang, targetLang, false, style, false)
+  let fullText = ''
+
+  if (provider === 'openai') {
+    const OpenAI = (await import('openai')).default
+    const client = new OpenAI({ apiKey })
+    const stream = await client.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user',   content: prompt },
+      ],
+      stream: true,
+      max_completion_tokens: 4096,
+    })
+    for await (const chunk of stream) {
+      const token = chunk.choices[0]?.delta?.content ?? ''
+      if (token) { fullText += token; onToken(token) }
+    }
+
+  } else if (provider === 'gemini') {
+    const { GoogleGenerativeAI } = await import('@google/generative-ai')
+    const genAI = new GoogleGenerativeAI(apiKey)
+    const genModel = genAI.getGenerativeModel({ model, systemInstruction: SYSTEM_PROMPT })
+    const result = await genModel.generateContentStream(prompt)
+    for await (const chunk of result.stream) {
+      const token = chunk.text()
+      if (token) { fullText += token; onToken(token) }
+    }
+
+  } else if (provider === 'claude') {
+    const Anthropic = (await import('@anthropic-ai/sdk')).default
+    const client = new Anthropic({ apiKey })
+    const stream = client.messages.stream({
+      model,
+      max_tokens: 4096,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: prompt }],
+    })
+    for await (const event of stream) {
+      if (
+        event.type === 'content_block_delta' &&
+        event.delta.type === 'text_delta'
+      ) {
+        const token = event.delta.text
+        if (token) { fullText += token; onToken(token) }
+      }
+    }
+
+  } else {
+    // Unknown provider — fall back to batch translate and emit all at once
+    fullText = await translateWithOpenAI(apiKey, model, sourceText, sourceLang, targetLang, false, style, false)
+    onToken(fullText)
+  }
+
+  return fullText
+}
+
 export function registerTranslateHandlers(ipcMain: IpcMain) {
   // Verify API key by making a minimal test request
   ipcMain.handle('translate:verify', async (_event, provider: string, apiKey: string) => {

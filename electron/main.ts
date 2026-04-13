@@ -1,12 +1,13 @@
-import { app, BrowserWindow, ipcMain, shell, nativeTheme, nativeImage, desktopCapturer, systemPreferences } from 'electron'
+import { app, BrowserWindow, ipcMain, shell, nativeTheme, nativeImage, desktopCapturer, systemPreferences, screen } from 'electron'
 import path from 'path'
 import { registerKeychainHandlers } from './ipc/keychain'
 import { registerImageTranslateHandlers } from './ipc/imageTranslate'
 import { registerModelsHandlers } from './ipc/models'
 import { registerTranscribeHandlers } from './ipc/transcribe'
-import { registerTranslateHandlers } from './ipc/translate'
+import { registerTranslateHandlers, streamTranslation } from './ipc/translate'
 import { registerTtsHandlers } from './ipc/tts'
 import { registerChatHandlers } from './ipc/chat'
+import { getStoredApiKey } from './ipc/storage'
 
 // Allow audio autoplay after async operations (TTS API calls lose user-gesture context)
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
@@ -86,6 +87,148 @@ function createWindow() {
     mainWindow = null
   })
 }
+
+// ── Floating Subtitle Window ──────────────────────────────────────────────────
+let subtitleWindow: BrowserWindow | null = null
+
+function createSubtitleWindow() {
+  const { workAreaSize } = screen.getPrimaryDisplay()
+  const winW = 620
+  const winH = 100
+
+  subtitleWindow = new BrowserWindow({
+    width:  winW,
+    height: winH,
+    x: Math.round(workAreaSize.width  / 2 - winW / 2),
+    y: Math.round(workAreaSize.height - winH - 40),
+    frame:     false,
+    transparent: true,
+    alwaysOnTop: true,
+    hasShadow:   false,
+    skipTaskbar: true,
+    resizable:   false,
+    movable:     true,
+    webPreferences: {
+      preload: path.join(__dirname, 'subtitle-preload.js'),
+      contextIsolation: true,
+      nodeIntegration:  false,
+      sandbox: false,
+    },
+  })
+
+  // Float above all other app windows in the current workspace.
+  // We deliberately avoid setVisibleOnAllWorkspaces() because it triggers a
+  // macOS activation-policy side-effect that hides the app's dock icon.
+  // 'pop-up-menu' is high enough to overlay most app windows while keeping
+  // the main window's dock icon visible at all times.
+  subtitleWindow.setAlwaysOnTop(true, 'pop-up-menu')
+
+  if (isDev) {
+    subtitleWindow.loadURL('http://localhost:5173/subtitle.html')
+  } else {
+    subtitleWindow.loadFile(path.join(__dirname, '..', 'dist', 'subtitle.html'))
+  }
+
+  subtitleWindow.once('ready-to-show', () => subtitleWindow?.show())
+
+  subtitleWindow.on('closed', () => {
+    subtitleWindow = null
+    // Notify the main window so the toggle button goes back to off state
+    mainWindow?.webContents.send('subtitle:closed')
+  })
+}
+
+ipcMain.handle('subtitle:show', () => {
+  if (!subtitleWindow || subtitleWindow.isDestroyed()) {
+    createSubtitleWindow()
+  } else {
+    subtitleWindow.show()
+  }
+})
+
+ipcMain.handle('subtitle:hide', () => {
+  if (subtitleWindow && !subtitleWindow.isDestroyed()) {
+    subtitleWindow.close()
+    subtitleWindow = null
+  }
+})
+
+ipcMain.handle('subtitle:update', (_event, { text, isTranslating }: { text: string; isTranslating: boolean }) => {
+  if (subtitleWindow && !subtitleWindow.isDestroyed()) {
+    subtitleWindow.webContents.send('subtitle:text', { text, isTranslating })
+  }
+})
+
+ipcMain.handle('subtitle:setStyle', (_event, style: { textColor: string; fontSize: number; bgOpacity: number }) => {
+  if (subtitleWindow && !subtitleWindow.isDestroyed()) {
+    subtitleWindow.webContents.send('subtitle:style', style)
+    // Resize window height to comfortably fit text at the chosen font size
+    const winH = Math.max(90, Math.round(style.fontSize * 3.8 + 48))
+    const [w] = subtitleWindow.getSize()
+    subtitleWindow.setSize(w, winH)
+  }
+})
+
+// Fired when the ✕ button inside subtitle.html is clicked
+ipcMain.on('subtitle:close', () => {
+  if (subtitleWindow && !subtitleWindow.isDestroyed()) {
+    subtitleWindow.close()
+    subtitleWindow = null
+  }
+  mainWindow?.webContents.send('subtitle:closed')
+})
+
+// ── Streaming translation for subtitle window ─────────────────────────────────
+/**
+ * `translate:live-stream` — like `translate` but streams each AI token directly
+ * to the subtitle window in real-time so the user sees text appear as the AI
+ * generates it, rather than waiting for the full response.
+ *
+ * Protocol pushed to subtitleWindow:
+ *   subtitle:stream:start  — clears the current subtitle text
+ *   subtitle:stream:token  — appends one token string
+ *   subtitle:stream:end    — signals completion (hide cursor)
+ *
+ * Returns the complete translated text to the renderer (same shape as `translate`).
+ */
+ipcMain.handle('translate:live-stream', async (
+  _event,
+  params: {
+    provider: string; model: string
+    sourceText: string; sourceLang: string; targetLang: string
+    translationStyle?: string
+  }
+) => {
+  const { provider, model, sourceText, sourceLang, targetLang, translationStyle } = params
+
+  if (!sourceText.trim()) return { success: false, error: 'Source text is empty' }
+
+  const apiKey = await getStoredApiKey(provider)
+  if (!apiKey) return { success: false, error: `No API key for ${provider}`, errorCode: 'NO_API_KEY' }
+
+  const sendToSubtitle = (channel: string, payload?: unknown) => {
+    if (subtitleWindow && !subtitleWindow.isDestroyed()) {
+      subtitleWindow.webContents.send(channel, payload)
+    }
+  }
+
+  sendToSubtitle('subtitle:stream:start')
+
+  try {
+    const fullText = await streamTranslation(
+      provider, apiKey, model,
+      sourceText, sourceLang, targetLang,
+      (translationStyle as any) ?? 'neutral',
+      (token) => sendToSubtitle('subtitle:stream:token', token)
+    )
+    sendToSubtitle('subtitle:stream:end')
+    return { success: true, translatedText: fullText }
+  } catch (error: unknown) {
+    sendToSubtitle('subtitle:stream:end')
+    const msg = error instanceof Error ? error.message : String(error)
+    return { success: false, error: msg }
+  }
+})
 
 // ── Check Screen Recording permission (macOS) ─────────────────────────────────
 ipcMain.handle('app:checkScreenPermission', () => {

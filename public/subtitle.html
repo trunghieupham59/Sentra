@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lotus Subtitles</title>
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      background: transparent;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      user-select: none;
+      width: 100%; height: 100%;
+    }
+    .wrapper {
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.65);
+    }
+    /* ── Handle bar (draggable) ── */
+    .handle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 5px 12px;
+      background: rgba(0,0,0,0.80);
+      -webkit-app-region: drag;
+      cursor: grab;
+    }
+    .handle:active { cursor: grabbing; }
+    .grip  { color: rgba(255,255,255,0.28); font-size: 15px; line-height: 1; letter-spacing: 1px; }
+    .label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 2.5px; color: rgba(255,255,255,0.28); }
+    .close {
+      -webkit-app-region: no-drag;
+      background: none; border: none;
+      color: rgba(255,255,255,0.32); cursor: pointer;
+      font-size: 13px; width: 20px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 4px; padding: 0;
+      transition: color 0.15s, background 0.15s;
+    }
+    .close:hover { color: #fff; background: rgba(255,255,255,0.12); }
+
+    /* ── Content area ── */
+    .body {
+      padding: 10px 20px 13px;
+      min-height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-app-region: no-drag;
+      background: rgba(0,0,0,0.84);
+      transition: background 0.2s;
+    }
+    .text {
+      color: #fff;
+      font-size: 18px; font-weight: 600;
+      text-align: center; line-height: 1.45;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.95);
+      word-break: break-word;
+      display: none;
+      transition: color 0.2s, font-size 0.15s;
+    }
+    .placeholder { color: rgba(255,255,255,0.22); font-size: 13px; font-style: italic; text-align: center; }
+
+    /* Blinking I-beam cursor — shown while streaming */
+    .cursor {
+      display: inline-block;
+      width: 2px; height: 1.1em;
+      background: currentColor;
+      margin-left: 1px;
+      vertical-align: text-bottom;
+      border-radius: 1px;
+      animation: blink 0.55s step-end infinite;
+    }
+    @keyframes blink { 0%,100% { opacity: 0.8; } 50% { opacity: 0; } }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="handle">
+      <span class="grip">⠿⠿</span>
+      <span class="label">Subtitles · Lotus</span>
+      <button type="button" class="close" id="closeBtn" title="Đóng subtitles">✕</button>
+    </div>
+    <div class="body" id="body">
+      <span class="placeholder" id="ph">Chờ bản dịch…</span>
+      <span class="text" id="txt"></span>
+    </div>
+  </div>
+  <script>
+    const closeBtn = document.getElementById('closeBtn')
+    const ph       = document.getElementById('ph')
+    const txt      = document.getElementById('txt')
+    const body     = document.getElementById('body')
+
+    closeBtn.onclick = () => window.subtitleAPI.close()
+
+    // ── Shared state ──────────────────────────────────────────────────────────
+    let streamText = ''   // accumulated streaming text for this sentence
+
+    function showText(content, withCursor) {
+      txt.style.display = 'block'
+      ph.style.display  = 'none'
+      txt.innerHTML = escHtml(content) + (withCursor ? '<span class="cursor"></span>' : '')
+    }
+
+    function escHtml(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    }
+
+    // ── Streaming path (primary) ───────────────────────────────────────────────
+    window.subtitleAPI.onStreamStart(() => {
+      streamText = ''
+      txt.style.display = 'block'
+      ph.style.display  = 'none'
+      txt.innerHTML = '<span class="cursor"></span>'  // show cursor immediately
+    })
+
+    window.subtitleAPI.onStreamToken((token) => {
+      streamText += token
+      showText(streamText, true)  // append token + cursor
+    })
+
+    window.subtitleAPI.onStreamEnd(() => {
+      showText(streamText, false)  // final text, no cursor
+    })
+
+    // ── Non-streaming fallback (when subtitle is opened mid-session) ──────────
+    window.subtitleAPI.onText(({ text, isTranslating }) => {
+      if (text) {
+        streamText = text
+        showText(text, isTranslating)
+      } else {
+        txt.style.display = 'none'
+        txt.innerHTML     = ''
+        ph.style.display  = 'block'
+        ph.textContent    = isTranslating ? 'Đang dịch…' : 'Chờ bản dịch…'
+      }
+    })
+
+    // ── Style changes ─────────────────────────────────────────────────────────
+    window.subtitleAPI.onStyle(({ textColor, fontSize, bgOpacity }) => {
+      txt.style.color    = textColor
+      txt.style.fontSize = fontSize + 'px'
+      body.style.background = `rgba(0,0,0,${(bgOpacity / 100).toFixed(2)})`
+    })
+  </script>
+</body>
+</html>

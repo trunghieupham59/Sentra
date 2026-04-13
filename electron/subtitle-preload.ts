@@ -1,0 +1,31 @@
+import { contextBridge, ipcRenderer } from 'electron'
+
+// Minimal preload for the floating subtitle overlay window.
+// Exposes subtitleAPI to the subtitle.html page.
+contextBridge.exposeInMainWorld('subtitleAPI', {
+  /** Listen for full-text updates (non-streaming path) */
+  onText: (callback: (data: { text: string; isTranslating: boolean }) => void) => {
+    ipcRenderer.on('subtitle:text', (_event, data) => callback(data))
+  },
+  /** Listen for style/appearance changes */
+  onStyle: (callback: (style: { textColor: string; fontSize: number; bgOpacity: number }) => void) => {
+    ipcRenderer.on('subtitle:style', (_event, style) => callback(style))
+  },
+
+  // ── Streaming translation events ───────────────────────────────────────────
+  /** Fired when a new streaming translation begins — clear current text */
+  onStreamStart: (callback: () => void) => {
+    ipcRenderer.on('subtitle:stream:start', () => callback())
+  },
+  /** Fired for each token as the AI generates it — append to current text */
+  onStreamToken: (callback: (token: string) => void) => {
+    ipcRenderer.on('subtitle:stream:token', (_event, token: string) => callback(token))
+  },
+  /** Fired when the streaming is complete — hide cursor */
+  onStreamEnd: (callback: () => void) => {
+    ipcRenderer.on('subtitle:stream:end', () => callback())
+  },
+
+  /** Tell the main process the user clicked the ✕ close button */
+  close: () => ipcRenderer.send('subtitle:close'),
+})
