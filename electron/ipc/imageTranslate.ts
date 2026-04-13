@@ -1,6 +1,5 @@
 import { IpcMain } from 'electron'
-
-const KEYCHAIN_SERVICE = 'TranslateApp'
+import { getStoredApiKey } from './storage'
 
 /** Map language codes → human-readable English names for prompts */
 const LANG_NAMES: Record<string, string> = {
@@ -38,12 +37,7 @@ export interface TextRegion {
 }
 
 async function getApiKey(provider: string): Promise<string | null> {
-  try {
-    const keytar = await import('keytar')
-    return await keytar.default.getPassword(KEYCHAIN_SERVICE, provider)
-  } catch {
-    return null
-  }
+  return getStoredApiKey(provider)
 }
 
 function buildPrompt(sourceLang: string, targetLang: string): string {

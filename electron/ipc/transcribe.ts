@@ -1,14 +1,8 @@
 import type { IpcMain } from 'electron'
+import { getStoredApiKey } from './storage'
 
-const KEYCHAIN_SERVICE = 'TranslateApp'
-
-async function getApiKey(provider: string): Promise<string | null> {
-  try {
-    const keytar = await import('keytar')
-    return await keytar.default.getPassword(KEYCHAIN_SERVICE, provider)
-  } catch {
-    return null
-  }
+function getApiKey(provider: string): string | null {
+  return getStoredApiKey(provider)
 }
 
 interface TranscribeParams {

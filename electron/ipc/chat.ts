@@ -1,6 +1,5 @@
 import { IpcMain } from 'electron'
-
-const KEYCHAIN_SERVICE = 'TranslateApp'
+import { getStoredApiKey } from './storage'
 
 export interface ChatMessageContent {
   type: 'text' | 'image'
@@ -32,12 +31,7 @@ IMPORTANT: You MUST strictly follow the instructions above in every response. Do
 }
 
 async function getApiKey(provider: string): Promise<string | null> {
-  try {
-    const keytar = await import('keytar')
-    return await keytar.default.getPassword(KEYCHAIN_SERVICE, provider)
-  } catch {
-    return null
-  }
+  return getStoredApiKey(provider)
 }
 
 async function chatWithGemini(
