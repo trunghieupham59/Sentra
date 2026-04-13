@@ -55,12 +55,18 @@ function App() {
     checkKeys()
   }, [setKeyStatus])
 
+  const isMac = (window as any).api?.platform === 'darwin'
+
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
-      {/* Full-width macOS traffic light drag region — sits above everything */}
-      <div className="titlebar-drag flex-shrink-0 w-full bg-white dark:bg-gray-900" style={{ height: '40px' }} />
-      {/* Divider below traffic light buttons */}
-      <div className="flex-shrink-0 w-full border-b border-gray-200 dark:border-gray-700" />
+      {/* Full-width macOS traffic light drag region — only on macOS */}
+      {isMac && (
+        <>
+          <div className="titlebar-drag flex-shrink-0 w-full bg-white dark:bg-gray-900" style={{ height: '40px' }} />
+          {/* Divider below traffic light buttons */}
+          <div className="flex-shrink-0 w-full border-b border-gray-200 dark:border-gray-700" />
+        </>
+      )}
 
       {/* Body: sidebar + main content */}
       <div className="flex flex-1 overflow-hidden">
