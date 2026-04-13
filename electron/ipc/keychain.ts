@@ -1,5 +1,5 @@
 import { IpcMain } from 'electron'
-import { getStoredApiKey, setStoredApiKey, deleteStoredApiKey } from './storage'
+import { getStoredApiKey, setStoredApiKey, deleteStoredApiKey, hasStoredApiKey } from './storage'
 
 export function registerKeychainHandlers(ipcMain: IpcMain) {
   // Save API key to OS Keychain
@@ -41,11 +41,11 @@ export function registerKeychainHandlers(ipcMain: IpcMain) {
     }
   })
 
-  // Check if key exists (boolean only)
+  // Check if key exists (boolean only) — does NOT decrypt, avoids macOS Keychain prompt on startup
   ipcMain.handle('keychain:hasKey', async (_event, provider: string) => {
     try {
-      const key = getStoredApiKey(provider)
-      return { exists: !!key }
+      const exists = hasStoredApiKey(provider)
+      return { exists }
     } catch (error) {
       return { exists: false, error: String(error) }
     }

@@ -30,6 +30,20 @@ function saveEncryptedKeys(data: Record<string, string>): void {
   fs.writeFileSync(filePath, JSON.stringify(data), 'utf-8')
 }
 
+/**
+ * Check if an API key exists WITHOUT decrypting it.
+ * This avoids triggering the macOS Keychain password dialog on startup.
+ */
+export function hasStoredApiKey(provider: string): boolean {
+  try {
+    const encrypted = loadEncryptedKeys()
+    const key = `${KEYCHAIN_SERVICE}:${provider}`
+    return !!(encrypted[key] ?? encrypted[provider])
+  } catch {
+    return false
+  }
+}
+
 export function getStoredApiKey(provider: string): string | null {
   try {
     if (!safeStorage.isEncryptionAvailable()) return null
