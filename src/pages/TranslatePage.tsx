@@ -8,8 +8,6 @@ import { VoiceRecorder } from '../components/VoiceRecorder'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { HistoryItem, ImageTextRegion, TranslationStyle } from '../types'
 
-const MAX_CHARS = 5000
-
 // ─── Canvas helpers for image translation overlay ─────────────────────────────
 
 /** Split `text` into lines that fit within `maxWidth` pixels on the given ctx. */
@@ -113,7 +111,6 @@ export function TranslatePage() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasKey = keyStatus[selectedProvider]
   const charCount = sourceText.length
-  const isOverLimit = charCount > MAX_CHARS
   const [copied, setCopied] = useState(false)
   const [isRewriting, setIsRewriting] = useState<'source' | 'translated' | null>(null)
 
@@ -495,6 +492,43 @@ export function TranslatePage() {
     setTimeout(() => setCopied(false), 1500)
   }
 
+  // Scroll-sync refs — keeps both panels scrolled to the same relative position
+  const sourceScrollRef = useRef<HTMLTextAreaElement | null>(null)
+  const translatedScrollRef = useRef<HTMLDivElement | null>(null)
+  const isSyncingScrollRef = useRef(false)
+
+  useEffect(() => {
+    const source = sourceScrollRef.current
+    const translated = translatedScrollRef.current
+    if (!source || !translated) return
+
+    const syncFromSource = () => {
+      if (isSyncingScrollRef.current) return
+      isSyncingScrollRef.current = true
+      const maxSrc = source.scrollHeight - source.clientHeight
+      const ratio = maxSrc > 0 ? source.scrollTop / maxSrc : 0
+      translated.scrollTop = ratio * (translated.scrollHeight - translated.clientHeight)
+      requestAnimationFrame(() => { isSyncingScrollRef.current = false })
+    }
+
+    const syncFromTranslated = () => {
+      if (isSyncingScrollRef.current) return
+      isSyncingScrollRef.current = true
+      const maxSrc = translated.scrollHeight - translated.clientHeight
+      const ratio = maxSrc > 0 ? translated.scrollTop / maxSrc : 0
+      source.scrollTop = ratio * (source.scrollHeight - source.clientHeight)
+      requestAnimationFrame(() => { isSyncingScrollRef.current = false })
+    }
+
+    source.addEventListener('scroll', syncFromSource, { passive: true })
+    translated.addEventListener('scroll', syncFromTranslated, { passive: true })
+
+    return () => {
+      source.removeEventListener('scroll', syncFromSource)
+      translated.removeEventListener('scroll', syncFromTranslated)
+    }
+  }, [])
+
   // Rewrite: make text more natural in its own language without changing meaning
   const handleRewrite = useCallback(async (panel: 'source' | 'translated') => {
     if (isRewriting) return
@@ -511,6 +545,7 @@ export function TranslatePage() {
         model: selectedModels[selectedProvider],
         text,
         lang,
+        translationStyle,
       })
       if (result.success && result.translatedText) {
         if (panel === 'source') {
@@ -525,7 +560,7 @@ export function TranslatePage() {
     } finally {
       setIsRewriting(null)
     }
-  }, [isRewriting, hasKey, sourceText, translatedText, sourceLang, targetLang,
+  }, [isRewriting, hasKey, sourceText, translatedText, sourceLang, targetLang, translationStyle,
       selectedProvider, selectedModels, setSourceText, setTranslatedText, setPhoneticText, setTranslateError, t])
 
   return (
@@ -719,10 +754,13 @@ export function TranslatePage() {
           {/* Normal text input (hidden behind overlay when voice active) */}
           <div className="flex-1 flex flex-col p-4 min-h-0">
             <textarea
+              ref={sourceScrollRef}
               value={sourceText}
               onChange={(e) => {
                 const val = e.target.value
                 setSourceText(val)
+                // Stop audio playback when user edits the source text
+                stopSpeak()
                 // Clear translation output when source is empty
                 if (!val.trim()) {
                   setTranslatedText('')
@@ -752,7 +790,6 @@ export function TranslatePage() {
                 labelTranscribing={t.voice_transcribing}
                 labelRecording={t.voice_whisper_mode}
                 useWhisper={keyStatus.openai}
-                disabled={isOverLimit}
               />
 
               {/* Image translation button */}
@@ -773,8 +810,8 @@ export function TranslatePage() {
               </button>
 
               {!isVoiceActive && (
-                <span className={`text-xs tabular-nums ${isOverLimit ? 'text-red-500' : 'text-gray-400'}`}>
-                  {charCount.toLocaleString()}&thinsp;/&thinsp;{MAX_CHARS.toLocaleString()}
+                <span className="text-xs tabular-nums text-gray-400">
+                  {charCount.toLocaleString()}
                 </span>
               )}
             </div>
@@ -842,7 +879,7 @@ export function TranslatePage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setSourceText(''); setTranslatedText(''); setPhoneticText(''); setTranslateError(null) }}
+                  onClick={() => { stopSpeak(); setSourceText(''); setTranslatedText(''); setPhoneticText(''); setTranslateError(null) }}
                   className="btn-ghost py-1 px-2 text-xs"
                 >
                   {t.translate_clear}
@@ -854,7 +891,7 @@ export function TranslatePage() {
 
         {/* Result panel */}
         <div className="flex-1 basis-0 flex flex-col min-w-0 bg-gray-50 dark:bg-gray-900/50">
-          <div className="flex-1 p-4 overflow-auto relative">
+          <div ref={translatedScrollRef} className="flex-1 p-4 overflow-auto relative">
             {isTranslating ? (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="flex flex-col items-center gap-3">

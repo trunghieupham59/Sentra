@@ -18,6 +18,53 @@ interface TtsResult {
   errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | string
 }
 
+interface TtsCandidate {
+  provider: 'openai' | 'gemini'
+  /** Human-readable reason for selection */
+  reason: string
+}
+
+// ─── Provider ranking ─────────────────────────────────────────────────────────
+/**
+ * Returns an ordered list of TTS candidates to try, from best to worst.
+ *
+ * Selection criteria (in priority order):
+ *  1. Gemini Flash TTS  — fastest latency, lowest cost per character, excellent
+ *                         multilingual quality with the 2.5 Flash model.
+ *  2. OpenAI tts-1      — proven natural voices, reliable, moderate cost.
+ *                         tts-1-hd is intentionally skipped (slower + 2× costlier
+ *                         with negligible quality gain for typical translations).
+ *
+ * If only one key is present the sole available provider is returned.
+ * Both providers fall through to OS speech synthesis in the renderer if they fail.
+ */
+function rankTtsCandidates(
+  openaiKey: string | null,
+  geminiKey: string | null,
+): TtsCandidate[] {
+  const candidates: TtsCandidate[] = []
+
+  // ── Gemini Flash TTS: cheapest + fastest, great multilingual support ──────
+  // gemini-2.5-flash-preview-tts is optimised for low-latency, low-cost audio
+  // generation — ideal for translation output where speed and cost matter most.
+  if (geminiKey) {
+    candidates.push({
+      provider: 'gemini',
+      reason: 'gemini-2.5-flash-preview-tts — lowest cost, fast latency, strong multilingual',
+    })
+  }
+
+  // ── OpenAI tts-1: reliable fallback with natural English/multilingual voices ─
+  if (openaiKey) {
+    candidates.push({
+      provider: 'openai',
+      reason: 'tts-1 — reliable, natural voices, proven quality',
+    })
+  }
+
+  return candidates
+}
+
 // ─── OpenAI TTS ───────────────────────────────────────────────────────────────
 
 async function ttsWithOpenAI(
@@ -43,7 +90,7 @@ async function ttsWithOpenAI(
 // ─── Gemini TTS ───────────────────────────────────────────────────────────────
 
 async function ttsWithGemini(text: string, apiKey: string): Promise<TtsResult> {
-  // Use the Gemini TTS model via REST API (gemini-2.5-flash-preview-tts)
+  // gemini-2.5-flash-preview-tts: Flash tier = fast + cost-efficient
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`
 
   const body = {
@@ -93,52 +140,70 @@ export function registerTtsHandlers(ipcMain: IpcMain) {
     const { text, voice = 'nova' } = params
     console.log('[tts] Request: text length =', text.length, '| voice =', voice)
 
-    // ── 1. Try OpenAI TTS (best quality, natural voices) ──────────────────
     const openaiKey = getStoredApiKey('openai')
-    console.log('[tts] OpenAI key available:', !!openaiKey)
-    if (openaiKey) {
-      try {
-        return await ttsWithOpenAI(text, voice, openaiKey)
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
-        console.warn('[tts] OpenAI TTS failed, trying next provider:', msg)
+    const geminiKey = getStoredApiKey('gemini')
 
-        if (msg.includes('401') || msg.includes('invalid_api_key')) {
-          // Key is invalid — don't try fallback, surface the error
-          return { success: false, error: 'Invalid OpenAI API key.', errorCode: 'INVALID_KEY' }
-        }
-        if (msg.includes('429')) {
-          return { success: false, error: 'OpenAI rate limit exceeded.', errorCode: 'RATE_LIMIT' }
-        }
-        // Other errors → fall through to next provider
+    // ── Rank available providers and try them in order ────────────────────
+    const candidates = rankTtsCandidates(openaiKey, geminiKey)
+
+    if (candidates.length === 0) {
+      console.warn('[tts] No TTS provider available (no OpenAI or Gemini key)')
+      return {
+        success: false,
+        error: 'No API key found for any TTS provider (OpenAI or Gemini).',
+        errorCode: 'NO_API_KEY',
       }
     }
 
-    // ── 2. Try Gemini TTS (gemini-2.5-flash-preview-tts) ──────────────────
-    const geminiKey = getStoredApiKey('gemini')
-    if (geminiKey) {
+    console.log(
+      '[tts] Candidate order:',
+      candidates.map((c, i) => `${i + 1}. ${c.provider} — ${c.reason}`).join(' | '),
+    )
+
+    for (const candidate of candidates) {
+      console.log(`[tts] Trying ${candidate.provider} (${candidate.reason})`)
       try {
-        return await ttsWithGemini(text, geminiKey)
+        if (candidate.provider === 'gemini' && geminiKey) {
+          const result = await ttsWithGemini(text, geminiKey)
+          console.log('[tts] ✓ Gemini TTS succeeded')
+          return result
+        }
+
+        if (candidate.provider === 'openai' && openaiKey) {
+          const result = await ttsWithOpenAI(text, voice, openaiKey)
+          console.log('[tts] ✓ OpenAI TTS succeeded')
+          return result
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
-        console.warn('[tts] Gemini TTS failed:', msg)
+        console.warn(`[tts] ${candidate.provider} TTS failed:`, msg)
 
-        if (msg.includes('401') || msg.includes('403') || msg.includes('API_KEY_INVALID')) {
-          return { success: false, error: 'Invalid Gemini API key.', errorCode: 'INVALID_KEY' }
+        // Hard failures — don't try the next provider, surface immediately
+        if (msg.includes('401') || msg.includes('403') || msg.includes('invalid_api_key') || msg.includes('API_KEY_INVALID')) {
+          return {
+            success: false,
+            error: `Invalid ${candidate.provider === 'openai' ? 'OpenAI' : 'Gemini'} API key.`,
+            errorCode: 'INVALID_KEY',
+          }
         }
         if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED')) {
-          return { success: false, error: 'Gemini rate limit exceeded.', errorCode: 'RATE_LIMIT' }
+          return {
+            success: false,
+            error: `${candidate.provider === 'openai' ? 'OpenAI' : 'Gemini'} rate limit exceeded.`,
+            errorCode: 'RATE_LIMIT',
+          }
         }
-        // Fall through — no more providers to try
+
+        // Soft failure (network, temporary error) → try next candidate
+        console.warn(`[tts] Soft failure on ${candidate.provider}, falling through to next candidate`)
       }
     }
 
-    // ── 3. No provider available → return NO_API_KEY ─────────────────────
-    // Claude does not have a TTS API, so it is intentionally skipped.
+    // All candidates failed (soft failures only)
     return {
       success: false,
-      error: 'No API key found for any TTS provider (OpenAI or Gemini).',
-      errorCode: 'NO_API_KEY',
+      error: 'All TTS providers failed. Check your connection and try again.',
+      errorCode: 'NETWORK',
     }
   })
 }

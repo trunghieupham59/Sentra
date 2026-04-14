@@ -20,6 +20,7 @@ interface RewriteParams {
   model: string
   text: string
   lang: string
+  translationStyle?: TranslationStyle
 }
 
 async function getApiKey(provider: string): Promise<string | null> {
@@ -51,7 +52,7 @@ CRITICAL — Proper names and honorifics:
 - For Vietnamese relational address pronouns used as names or titles (Anh, Em, Chị, Cô, Chú, Bác, Ông, Bà): preserve or adapt them appropriately to fit the target language's cultural register.
 - Korean honorifics (씨, 님, 선생님 etc.) and Chinese honorifics (先生, 女士, 老师 etc.) should similarly be adapted appropriately.`
 
-const REWRITE_SYSTEM_PROMPT = `You are a native speaker and expert editor. Your task is to rewrite text to be more natural and fluent while strictly preserving its original meaning, intent, tone, and register.`
+const REWRITE_SYSTEM_PROMPT = `You are a native speaker and expert editor with deep cultural knowledge. Your task is to rewrite text so it sounds completely authentic and natural — exactly the way a confident, educated native speaker of that language would write or speak. You understand the subtle idioms, colloquialisms, cultural references, and speech patterns that distinguish native writing from translated or non-native text. While preserving the original meaning, intent, and register, you elevate the language so it feels genuine, fluent, and culturally resonant.`
 
 function buildPrompt(sourceText: string, sourceLang: string, targetLang: string, showFurigana = false, style: TranslationStyle = 'neutral', phoneticOnly = false): string {
   // phoneticOnly mode: add phonetic annotations to already-translated text without re-translating
@@ -85,14 +86,23 @@ function buildPrompt(sourceText: string, sourceLang: string, targetLang: string,
   return `Translate into ${targetLang}. Tone: ${tone}. Preserve meaning, intent, and nuance exactly. Use natural wording for a native speaker. Keep names, numbers, links, email addresses, code, and formatting unchanged unless localization is requested. Output only the translation.${phoneticInstruction}\n\n${sourceText}`
 }
 
-function buildRewritePrompt(text: string, lang: string): string {
-  return `Rewrite the following text to sound more natural and fluent in ${lang}. Requirements:
+function buildRewritePrompt(text: string, lang: string, style?: TranslationStyle): string {
+  const styleName = style ?? 'neutral'
+  const toneDesc = STYLE_TONE[styleName] ?? STYLE_TONE.neutral
+
+  return `Rewrite the following text so it sounds completely natural and authentic in ${lang} — as a native speaker with full cultural fluency would express it.
+
+Style to match: ${styleName} — ${toneDesc}
+
+Requirements:
+- Rewrite it so it sounds genuinely native: use natural idioms, culturally authentic expressions, and real speech patterns of ${lang}
+- Apply the style above precisely — not just vocabulary but sentence rhythm, formality level, and overall feel
 - Keep the EXACT same meaning, intent, nuance, emotional tone, and subject matter
-- Keep the same perspective (first/second/third person) and the same formality level
+- Keep the same perspective (first/second/third person)
 - Do NOT change the language (must stay in ${lang})
 - Do NOT add new information or remove important content
-- Fix awkward phrasing, unnatural word order, or non-idiomatic expressions
-- Make it sound like it was written by a confident, articulate native speaker of ${lang}
+- Eliminate any phrasing that feels translated, awkward, unnatural, or non-idiomatic
+- The result should be indistinguishable from something written by a confident, articulate native speaker of ${lang}
 
 Output ONLY the rewritten text. No explanations, no notes, no alternatives.
 
@@ -179,36 +189,36 @@ async function translateWithOpenAI(
 
 // ── Rewrite helpers — one per provider ───────────────────────────────────────
 
-async function rewriteWithGemini(apiKey: string, model: string, text: string, lang: string): Promise<string> {
+async function rewriteWithGemini(apiKey: string, model: string, text: string, lang: string, style?: TranslationStyle): Promise<string> {
   const { GoogleGenerativeAI } = await import('@google/generative-ai')
   const genAI = new GoogleGenerativeAI(apiKey)
   const genModel = genAI.getGenerativeModel({ model, systemInstruction: REWRITE_SYSTEM_PROMPT })
-  const result = await genModel.generateContent(buildRewritePrompt(text, lang))
+  const result = await genModel.generateContent(buildRewritePrompt(text, lang, style))
   return result.response.text().trim()
 }
 
-async function rewriteWithClaude(apiKey: string, model: string, text: string, lang: string): Promise<string> {
+async function rewriteWithClaude(apiKey: string, model: string, text: string, lang: string, style?: TranslationStyle): Promise<string> {
   const Anthropic = (await import('@anthropic-ai/sdk')).default
   const client = new Anthropic({ apiKey })
   const message = await client.messages.create({
     model,
     max_tokens: 4096,
     system: REWRITE_SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: buildRewritePrompt(text, lang) }],
+    messages: [{ role: 'user', content: buildRewritePrompt(text, lang, style) }],
   })
   const block = message.content[0]
   if (block.type === 'text') return block.text.trim()
   throw new Error('Unexpected response type from Claude')
 }
 
-async function rewriteWithOpenAI(apiKey: string, model: string, text: string, lang: string): Promise<string> {
+async function rewriteWithOpenAI(apiKey: string, model: string, text: string, lang: string, style?: TranslationStyle): Promise<string> {
   const OpenAI = (await import('openai')).default
   const client = new OpenAI({ apiKey })
   const completion = await client.chat.completions.create({
     model,
     messages: [
       { role: 'system', content: REWRITE_SYSTEM_PROMPT },
-      { role: 'user', content: buildRewritePrompt(text, lang) },
+      { role: 'user', content: buildRewritePrompt(text, lang, style) },
     ],
     max_completion_tokens: 4096,
   })
@@ -414,7 +424,7 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
 
   // Rewrite handler — make text more natural in its own language without changing meaning
   ipcMain.handle('translate:rewrite', async (_event, params: RewriteParams) => {
-    const { provider, model, text, lang } = params
+    const { provider, model, text, lang, translationStyle } = params
 
     if (!text.trim()) {
       return { success: false, error: 'Text is empty' }
@@ -434,13 +444,13 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
 
       switch (provider) {
         case 'gemini':
-          rewrittenText = await rewriteWithGemini(apiKey, model, text, lang)
+          rewrittenText = await rewriteWithGemini(apiKey, model, text, lang, translationStyle)
           break
         case 'claude':
-          rewrittenText = await rewriteWithClaude(apiKey, model, text, lang)
+          rewrittenText = await rewriteWithClaude(apiKey, model, text, lang, translationStyle)
           break
         case 'openai':
-          rewrittenText = await rewriteWithOpenAI(apiKey, model, text, lang)
+          rewrittenText = await rewriteWithOpenAI(apiKey, model, text, lang, translationStyle)
           break
         default:
           return { success: false, error: `Unknown provider: ${provider}` }

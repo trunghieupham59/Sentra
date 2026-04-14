@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('api', {
     model: string
     text: string
     lang: string
+    translationStyle?: string
   }) => ipcRenderer.invoke('translate:rewrite', params),
 
   // Audio transcription via OpenAI Whisper (avoids Google Speech API dependency)
