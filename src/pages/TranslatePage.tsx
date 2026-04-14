@@ -7,6 +7,7 @@ import { MarkdownEditor } from '../components/MarkdownEditor'
 import { MarkdownText } from '../components/MarkdownText'
 import { ModelSelector } from '../components/ModelSelector'
 import { VoiceRecorder } from '../components/VoiceRecorder'
+import { useTTS } from '../hooks/useTTS'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { ImageTextRegion, TranslationStyle } from '../types'
 
@@ -89,15 +90,6 @@ function renderTranslatedRegions(
   }
 }
 
-/** Map app language codes → BCP-47 tags understood by SpeechSynthesis */
-const LANG_TO_BCP47: Record<string, string> = {
-  vi: 'vi-VN', en: 'en-US', zh: 'zh-CN', 'zh-TW': 'zh-TW',
-  ja: 'ja-JP', ko: 'ko-KR', fr: 'fr-FR', de: 'de-DE',
-  es: 'es-ES', pt: 'pt-PT', ru: 'ru-RU', ar: 'ar-SA',
-  th: 'th-TH', id: 'id-ID', it: 'it-IT', nl: 'nl-NL',
-  pl: 'pl-PL', tr: 'tr-TR', hi: 'hi-IN',
-}
-
 export function TranslatePage() {
   const {
     sourceText, translatedText, phoneticText, sourceLang, targetLang,
@@ -115,146 +107,8 @@ export function TranslatePage() {
   const [copied, setCopied] = useState(false)
   const [isRewriting, setIsRewriting] = useState<'source' | 'translated' | null>(null)
 
-  // TTS (text-to-speech) state
-  const [speakingPanel, setSpeakingPanel] = useState<'source' | 'translated' | null>(null)
-  const [speakLoading, setSpeakLoading] = useState(false)
-  // Web Audio API refs (more robust than HTMLAudioElement for async-loaded audio)
-  const audioCtxRef = useRef<AudioContext | null>(null)
-  const audioSourceRef = useRef<AudioBufferSourceNode | null>(null)
-  const audioRef = useRef<HTMLAudioElement | null>(null) // for OS-speechSynthesis fallback cleanup
-  const voicesRef = useRef<SpeechSynthesisVoice[]>([])
-
-  // Load OS voices — they populate asynchronously on first access (used as fallback)
-  useEffect(() => {
-    if (!window.speechSynthesis) return
-    const load = () => { voicesRef.current = window.speechSynthesis.getVoices() }
-    load()
-    window.speechSynthesis.addEventListener('voiceschanged', load)
-    return () => window.speechSynthesis.removeEventListener('voiceschanged', load)
-  }, [])
-
-  // Stop all audio (AI or OS) and reset state
-  const stopSpeak = useCallback(() => {
-    try { audioSourceRef.current?.stop() } catch {}
-    try { audioSourceRef.current?.disconnect() } catch {}
-    audioSourceRef.current = null
-    audioRef.current?.pause()
-    audioRef.current = null
-    window.speechSynthesis?.cancel()
-    setSpeakingPanel(null)
-    setSpeakLoading(false)
-  }, [])
-
-  const handleSpeak = useCallback(async (text: string, lang: string, panel: 'source' | 'translated') => {
-    // ── ENTRY LOG — appears even if we return early ──
-    console.log('[tts] handleSpeak called! panel:', panel, '| speakingPanel:', speakingPanel, '| speakLoading:', speakLoading, '| textLen:', text?.length)
-    // Toggle off if already speaking this panel
-    if (speakingPanel === panel || speakLoading) {
-      console.log('[tts] returning early — already speaking or loading')
-      stopSpeak()
-      return
-    }
-    stopSpeak()
-    setSpeakingPanel(panel)
-
-    // ── Unlock / create AudioContext BEFORE the first await (still in user-gesture context) ──
-    try {
-      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
-        audioCtxRef.current = new AudioContext()
-      }
-      if (audioCtxRef.current.state === 'suspended') {
-        await audioCtxRef.current.resume()
-      }
-    } catch (ctxErr) {
-      console.warn('[tts] AudioContext init error:', ctxErr)
-    }
-
-    // ── Call backend TTS (OpenAI → Gemini fallback) ────────────────────────
-    try {
-      setSpeakLoading(true)
-      console.log('[tts] Calling speakText, panel:', panel, 'voice:', ttsVoice)
-      const result = await window.api.speakText({ text, voice: ttsVoice })
-      setSpeakLoading(false)
-      console.log('[tts] Result:', result.success, 'provider:', result.provider, 'mimeType:', result.mimeType, 'bytes:', result.audioBase64?.length ?? 0, 'error:', result.error)
-
-      if (result.success && result.audioBase64) {
-        const audioCtx = audioCtxRef.current
-        if (!audioCtx || audioCtx.state === 'closed') {
-          console.error('[tts] AudioContext unavailable')
-          setSpeakingPanel(null)
-          return
-        }
-
-        // Decode base64 → ArrayBuffer
-        const binaryStr = atob(result.audioBase64)
-        const bytes = new Uint8Array(binaryStr.length)
-        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i)
-        console.log('[tts] Decoded bytes:', bytes.length, 'mimeType:', result.mimeType)
-
-        let audioBuffer: AudioBuffer
-        try {
-          // decodeAudioData supports MP3, WAV, OGG, AAC, FLAC
-          audioBuffer = await audioCtx.decodeAudioData(bytes.buffer.slice(0))
-        } catch (decodeErr) {
-          console.error('[tts] decodeAudioData failed:', decodeErr)
-          // Gemini may return raw PCM (audio/pcm;rate=24000) — decode manually
-          if (result.mimeType?.includes('pcm') || result.mimeType?.includes('l16')) {
-            const rateMatch = result.mimeType.match(/rate=(\d+)/)
-            const sampleRate = rateMatch ? Number.parseInt(rateMatch[1], 10) : 24000
-            const numSamples = bytes.length / 2
-            audioBuffer = audioCtx.createBuffer(1, numSamples, sampleRate)
-            const channel = audioBuffer.getChannelData(0)
-            const view = new DataView(bytes.buffer)
-            for (let i = 0; i < numSamples; i++) {
-              channel[i] = view.getInt16(i * 2, true) / 32768
-            }
-            console.log('[tts] PCM decoded manually, samples:', numSamples, 'sampleRate:', sampleRate)
-          } else {
-            setSpeakingPanel(null)
-            return
-          }
-        }
-
-        const source = audioCtx.createBufferSource()
-        source.buffer = audioBuffer
-        // Slightly slower for better comprehension (0.9 = 10% slower than default 1.0)
-        source.playbackRate.value = 0.9
-        source.connect(audioCtx.destination)
-        source.onended = () => { audioSourceRef.current = null; setSpeakingPanel(null) }
-        audioSourceRef.current = source
-        source.start(0)
-        console.log('[tts] Audio started playing via Web Audio API, playbackRate:', source.playbackRate.value)
-        return
-      }
-
-      // result.success is false → fall through to OS TTS
-      console.warn('[tts] Backend TTS failed:', result.error, '| code:', result.errorCode)
-    } catch (err) {
-      setSpeakLoading(false)
-      console.error('[tts] speakText IPC exception:', err)
-      // Fall through to OS TTS below
-    }
-
-    // ── Fallback: OS speech synthesis ─────────────────────────────────────
-    if (!window.speechSynthesis) { setSpeakingPanel(null); return }
-    const utter = new SpeechSynthesisUtterance(text)
-    const bcp47 = LANG_TO_BCP47[lang]
-    if (bcp47) {
-      utter.lang = bcp47
-      const all = voicesRef.current.length ? voicesRef.current : window.speechSynthesis.getVoices()
-      const local = all.filter(v => v.localService)
-      const prefix = bcp47.split('-')[0]
-      const best =
-        local.find(v => v.lang === bcp47) ??
-        all.find(v => v.lang === bcp47) ??
-        local.find(v => v.lang.startsWith(prefix)) ??
-        all.find(v => v.lang.startsWith(prefix))
-      if (best) utter.voice = best
-    }
-    utter.onend = () => setSpeakingPanel(null)
-    utter.onerror = () => setSpeakingPanel(null)
-    window.speechSynthesis.speak(utter)
-  }, [speakingPanel, speakLoading, ttsVoice, stopSpeak])
+  // TTS — delegated to useTTS hook (Web Audio API + OS synthesis fallback, no console.log)
+  const { speakingPanel, speakLoading, handleSpeak, stopSpeak } = useTTS({ ttsVoice })
 
   // Image attachment state (set when user uploads an image via the popup)
   const [imageAttachment, setImageAttachment] = useState<ImageAttachment | null>(null)

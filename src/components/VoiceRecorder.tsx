@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { LANG_TO_BCP47, getSupportedAudioMimeType } from '../constants/audio'
 
 // ─── Local type definitions for cross-browser Speech Recognition ──────────────
 interface SpeechRecResult {
@@ -32,33 +33,11 @@ interface SpeechRec {
   stop: () => void
 }
 
-// ─── Language code maps ───────────────────────────────────────────────────────
-const LANG_TO_BCP47: Record<string, string> = {
-  auto: 'en-US', vi: 'vi-VN', en: 'en-US', zh: 'zh-CN', 'zh-TW': 'zh-TW',
-  ja: 'ja-JP', ko: 'ko-KR', fr: 'fr-FR', de: 'de-DE', es: 'es-ES',
-  pt: 'pt-PT', ru: 'ru-RU', ar: 'ar-SA', th: 'th-TH', id: 'id-ID',
-  it: 'it-IT', nl: 'nl-NL', pl: 'pl-PL', tr: 'tr-TR', hi: 'hi-IN',
-}
-
 function getSpeechRecognitionAPI(): (new () => SpeechRec) | null {
   if (typeof window === 'undefined') return null
   // biome-ignore lint/suspicious/noExplicitAny: cross-browser API
   const w = window as any
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
-}
-
-function getSupportedMimeType(): string {
-  const types = [
-    'audio/webm;codecs=opus',
-    'audio/webm',
-    'audio/ogg;codecs=opus',
-    'audio/ogg',
-    'audio/mp4',
-  ]
-  for (const t of types) {
-    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(t)) return t
-  }
-  return 'audio/webm'
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -139,7 +118,7 @@ export function VoiceRecorder({
       return
     }
 
-    const mimeType = getSupportedMimeType()
+    const mimeType = getSupportedAudioMimeType()
     let recorder: MediaRecorder
     try {
       recorder = new MediaRecorder(stream, { mimeType })

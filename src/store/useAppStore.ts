@@ -161,11 +161,10 @@ export const useAppStore = create<AppState>()(
 
       swapLanguages: () =>
         set((state) => {
-          // When source is 'auto', use targetLang as the new source and fall back to 'ja' for target
-          const newSourceLang = state.sourceLang === 'auto' ? state.targetLang : state.targetLang
+          // When source is 'auto', we can't meaningfully swap back — fall back to 'ja'
           const newTargetLang = state.sourceLang === 'auto' ? 'ja' : state.sourceLang
           return {
-            sourceLang: newSourceLang,
+            sourceLang: state.targetLang,
             targetLang: newTargetLang,
             sourceText: state.translatedText,
             translatedText: state.sourceText,

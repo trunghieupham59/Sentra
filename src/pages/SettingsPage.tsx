@@ -1,10 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiKeyInput } from '../components/ApiKeyInput'
 import { AppLogoIcon } from '../components/AppLogo'
+import { ToggleSwitch } from '../components/ui/ToggleSwitch'
 import { PROVIDERS } from '../constants/providers'
 import { type AppLocale, LOCALE_NAMES } from '../i18n'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { Provider, SystemPromptPreset, TtsVoice } from '../types'
+
+// ─── Module-level types ───────────────────────────────────────────────────────
+type ExtTokenInfo = { id: string; name: string; createdAt: number; expiresAt: number }
+type UpdaterStatusType = {
+  type: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'
+  version?: string
+  percent?: number
+  error?: string
+}
 
 const SUPPORTED_LOCALES: AppLocale[] = ['en', 'vi', 'ja']
 function detectSystemLocale(): AppLocale {
@@ -24,6 +34,8 @@ export function SettingsPage() {
     systemPromptPresets, addSystemPromptPreset, updateSystemPromptPreset,
     deleteSystemPromptPreset, setDefaultSystemPromptPreset,
     setChatSystemPrompt,
+    // ── Hotkey / Browser integration ──
+    selectedProvider, selectedModels, targetLang,
   } = useAppStore()
   const t = useT()
 
@@ -126,8 +138,6 @@ export function SettingsPage() {
   const [hotkeyStatusMsg, setHotkeyStatusMsg] = useState('')
   const hotkeyInputRef = useRef<HTMLButtonElement>(null)
 
-  // Get provider/model/targetLang from global store (màn hình dịch với AI)
-  const { selectedProvider, selectedModels, targetLang } = useAppStore()
   const hotkeyProvider = selectedProvider
   const hotkeyModel = selectedModels[selectedProvider]
   const hotkeyTargetLang = targetLang
@@ -231,8 +241,6 @@ export function SettingsPage() {
   }
 
   // ── Extension token state (multi-token) ───────────────────────────────────
-  type ExtTokenInfo = { id: string; name: string; createdAt: number; expiresAt: number }
-
   const [extPort, setExtPort] = useState(39875)
   const [extTokens, setExtTokens] = useState<ExtTokenInfo[]>([])
   const [extTokensLoading, setExtTokensLoading] = useState(false)
@@ -402,13 +410,6 @@ export function SettingsPage() {
   }
 
   // ── Updater state ──────────────────────────────────────────────────────────
-  type UpdaterStatusType = {
-    type: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'
-    version?: string
-    percent?: number
-    error?: string
-  }
-
   const [updaterStatus, setUpdaterStatus] = useState<UpdaterStatusType>({ type: 'idle' })
   const [appVersion, setAppVersion] = useState('')
 
@@ -491,18 +492,11 @@ export function SettingsPage() {
                 <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_locale_auto}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_locale_auto_desc}</p>
               </div>
-              <button
-                type="button"
-                onClick={handleToggleLocaleAuto}
+              <ToggleSwitch
+                checked={localeAuto}
+                onChange={handleToggleLocaleAuto}
                 aria-label={t.settings_locale_auto}
-                className={`relative inline-flex items-center w-9 h-5 rounded-full transition-colors duration-200 ${
-                  localeAuto ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
-                }`}
-              >
-                <span className={`absolute w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
-                  localeAuto ? 'translate-x-[18px]' : 'translate-x-0.5'
-                }`} />
-              </button>
+              />
             </div>
 
             {/* App Language selector */}
@@ -564,18 +558,11 @@ export function SettingsPage() {
                 <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_furigana}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_furigana_desc}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowFurigana(!showFurigana)}
+              <ToggleSwitch
+                checked={showFurigana}
+                onChange={setShowFurigana}
                 aria-label={t.settings_furigana}
-                className={`flex-shrink-0 relative inline-flex items-center w-9 h-5 rounded-full transition-colors duration-200 ${
-                  showFurigana ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
-                }`}
-              >
-                <span className={`absolute w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
-                  showFurigana ? 'translate-x-[18px]' : 'translate-x-0.5'
-                }`} />
-              </button>
+              />
             </div>
 
             {/* Auto / Manual translation mode toggle */}
@@ -590,18 +577,12 @@ export function SettingsPage() {
                     : 'Nhấn nút Dịch để thực hiện dịch. Bật để dịch tự động khi nhập.'}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setAutoTranslate(!autoTranslate)}
+              <ToggleSwitch
+                checked={autoTranslate}
+                onChange={setAutoTranslate}
                 aria-label="Auto translate toggle"
-                className={`flex-shrink-0 relative inline-flex items-center w-9 h-5 rounded-full transition-colors duration-200 ${
-                  autoTranslate ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
-                }`}
-              >
-                <span className={`absolute w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
-                  autoTranslate ? 'translate-x-[18px]' : 'translate-x-0.5'
-                }`} />
-              </button>
+                color="green"
+              />
             </div>
 
             {/* Delay slider (only for auto) */}
@@ -714,21 +695,14 @@ export function SettingsPage() {
                 <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_hotkey_enabled}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_hotkey_enabled_desc}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const next = !hotkeyEnabled
+              <ToggleSwitch
+                checked={hotkeyEnabled}
+                onChange={(next) => {
                   setHotkeyEnabled(next)
                   saveHotkeySettings({ enabled: next })
                 }}
-                className={`flex-shrink-0 relative inline-flex items-center w-9 h-5 rounded-full transition-colors duration-200 ${
-                  hotkeyEnabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
-                }`}
-              >
-                <span className={`absolute w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
-                  hotkeyEnabled ? 'translate-x-[18px]' : 'translate-x-0.5'
-                }`} />
-              </button>
+                color="green"
+              />
             </div>
 
             {/* Shortcut recorder */}
@@ -831,17 +805,11 @@ export function SettingsPage() {
                   >
                     {t.settings_la_inject_now}
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleLaToggle}
-                    className={`flex-shrink-0 relative inline-flex items-center w-9 h-5 rounded-full transition-colors duration-200 ${
-                      laEnabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
-                    }`}
-                  >
-                    <span className={`absolute w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
-                      laEnabled ? 'translate-x-[18px]' : 'translate-x-0.5'
-                    }`} />
-                  </button>
+                  <ToggleSwitch
+                    checked={laEnabled}
+                    onChange={() => handleLaToggle()}
+                    color="green"
+                  />
                 </div>
               </div>
             ) : (

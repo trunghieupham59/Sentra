@@ -436,11 +436,6 @@ export function ChatPage() {
   const handleNewChat = () => {
     const id = createChatSession(selectedProvider, selectedModels[selectedProvider])
     setActiveChatSession(id)
-    // Trim old sessions
-    const sessions = useAppStore.getState().chatSessions
-    if (sessions.length > MAX_CHAT_SESSIONS) {
-      // handled by store — no-op here
-    }
   }
 
   const handleClear = () => {
@@ -645,22 +640,23 @@ export function ChatPage() {
         ) : (
           /* Messages list — scrollable with proper spacing */
           <div className="px-4 py-4 space-y-4">
-            {messages.map((msg, idx) => {
-              const isLastAssistant =
-                msg.role === 'assistant' &&
-                idx === messages.map((m) => m.role).lastIndexOf('assistant')
-              return (
+            {/* Calculate lastAssistantIdx once — avoid O(n²) per-render .map().lastIndexOf() */}
+            {(() => {
+              const lastAssistantIdx = messages.reduce(
+                (acc, m, i) => (m.role === 'assistant' ? i : acc), -1
+              )
+              return messages.map((msg, idx) => (
                 <MessageBubble
                   key={msg.id}
                   message={msg}
                   onCopy={handleCopy}
-                  onRegenerate={isLastAssistant ? handleRegenerate : undefined}
-                  isLastAssistant={isLastAssistant}
+                  onRegenerate={idx === lastAssistantIdx ? handleRegenerate : undefined}
+                  isLastAssistant={idx === lastAssistantIdx}
                   isSending={isSending}
                   regenerateLabel={t.chat_regenerate}
                 />
-              )
-            })}
+              ))
+            })()}
             <div ref={messagesEndRef} />
           </div>
         )}
