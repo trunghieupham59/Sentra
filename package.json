@@ -1,6 +1,6 @@
 {
   "name": "lotus-app",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "Lotus - Local AI Translation - macOS & Windows",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -11,6 +11,10 @@
     "build:mac": "npm run build && electron-builder --mac",
     "build:win": "npm run build && electron-builder --win",
     "build:linux": "npm run build && electron-builder --linux",
+    "dist:mac": "npm run build && electron-builder --mac dmg --arm64 --x64",
+    "dist:win": "npm run build && electron-builder --win nsis --x64",
+    "release:mac": "npm run build && electron-builder --mac dmg --arm64 --x64 --publish always",
+    "release:win": "npm run build && electron-builder --win nsis --x64 --publish always",
     "postinstall": "electron-builder install-app-deps || true",
     "preview": "vite preview"
   },
@@ -91,6 +95,11 @@
       ],
       "category": "Utility"
     },
+    "publish": [
+      {
+        "provider": "github"
+      }
+    ],
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
