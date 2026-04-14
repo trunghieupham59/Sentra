@@ -335,6 +335,7 @@ export const useAppStore = create<AppState>()(
         targetLang: state.targetLang,
         selectedProvider: state.selectedProvider,
         selectedModels: state.selectedModels,
+        autoTranslate: state.autoTranslate,
         autoTranslateDelay: state.autoTranslateDelay,
         showFurigana: state.showFurigana,
         translationStyle: state.translationStyle,

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { FuriganaText } from '../components/FuriganaText'
 import { ImageTranslator } from '../components/ImageTranslator'
+import { MarkdownEditor } from '../components/MarkdownEditor'
+import { MarkdownText } from '../components/MarkdownText'
 import type { ImageAttachment } from '../components/ImageTranslator'
 import { LanguageSelector } from '../components/LanguageSelector'
 import { ModelSelector } from '../components/ModelSelector'
@@ -39,8 +41,7 @@ function canvasWrapText(
 /**
  * Draw translated-text overlays onto a canvas that already has the source image drawn.
  * Each region rectangle is filled with a fully-opaque background, then the translated
- * text is rendered with automatic multi-line wrapping.
- */
+ * text is rendered with automatic multi-line wrapping. */
 function renderTranslatedRegions(
   ctx: CanvasRenderingContext2D,
   regions: ImageTextRegion[],
@@ -104,7 +105,7 @@ export function TranslatePage() {
     selectedProvider, selectedModels, autoTranslate, autoTranslateDelay, keyStatus, showFurigana, translationStyle,
     ttsVoice,
     setSourceText, setTranslatedText, setPhoneticText, setTargetLang,
-    setIsTranslating, setTranslateError, setActivePage, setShowFurigana, setTranslationStyle, addHistory,
+    setIsTranslating, setTranslateError, setActivePage, setShowFurigana, setTranslationStyle, setAutoTranslate, addHistory,
   } = useAppStore()
   const t = useT()
 
@@ -426,8 +427,10 @@ export function TranslatePage() {
   const modelInitRef = useRef(false)
   const handleTranslateRef = useRef(handleTranslate)
   const sourceTextRef = useRef(sourceText)
+  const autoTranslateRef = useRef(autoTranslate)
   handleTranslateRef.current = handleTranslate
   sourceTextRef.current = sourceText
+  autoTranslateRef.current = autoTranslate
 
   useLayoutEffect(() => {
     styleInitRef.current = false
@@ -435,26 +438,29 @@ export function TranslatePage() {
     modelInitRef.current = false
   }, [])
 
-  // Re-translate when style changes (skip first render)
+  // Re-translate when style changes (skip first render, skip manual mode)
   // biome-ignore lint/correctness/useExhaustiveDependencies: translationStyle is the intentional trigger; handleTranslate is accessed via a stable ref
   useEffect(() => {
     if (!styleInitRef.current) { styleInitRef.current = true; return }
+    if (!autoTranslateRef.current) return
     handleTranslateRef.current()
   }, [translationStyle])
 
-  // Re-translate when target or source language changes (skip first render)
+  // Re-translate when target or source language changes (skip first render, skip manual mode)
   // Also fires when image is attached — imageAttachmentRef accessed via stable ref
   // biome-ignore lint/correctness/useExhaustiveDependencies: lang changes are the triggers; sourceText/imageAttachment/handleTranslate accessed via stable refs
   useEffect(() => {
     if (!langInitRef.current) { langInitRef.current = true; return }
+    if (!autoTranslateRef.current) return
     if (!sourceTextRef.current.trim() && !imageAttachmentRef.current) return
     handleTranslateRef.current()
   }, [targetLang, sourceLang])
 
-  // Re-translate when provider or model changes (skip first render)
+  // Re-translate when provider or model changes (skip first render, skip manual mode)
   // biome-ignore lint/correctness/useExhaustiveDependencies: provider/model changes are the triggers; handleTranslate via stable ref
   useEffect(() => {
     if (!modelInitRef.current) { modelInitRef.current = true; return }
+    if (!autoTranslateRef.current) return
     if (!sourceTextRef.current.trim() && !imageAttachmentRef.current) return
     handleTranslateRef.current()
   }, [selectedProvider, selectedModels[selectedProvider]])
@@ -493,7 +499,7 @@ export function TranslatePage() {
   }
 
   // Scroll-sync refs — keeps both panels scrolled to the same relative position
-  const sourceScrollRef = useRef<HTMLTextAreaElement | null>(null)
+  const sourceScrollRef = useRef<HTMLDivElement | null>(null)
   const translatedScrollRef = useRef<HTMLDivElement | null>(null)
   const isSyncingScrollRef = useRef(false)
 
@@ -604,6 +610,27 @@ export function TranslatePage() {
               </div>
             </div>
           </div>
+
+          {/* Auto / Manual translation mode toggle — fixed width to prevent layout shift */}
+          <button
+            type="button"
+            onClick={() => setAutoTranslate(!autoTranslate)}
+            title={autoTranslate ? 'Tự động dịch — click để chuyển sang thủ công' : 'Dịch thủ công — click để chuyển sang tự động'}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium
+                        border transition-all duration-200 select-none cursor-pointer
+                        w-[88px] justify-start
+                        ${autoTranslate
+                          ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100 dark:bg-green-950 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900'
+                          : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700'
+                        }`}
+          >
+            <span className={`relative inline-flex shrink-0 items-center w-7 h-4 rounded-full transition-colors duration-200
+                              ${autoTranslate ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
+              <span className={`absolute w-3 h-3 bg-white rounded-full shadow transition-transform duration-200
+                                ${autoTranslate ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+            </span>
+            <span>{autoTranslate ? 'Auto' : 'Manual'}</span>
+          </button>
 
           {/* Phonetic reading toggle */}
           <button
@@ -751,35 +778,61 @@ export function TranslatePage() {
             </div>
           )}
 
-          {/* Normal text input (hidden behind overlay when voice active) */}
-          <div className="flex-1 flex flex-col p-4 min-h-0">
-            <textarea
-              ref={sourceScrollRef}
+          {/* ── Typora-like markdown editor (line being edited = raw, others = rendered) ── */}
+          <div
+            ref={sourceScrollRef}
+            className="flex-1 overflow-auto p-4 min-h-0"
+          >
+            <MarkdownEditor
               value={sourceText}
-              onChange={(e) => {
-                const val = e.target.value
+              onChange={(val) => {
                 setSourceText(val)
-                // Stop audio playback when user edits the source text
                 stopSpeak()
-                // Clear translation output when source is empty
                 if (!val.trim()) {
                   setTranslatedText('')
                   setPhoneticText('')
                 }
-                // If user types while voice is active, reset prefix
                 if (isVoiceActive) voicePrefixRef.current = ''
               }}
               placeholder={t.translate_placeholder}
-              className={[
-                'textarea-field transition-colors duration-150 flex-1 overflow-auto',
-                isVoiceInterim ? 'text-gray-400 dark:text-gray-500 italic' : '',
-              ].join(' ')}
+              className={`min-h-full ${isVoiceInterim ? 'opacity-50 italic' : ''}`}
             />
           </div>
 
           <div className="flex-shrink-0 flex items-center justify-between px-4 h-12
                           border-t border-gray-100 dark:border-gray-800 relative z-20 bg-white dark:bg-gray-900">
             <div className="flex items-center gap-2">
+              {/* Manual translate button — in source panel bottom bar when in manual mode */}
+              {!autoTranslate && (
+                <button
+                  type="button"
+                  onClick={handleTranslate}
+                  disabled={isTranslating || (!sourceText.trim() && !imageAttachment)}
+                  className={[
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold',
+                    'bg-blue-600 text-white shadow-sm transition-all duration-200 cursor-pointer select-none',
+                    'hover:bg-blue-700 active:scale-95',
+                    'disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100',
+                  ].join(' ')}
+                >
+                  {isTranslating ? (
+                    <>
+                      <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                        <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      <span>{t.translate_btn_loading}</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                      <span>{t.translate_btn ?? 'Dịch'}</span>
+                    </>
+                  )}
+                </button>
+              )}
               {/* Voice recorder — shows its own inline status labels */}
               <VoiceRecorder
                 sourceLang={sourceLang}
@@ -943,10 +996,9 @@ export function TranslatePage() {
                 className="max-w-full rounded-lg fade-in"
               />
             ) : translatedText ? (
-              <FuriganaText
-                text={showFurigana && phoneticText ? phoneticText : translatedText}
-                className="textarea-field fade-in"
-              />
+              showFurigana && phoneticText
+                ? <FuriganaText text={phoneticText} className="textarea-field fade-in" />
+                : <MarkdownText text={translatedText} className="textarea-field fade-in" />
             ) : (
               <p className="text-[15px] text-gray-300 dark:text-gray-700 leading-relaxed select-none">
                 {t.translate_result_placeholder}

@@ -14,7 +14,7 @@ function detectSystemLocale(): AppLocale {
 
 export function SettingsPage() {
   const {
-    setKeyStatus, autoTranslate, autoTranslateDelay,
+    setKeyStatus, autoTranslate, setAutoTranslate, autoTranslateDelay,
     setAutoTranslateDelay,
     showFurigana, setShowFurigana,
     locale, localeAuto, setLocale, setLocaleAuto, setLocaleFromSystem,
@@ -255,6 +255,32 @@ export function SettingsPage() {
               >
                 <span className={`absolute w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
                   showFurigana ? 'translate-x-[18px]' : 'translate-x-0.5'
+                }`} />
+              </button>
+            </div>
+
+            {/* Auto / Manual translation mode toggle */}
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                  {autoTranslate ? 'Tự động dịch (Auto)' : 'Dịch thủ công (Manual)'}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  {autoTranslate
+                    ? 'Tự động dịch khi bạn nhập. Tắt để dịch thủ công bằng nút Dịch.'
+                    : 'Nhấn nút Dịch để thực hiện dịch. Bật để dịch tự động khi nhập.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAutoTranslate(!autoTranslate)}
+                aria-label="Auto translate toggle"
+                className={`flex-shrink-0 relative inline-flex items-center w-9 h-5 rounded-full transition-colors duration-200 ${
+                  autoTranslate ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+                }`}
+              >
+                <span className={`absolute w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
+                  autoTranslate ? 'translate-x-[18px]' : 'translate-x-0.5'
                 }`} />
               </button>
             </div>
