@@ -2,6 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiKeyInput } from '../components/ApiKeyInput'
 import { AppLogoIcon } from '../components/AppLogo'
 import { ToggleSwitch } from '../components/ui/ToggleSwitch'
+import {
+  CheckIcon, ChevronDownIcon, CopyIcon, DownloadIcon, GearIcon,
+  PencilIcon, PlusIcon, RadioCheckedIcon, RefreshIcon,
+  SpinnerIcon, TrashIcon, XIcon,
+} from '../components/ui/icons'
 import { PROVIDERS } from '../constants/providers'
 import { type AppLocale, LOCALE_NAMES } from '../i18n'
 import { useAppStore, useT } from '../store/useAppStore'
@@ -674,11 +679,7 @@ export function SettingsPage() {
                       : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700',
                   ].join(' ')}
                 >
-                  {ttsVoice === id && (
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
-                    </svg>
-                  )}
+                  {ttsVoice === id && <RadioCheckedIcon className="w-3 h-3" />}
                   {id.charAt(0).toUpperCase() + id.slice(1)}
                 </button>
               ))}
@@ -768,12 +769,7 @@ export function SettingsPage() {
                 hotkeyStatus === 'done' ? 'text-green-600 dark:text-green-400' :
                 'text-red-600 dark:text-red-400'
               }`}>
-                {hotkeyStatus === 'translating' && (
-                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                  </svg>
-                )}
+                {hotkeyStatus === 'translating' && <SpinnerIcon className="w-3.5 h-3.5 animate-spin" />}
                 <span>{hotkeyStatusMsg}</span>
               </div>
             )}
@@ -1548,7 +1544,7 @@ export function SettingsPage() {
               <div className="flex items-center gap-3">
                 <AppLogoIcon size={44} />
                 <div>
-                  <p className="font-bold text-gray-900 dark:text-gray-50">TranslateApp</p>
+                  <p className="font-bold text-gray-900 dark:text-gray-50">Lotus</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_about_version}</p>
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                     {t.settings_about_platform}: {window.api?.platform || 'web'}

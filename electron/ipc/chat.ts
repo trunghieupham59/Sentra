@@ -288,6 +288,23 @@ async function chatWithOpenAI(
   }
 }
 
+/**
+ * Register all chat-related IPC handlers with the Electron main process.
+ *
+ * Handlers registered:
+ *  - `chat:send` — Send a conversational message (with optional image attachments
+ *                  and system prompt); returns `{ success, reply?, error?, errorCode? }`
+ *
+ * All handlers:
+ *  - Read the API key from the OS Keychain via `getStoredApiKey` (never from renderer).
+ *  - Validate inputs before calling the AI provider.
+ *  - Categorize errors into typed `errorCode` values (NO_API_KEY, INVALID_KEY, RATE_LIMIT, NETWORK).
+ *  - Support multi-modal messages (text + images) for Gemini, Claude, and OpenAI.
+ *  - Automatically fall back to the best available chat-capable model when the
+ *    requested OpenAI model is not a chat model (e.g. completions-only models).
+ *
+ * @param ipcMain - Electron's IpcMain instance (passed from main.ts at startup).
+ */
 export function registerChatHandlers(ipcMain: IpcMain) {
   ipcMain.handle('chat:send', async (_event, params: ChatParams) => {
     const { provider, model, messages, systemPrompt } = params

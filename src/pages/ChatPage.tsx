@@ -2,7 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppLogoIcon } from '../components/AppLogo'
 import { MarkdownText } from '../components/MarkdownText'
 import { ModelSelector } from '../components/ModelSelector'
-import { Spinner } from '../components/ui/Spinner'
+import {
+  ChevronDownIcon, ChevronRightIcon, ClipboardIcon, DocumentIcon,
+  PlusIcon, RadioCheckedIcon, RefreshIcon, SendIcon,
+  SpinnerIcon, TrashIcon, UserIcon, XIcon,
+} from '../components/ui/icons'
 import { VoiceRecorder } from '../components/VoiceRecorder'
 import { MAX_CHAT_INPUT_CHARS } from '../constants/providers'
 import { useAppStore, useT } from '../store/useAppStore'
@@ -70,9 +74,7 @@ function MessageBubble({
       <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center overflow-hidden
                        ${isUser ? 'bg-blue-500' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'}`}>
         {isUser ? (
-          <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clipRule="evenodd" />
-          </svg>
+          <UserIcon className="w-4 h-4 text-white" />
         ) : (
           <AppLogoIcon size={28} />
         )}
@@ -128,7 +130,7 @@ function MessageBubble({
             {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
 
-          {/* Copy button */}
+            {/* Copy button */}
           {textContent && !message.isLoading && (
             <button
               type="button"
@@ -137,11 +139,7 @@ function MessageBubble({
               className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-700 dark:hover:text-gray-200
                          transition-colors duration-150 cursor-pointer"
             >
-              {/* Clipboard check icon — easier to see */}
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round"
-                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
+              <ClipboardIcon />
             </button>
           )}
 
@@ -155,9 +153,7 @@ function MessageBubble({
               className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-blue-500 dark:hover:text-blue-400
                          disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer"
             >
-              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+              <RefreshIcon />
               {regenerateLabel ?? 'Regenerate'}
             </button>
           )}
@@ -476,19 +472,14 @@ export function ChatPage() {
                             ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950 dark:border-indigo-800 dark:text-indigo-400'
                             : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700'}`}
             >
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+              <DocumentIcon />
               <span className="max-w-[120px] truncate">
                 {activePreset ? activePreset.name : chatSystemPrompt ? t.chat_system_prompt : t.chat_system_prompt}
               </span>
               {(chatSystemPrompt || activePreset) && (
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />
               )}
-              <svg className="w-2.5 h-2.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
+              <ChevronDownIcon className="w-2.5 h-2.5 flex-shrink-0" />
             </button>
 
             {/* Dropdown panel */}
@@ -516,9 +507,7 @@ export function ChatPage() {
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">No system prompt</p>
                   </div>
                   {!chatSystemPrompt && (
-                    <svg className="w-4 h-4 text-indigo-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
-                    </svg>
+                    <RadioCheckedIcon className="w-4 h-4 text-indigo-500 flex-shrink-0" />
                   )}
                 </button>
 
@@ -555,9 +544,7 @@ export function ChatPage() {
                           <p className="text-xs text-gray-400 dark:text-gray-500 truncate mt-0.5">{preset.content}</p>
                         </div>
                         {chatSystemPrompt === preset.content && (
-                          <svg className="w-4 h-4 text-indigo-500 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                            <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
-                          </svg>
+                          <RadioCheckedIcon className="w-4 h-4 text-indigo-500 flex-shrink-0 mt-0.5" />
                         )}
                       </button>
                     ))
@@ -572,9 +559,7 @@ export function ChatPage() {
                     className="text-xs text-blue-500 dark:text-blue-400 hover:underline cursor-pointer transition-colors flex items-center gap-1"
                   >
                     {t.settings_title}
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
+                    <ChevronRightIcon />
                   </button>
                 </div>
               </div>
@@ -591,9 +576,7 @@ export function ChatPage() {
                        dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700
                        transition-all duration-200 cursor-pointer whitespace-nowrap"
           >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+            <PlusIcon />
             <span>{t.chat_new_session}</span>
           </button>
 
@@ -608,9 +591,7 @@ export function ChatPage() {
                          dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-red-950 dark:hover:text-red-400
                          transition-all duration-200 cursor-pointer whitespace-nowrap"
             >
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
+              <TrashIcon />
               <span>{t.chat_clear}</span>
             </button>
           )}
@@ -692,9 +673,7 @@ export function ChatPage() {
                 className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center
                            rounded-full bg-gray-800 hover:bg-gray-700 text-white cursor-pointer shadow"
               >
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <XIcon className="w-3 h-3" />
               </button>
               <div className="absolute bottom-0 inset-x-0 px-1 py-0.5 bg-black/50 text-white text-[9px] truncate rounded-b-lg">
                 {attachedImage.fileName}
@@ -802,16 +781,7 @@ export function ChatPage() {
                           ? 'bg-blue-500 text-white'
                           : 'bg-blue-500 hover:bg-blue-600 text-white shadow-sm'}`}
           >
-            {isSending ? (
-              <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
-              </svg>
-            )}
+            {isSending ? <SpinnerIcon className="w-4 h-4 animate-spin" /> : <SendIcon />}
           </button>
         </div>
 

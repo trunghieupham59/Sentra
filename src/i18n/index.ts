@@ -169,6 +169,7 @@ export interface Translations {
   live_no_openai_key: string
   live_no_translate_key: string
   live_status_translating: string
+  live_status_stt: string
   live_panel_original: string
   live_panel_translation: string
   live_words: string
@@ -176,6 +177,31 @@ export interface Translations {
   live_summarize_again: string
   live_summarizing: string
   live_summary_title: string
+  // Live — audio mode toggle
+  live_audio_mode_mic: string
+  live_audio_mode_mic_title: string
+  live_audio_mode_system: string
+  live_audio_mode_system_title: string
+  // Live — screen recording permission hint
+  live_screen_recording_hint: string
+  live_open_system_settings: string
+  // Live — subtitle controls
+  live_subtitles: string
+  live_subtitles_show_title: string
+  live_subtitles_hide_title: string
+  live_subtitle_config_title: string
+  live_subtitle_text_color: string
+  live_subtitle_font_size: string
+  live_subtitle_bg_opacity: string
+  live_subtitle_transparent: string
+  live_subtitle_opaque: string
+  live_subtitle_reset: string
+  live_subtitle_color_white: string
+  live_subtitle_color_yellow: string
+  live_subtitle_color_cyan: string
+  live_subtitle_color_green: string
+  live_subtitle_color_orange: string
+  live_subtitle_color_pink: string
 
   // Chat page
   chat_placeholder: string
@@ -450,6 +476,29 @@ const en: Translations = {
   live_summarize_again: 'Regenerate',
   live_summarizing: 'Generating summary…',
   live_summary_title: 'Session Summary',
+  live_status_stt: 'STT…',
+  live_audio_mode_mic: 'Mic',
+  live_audio_mode_mic_title: 'Microphone only',
+  live_audio_mode_system: 'System',
+  live_audio_mode_system_title: 'System audio + microphone (requires Screen Recording permission on macOS)',
+  live_screen_recording_hint: 'Requires <strong>Screen Recording</strong> permission and enable <strong>"Share audio"</strong> in the screen sharing dialog.',
+  live_open_system_settings: 'Open System Settings',
+  live_subtitles: 'Subtitles',
+  live_subtitles_show_title: 'Show floating subtitles on screen',
+  live_subtitles_hide_title: 'Hide floating subtitles',
+  live_subtitle_config_title: 'Customize subtitles',
+  live_subtitle_text_color: 'Text Color',
+  live_subtitle_font_size: 'Font Size',
+  live_subtitle_bg_opacity: 'Background Opacity',
+  live_subtitle_transparent: 'Transparent',
+  live_subtitle_opaque: 'Opaque',
+  live_subtitle_reset: 'Reset to default',
+  live_subtitle_color_white: 'White',
+  live_subtitle_color_yellow: 'Yellow',
+  live_subtitle_color_cyan: 'Cyan',
+  live_subtitle_color_green: 'Green',
+  live_subtitle_color_orange: 'Orange',
+  live_subtitle_color_pink: 'Pink',
   chat_placeholder: 'Type a message…',
   chat_send: 'Send',
   chat_clear: 'Clear',
@@ -712,6 +761,29 @@ const vi: Translations = {
   live_summarize_again: 'Tạo lại',
   live_summarizing: 'Đang tổng hợp…',
   live_summary_title: 'Tóm tắt buổi dịch',
+  live_status_stt: 'STT…',
+  live_audio_mode_mic: 'Mic',
+  live_audio_mode_mic_title: 'Chỉ microphone',
+  live_audio_mode_system: 'Hệ thống',
+  live_audio_mode_system_title: 'Âm thanh hệ thống + microphone (cần quyền Screen Recording trên macOS)',
+  live_screen_recording_hint: 'Cần quyền <strong>Screen Recording</strong> và bật <strong>"Share audio"</strong> trong dialog chia sẻ màn hình.',
+  live_open_system_settings: 'Mở System Settings',
+  live_subtitles: 'Phụ đề',
+  live_subtitles_show_title: 'Hiện phụ đề nổi trên màn hình',
+  live_subtitles_hide_title: 'Ẩn phụ đề nổi',
+  live_subtitle_config_title: 'Tuỳ chỉnh phụ đề',
+  live_subtitle_text_color: 'Màu chữ',
+  live_subtitle_font_size: 'Kích cỡ chữ',
+  live_subtitle_bg_opacity: 'Độ mờ nền',
+  live_subtitle_transparent: 'Trong suốt',
+  live_subtitle_opaque: 'Đục',
+  live_subtitle_reset: 'Đặt lại mặc định',
+  live_subtitle_color_white: 'Trắng',
+  live_subtitle_color_yellow: 'Vàng',
+  live_subtitle_color_cyan: 'Lam',
+  live_subtitle_color_green: 'Xanh',
+  live_subtitle_color_orange: 'Cam',
+  live_subtitle_color_pink: 'Hồng',
   chat_placeholder: 'Nhập tin nhắn…',
   chat_send: 'Gửi',
   chat_clear: 'Xóa',
@@ -974,6 +1046,29 @@ const ja: Translations = {
   live_summarize_again: '再生成',
   live_summarizing: '要約生成中…',
   live_summary_title: 'セッション要約',
+  live_status_stt: 'STT…',
+  live_audio_mode_mic: 'Mic',
+  live_audio_mode_mic_title: 'マイクのみ',
+  live_audio_mode_system: 'システム',
+  live_audio_mode_system_title: 'システム音声 + マイク（macOSで画面録画権限が必要）',
+  live_screen_recording_hint: '<strong>画面録画</strong>権限と画面共有ダイアログでの<strong>「オーディオを共有」</strong>の有効化が必要です。',
+  live_open_system_settings: 'システム環境設定を開く',
+  live_subtitles: '字幕',
+  live_subtitles_show_title: '画面にフローティング字幕を表示',
+  live_subtitles_hide_title: 'フローティング字幕を非表示',
+  live_subtitle_config_title: '字幕をカスタマイズ',
+  live_subtitle_text_color: '文字色',
+  live_subtitle_font_size: '文字サイズ',
+  live_subtitle_bg_opacity: '背景の透明度',
+  live_subtitle_transparent: '透明',
+  live_subtitle_opaque: '不透明',
+  live_subtitle_reset: 'デフォルトに戻す',
+  live_subtitle_color_white: '白',
+  live_subtitle_color_yellow: '黄色',
+  live_subtitle_color_cyan: 'シアン',
+  live_subtitle_color_green: '緑',
+  live_subtitle_color_orange: 'オレンジ',
+  live_subtitle_color_pink: 'ピンク',
   chat_placeholder: 'メッセージを入力…',
   chat_send: '送信',
   chat_clear: 'クリア',

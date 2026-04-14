@@ -135,6 +135,31 @@ async function ttsWithGemini(text: string, apiKey: string): Promise<TtsResult> {
 
 // ─── IPC handler ─────────────────────────────────────────────────────────────
 
+/**
+ * Register all Text-to-Speech IPC handlers with the Electron main process.
+ *
+ * Handlers registered:
+ *  - `audio:tts` — Synthesize speech from text; returns
+ *                  `{ success, audioBase64?, mimeType?, provider?, error?, errorCode? }`
+ *
+ * Provider selection strategy (best-to-worst, auto-ranked):
+ *  1. Gemini Flash TTS (`gemini-2.5-flash-preview-tts`) — lowest latency, lowest cost,
+ *     excellent multilingual support; preferred when a Gemini key is present.
+ *  2. OpenAI `tts-1` — reliable, natural voices; used when Gemini is unavailable
+ *     or encounters a soft failure (network / temporary error).
+ *
+ * Hard failures (invalid key, rate limit) are surfaced immediately without
+ * attempting the next candidate.  Soft failures (network, temporary) fall
+ * through to the next provider.  If all candidates fail, the renderer falls
+ * back to OS speech synthesis.
+ *
+ * All handlers:
+ *  - Read API keys from the OS Keychain via `getStoredApiKey` (never from renderer).
+ *  - Return base64-encoded audio (safer than ArrayBuffer over Electron IPC).
+ *  - Include `mimeType` so the renderer can create the correct `AudioBuffer`.
+ *
+ * @param ipcMain - Electron's IpcMain instance (passed from main.ts at startup).
+ */
 export function registerTtsHandlers(ipcMain: IpcMain) {
   ipcMain.handle('audio:tts', async (_event, params: TtsParams): Promise<TtsResult> => {
     const { text, voice = 'nova' } = params

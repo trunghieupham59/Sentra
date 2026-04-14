@@ -1,0 +1,147 @@
+/**
+ * chatSlice — Zustand store slice for Chat Sessions and System Prompt Presets.
+ *
+ * Manages all chat-related state in isolation so it can be reasoned about,
+ * tested, and evolved independently of translation or settings state.
+ */
+import type { StateCreator } from 'zustand'
+import type { ChatMessage, ChatSession, Provider, SystemPromptPreset } from '../../types'
+
+/**
+ * Maximum number of chat sessions to keep in memory and persisted storage.
+ * Oldest sessions are removed when the limit is exceeded to prevent
+ * unbounded memory growth in long-running usage.
+ */
+const MAX_CHAT_SESSIONS = 20
+
+export interface ChatSlice {
+  // State
+  chatSessions: ChatSession[]
+  activeChatSessionId: string | null
+  chatSystemPrompt: string
+  systemPromptPresets: SystemPromptPreset[]
+
+  // Actions
+  createChatSession: (provider: Provider, model: string) => string
+  deleteChatSession: (id: string) => void
+  setActiveChatSession: (id: string | null) => void
+  addChatMessage: (sessionId: string, message: ChatMessage) => void
+  updateChatMessage: (sessionId: string, messageId: string, updates: Partial<ChatMessage>) => void
+  clearChatSession: (sessionId: string) => void
+  setChatSystemPrompt: (prompt: string) => void
+  addSystemPromptPreset: (preset: Omit<SystemPromptPreset, 'id'>) => string
+  updateSystemPromptPreset: (id: string, updates: Partial<Omit<SystemPromptPreset, 'id'>>) => void
+  deleteSystemPromptPreset: (id: string) => void
+  setDefaultSystemPromptPreset: (id: string | null) => void
+}
+
+// biome-ignore lint/suspicious/noExplicitAny: StateCreator full-state generic omitted to avoid circular deps — full AppState is assembled in useAppStore.ts
+export const createChatSlice: StateCreator<any, [], [], ChatSlice> = (set) => ({
+  chatSessions: [],
+  activeChatSessionId: null,
+  chatSystemPrompt: '',
+  systemPromptPresets: [],
+
+  createChatSession: (provider, model) => {
+    const id = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const session: ChatSession = {
+      id,
+      title: 'New Chat',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      provider,
+      model,
+    }
+    set((state: ChatSlice) => ({
+      // Prepend new session and enforce MAX_CHAT_SESSIONS cap — oldest sessions are trimmed
+      chatSessions: [session, ...state.chatSessions].slice(0, MAX_CHAT_SESSIONS),
+      activeChatSessionId: id,
+    }))
+    return id
+  },
+
+  deleteChatSession: (id) =>
+    set((state: ChatSlice) => ({
+      chatSessions: state.chatSessions.filter((s) => s.id !== id),
+      activeChatSessionId: state.activeChatSessionId === id ? null : state.activeChatSessionId,
+    })),
+
+  setActiveChatSession: (id) => set({ activeChatSessionId: id }),
+
+  addChatMessage: (sessionId, message) =>
+    set((state: ChatSlice) => ({
+      chatSessions: state.chatSessions.map((s) =>
+        s.id === sessionId
+          ? { ...s, messages: [...s.messages, message], updatedAt: Date.now() }
+          : s
+      ),
+    })),
+
+  updateChatMessage: (sessionId, messageId, updates) =>
+    set((state: ChatSlice) => ({
+      chatSessions: state.chatSessions.map((s) =>
+        s.id === sessionId
+          ? {
+              ...s,
+              messages: s.messages.map((m) => (m.id === messageId ? { ...m, ...updates } : m)),
+              updatedAt: Date.now(),
+            }
+          : s
+      ),
+    })),
+
+  clearChatSession: (sessionId) =>
+    set((state: ChatSlice) => ({
+      chatSessions: state.chatSessions.map((s) =>
+        s.id === sessionId ? { ...s, messages: [], updatedAt: Date.now() } : s
+      ),
+    })),
+
+  setChatSystemPrompt: (prompt) => set({ chatSystemPrompt: prompt }),
+
+  addSystemPromptPreset: (preset) => {
+    const id = `preset-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+    const newPreset: SystemPromptPreset = { ...preset, id }
+    set((state: ChatSlice) => {
+      const presets = preset.isDefault
+        ? state.systemPromptPresets.map((p) => ({ ...p, isDefault: false }))
+        : [...state.systemPromptPresets]
+      presets.push(newPreset)
+      const updates: Partial<ChatSlice> = { systemPromptPresets: presets }
+      if (preset.isDefault) updates.chatSystemPrompt = preset.content
+      return updates
+    })
+    return id
+  },
+
+  updateSystemPromptPreset: (id, updates) =>
+    set((state: ChatSlice) => {
+      const presets = state.systemPromptPresets.map((p) => {
+        if (p.id !== id) {
+          return updates.isDefault ? { ...p, isDefault: false } : p
+        }
+        return { ...p, ...updates }
+      })
+      const updated = presets.find((p) => p.id === id)
+      const extra: Partial<ChatSlice> = { systemPromptPresets: presets }
+      if (updated?.isDefault) extra.chatSystemPrompt = updated.content
+      return extra
+    }),
+
+  deleteSystemPromptPreset: (id) =>
+    set((state: ChatSlice) => ({
+      systemPromptPresets: state.systemPromptPresets.filter((p) => p.id !== id),
+      chatSystemPrompt: state.systemPromptPresets.find((p) => p.id === id)?.isDefault
+        ? ''
+        : state.chatSystemPrompt,
+    })),
+
+  setDefaultSystemPromptPreset: (id) =>
+    set((state: ChatSlice) => ({
+      systemPromptPresets: state.systemPromptPresets.map((p) => ({ ...p, isDefault: p.id === id })),
+      chatSystemPrompt: id
+        ? (state.systemPromptPresets.find((p) => p.id === id)?.content ?? state.chatSystemPrompt)
+        : state.chatSystemPrompt,
+    })),
+})

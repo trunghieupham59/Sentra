@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { LANG_TO_BCP47, getSupportedAudioMimeType } from '../constants/audio'
+import { MicrophoneIcon, SpinnerIcon } from './ui/icons'
 
 // ─── Local type definitions for cross-browser Speech Recognition ──────────────
 interface SpeechRecResult {
@@ -348,23 +349,15 @@ export function VoiceRecorder({
 
         {isTranscribing ? (
           /* Spinner while transcribing */
-          <svg className="w-3.5 h-3.5 relative z-10 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-            <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
+          <SpinnerIcon className="w-3.5 h-3.5 relative z-10 animate-spin" />
         ) : isRecording ? (
-          /* Stop square */
+          /* Stop square — rect-based design kept intentionally (distinct from path-based StopIcon) */
           <svg className="w-3.5 h-3.5 relative z-10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <rect x="6" y="6" width="12" height="12" rx="2" />
           </svg>
         ) : (
           /* Microphone */
-          <svg className="w-4 h-4 relative z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2" />
-            <line x1="12" y1="19" x2="12" y2="23" strokeLinecap="round" />
-            <line x1="8" y1="23" x2="16" y2="23" strokeLinecap="round" />
-          </svg>
+          <MicrophoneIcon className="w-4 h-4 relative z-10" />
         )}
       </button>
 
