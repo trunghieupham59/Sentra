@@ -226,6 +226,12 @@ export interface WindowApi {
   fetchModels: (provider: string) => Promise<FetchModelsResult>
   verifyKey: (provider: string, apiKey: string) => Promise<VerifyResult>
   translate: (params: TranslateParams) => Promise<TranslateResult>
+  rewriteText: (params: {
+    provider: string
+    model: string
+    text: string
+    lang: string
+  }) => Promise<TranslateResult>
   transcribeAudio: (params: {
     audioData: ArrayBuffer
     mimeType: string

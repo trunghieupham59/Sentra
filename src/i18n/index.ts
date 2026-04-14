@@ -34,6 +34,8 @@ export interface Translations {
   translate_style_technical: string
   translate_speak: string
   translate_speak_stop: string
+  translate_rewrite: string
+  translate_rewriting: string
 
   // Voice recording
   voice_record: string
@@ -243,6 +245,8 @@ const en: Translations = {
   translate_style_technical: 'Technical',
   translate_speak: 'Read aloud',
   translate_speak_stop: 'Stop reading',
+  translate_rewrite: 'Rewrite',
+  translate_rewriting: 'Rewriting…',
   voice_record: 'Record voice',
   voice_stop: 'Stop recording',
   voice_listening: 'Listening…',
@@ -452,6 +456,8 @@ const vi: Translations = {
   translate_style_technical: 'Kỹ thuật',
   translate_speak: 'Đọc to',
   translate_speak_stop: 'Dừng đọc',
+  translate_rewrite: 'Viết lại',
+  translate_rewriting: 'Đang viết lại…',
   voice_record: 'Thu âm giọng nói',
   voice_stop: 'Dừng thu âm',
   voice_listening: 'Đang nghe…',
@@ -661,6 +667,8 @@ const ja: Translations = {
   translate_style_technical: '専門',
   translate_speak: '読み上げ',
   translate_speak_stop: '読み上げ停止',
+  translate_rewrite: '書き直す',
+  translate_rewriting: '書き直し中…',
   voice_record: '音声録音',
   voice_stop: '録音停止',
   voice_listening: '聞き取り中…',

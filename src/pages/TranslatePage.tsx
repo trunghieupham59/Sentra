@@ -115,6 +115,7 @@ export function TranslatePage() {
   const charCount = sourceText.length
   const isOverLimit = charCount > MAX_CHARS
   const [copied, setCopied] = useState(false)
+  const [isRewriting, setIsRewriting] = useState<'source' | 'translated' | null>(null)
 
   // TTS (text-to-speech) state
   const [speakingPanel, setSpeakingPanel] = useState<'source' | 'translated' | null>(null)
@@ -494,6 +495,39 @@ export function TranslatePage() {
     setTimeout(() => setCopied(false), 1500)
   }
 
+  // Rewrite: make text more natural in its own language without changing meaning
+  const handleRewrite = useCallback(async (panel: 'source' | 'translated') => {
+    if (isRewriting) return
+    if (!hasKey) { setTranslateError(t.translate_error_no_key); return }
+    const text = panel === 'source' ? sourceText : translatedText
+    const lang = panel === 'source'
+      ? (sourceLang === 'auto' ? 'the same language as the input text' : sourceLang)
+      : targetLang
+    if (!text.trim()) return
+    setIsRewriting(panel)
+    try {
+      const result = await window.api.rewriteText({
+        provider: selectedProvider,
+        model: selectedModels[selectedProvider],
+        text,
+        lang,
+      })
+      if (result.success && result.translatedText) {
+        if (panel === 'source') {
+          setSourceText(result.translatedText)
+        } else {
+          setTranslatedText(result.translatedText)
+          setPhoneticText('')
+        }
+      }
+    } catch (err) {
+      console.error('[rewrite] error:', err)
+    } finally {
+      setIsRewriting(null)
+    }
+  }, [isRewriting, hasKey, sourceText, translatedText, sourceLang, targetLang,
+      selectedProvider, selectedModels, setSourceText, setTranslatedText, setPhoneticText, setTranslateError, t])
+
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-950">
       {/* Toolbar — single row, no wrap */}
@@ -746,6 +780,35 @@ export function TranslatePage() {
             </div>
             {sourceText && !isVoiceActive && (
               <div className="flex items-center gap-2">
+                {/* Rewrite source text */}
+                <button
+                  type="button"
+                  onClick={() => handleRewrite('source')}
+                  title={t.translate_rewrite}
+                  disabled={!!isRewriting}
+                  className={[
+                    'relative flex items-center justify-center w-8 h-8 rounded-full',
+                    'transition-all duration-200 cursor-pointer',
+                    isRewriting === 'source'
+                      ? 'bg-violet-500 text-white shadow-sm'
+                      : 'text-gray-400 hover:text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-950 dark:hover:text-violet-400',
+                    !!isRewriting && isRewriting !== 'source' ? 'opacity-40 cursor-not-allowed' : '',
+                  ].join(' ')}
+                >
+                  {isRewriting === 'source' ? (
+                    <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                      <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  ) : (
+                    /* Sparkle / rewrite icon */
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+                    </svg>
+                  )}
+                </button>
+
                 {/* Speak source text */}
                 <button
                   type="button"
@@ -911,6 +974,35 @@ export function TranslatePage() {
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
+                  </button>
+                )}
+                {/* Rewrite translated text */}
+                {!editedImageUrl && (
+                  <button
+                    type="button"
+                    onClick={() => handleRewrite('translated')}
+                    title={t.translate_rewrite}
+                    disabled={!!isRewriting}
+                    className={[
+                      'relative flex items-center justify-center w-8 h-8 rounded-full',
+                      'transition-all duration-200 cursor-pointer',
+                      isRewriting === 'translated'
+                        ? 'bg-violet-500 text-white shadow-sm'
+                        : 'text-gray-400 hover:text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-950 dark:hover:text-violet-400',
+                      !!isRewriting && isRewriting !== 'translated' ? 'opacity-40 cursor-not-allowed' : '',
+                    ].join(' ')}
+                  >
+                    {isRewriting === 'translated' ? (
+                      <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                        <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+                      </svg>
+                    )}
                   </button>
                 )}
                 {!editedImageUrl && <button type="button" onClick={handleCopy} className={`btn-ghost py-1 px-2 text-xs transition-all ${copied ? 'text-green-600' : ''}`}>
