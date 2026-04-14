@@ -6,6 +6,7 @@ import { PROVIDERS } from '../constants/providers'
 import { type AppLocale, LOCALE_NAMES } from '../i18n'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { Provider, SystemPromptPreset, TtsVoice } from '../types'
+import { detectSystemLocale } from '../utils/locale'
 
 // ─── Module-level types ───────────────────────────────────────────────────────
 type ExtTokenInfo = { id: string; name: string; createdAt: number; expiresAt: number }
@@ -14,12 +15,6 @@ type UpdaterStatusType = {
   version?: string
   percent?: number
   error?: string
-}
-
-const SUPPORTED_LOCALES: AppLocale[] = ['en', 'vi', 'ja']
-function detectSystemLocale(): AppLocale {
-  const lang = (navigator.language || 'en').split('-')[0]
-  return SUPPORTED_LOCALES.includes(lang as AppLocale) ? (lang as AppLocale) : 'en'
 }
 
 export function SettingsPage() {
@@ -296,9 +291,13 @@ export function SettingsPage() {
 
   useEffect(() => { loadTokenList() }, [loadTokenList])
 
+  // Tracks errors from token create/delete/regenerate operations
+  const [tokenActionError, setTokenActionError] = useState<string>('')
+
   const handleCreateToken = async () => {
     if (!window.api?.localServer) return
     setCreating(true)
+    setTokenActionError('')
     try {
       const res = await window.api.localServer.createToken({
         name: newTokenName.trim() || defaultTokenName(),
@@ -311,34 +310,43 @@ export function SettingsPage() {
         setNewTokenName('')
         setNewTokenTtl(30)
         await loadTokenList()
+      } else if (!res?.success) {
+        setTokenActionError(res?.error ?? 'Không thể tạo token. Vui lòng thử lại.')
       }
-    } catch { /* ignore */ }
-    finally { setCreating(false) }
+    } catch (e) {
+      setTokenActionError(e instanceof Error ? e.message : 'Không thể tạo token. Vui lòng thử lại.')
+    } finally { setCreating(false) }
   }
 
   const handleDeleteToken = async (id: string) => {
     if (!window.api?.localServer) return
     setDeletingId(id)
+    setTokenActionError('')
     try {
       await window.api.localServer.deleteToken({ id })
       setExtTokens(prev => prev.filter(t => t.id !== id))
       if (revealedToken) setRevealedToken(null)
-    } catch { /* ignore */ }
-    finally { setDeletingId(null) }
+    } catch (e) {
+      setTokenActionError(e instanceof Error ? e.message : 'Không thể xóa token.')
+    } finally { setDeletingId(null) }
   }
 
   const handleRegenerateToken = async (id: string) => {
     if (!window.api?.localServer) return
     setRegeneratingId(id)
+    setTokenActionError('')
     try {
       const res = await window.api.localServer.regenerateToken({ id })
       if (res?.success && res.token) {
         setRevealedToken({ token: res.token, name: res.name ?? '', expiresAt: res.expiresAt ?? 0 })
         setRevealedCopied(false)
         await loadTokenList()
+      } else if (!res?.success) {
+        setTokenActionError(res?.error ?? 'Không thể cấp phát lại token.')
       }
-    } catch { /* ignore */ }
-    finally { setRegeneratingId(null) }
+    } catch (e) {
+      setTokenActionError(e instanceof Error ? e.message : 'Không thể cấp phát lại token.')
+    } finally { setRegeneratingId(null) }
   }
 
   const handleCopyRevealed = async () => {
@@ -1062,6 +1070,19 @@ export function SettingsPage() {
                   <p className="text-[11px] text-amber-500 dark:text-amber-400">
                     🔒 Hết hạn: {new Date(revealedToken.expiresAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                   </p>
+                </div>
+              )}
+
+              {/* ── Token action error (create/delete/regenerate) ── */}
+              {tokenActionError && (
+                <div className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 rounded-lg px-3 py-2 border border-red-100 dark:border-red-900">
+                  <span>⚠</span>
+                  <span className="flex-1">{tokenActionError}</span>
+                  <button type="button" onClick={() => setTokenActionError('')} className="p-0.5 hover:text-red-700 cursor-pointer" title="Đóng">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
                 </div>
               )}
 

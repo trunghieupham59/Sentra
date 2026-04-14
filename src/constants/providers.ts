@@ -89,6 +89,19 @@ export const LANGUAGES: Language[] = [
 
 export const TARGET_LANGUAGES = LANGUAGES.filter((l) => l.code !== 'auto')
 
+/**
+ * Maximum number of characters allowed in the translation input.
+ * Prevents accidental high API costs and request timeouts.
+ * Show a warning in the UI when the user exceeds this limit.
+ */
+export const MAX_INPUT_CHARS = 5000
+
+/**
+ * Maximum number of characters allowed in the chat input.
+ * Chat context is smaller than full-page translation so the limit is lower.
+ */
+export const MAX_CHAT_INPUT_CHARS = 3000
+
 export const DEFAULT_SETTINGS = {
   defaultProvider: 'gemini' as const,
   defaultSourceLang: 'auto',

@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { PROVIDERS } from './constants/providers'
-import type { AppLocale } from './i18n'
 import { ChatPage } from './pages/ChatPage'
 import { HistoryPage } from './pages/HistoryPage'
 import { LiveTranslatePage } from './pages/LiveTranslatePage'
@@ -9,13 +8,7 @@ import { SettingsPage } from './pages/SettingsPage'
 import { TranslatePage } from './pages/TranslatePage'
 import { useAppStore } from './store/useAppStore'
 import type { Provider } from './types'
-
-const SUPPORTED_LOCALES: AppLocale[] = ['en', 'vi', 'ja']
-
-function detectSystemLocale(): AppLocale {
-  const lang = (navigator.language || 'en').split('-')[0]
-  return SUPPORTED_LOCALES.includes(lang as AppLocale) ? (lang as AppLocale) : 'en'
-}
+import { detectSystemLocale } from './utils/locale'
 
 const FONT_SIZE_MAP = {
   small:  '13px',

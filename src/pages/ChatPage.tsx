@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppLogoIcon } from '../components/AppLogo'
 import { MarkdownText } from '../components/MarkdownText'
 import { ModelSelector } from '../components/ModelSelector'
+import { Spinner } from '../components/ui/Spinner'
 import { VoiceRecorder } from '../components/VoiceRecorder'
+import { MAX_CHAT_INPUT_CHARS } from '../constants/providers'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { ChatMessage, ChatMessageContent } from '../types'
 
@@ -429,7 +431,8 @@ export function ChatPage() {
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text).catch(() => {})
-    setCopiedId(text.slice(0, 20))
+    // Use timestamp as unique copy ID — avoids collision when 2 messages share the same opening chars
+    setCopiedId(String(Date.now()))
     setTimeout(() => setCopiedId(null), 1500)
   }
 

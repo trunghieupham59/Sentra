@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAppStore, useT } from '../store/useAppStore'
-import { HistoryItem, ChatSession, LiveSession } from '../types'
+import { HistoryItem, ChatSession } from '../types'
 import { PROVIDERS } from '../constants/providers'
 import { MarkdownText } from '../components/MarkdownText'
 
@@ -345,7 +345,9 @@ function LiveHistoryTab() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [confirmClear, setConfirmClear] = useState(false)
 
-  const handleOpenLive = (_session: LiveSession) => {
+  // Note: Live page does not support "replay" mode — clicking opens a new recording session.
+  // The session content is visible in the expanded card above (rawTranscript + translation).
+  const handleOpenLive = () => {
     setActivePage('live')
   }
 
@@ -484,7 +486,7 @@ function LiveHistoryTab() {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => handleOpenLive(session)}
+                          onClick={() => handleOpenLive()}
                           className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg
                                      bg-purple-50 text-purple-600 hover:bg-purple-100
                                      dark:bg-purple-950 dark:text-purple-400 dark:hover:bg-purple-900

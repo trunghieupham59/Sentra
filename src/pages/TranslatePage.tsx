@@ -6,89 +6,13 @@ import { LanguageSelector } from '../components/LanguageSelector'
 import { MarkdownEditor } from '../components/MarkdownEditor'
 import { MarkdownText } from '../components/MarkdownText'
 import { ModelSelector } from '../components/ModelSelector'
+import { Spinner } from '../components/ui/Spinner'
 import { VoiceRecorder } from '../components/VoiceRecorder'
+import { MAX_INPUT_CHARS } from '../constants/providers'
 import { useTTS } from '../hooks/useTTS'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { ImageTextRegion, TranslationStyle } from '../types'
-
-// ─── Canvas helpers for image translation overlay ─────────────────────────────
-
-/** Split `text` into lines that fit within `maxWidth` pixels on the given ctx. */
-function canvasWrapText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number,
-): string[] {
-  if (!text) return []
-  // CJK characters have no word boundaries — split per character
-  const isCJK = /[\u1100-\u11ff\u2e80-\u9fff\uac00-\ud7af\uf900-\ufaff]/.test(text)
-  const tokens = isCJK ? [...text] : text.split(/\s+/)
-  const sep = isCJK ? '' : ' '
-  const lines: string[] = []
-  let cur = ''
-  for (const tok of tokens) {
-    const candidate = cur ? cur + sep + tok : tok
-    if (ctx.measureText(candidate).width <= maxWidth) {
-      cur = candidate
-    } else {
-      if (cur) lines.push(cur)
-      cur = tok // even if single token is wider, start a new line
-    }
-  }
-  if (cur) lines.push(cur)
-  return lines.length ? lines : [text]
-}
-
-/**
- * Draw translated-text overlays onto a canvas that already has the source image drawn.
- * Each region rectangle is filled with a fully-opaque background, then the translated
- * text is rendered with automatic multi-line wrapping. */
-function renderTranslatedRegions(
-  ctx: CanvasRenderingContext2D,
-  regions: ImageTextRegion[],
-  cw: number,
-  ch: number,
-) {
-  for (const r of regions) {
-    const rx = r.x * cw
-    const ry = r.y * ch
-    const rw = r.width * cw
-    const rh = r.height * ch
-
-    // Fully-opaque background so original text is completely hidden
-    ctx.globalAlpha = 1.0
-    ctx.fillStyle = r.bgColor ?? '#1a1a1a'
-    ctx.fillRect(rx, ry, rw, rh)
-
-    if (!r.translatedText) continue
-
-    const maxTextW = rw * 0.92
-    ctx.globalAlpha = 1.0
-    ctx.fillStyle = r.textColor ?? '#ffffff'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-
-    // Start with a font size proportional to region height; shrink until lines fit
-    let fs = Math.max(10, rh * 0.5)
-    ctx.font = `${fs}px sans-serif`
-    let lines = canvasWrapText(ctx, r.translatedText, maxTextW)
-
-    // Reduce font size until all lines fit vertically inside the region
-    while (fs > 8 && lines.length * fs * 1.3 > rh * 0.92) {
-      fs -= 1
-      ctx.font = `${fs}px sans-serif`
-      lines = canvasWrapText(ctx, r.translatedText, maxTextW)
-    }
-
-    const lineH = fs * 1.3
-    const totalH = lines.length * lineH
-    const startY = ry + rh / 2 - totalH / 2 + lineH / 2
-
-    for (let i = 0; i < lines.length; i++) {
-      ctx.fillText(lines[i], rx + rw / 2, startY + i * lineH)
-    }
-  }
-}
+import { renderTranslatedRegions } from '../utils/canvas'
 
 export function TranslatePage() {
   const {
@@ -691,9 +615,15 @@ export function TranslatePage() {
               </button>
 
               {!isVoiceActive && (
-                <span className="text-xs tabular-nums text-gray-400">
-                  {charCount.toLocaleString()} {t.translate_chars}
-                </span>
+                charCount > MAX_INPUT_CHARS ? (
+                  <span className="text-xs tabular-nums text-amber-500 font-medium" title={t.translate_limit}>
+                    ⚠ {charCount.toLocaleString()} / {MAX_INPUT_CHARS.toLocaleString()}
+                  </span>
+                ) : (
+                  <span className="text-xs tabular-nums text-gray-400">
+                    {charCount.toLocaleString()} {t.translate_chars}
+                  </span>
+                )
               )}
             </div>
             {sourceText && !isVoiceActive && (
