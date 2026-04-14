@@ -2,6 +2,24 @@ import { app } from 'electron'
 import type { IpcMain, BrowserWindow } from 'electron'
 import { autoUpdater } from 'electron-updater'
 
+/**
+ * Returns true when the error is caused by a missing update YAML file
+ * (e.g. 404 from GitHub Releases, ENOENT on local feed, or generic "not found").
+ * In this case we treat the situation as "no update available" rather than
+ * a hard error, so the UI can display a friendly "up to date" message instead
+ * of a red error banner.
+ */
+function isYamlNotFoundError(err: unknown): boolean {
+  const msg = (err instanceof Error ? err.message : String(err)).toLowerCase()
+  return (
+    msg.includes('404') ||
+    msg.includes('not found') ||
+    msg.includes('enoent') ||
+    msg.includes('cannot find') ||
+    msg.includes('httperror')
+  )
+}
+
 export type UpdaterStatus =
   | { type: 'idle' }
   | { type: 'checking' }
@@ -58,7 +76,13 @@ export function registerUpdaterHandlers(
   })
 
   autoUpdater.on('error', (err) => {
-    push({ type: 'error', error: err?.message ?? String(err) })
+    // If the YAML file is simply missing on the server, report "not available"
+    // instead of surfacing a confusing error to the user.
+    if (isYamlNotFoundError(err)) {
+      push({ type: 'not-available', version: app.getVersion() })
+    } else {
+      push({ type: 'error', error: err?.message ?? String(err) })
+    }
   })
 
   // ── IPC handlers ──────────────────────────────────────────────────────────
@@ -75,7 +99,9 @@ export function registerUpdaterHandlers(
       return { success: true }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      push({ type: 'error', error: msg })
+      // The autoUpdater 'error' event fires before the promise rejects, so the
+      // status has already been pushed by the event handler above.  We only
+      // need to return the structured error here — no extra push needed.
       return { success: false, error: msg }
     }
   })
