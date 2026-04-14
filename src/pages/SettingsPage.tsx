@@ -401,6 +401,41 @@ export function SettingsPage() {
     window.api?.legacyAssistant?.injectNow()
   }
 
+  // ── Updater state ──────────────────────────────────────────────────────────
+  type UpdaterStatusType = {
+    type: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'
+    version?: string
+    percent?: number
+    error?: string
+  }
+
+  const [updaterStatus, setUpdaterStatus] = useState<UpdaterStatusType>({ type: 'idle' })
+  const [appVersion, setAppVersion] = useState('')
+
+  useEffect(() => {
+    if (!window.api?.updater) return
+    window.api.updater.getVersion().then((res: { version: string }) => {
+      if (res?.version) setAppVersion(res.version)
+    })
+    const unsub = window.api.updater.onStatus((status) => {
+      setUpdaterStatus(status as UpdaterStatusType)
+    })
+    return unsub
+  }, [])
+
+  const handleCheckUpdate = async () => {
+    if (!window.api?.updater) return
+    setUpdaterStatus({ type: 'checking' })
+    await window.api.updater.check()
+  }
+
+  const handleDownloadUpdate = () => window.api?.updater?.download()
+  const handleInstallUpdate  = () => window.api?.updater?.install()
+
+  /** Simple template helper: replaces {key} placeholders */
+  const tpl = (str: string, vars: Record<string, string | number>) =>
+    str.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ''))
+
   return (
     <div className="h-full overflow-auto bg-gray-50 dark:bg-gray-950">
       <div className="max-w-xl mx-auto px-4 py-6 space-y-6">
@@ -1381,6 +1416,139 @@ export function SettingsPage() {
                 </div>
               )}
             </div>
+
+          </div>
+        </section>
+
+        {/* ── Updates ──────────────────────────────────────────────────────── */}
+        <section className="space-y-3">
+          <div>
+            <h2 className="section-label">{t.settings_update_section}</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_update_section_desc}</p>
+          </div>
+
+          <div className="card divide-y divide-gray-100 dark:divide-gray-700">
+
+            {/* Current version + Check button */}
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_update_current_version}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-mono">
+                  v{appVersion || window.api?.version || '—'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleCheckUpdate}
+                disabled={updaterStatus.type === 'checking' || updaterStatus.type === 'downloading'}
+                className={[
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer',
+                  'disabled:opacity-40 disabled:cursor-not-allowed',
+                  updaterStatus.type === 'downloaded'
+                    ? 'bg-green-600 hover:bg-green-700 text-white border-green-600'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-600 hover:border-blue-400 hover:text-blue-600',
+                ].join(' ')}
+              >
+                {updaterStatus.type === 'checking' && (
+                  <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                )}
+                {updaterStatus.type === 'checking'
+                  ? t.settings_update_checking
+                  : t.settings_update_check}
+              </button>
+            </div>
+
+            {/* Status row — shown when not idle */}
+            {updaterStatus.type !== 'idle' && updaterStatus.type !== 'checking' && (
+              <div className="px-4 py-3 space-y-2">
+
+                {/* Update available */}
+                {updaterStatus.type === 'available' && (
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
+                      <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      <span>{tpl(t.settings_update_available, { version: updaterStatus.version ?? '' })}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDownloadUpdate}
+                      className="flex-shrink-0 px-3 py-1.5 text-xs rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors cursor-pointer"
+                    >
+                      {t.settings_update_download}
+                    </button>
+                  </div>
+                )}
+
+                {/* Up to date */}
+                {updaterStatus.type === 'not-available' && (
+                  <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>{tpl(t.settings_update_not_available, { version: updaterStatus.version ?? appVersion ?? '' })}</span>
+                  </div>
+                )}
+
+                {/* Downloading */}
+                {updaterStatus.type === 'downloading' && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs text-blue-600 dark:text-blue-400">
+                      <span className="flex items-center gap-2">
+                        <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                        {tpl(t.settings_update_downloading, { percent: updaterStatus.percent ?? 0 })}
+                      </span>
+                      <span className="text-gray-400 text-[10px] tabular-nums">
+                        {updaterStatus.percent ?? 0}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className="bg-blue-500 h-full rounded-full transition-all duration-300"
+                        style={{ width: `${updaterStatus.percent ?? 0}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Downloaded — ready to install */}
+                {updaterStatus.type === 'downloaded' && (
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                      <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>{tpl(t.settings_update_downloaded, { version: updaterStatus.version ?? '' })}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleInstallUpdate}
+                      className="flex-shrink-0 px-3 py-1.5 text-xs rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium transition-colors cursor-pointer"
+                    >
+                      {t.settings_update_install}
+                    </button>
+                  </div>
+                )}
+
+                {/* Error */}
+                {updaterStatus.type === 'error' && (
+                  <div className="flex items-start gap-2 text-xs text-red-600 dark:text-red-400">
+                    <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.962-.833-2.732 0L3.07 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    <span>{t.settings_update_error}{updaterStatus.error ? `: ${updaterStatus.error}` : ''}</span>
+                  </div>
+                )}
+
+              </div>
+            )}
 
           </div>
         </section>

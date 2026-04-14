@@ -134,6 +134,35 @@ contextBridge.exposeInMainWorld('api', {
   platform: process.platform,
   version: process.env.npm_package_version || '1.0.0',
 
+  // ── Auto Updater ─────────────────────────────────────────────────────────
+  updater: {
+    /** Trigger a check for updates. Status is pushed via onStatus(). */
+    check: () => ipcRenderer.invoke('updater:check') as Promise<{ success: boolean; error?: string }>,
+    /** Start downloading an available update. */
+    download: () => ipcRenderer.invoke('updater:download') as Promise<{ success: boolean; error?: string }>,
+    /** Quit the app and install the downloaded update. */
+    install: () => ipcRenderer.invoke('updater:install') as Promise<{ success: boolean; error?: string }>,
+    /** Get the current app version. */
+    getVersion: () => ipcRenderer.invoke('updater:getVersion') as Promise<{ version: string }>,
+    /**
+     * Subscribe to update status events pushed from the main process.
+     * Returns a cleanup function — call it to unsubscribe.
+     */
+    onStatus: (cb: (status: {
+      type: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'
+      version?: string
+      percent?: number
+      bytesPerSecond?: number
+      transferred?: number
+      total?: number
+      error?: string
+    }) => void) => {
+      const handler = (_: unknown, status: Parameters<typeof cb>[0]) => cb(status)
+      ipcRenderer.on('updater:status', handler)
+      return () => ipcRenderer.removeListener('updater:status', handler)
+    },
+  },
+
   // ── Global Hotkey ────────────────────────────────────────────────────────
   hotkey: {
     /**

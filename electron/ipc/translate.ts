@@ -110,6 +110,169 @@ Text to rewrite:
 ${text}`
 }
 
+// ── Chunked translation helpers ───────────────────────────────────────────────
+
+/**
+ * Maximum characters per chunk sent to the AI.
+ * ~12 000 chars ≈ 3 000 tokens — safely fits in context window even for smaller
+ * models (8K ctx) after accounting for system prompt (~500 tok) + output (~3 000 tok).
+ * For modern large-context models this just means fewer, larger chunks.
+ */
+const CHUNK_CHAR_LIMIT = 12_000
+
+/** How many chars of the previous source chunk to include as overlap context */
+const CONTEXT_TAIL_CHARS = 400
+
+/**
+ * Split `text` into chunks ≤ `maxChars`, preferring natural break points:
+ *   1. Double newline (paragraph break)
+ *   2. Single newline
+ *   3. Sentence-ending punctuation (., !, ?, 。, ！, ？)
+ *   4. Hard split at maxChars (last resort)
+ */
+function splitIntoChunks(text: string, maxChars = CHUNK_CHAR_LIMIT): string[] {
+  if (text.length <= maxChars) return [text]
+
+  const chunks: string[] = []
+  let pos = 0
+
+  while (pos < text.length) {
+    const remaining = text.length - pos
+    if (remaining <= maxChars) {
+      chunks.push(text.slice(pos))
+      break
+    }
+
+    const window = text.slice(pos, pos + maxChars)
+    let splitAt = maxChars // default: hard split
+
+    // 1. Paragraph break (\n\n)
+    const para = window.lastIndexOf('\n\n')
+    if (para > maxChars * 0.35) { splitAt = para + 2 }
+    else {
+      // 2. Single newline
+      const line = window.lastIndexOf('\n')
+      if (line > maxChars * 0.35) { splitAt = line + 1 }
+      else {
+        // 3. Sentence-ending punctuation followed by whitespace or end
+        const ends = ['. ', '! ', '? ', '。', '！', '？', '…']
+        let best = -1
+        for (const e of ends) {
+          const idx = window.lastIndexOf(e)
+          if (idx > best && idx > maxChars * 0.35) best = idx
+        }
+        if (best > 0) splitAt = best + 2
+        // else: hard split at maxChars
+      }
+    }
+
+    chunks.push(text.slice(pos, pos + splitAt).trimEnd())
+    pos += splitAt
+  }
+
+  return chunks.filter(c => c.trim().length > 0)
+}
+
+/** Timeout (ms) per individual chunk request — prevents a single AI call from hanging forever */
+const CHUNK_TIMEOUT_MS = 90_000  // 90 s
+
+/** Max concurrent chunk requests — limits parallel API calls to avoid rate-limit errors */
+const CHUNK_CONCURRENCY = 5
+
+/**
+ * Wraps a promise with a hard timeout.
+ * Rejects with a clear message if `ms` elapses before the promise settles.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`Chunk translation timed out after ${ms / 1000}s (${label})`)),
+      ms
+    )
+    promise.then(
+      (val) => { clearTimeout(timer); resolve(val) },
+      (err) => { clearTimeout(timer); reject(err) },
+    )
+  })
+}
+
+/**
+ * Run `tasks` with at most `concurrency` active at a time, preserving order.
+ * - Unlimited total tasks (no hardcoded cap).
+ * - If any task rejects the error propagates immediately (Promise.all semantics).
+ */
+async function promisePool<T>(
+  tasks: Array<() => Promise<T>>,
+  concurrency: number,
+): Promise<T[]> {
+  const results: T[] = new Array(tasks.length)
+  let next = 0
+
+  async function worker(): Promise<void> {
+    while (next < tasks.length) {
+      const i = next++
+      results[i] = await tasks[i]()
+    }
+  }
+
+  const workers = Array.from(
+    { length: Math.min(concurrency, tasks.length) },
+    () => worker(),
+  )
+  await Promise.all(workers)
+  return results
+}
+
+/**
+ * Wrap a raw translate function with automatic chunking, per-chunk timeout,
+ * and concurrency-limited parallel execution.
+ *
+ * Strategy:
+ * - Text ≤ CHUNK_CHAR_LIMIT → translated in a single call (no overhead).
+ * - Text > CHUNK_CHAR_LIMIT → split into N chunks of arbitrary size:
+ *     • Chunk 1: plain translation with a "part 1 of N" note.
+ *     • Chunk k (k > 1): prepended with the last ~400 chars of the *source*
+ *       text of chunk k-1 so the model maintains consistent terminology/style
+ *       without waiting for previous chunk outputs (enables full parallelism).
+ * - Up to CHUNK_CONCURRENCY chunks run simultaneously; remaining chunks queue
+ *   and start as slots free.
+ * - Each chunk is individually wrapped in a CHUNK_TIMEOUT_MS deadline.
+ * - Results are joined with '\n'.
+ */
+async function translateChunked(
+  translateFn: (text: string) => Promise<string>,
+  sourceText: string,
+  chunkLimit = CHUNK_CHAR_LIMIT,
+): Promise<string> {
+  const chunks = splitIntoChunks(sourceText, chunkLimit)
+  if (chunks.length === 1) {
+    return withTimeout(translateFn(sourceText), CHUNK_TIMEOUT_MS, 'single chunk')
+  }
+
+  const tasks: Array<() => Promise<string>> = chunks.map((chunk, idx) => () => {
+    let text: string
+    if (idx === 0) {
+      text =
+        `[NOTE: This is part 1 of ${chunks.length} of a larger document. ` +
+        `Translate only this part; more will follow. Maintain consistent terminology and style.]\n\n` +
+        chunk
+    } else {
+      const prevTail = chunks[idx - 1].slice(-CONTEXT_TAIL_CHARS).trim()
+      text =
+        `[NOTE: This is part ${idx + 1} of ${chunks.length} of a larger document. ` +
+        `The immediately preceding source text (already translated separately) was:\n` +
+        `"${prevTail}"\n` +
+        `Translate ONLY the text below this note. Use consistent terminology and style ` +
+        `with the rest of the document. Output only the translation — no notes or prefix.]\n\n` +
+        chunk
+    }
+    return withTimeout(translateFn(text), CHUNK_TIMEOUT_MS, `chunk ${idx + 1}/${chunks.length}`)
+  })
+
+  const results = await promisePool(tasks, CHUNK_CONCURRENCY)
+  return results.join('\n')
+}
+
 async function translateWithGemini(
   apiKey: string,
   model: string,
@@ -144,7 +307,7 @@ async function translateWithClaude(
   const client = new Anthropic({ apiKey })
   const message = await client.messages.create({
     model,
-    max_tokens: 4096,
+    max_tokens: 16000,
     system: SYSTEM_PROMPT,
     messages: [
       {
@@ -182,7 +345,7 @@ async function translateWithOpenAI(
         content: buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style, phoneticOnly),
       },
     ],
-    max_completion_tokens: 4096,
+    max_completion_tokens: 16384,
   })
   return (completion.choices[0]?.message?.content ?? '').trim()
 }
@@ -202,7 +365,7 @@ async function rewriteWithClaude(apiKey: string, model: string, text: string, la
   const client = new Anthropic({ apiKey })
   const message = await client.messages.create({
     model,
-    max_tokens: 4096,
+    max_tokens: 16000,
     system: REWRITE_SYSTEM_PROMPT,
     messages: [{ role: 'user', content: buildRewritePrompt(text, lang, style) }],
   })
@@ -220,7 +383,7 @@ async function rewriteWithOpenAI(apiKey: string, model: string, text: string, la
       { role: 'system', content: REWRITE_SYSTEM_PROMPT },
       { role: 'user', content: buildRewritePrompt(text, lang, style) },
     ],
-    max_completion_tokens: 4096,
+    max_completion_tokens: 16384,
   })
   return (completion.choices[0]?.message?.content ?? '').trim()
 }
@@ -288,7 +451,7 @@ export async function streamTranslation(
         { role: 'user',   content: prompt },
       ],
       stream: true,
-      max_completion_tokens: 4096,
+      max_completion_tokens: 16384,
     })
     for await (const chunk of stream) {
       const token = chunk.choices[0]?.delta?.content ?? ''
@@ -310,7 +473,7 @@ export async function streamTranslation(
     const client = new Anthropic({ apiKey })
     const stream = client.messages.stream({
       model,
-      max_tokens: 4096,
+      max_tokens: 16000,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: prompt }],
     })
@@ -388,15 +551,33 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
     try {
       let translatedText = ''
 
+      // phoneticOnly (furigana pass) operates on already-translated short text — skip chunking
+      const needsChunking = !phoneticOnly && sourceText.length > CHUNK_CHAR_LIMIT
+
       switch (provider) {
         case 'gemini':
-          translatedText = await translateWithGemini(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', !!phoneticOnly)
+          translatedText = needsChunking
+            ? await translateChunked(
+                (text) => translateWithGemini(apiKey, model, text, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', false),
+                sourceText,
+              )
+            : await translateWithGemini(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', !!phoneticOnly)
           break
         case 'claude':
-          translatedText = await translateWithClaude(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', !!phoneticOnly)
+          translatedText = needsChunking
+            ? await translateChunked(
+                (text) => translateWithClaude(apiKey, model, text, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', false),
+                sourceText,
+              )
+            : await translateWithClaude(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', !!phoneticOnly)
           break
         case 'openai':
-          translatedText = await translateWithOpenAI(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', !!phoneticOnly)
+          translatedText = needsChunking
+            ? await translateChunked(
+                (text) => translateWithOpenAI(apiKey, model, text, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', false),
+                sourceText,
+              )
+            : await translateWithOpenAI(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', !!phoneticOnly)
           break
         default:
           return { success: false, error: `Unknown provider: ${provider}` }
@@ -441,16 +622,23 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
 
     try {
       let rewrittenText = ''
+      const needsChunking = text.length > CHUNK_CHAR_LIMIT
 
       switch (provider) {
         case 'gemini':
-          rewrittenText = await rewriteWithGemini(apiKey, model, text, lang, translationStyle)
+          rewrittenText = needsChunking
+            ? await translateChunked((t) => rewriteWithGemini(apiKey, model, t, lang, translationStyle), text)
+            : await rewriteWithGemini(apiKey, model, text, lang, translationStyle)
           break
         case 'claude':
-          rewrittenText = await rewriteWithClaude(apiKey, model, text, lang, translationStyle)
+          rewrittenText = needsChunking
+            ? await translateChunked((t) => rewriteWithClaude(apiKey, model, t, lang, translationStyle), text)
+            : await rewriteWithClaude(apiKey, model, text, lang, translationStyle)
           break
         case 'openai':
-          rewrittenText = await rewriteWithOpenAI(apiKey, model, text, lang, translationStyle)
+          rewrittenText = needsChunking
+            ? await translateChunked((t) => rewriteWithOpenAI(apiKey, model, t, lang, translationStyle), text)
+            : await rewriteWithOpenAI(apiKey, model, text, lang, translationStyle)
           break
         default:
           return { success: false, error: `Unknown provider: ${provider}` }

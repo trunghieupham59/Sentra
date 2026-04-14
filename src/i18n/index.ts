@@ -242,6 +242,20 @@ export interface Translations {
   settings_extension_port: string
   settings_extension_connected: string
 
+  // Settings — Updates
+  settings_update_section: string
+  settings_update_section_desc: string
+  settings_update_current_version: string
+  settings_update_check: string
+  settings_update_checking: string
+  settings_update_available: string
+  settings_update_not_available: string
+  settings_update_downloading: string
+  settings_update_downloaded: string
+  settings_update_download: string
+  settings_update_install: string
+  settings_update_error: string
+
   // Settings — AI Chat section
   settings_chat_section: string
   settings_chat_section_desc: string
@@ -493,6 +507,18 @@ const en: Translations = {
   settings_extension_install_hint: 'Install the Lotus Chrome Extension, then open its options page and paste this token.',
   settings_extension_port: 'Port',
   settings_extension_connected: 'Extension connected',
+  settings_update_section: 'Updates',
+  settings_update_section_desc: 'Keep Lotus up to date with the latest features and bug fixes.',
+  settings_update_current_version: 'Current version',
+  settings_update_check: 'Check for Updates',
+  settings_update_checking: 'Checking for updates…',
+  settings_update_available: 'Update available — v{version}',
+  settings_update_not_available: "You're up to date (v{version})",
+  settings_update_downloading: 'Downloading… {percent}%',
+  settings_update_downloaded: 'Ready to install — v{version}',
+  settings_update_download: 'Download Update',
+  settings_update_install: 'Restart & Install',
+  settings_update_error: 'Update check failed',
   settings_chat_section: 'AI Chat',
   settings_chat_section_desc: 'Configure default system prompt and manage chat sessions.',
   settings_chat_go_to_chat: 'Open AI Chat',
@@ -743,6 +769,18 @@ const vi: Translations = {
   settings_extension_install_hint: 'Cài tiện ích Lotus Chrome, mở trang Options và dán token này vào.',
   settings_extension_port: 'Cổng',
   settings_extension_connected: 'Tiện ích đã kết nối',
+  settings_update_section: 'Cập nhật',
+  settings_update_section_desc: 'Giữ Lotus luôn cập nhật với tính năng mới nhất và bản sửa lỗi.',
+  settings_update_current_version: 'Phiên bản hiện tại',
+  settings_update_check: 'Kiểm tra cập nhật',
+  settings_update_checking: 'Đang kiểm tra cập nhật…',
+  settings_update_available: 'Có bản cập nhật — v{version}',
+  settings_update_not_available: 'Bạn đang dùng phiên bản mới nhất (v{version})',
+  settings_update_downloading: 'Đang tải… {percent}%',
+  settings_update_downloaded: 'Sẵn sàng cài đặt — v{version}',
+  settings_update_download: 'Tải bản cập nhật',
+  settings_update_install: 'Khởi động lại & Cài đặt',
+  settings_update_error: 'Kiểm tra cập nhật thất bại',
   settings_chat_section: 'AI Chat',
   settings_chat_section_desc: 'Cấu hình system prompt mặc định và quản lý cuộc trò chuyện.',
   settings_chat_go_to_chat: 'Mở AI Chat',
@@ -993,6 +1031,18 @@ const ja: Translations = {
   settings_extension_install_hint: 'Lotus Chrome拡張機能をインストールし、オプションページを開いてこのトークンを貼り付けてください。',
   settings_extension_port: 'ポート',
   settings_extension_connected: '拡張機能が接続されました',
+  settings_update_section: 'アップデート',
+  settings_update_section_desc: '最新の機能とバグ修正でLotusを最新の状態に保ちます。',
+  settings_update_current_version: '現在のバージョン',
+  settings_update_check: 'アップデートを確認',
+  settings_update_checking: 'アップデートを確認中…',
+  settings_update_available: 'アップデートあり — v{version}',
+  settings_update_not_available: '最新バージョンです（v{version}）',
+  settings_update_downloading: 'ダウンロード中… {percent}%',
+  settings_update_downloaded: 'インストール準備完了 — v{version}',
+  settings_update_download: 'アップデートをダウンロード',
+  settings_update_install: '再起動してインストール',
+  settings_update_error: 'アップデート確認に失敗しました',
   settings_chat_section: 'AIチャット',
   settings_chat_section_desc: 'デフォルトのシステムプロンプトを設定し、チャットセッションを管理します。',
   settings_chat_go_to_chat: 'AIチャットを開く',

@@ -315,6 +315,23 @@ export interface WindowApi {
     injectNow: () => Promise<{ success: boolean }>
   }
 
+  /** Auto-updater — check and install updates from GitHub Releases */
+  updater: {
+    check: () => Promise<{ success: boolean; error?: string }>
+    download: () => Promise<{ success: boolean; error?: string }>
+    install: () => Promise<{ success: boolean; error?: string }>
+    getVersion: () => Promise<{ version: string }>
+    onStatus: (cb: (status: {
+      type: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'
+      version?: string
+      percent?: number
+      bytesPerSecond?: number
+      transferred?: number
+      total?: number
+      error?: string
+    }) => void) => () => void
+  }
+
   /** Local HTTP server — Chrome Extension bridge (multi-token) */
   localServer: {
     createToken: (p: { name: string; ttlDays: number }) => Promise<{

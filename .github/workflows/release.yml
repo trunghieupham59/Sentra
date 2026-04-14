@@ -9,7 +9,138 @@ permissions:
     contents: write
 
 jobs:
+    create-release:
+        runs-on: ubuntu-latest
+        outputs:
+            release_id: ${{ steps.create_release.outputs.id }}
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Generate release notes
+              id: notes
+              shell: bash
+              run: |
+                  CURRENT_TAG="${GITHUB_REF#refs/tags/}"
+                  PREV_TAG=$(git tag --sort=-version:refname | grep -v "^${CURRENT_TAG}$" | head -n 1)
+
+                  echo "Current tag: $CURRENT_TAG"
+                  echo "Previous tag: $PREV_TAG"
+
+                  if [ -z "$PREV_TAG" ]; then
+                    RAW_COMMITS=$(git log --pretty=format:"%s|%h|%an" HEAD)
+                  else
+                    RAW_COMMITS=$(git log --pretty=format:"%s|%h|%an" "${PREV_TAG}..HEAD")
+                  fi
+
+                  FEATURES=""
+                  FIXES=""
+                  IMPROVEMENTS=""
+                  OTHER=""
+
+                  while IFS='|' read -r subject hash author; do
+                    [ -z "$subject" ] && continue
+                    ENTRY="- ${subject} (\`${hash}\`) — *${author}*"
+                    lower=$(echo "$subject" | tr '[:upper:]' '[:lower:]')
+                    if echo "$lower" | grep -qE "^(feat|add|new|feature)"; then
+                      FEATURES="${FEATURES}${ENTRY}"$'\n'
+                    elif echo "$lower" | grep -qE "^(fix|bug|hotfix|patch|revert)"; then
+                      FIXES="${FIXES}${ENTRY}"$'\n'
+                    elif echo "$lower" | grep -qE "^(improve|enhance|update|refactor|perf|chore|style|docs|test|ci|build)"; then
+                      IMPROVEMENTS="${IMPROVEMENTS}${ENTRY}"$'\n'
+                    else
+                      OTHER="${OTHER}${ENTRY}"$'\n'
+                    fi
+                  done <<< "$RAW_COMMITS"
+
+                  TOTAL=$(echo "$RAW_COMMITS" | grep -c '.' || true)
+                  COMPARE_URL="https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${CURRENT_TAG}"
+
+                  {
+                    echo "RELEASE_BODY<<ENDOFBODY"
+                    echo "## 🌸 Lotus ${CURRENT_TAG} — Release Notes"
+                    echo ""
+                    echo "> **Lotus** is a local AI-powered translation desktop app for macOS and Windows,"
+                    echo "> supporting models from OpenAI, Anthropic Claude, and Google Gemini."
+                    echo ""
+                    echo "---"
+                    echo ""
+
+                    if [ -n "$FEATURES" ]; then
+                      echo "### ✨ New Features"
+                      echo ""
+                      echo "$FEATURES"
+                    fi
+
+                    if [ -n "$FIXES" ]; then
+                      echo "### 🐛 Bug Fixes"
+                      echo ""
+                      echo "$FIXES"
+                    fi
+
+                    if [ -n "$IMPROVEMENTS" ]; then
+                      echo "### 🔧 Improvements & Maintenance"
+                      echo ""
+                      echo "$IMPROVEMENTS"
+                    fi
+
+                    if [ -n "$OTHER" ]; then
+                      echo "### 📝 Other Changes"
+                      echo ""
+                      echo "$OTHER"
+                    fi
+
+                    if [ "$TOTAL" -eq 0 ]; then
+                      echo "### 📋 Changes"
+                      echo ""
+                      echo "- Initial release or no conventional commits found."
+                      echo ""
+                    fi
+
+                    echo "---"
+                    echo ""
+                    echo "## 📦 Installation"
+                    echo ""
+                    echo "### 🍎 macOS"
+                    echo "1. Download the \`.dmg\` file matching your chip:"
+                    echo "   - **Apple Silicon (M1/M2/M3):** \`Lotus-*-arm64.dmg\`"
+                    echo "   - **Intel Mac:** \`Lotus-*-x64.dmg\`"
+                    echo "2. Open the \`.dmg\` and drag **Lotus** to your **Applications** folder."
+                    echo "3. On first launch, right-click → **Open** to bypass Gatekeeper if needed."
+                    echo ""
+                    echo "### 🪟 Windows"
+                    echo "1. Download \`Lotus-*-x64-Setup.exe\`."
+                    echo "2. Run the installer and follow the setup wizard."
+                    echo "3. You can choose a custom installation directory during setup."
+                    echo ""
+                    echo "---"
+                    echo ""
+                    if [ -n "$PREV_TAG" ]; then
+                      echo "**📜 Full Changelog:** [${PREV_TAG} → ${CURRENT_TAG}](${COMPARE_URL})"
+                    else
+                      echo "**📜 Full Changelog:** [View all commits](https://github.com/${{ github.repository }}/commits/${CURRENT_TAG})"
+                    fi
+                    echo "ENDOFBODY"
+                  } >> "$GITHUB_OUTPUT"
+
+                  echo "PREV_TAG=$PREV_TAG" >> "$GITHUB_OUTPUT"
+                  echo "CURRENT_TAG=$CURRENT_TAG" >> "$GITHUB_OUTPUT"
+
+            - name: Create GitHub Release
+              id: create_release
+              uses: softprops/action-gh-release@v2
+              with:
+                  body: ${{ steps.notes.outputs.RELEASE_BODY }}
+                  draft: false
+                  prerelease: ${{ contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-rc') }}
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     build:
+        needs: create-release
         strategy:
             matrix:
                 include:

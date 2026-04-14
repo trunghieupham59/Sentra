@@ -11,6 +11,7 @@ import { getStoredApiKey } from './ipc/storage'
 import { registerTranscribeHandlers } from './ipc/transcribe'
 import { registerTranslateHandlers, streamTranslation } from './ipc/translate'
 import { registerTtsHandlers } from './ipc/tts'
+import { registerUpdaterHandlers } from './ipc/updater'
 
 // Allow audio autoplay after async operations (TTS API calls lose user-gesture context)
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
@@ -294,6 +295,9 @@ app.whenReady().then(() => {
   // Legacy Assistant — floating icon injected directly into browsers via osascript
   setLocalServerAccessors(() => getServerToken(), () => LOCAL_SERVER_PORT)
   initLegacyAssistant(ipcMain)
+
+  // Auto-updater — check & install updates from GitHub Releases
+  registerUpdaterHandlers(ipcMain, () => mainWindow)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
