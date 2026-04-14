@@ -6,6 +6,13 @@ import type { ChatMessage, ChatSession, FetchedModel, HistoryItem, LiveSession, 
 
 const MAX_HISTORY = 100
 
+/**
+ * Maximum number of chat sessions to keep in memory and persisted storage.
+ * Oldest sessions are removed when the limit is exceeded to prevent
+ * unbounded memory growth in long-running usage.
+ */
+const MAX_CHAT_SESSIONS = 20
+
 interface AppState {
   // Translation state
   sourceText: string
@@ -244,7 +251,11 @@ export const useAppStore = create<AppState>()(
           provider,
           model,
         }
-        set((state) => ({ chatSessions: [session, ...state.chatSessions], activeChatSessionId: id }))
+        set((state) => ({
+          // Prepend new session and enforce MAX_CHAT_SESSIONS cap — oldest sessions are trimmed
+          chatSessions: [session, ...state.chatSessions].slice(0, MAX_CHAT_SESSIONS),
+          activeChatSessionId: id,
+        }))
         return id
       },
       deleteChatSession: (id) =>

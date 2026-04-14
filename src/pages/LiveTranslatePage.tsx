@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { LanguageSelector } from '../components/LanguageSelector'
 import { MarkdownText } from '../components/MarkdownText'
 import { ModelSelector } from '../components/ModelSelector'
+import { getSupportedAudioMimeType } from '../constants/audio'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { SubtitleSettings } from '../types'
 import { extractCompleteSentences, isHallucination, jaccardSimilarity } from '../utils/live-translate'
@@ -115,11 +116,13 @@ const MIC_GAIN = 2.5
  */
 const MAX_RAW_TRANSCRIPT_CHARS = 50_000
 
-// ── Audio helper ───────────────────────────────────────────────────────────────
-function getSupportedMimeType(): string {
-  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4']
-  return candidates.find(m => MediaRecorder.isTypeSupported(m)) ?? ''
-}
+/**
+ * Maximum age (ms) a queued audio chunk may wait before being discarded.
+ * If the processing queue falls behind (e.g. slow API), chunks older than
+ * this threshold are dropped to prevent latency stacking — the live
+ * translation stays near real-time even under heavy load.
+ */
+const CHUNK_MAX_QUEUE_AGE_MS = 10_000 // 10 s
 
 // ── Deep link to macOS Screen Recording settings ──────────────────────────────
 const SCREEN_RECORDING_PREFS = 'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'
@@ -391,7 +394,8 @@ export function LiveTranslatePage() {
   // ── Recorder cycling with VAD ─────────────────────────────────────────────────
   const startChunk = useCallback(() => {
     if (!streamRef.current || !activeRef.current) return
-    const mimeType = getSupportedMimeType()
+    // Use the shared audio MIME type helper from constants/audio — single source of truth
+    const mimeType = getSupportedAudioMimeType()
     let recorder: MediaRecorder
     try {
       recorder = new MediaRecorder(streamRef.current, mimeType ? { mimeType } : undefined)
@@ -433,9 +437,15 @@ export function LiveTranslatePage() {
       const blob      = new Blob(audioChunksRef.current, { type: recMime })
 
       if (hadSpeech) {
-        // Speech detected — reset silence counter and queue the chunk
+        // Speech detected — reset silence counter and queue the chunk.
+        // Capture the enqueue timestamp so stale chunks can be discarded if the
+        // queue falls behind — prevents latency stacking during slow API responses.
         silentChunkCountRef.current = 0
-        queueRef.current = queueRef.current.then(() => processChunk(blob, recMime))
+        const queuedAt = Date.now()
+        queueRef.current = queueRef.current.then(async () => {
+          if (Date.now() - queuedAt > CHUNK_MAX_QUEUE_AGE_MS) return // discard stale chunk
+          await processChunk(blob, recMime)
+        })
       } else {
         // No speech — increment counter; reset decoder context on long silence
         silentChunkCountRef.current += 1

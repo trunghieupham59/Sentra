@@ -577,12 +577,10 @@ export function SettingsPage() {
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div className="min-w-0">
                 <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                  {autoTranslate ? 'Tự động dịch (Auto)' : 'Dịch thủ công (Manual)'}
+                  {`${t.settings_translate_mode} — ${autoTranslate ? t.settings_mode_auto : t.settings_mode_manual}`}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  {autoTranslate
-                    ? 'Tự động dịch khi bạn nhập. Tắt để dịch thủ công bằng nút Dịch.'
-                    : 'Nhấn nút Dịch để thực hiện dịch. Bật để dịch tự động khi nhập.'}
+                  {t.settings_translate_mode_desc}
                 </p>
               </div>
               <ToggleSwitch

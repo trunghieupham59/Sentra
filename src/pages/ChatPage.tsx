@@ -9,7 +9,7 @@ import { useAppStore, useT } from '../store/useAppStore'
 import type { ChatMessage, ChatMessageContent } from '../types'
 
 const MAX_IMAGE_SIZE = 1200
-const MAX_CHAT_SESSIONS = 20
+// MAX_CHAT_SESSIONS is enforced in useAppStore.createChatSession — defined there as the single source of truth
 
 // ─── Resize image helper ──────────────────────────────────────────────────────
 async function resizeImageToBase64(

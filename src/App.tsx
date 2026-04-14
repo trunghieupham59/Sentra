@@ -48,7 +48,7 @@ function App() {
     checkKeys()
   }, [setKeyStatus])
 
-  const isMac = (window as any).api?.platform === 'darwin'
+  const isMac = window.api?.platform === 'darwin'
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">

@@ -496,6 +496,23 @@ export async function streamTranslation(
   return fullText
 }
 
+/**
+ * Register all translation-related IPC handlers with the Electron main process.
+ *
+ * Handlers registered:
+ *  - `translate:verify`   — Test an API key with a minimal request; returns `{ success, errorCode? }`
+ *  - `translate`          — Full text translation with optional chunking for long documents;
+ *                           returns `{ success, translatedText?, error?, errorCode? }`
+ *  - `translate:rewrite`  — Rewrite text to sound more natural in its target language;
+ *                           returns `{ success, translatedText?, error?, errorCode? }`
+ *
+ * All handlers:
+ *  - Read the API key from the OS Keychain via `getStoredApiKey` (never from renderer).
+ *  - Validate inputs before calling the AI provider.
+ *  - Categorize errors into typed `errorCode` values (INVALID_KEY, RATE_LIMIT, NETWORK).
+ *
+ * @param ipcMain - Electron's IpcMain instance (passed from main.ts at startup).
+ */
 export function registerTranslateHandlers(ipcMain: IpcMain) {
   // Verify API key by making a minimal test request
   ipcMain.handle('translate:verify', async (_event, provider: string, apiKey: string) => {

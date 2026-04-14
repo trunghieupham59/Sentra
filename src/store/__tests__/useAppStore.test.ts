@@ -107,6 +107,20 @@ describe('swapLanguages', () => {
 
 // ─── Chat Sessions ─────────────────────────────────────────────────────────────
 describe('Chat Sessions', () => {
+  it('enforces MAX_CHAT_SESSIONS cap (20) — oldest sessions are trimmed', () => {
+    act(() => {
+      // Create 22 sessions — only the latest 20 should be retained
+      for (let i = 0; i < 22; i++) {
+        useAppStore.getState().createChatSession('gemini', `model-${i}`)
+      }
+    })
+    const { chatSessions } = useAppStore.getState()
+    expect(chatSessions).toHaveLength(20)
+    // Newest sessions (last created) should be at the front
+    expect(chatSessions[0].model).toBe('model-21')
+    expect(chatSessions[19].model).toBe('model-2')
+  })
+
   it('creates a new chat session and sets it as active', () => {
     let id: string
     act(() => {

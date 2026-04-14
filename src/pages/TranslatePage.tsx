@@ -6,6 +6,7 @@ import { LanguageSelector } from '../components/LanguageSelector'
 import { MarkdownEditor } from '../components/MarkdownEditor'
 import { MarkdownText } from '../components/MarkdownText'
 import { ModelSelector } from '../components/ModelSelector'
+import { SpeakButton } from '../components/ui/SpeakButton'
 import { Spinner } from '../components/ui/Spinner'
 import { VoiceRecorder } from '../components/VoiceRecorder'
 import { MAX_INPUT_CHARS } from '../constants/providers'
@@ -13,6 +14,13 @@ import { useTTS } from '../hooks/useTTS'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { ImageTextRegion, TranslationStyle } from '../types'
 import { renderTranslatedRegions } from '../utils/canvas'
+
+/**
+ * Sentinel value set on translatedText when a Gemini image-edit result is shown.
+ * Non-empty so action buttons conditionally appear, but those buttons check
+ * `editedImageUrl` first — so the user cannot actually copy or speak this value.
+ */
+const IMAGE_TRANSLATED_SENTINEL = '✓'
 
 export function TranslatePage() {
   const {
@@ -92,7 +100,7 @@ export function TranslatePage() {
           // ── Gemini image-edit: show the directly edited image ──
           const mimeType = imageAttachment.mimeType
           setEditedImageUrl(`data:${mimeType};base64,${result.editedImageBase64}`)
-          setTranslatedText('✓') // non-empty so copy/speak buttons appear
+          setTranslatedText(IMAGE_TRANSLATED_SENTINEL) // non-empty so conditional buttons render
           setImageRegions(null)
         } else if (result.success && result.regions && result.regions.length > 0) {
           // ── Fallback (Claude/OpenAI): compile translated text from regions ──
