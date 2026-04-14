@@ -133,4 +133,87 @@ contextBridge.exposeInMainWorld('api', {
   // App info
   platform: process.platform,
   version: process.env.npm_package_version || '1.0.0',
+
+  // ── Global Hotkey ────────────────────────────────────────────────────────
+  hotkey: {
+    /**
+     * Update (and re-register) global hotkey settings.
+     * Pass `enabled: true` + `hotkey: 'CommandOrControl+Shift+T'` to activate.
+     */
+    update: (settings: {
+      hotkey?: string
+      enabled?: boolean
+      provider?: string
+      model?: string
+      sourceLang?: string
+      targetLang?: string
+    }) => ipcRenderer.invoke('hotkey:update', settings),
+
+    /** Get the currently persisted hotkey settings. */
+    get: () => ipcRenderer.invoke('hotkey:get'),
+
+    /** Disable the hotkey without clearing other settings. */
+    disable: () => ipcRenderer.invoke('hotkey:disable'),
+
+    /**
+     * Listen for hotkey events pushed from the main process.
+     * Returns a cleanup function — call it to unsubscribe.
+     */
+    onTranslating: (cb: (data: { text: string }) => void) => {
+      const handler = (_: unknown, data: { text: string }) => cb(data)
+      ipcRenderer.on('hotkey:translating', handler)
+      return () => ipcRenderer.removeListener('hotkey:translating', handler)
+    },
+    onTranslated: (cb: (data: { original: string; translated: string }) => void) => {
+      const handler = (_: unknown, data: { original: string; translated: string }) => cb(data)
+      ipcRenderer.on('hotkey:translated', handler)
+      return () => ipcRenderer.removeListener('hotkey:translated', handler)
+    },
+    onError: (cb: (data: { error: string }) => void) => {
+      const handler = (_: unknown, data: { error: string }) => cb(data)
+      ipcRenderer.on('hotkey:error', handler)
+      return () => ipcRenderer.removeListener('hotkey:error', handler)
+    },
+  },
+
+  // ── Legacy Assistant (no-extension browser injection) ───────────────────
+  legacyAssistant: {
+    /** Get current settings */
+    get: () => ipcRenderer.invoke('legacyAssistant:get'),
+    /** Update settings (enable auto-inject, change targetLang, etc.) */
+    update: (settings: { enabled?: boolean; targetLang?: string }) =>
+      ipcRenderer.invoke('legacyAssistant:update', settings),
+    /**
+     * Get the bookmarklet `javascript:` URL — embed the full assistant script
+     * so the user can drag it to their bookmarks bar and click to inject on
+     * any page without installing a browser extension.
+     */
+    getBookmarklet: () => ipcRenderer.invoke('legacyAssistant:getBookmarklet'),
+    /** Immediately trigger one injection attempt into the frontmost browser */
+    injectNow: () => ipcRenderer.invoke('legacyAssistant:injectNow'),
+  },
+
+  // ── Local Server (Chrome Extension bridge) ───────────────────────────────
+  localServer: {
+    /** Create a new named token — token value returned ONCE only. */
+    createToken: (params: { name: string; ttlDays: number }) =>
+      ipcRenderer.invoke('localServer:createToken', params) as Promise<{
+        success: boolean; token?: string; id?: string; name?: string
+        createdAt?: number; expiresAt?: number; error?: string
+      }>,
+    /** List all active tokens — token values are NEVER returned. */
+    listTokens: () => ipcRenderer.invoke('localServer:listTokens') as Promise<{
+      success: boolean; port: number
+      tokens: Array<{ id: string; name: string; createdAt: number; expiresAt: number }>
+    }>,
+    /** Delete a token — it stops working immediately. */
+    deleteToken: (params: { id: string }) =>
+      ipcRenderer.invoke('localServer:deleteToken', params) as Promise<{ success: boolean; error?: string }>,
+    /** Rotate the token value for an existing entry — new value returned ONCE, TTL resets. */
+    regenerateToken: (params: { id: string; ttlDays?: number }) =>
+      ipcRenderer.invoke('localServer:regenerateToken', params) as Promise<{
+        success: boolean; token?: string; id?: string; name?: string
+        createdAt?: number; expiresAt?: number; error?: string
+      }>,
+  },
 })

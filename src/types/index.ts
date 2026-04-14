@@ -231,6 +231,7 @@ export interface WindowApi {
     model: string
     text: string
     lang: string
+    translationStyle?: TranslationStyle
   }) => Promise<TranslateResult>
   transcribeAudio: (params: {
     audioData: ArrayBuffer
@@ -288,6 +289,48 @@ export interface WindowApi {
   }
   platform: string
   version: string
+
+  /** Global hotkey — translate selected text in any OS application */
+  hotkey: {
+    update: (settings: {
+      hotkey?: string
+      enabled?: boolean
+      provider?: string
+      model?: string
+      sourceLang?: string
+      targetLang?: string
+    }) => Promise<{ success: boolean; settings?: Record<string, unknown>; error?: string }>
+    get: () => Promise<{ success: boolean; settings?: Record<string, unknown> }>
+    disable: () => Promise<{ success: boolean }>
+    onTranslating: (cb: (data: { text: string }) => void) => () => void
+    onTranslated: (cb: (data: { original: string; translated: string }) => void) => () => void
+    onError: (cb: (data: { error: string }) => void) => () => void
+  }
+
+  /** Legacy Assistant — floating icon injected into browsers without an extension */
+  legacyAssistant: {
+    get: () => Promise<{ success: boolean; settings?: Record<string, unknown> }>
+    update: (settings: { enabled?: boolean; targetLang?: string }) => Promise<{ success: boolean }>
+    getBookmarklet: () => Promise<{ success: boolean; bookmarklet?: string; error?: string }>
+    injectNow: () => Promise<{ success: boolean }>
+  }
+
+  /** Local HTTP server — Chrome Extension bridge (multi-token) */
+  localServer: {
+    createToken: (p: { name: string; ttlDays: number }) => Promise<{
+      success: boolean; token?: string; id?: string; name?: string
+      createdAt?: number; expiresAt?: number; error?: string
+    }>
+    listTokens: () => Promise<{
+      success: boolean; port: number
+      tokens: Array<{ id: string; name: string; createdAt: number; expiresAt: number }>
+    }>
+    deleteToken: (p: { id: string }) => Promise<{ success: boolean; error?: string }>
+    regenerateToken: (p: { id: string; ttlDays?: number }) => Promise<{
+      success: boolean; token?: string; id?: string; name?: string
+      createdAt?: number; expiresAt?: number; error?: string
+    }>
+  }
 }
 
 declare global {

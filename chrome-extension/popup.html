@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lotus Translate</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0 }
+    body {
+      width: 320px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 13px;
+      background: #0f0f1a;
+      color: #e0e7ff;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid #1e1b4b;
+    }
+    .header-logo {
+      width: 28px;
+      height: 28px;
+      background: #4f46e5;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .header-logo svg { width: 16px; height: 16px; color: #fff }
+    .header-title { font-weight: 700; font-size: 14px; color: #e0e7ff }
+    .header-subtitle { font-size: 10px; color: #6366f1; margin-top: 1px }
+    .header-settings {
+      margin-left: auto;
+      padding: 4px 8px;
+      background: #1e1b4b;
+      color: #a5b4fc;
+      border: none;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .header-settings:hover { background: #2d2a5e }
+
+    .section { padding: 12px 16px; border-bottom: 1px solid #1e1b4b }
+
+    label { display: block; font-size: 11px; color: #a5b4fc; font-weight: 600; margin-bottom: 5px }
+
+    .field-group { display: flex; gap: 8px }
+
+    select, textarea, input[type="text"] {
+      width: 100%;
+      background: #1e1b4b;
+      border: 1px solid #312e81;
+      border-radius: 7px;
+      color: #e0e7ff;
+      font-size: 12px;
+      font-family: inherit;
+      padding: 6px 10px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    select:focus, textarea:focus, input[type="text"]:focus {
+      border-color: #6366f1;
+    }
+    select { appearance: none; padding-right: 28px; cursor: pointer }
+
+    .select-wrap { position: relative; flex: 1 }
+    .select-wrap::after {
+      content: '▾';
+      position: absolute;
+      right: 9px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #6366f1;
+      pointer-events: none;
+      font-size: 11px;
+    }
+
+    textarea {
+      resize: none;
+      height: 72px;
+      line-height: 1.5;
+    }
+
+    .btn-row { display: flex; gap: 8px; padding: 12px 16px }
+    .btn {
+      flex: 1;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .btn-primary { background: #4f46e5; color: #fff }
+    .btn-primary:hover { background: #4338ca }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed }
+    .btn-secondary { background: #1e1b4b; color: #a5b4fc }
+    .btn-secondary:hover { background: #2d2a5e }
+    .btn-success { background: #059669; color: #fff }
+    .btn-success:hover { background: #047857 }
+
+    .result-box {
+      margin: 0 16px 4px;
+      padding: 10px 12px;
+      background: #1e1b4b;
+      border-radius: 8px;
+      border: 1px solid #312e81;
+      display: none;
+    }
+    .result-label { font-size: 10px; color: #6366f1; font-weight: 600; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.05em }
+    .result-text { color: #e0e7ff; line-height: 1.5; font-size: 13px; margin-bottom: 8px }
+
+    /* Action buttons row inside result box */
+    .result-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .result-actions .btn {
+      flex: 1;
+      padding: 5px 8px;
+      font-size: 11px;
+      border-radius: 6px;
+    }
+    .btn-copy-result { background: #312e81; color: #a5b4fc }
+    .btn-copy-result:hover { background: #3730a3 }
+    .btn-copy-result.copied { background: #065f46; color: #6ee7b7 }
+    .btn-replace { background: #1e3a5f; color: #93c5fd }
+    .btn-replace:hover { background: #1e40af }
+    .btn-replace.replaced { background: #065f46; color: #6ee7b7 }
+
+    .status {
+      padding: 8px 16px;
+      font-size: 11px;
+      text-align: center;
+      display: none;
+    }
+    .status.error { color: #f87171 }
+    .status.success { color: #34d399 }
+    .status.loading { color: #a5b4fc }
+
+    .not-connected {
+      padding: 20px 16px;
+      text-align: center;
+    }
+    .not-connected p { color: #6366f1; margin-bottom: 12px; font-size: 12px; line-height: 1.5 }
+    .not-connected .btn { display: inline-block; padding: 8px 20px; flex: none }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <title>Lotus</title>
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+        <path d="M2 17l10 5 10-5"/>
+        <path d="M2 12l10 5 10-5"/>
+      </svg>
+    </div>
+    <div>
+      <div class="header-title">Lotus Translate</div>
+      <div class="header-subtitle">AI-powered • via native app</div>
+    </div>
+    <button type="button" class="header-settings" id="btn-options">⚙ Options</button>
+  </div>
+
+  <!-- Not connected state -->
+  <div class="not-connected" id="not-connected-state" style="display:none">
+    <p>🔌 Not connected to Lotus app.<br>Set your token in Options first.</p>
+    <button type="button" class="btn btn-primary" id="btn-go-options">Open Options</button>
+  </div>
+
+  <!-- Connected state -->
+  <div id="connected-state" style="display:none">
+    <div class="section">
+      <label>Translate to</label>
+      <div class="field-group">
+        <div class="select-wrap">
+          <select id="target-lang">
+            <option value="en">English</option>
+            <option value="vi">Vietnamese</option>
+            <option value="ja">Japanese</option>
+            <option value="zh">Chinese (Simplified)</option>
+            <option value="ko">Korean</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="es">Spanish</option>
+            <option value="pt">Portuguese</option>
+            <option value="ru">Russian</option>
+            <option value="ar">Arabic</option>
+            <option value="th">Thai</option>
+            <option value="id">Indonesian</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <label>Text to translate</label>
+      <textarea id="input-text" placeholder="Paste or type text here…"></textarea>
+    </div>
+
+    <div class="btn-row">
+      <button type="button" class="btn btn-secondary" id="btn-clear">Clear</button>
+      <button type="button" class="btn btn-primary" id="btn-translate">Translate</button>
+    </div>
+
+    <div class="result-box" id="result-box">
+      <div class="result-label">Translation</div>
+      <div class="result-text" id="result-text"></div>
+      <div class="result-actions">
+        <button type="button" class="btn btn-copy-result" id="btn-copy-result">
+          📋 Copy
+        </button>
+        <button type="button" class="btn btn-replace" id="btn-replace">
+          ↩ Replace
+        </button>
+      </div>
+    </div>
+
+    <div class="status" id="status-msg"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

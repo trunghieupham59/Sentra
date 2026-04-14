@@ -197,6 +197,51 @@ export interface Translations {
   chat_system_prompt_placeholder: string
   chat_regenerate: string
 
+  // Settings — Global Hotkey
+  settings_hotkey_section: string
+  settings_hotkey_section_desc: string
+  settings_hotkey_enabled: string
+  settings_hotkey_enabled_desc: string
+  settings_hotkey_label: string
+  settings_hotkey_desc: string
+  settings_hotkey_record: string
+  settings_hotkey_recording: string
+  settings_hotkey_clear: string
+  settings_hotkey_none: string
+  settings_hotkey_provider: string
+  settings_hotkey_target_lang: string
+  settings_hotkey_model: string
+  settings_hotkey_status_translating: string
+  settings_hotkey_status_done: string
+  settings_hotkey_status_error: string
+  settings_hotkey_conflict: string
+
+  // Settings — Legacy Assistant (no-extension injection)
+  settings_la_section: string
+  settings_la_section_desc: string
+  settings_la_auto_enabled: string
+  settings_la_auto_enabled_desc: string
+  settings_la_inject_now: string
+  settings_la_target_lang: string
+  settings_la_bookmarklet_label: string
+  settings_la_bookmarklet_desc: string
+  settings_la_bookmarklet_copy: string
+  settings_la_bookmarklet_copied: string
+  settings_la_bookmarklet_drag_hint: string
+  settings_la_macos_only: string
+
+  // Settings — Chrome Extension
+  settings_extension_section: string
+  settings_extension_section_desc: string
+  settings_extension_token_label: string
+  settings_extension_token_desc: string
+  settings_extension_token_copy: string
+  settings_extension_token_copied: string
+  settings_extension_token_regenerate: string
+  settings_extension_install_hint: string
+  settings_extension_port: string
+  settings_extension_connected: string
+
   // Settings — AI Chat section
   settings_chat_section: string
   settings_chat_section_desc: string
@@ -409,6 +454,45 @@ const en: Translations = {
   chat_system_prompt: 'System prompt',
   chat_system_prompt_placeholder: 'You are a helpful assistant…',
   chat_regenerate: 'Regenerate response',
+  settings_hotkey_section: 'Quick Translate Hotkey',
+  settings_hotkey_section_desc: 'Press a shortcut in any app to instantly translate selected text and replace it.',
+  settings_hotkey_enabled: 'Enable Hotkey',
+  settings_hotkey_enabled_desc: 'Activate global shortcut for in-place translation',
+  settings_hotkey_label: 'Shortcut',
+  settings_hotkey_desc: 'Click the field and press your desired key combination',
+  settings_hotkey_record: 'Click to record shortcut…',
+  settings_hotkey_recording: 'Press keys… (Esc to cancel)',
+  settings_hotkey_clear: 'Clear',
+  settings_hotkey_none: 'Not set',
+  settings_hotkey_provider: 'AI Provider',
+  settings_hotkey_target_lang: 'Translate to',
+  settings_hotkey_model: 'Model',
+  settings_hotkey_status_translating: 'Translating…',
+  settings_hotkey_status_done: 'Done',
+  settings_hotkey_status_error: 'Error',
+  settings_hotkey_conflict: 'This shortcut is already in use by another app.',
+  settings_la_section: 'Legacy Assistant',
+  settings_la_section_desc: 'Inject a floating Lotus icon directly into any browser — no extension required. Works in Chrome, Arc, Brave, Safari and more.',
+  settings_la_auto_enabled: 'Auto-inject (macOS)',
+  settings_la_auto_enabled_desc: 'Automatically inject the assistant into the frontmost browser every few seconds',
+  settings_la_inject_now: 'Inject Now',
+  settings_la_target_lang: 'Translate to',
+  settings_la_bookmarklet_label: 'Bookmarklet (all platforms)',
+  settings_la_bookmarklet_desc: 'Drag this link to your bookmarks bar. Click it on any page to inject the Lotus assistant instantly.',
+  settings_la_bookmarklet_copy: 'Copy Bookmarklet URL',
+  settings_la_bookmarklet_copied: 'Copied!',
+  settings_la_bookmarklet_drag_hint: '← Drag to bookmarks bar',
+  settings_la_macos_only: 'Auto-inject requires macOS',
+  settings_extension_section: 'Browser Extension (Legacy Assistant)',
+  settings_extension_section_desc: 'Connect the Lotus Chrome Extension to translate text directly in your browser. The extension uses your API keys configured above.',
+  settings_extension_token_label: 'Connection Token',
+  settings_extension_token_desc: 'Copy this token into the Lotus Extension options page. Keep it private.',
+  settings_extension_token_copy: 'Copy Token',
+  settings_extension_token_copied: 'Copied!',
+  settings_extension_token_regenerate: 'Regenerate',
+  settings_extension_install_hint: 'Install the Lotus Chrome Extension, then open its options page and paste this token.',
+  settings_extension_port: 'Port',
+  settings_extension_connected: 'Extension connected',
   settings_chat_section: 'AI Chat',
   settings_chat_section_desc: 'Configure default system prompt and manage chat sessions.',
   settings_chat_go_to_chat: 'Open AI Chat',
@@ -620,6 +704,45 @@ const vi: Translations = {
   chat_system_prompt: 'System prompt',
   chat_system_prompt_placeholder: 'Bạn là trợ lý hữu ích…',
   chat_regenerate: 'Tạo lại phản hồi',
+  settings_hotkey_section: 'Phím tắt Dịch nhanh',
+  settings_hotkey_section_desc: 'Nhấn phím tắt trong bất kỳ ứng dụng nào để dịch ngay văn bản đang chọn và thay thế tại chỗ.',
+  settings_hotkey_enabled: 'Bật phím tắt',
+  settings_hotkey_enabled_desc: 'Kích hoạt phím tắt toàn cục để dịch tại chỗ',
+  settings_hotkey_label: 'Phím tắt',
+  settings_hotkey_desc: 'Nhấp vào ô rồi bấm tổ hợp phím bạn muốn',
+  settings_hotkey_record: 'Nhấp để ghi phím tắt…',
+  settings_hotkey_recording: 'Bấm phím… (Esc để hủy)',
+  settings_hotkey_clear: 'Xóa',
+  settings_hotkey_none: 'Chưa cài',
+  settings_hotkey_provider: 'AI Provider',
+  settings_hotkey_target_lang: 'Dịch sang',
+  settings_hotkey_model: 'Model',
+  settings_hotkey_status_translating: 'Đang dịch…',
+  settings_hotkey_status_done: 'Xong',
+  settings_hotkey_status_error: 'Lỗi',
+  settings_hotkey_conflict: 'Phím tắt này đã được ứng dụng khác sử dụng.',
+  settings_la_section: 'Legacy Assistant',
+  settings_la_section_desc: 'Inject icon Lotus nổi trực tiếp vào trình duyệt — không cần cài extension. Hoạt động trên Chrome, Arc, Brave, Safari và nhiều trình duyệt khác.',
+  settings_la_auto_enabled: 'Tự động inject (macOS)',
+  settings_la_auto_enabled_desc: 'Tự động inject trợ lý vào trình duyệt đang mở mỗi vài giây',
+  settings_la_inject_now: 'Inject ngay',
+  settings_la_target_lang: 'Dịch sang',
+  settings_la_bookmarklet_label: 'Bookmarklet (mọi nền tảng)',
+  settings_la_bookmarklet_desc: 'Kéo link này vào thanh bookmarks. Click vào bất kỳ trang nào để inject trợ lý Lotus ngay lập tức.',
+  settings_la_bookmarklet_copy: 'Sao chép URL Bookmarklet',
+  settings_la_bookmarklet_copied: 'Đã sao chép!',
+  settings_la_bookmarklet_drag_hint: '← Kéo vào thanh bookmarks',
+  settings_la_macos_only: 'Tự động inject chỉ hỗ trợ macOS',
+  settings_extension_section: 'Tiện ích trình duyệt (Legacy Assistant)',
+  settings_extension_section_desc: 'Kết nối tiện ích Lotus Chrome để dịch văn bản trực tiếp trên trình duyệt. Tiện ích sử dụng API key bạn đã cấu hình ở trên.',
+  settings_extension_token_label: 'Token kết nối',
+  settings_extension_token_desc: 'Sao chép token này vào trang Options của tiện ích Lotus. Giữ bí mật token.',
+  settings_extension_token_copy: 'Sao chép Token',
+  settings_extension_token_copied: 'Đã sao chép!',
+  settings_extension_token_regenerate: 'Tạo lại',
+  settings_extension_install_hint: 'Cài tiện ích Lotus Chrome, mở trang Options và dán token này vào.',
+  settings_extension_port: 'Cổng',
+  settings_extension_connected: 'Tiện ích đã kết nối',
   settings_chat_section: 'AI Chat',
   settings_chat_section_desc: 'Cấu hình system prompt mặc định và quản lý cuộc trò chuyện.',
   settings_chat_go_to_chat: 'Mở AI Chat',
@@ -831,6 +954,45 @@ const ja: Translations = {
   chat_system_prompt: 'システムプロンプト',
   chat_system_prompt_placeholder: 'あなたは親切なアシスタントです…',
   chat_regenerate: '応答を再生成',
+  settings_hotkey_section: 'クイック翻訳ホットキー',
+  settings_hotkey_section_desc: '任意のアプリでショートカットを押すと、選択したテキストをその場で翻訳・置換します。',
+  settings_hotkey_enabled: 'ホットキーを有効にする',
+  settings_hotkey_enabled_desc: 'インプレース翻訳のグローバルショートカットを有効化',
+  settings_hotkey_label: 'ショートカット',
+  settings_hotkey_desc: 'フィールドをクリックして希望のキー組み合わせを押してください',
+  settings_hotkey_record: 'クリックしてショートカットを記録…',
+  settings_hotkey_recording: 'キーを押してください…（Escでキャンセル）',
+  settings_hotkey_clear: 'クリア',
+  settings_hotkey_none: '未設定',
+  settings_hotkey_provider: 'AIプロバイダー',
+  settings_hotkey_target_lang: '翻訳先',
+  settings_hotkey_model: 'モデル',
+  settings_hotkey_status_translating: '翻訳中…',
+  settings_hotkey_status_done: '完了',
+  settings_hotkey_status_error: 'エラー',
+  settings_hotkey_conflict: 'このショートカットは他のアプリで使用されています。',
+  settings_la_section: 'レガシーアシスタント',
+  settings_la_section_desc: 'Lotusのフローティングアイコンを直接ブラウザに注入 — 拡張機能不要。Chrome、Arc、Brave、Safariなどで動作します。',
+  settings_la_auto_enabled: '自動注入（macOS）',
+  settings_la_auto_enabled_desc: '数秒ごとに最前面のブラウザにアシスタントを自動注入します',
+  settings_la_inject_now: '今すぐ注入',
+  settings_la_target_lang: '翻訳先',
+  settings_la_bookmarklet_label: 'ブックマークレット（全プラットフォーム）',
+  settings_la_bookmarklet_desc: 'このリンクをブックマークバーにドラッグ。任意のページでクリックするとLotusアシスタントを即座に注入できます。',
+  settings_la_bookmarklet_copy: 'ブックマークレットURLをコピー',
+  settings_la_bookmarklet_copied: 'コピーしました！',
+  settings_la_bookmarklet_drag_hint: '← ブックマークバーにドラッグ',
+  settings_la_macos_only: '自動注入はmacOSのみ対応',
+  settings_extension_section: 'ブラウザ拡張機能（レガシーアシスタント）',
+  settings_extension_section_desc: 'Lotus Chrome拡張機能を接続してブラウザで直接テキストを翻訳します。上記で設定したAPIキーを使用します。',
+  settings_extension_token_label: '接続トークン',
+  settings_extension_token_desc: 'このトークンをLotus拡張機能のオプションページにコピーしてください。トークンは秘密にしてください。',
+  settings_extension_token_copy: 'トークンをコピー',
+  settings_extension_token_copied: 'コピーしました！',
+  settings_extension_token_regenerate: '再生成',
+  settings_extension_install_hint: 'Lotus Chrome拡張機能をインストールし、オプションページを開いてこのトークンを貼り付けてください。',
+  settings_extension_port: 'ポート',
+  settings_extension_connected: '拡張機能が接続されました',
   settings_chat_section: 'AIチャット',
   settings_chat_section_desc: 'デフォルトのシステムプロンプトを設定し、チャットセッションを管理します。',
   settings_chat_go_to_chat: 'AIチャットを開く',

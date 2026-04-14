@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lotus Translate — Options</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0 }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      background: #0a0a14;
+      color: #e0e7ff;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 520px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+    .logo {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .logo svg { width: 22px; height: 22px; color: #fff }
+    h1 { font-size: 20px; font-weight: 800; color: #e0e7ff }
+    .subtitle { font-size: 12px; color: #6366f1; margin-top: 3px }
+
+    .card {
+      background: #0f0f1a;
+      border: 1px solid #1e1b4b;
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #a5b4fc;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 16px;
+    }
+
+    .field { margin-bottom: 16px }
+    .field:last-child { margin-bottom: 0 }
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #a5b4fc;
+      margin-bottom: 6px;
+    }
+    .field-desc {
+      font-size: 11px;
+      color: #4f46e5;
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+
+    input[type="text"], input[type="password"], select {
+      width: 100%;
+      background: #1e1b4b;
+      border: 1.5px solid #312e81;
+      border-radius: 8px;
+      color: #e0e7ff;
+      font-size: 13px;
+      font-family: inherit;
+      padding: 8px 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input[type="text"]:focus, input[type="password"]:focus, select:focus {
+      border-color: #6366f1;
+    }
+    input.token-input {
+      font-family: monospace;
+      font-size: 12px;
+      letter-spacing: 0.02em;
+    }
+    select { appearance: none; cursor: pointer }
+
+    .select-wrap { position: relative }
+    .select-wrap::after {
+      content: '▾';
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #6366f1;
+      pointer-events: none;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+    }
+    .btn-primary { background: #4f46e5; color: #fff; flex: 1 }
+    .btn-primary:hover { background: #4338ca }
+    .btn-test {
+      background: #1e1b4b;
+      color: #a5b4fc;
+      border: 1px solid #312e81;
+      padding: 10px 16px;
+    }
+    .btn-test:hover { background: #2d2a5e }
+
+    .status {
+      margin-top: 14px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      display: none;
+    }
+    .status.success { background: #064e3b; color: #6ee7b7; border: 1px solid #047857 }
+    .status.error { background: #450a0a; color: #fca5a5; border: 1px solid #991b1b }
+    .status.info { background: #1e1b4b; color: #a5b4fc; border: 1px solid #312e81 }
+
+    .info-box {
+      background: #1e1b4b;
+      border: 1px solid #312e81;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 12px;
+      color: #a5b4fc;
+      line-height: 1.6;
+    }
+    .info-box strong { color: #e0e7ff }
+    .info-box ol { padding-left: 18px; margin-top: 8px }
+    .info-box li { margin-bottom: 4px }
+    .info-box code {
+      background: #312e81;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 11px;
+      color: #c7d2fe;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Lotus Translate</h1>
+        <div class="subtitle">Extension Options — API keys are managed in the native Lotus app</div>
+      </div>
+    </div>
+
+    <!-- How to connect -->
+    <div class="card">
+      <div class="card-title">🔌 How to connect</div>
+      <div class="info-box">
+        <strong>API keys stay secure in the Lotus native app.</strong>
+        <ol>
+          <li>Open the <strong>Lotus app</strong> on your computer</li>
+          <li>Go to <strong>Settings → Browser Extension</strong></li>
+          <li>Copy the <strong>Connection Token</strong> shown there</li>
+          <li>Paste it in the <strong>Token</strong> field below and click Save</li>
+        </ol>
+        <p style="margin-top:8px">Port: <code>39875</code> &nbsp;·&nbsp; Only works while Lotus is running</p>
+      </div>
+    </div>
+
+    <!-- Connection settings -->
+    <div class="card">
+      <div class="card-title">🔐 Connection</div>
+
+      <div class="field">
+        <label for="token">Connection Token</label>
+        <div class="field-desc">Copy this from Lotus app → Settings → Browser Extension</div>
+        <input type="password" id="token" class="token-input" placeholder="Paste your token here…" autocomplete="off" />
+      </div>
+    </div>
+
+    <!-- Translation preferences -->
+    <div class="card">
+      <div class="card-title">🌐 Translation Preferences</div>
+
+      <div class="field">
+        <label for="target-lang">Default Target Language</label>
+        <div class="select-wrap">
+          <select id="target-lang">
+            <option value="en">English</option>
+            <option value="vi">Vietnamese</option>
+            <option value="ja">Japanese</option>
+            <option value="zh">Chinese (Simplified)</option>
+            <option value="zh-TW">Chinese (Traditional)</option>
+            <option value="ko">Korean</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="es">Spanish</option>
+            <option value="pt">Portuguese</option>
+            <option value="ru">Russian</option>
+            <option value="ar">Arabic</option>
+            <option value="th">Thai</option>
+            <option value="id">Indonesian</option>
+            <option value="it">Italian</option>
+            <option value="nl">Dutch</option>
+            <option value="tr">Turkish</option>
+            <option value="hi">Hindi</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="provider">AI Provider</label>
+        <div class="field-desc">Must match the API key configured in the Lotus app</div>
+        <div class="select-wrap">
+          <select id="provider">
+            <option value="gemini">Google Gemini</option>
+            <option value="openai">OpenAI GPT</option>
+            <option value="claude">Anthropic Claude</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="model">Model</label>
+        <div class="select-wrap">
+          <select id="model">
+            <option value="gemini-2.0-flash">gemini-2.0-flash (recommended)</option>
+            <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+            <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+            <option value="gpt-4o-mini">gpt-4o-mini (OpenAI)</option>
+            <option value="gpt-4o">gpt-4o (OpenAI)</option>
+            <option value="claude-3-haiku-20240307">claude-3-haiku (Anthropic)</option>
+            <option value="claude-3-5-sonnet-20241022">claude-3.5-sonnet (Anthropic)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button type="button" class="btn btn-test" id="btn-test">Test Connection</button>
+      <button type="button" class="btn btn-primary" id="btn-save">Save Settings</button>
+    </div>
+
+    <div class="status" id="status"></div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

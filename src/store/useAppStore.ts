@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { Provider, FetchedModel, HistoryItem, LiveSession, TranslationStyle, TtsVoice, ChatMessage, ChatSession, SystemPromptPreset } from '../types'
 import { DEFAULT_SETTINGS } from '../constants/providers'
-import { AppLocale, TRANSLATIONS, Translations } from '../i18n'
+import { type AppLocale, TRANSLATIONS, type Translations } from '../i18n'
+import type { ChatMessage, ChatSession, FetchedModel, HistoryItem, LiveSession, Provider, SystemPromptPreset, TranslationStyle, TtsVoice } from '../types'
 
 const MAX_HISTORY = 100
 
@@ -300,7 +300,7 @@ export const useAppStore = create<AppState>()(
       },
       updateSystemPromptPreset: (id, updates) =>
         set((state) => {
-          let presets = state.systemPromptPresets.map((p) => {
+          const presets = state.systemPromptPresets.map((p) => {
             if (p.id !== id) {
               // If the update sets isDefault true, clear others
               return updates.isDefault ? { ...p, isDefault: false } : p

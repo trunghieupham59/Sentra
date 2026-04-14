@@ -1,0 +1,69 @@
+/* Lotus Translate — floating assistant button */
+
+#lotus-assistant-btn {
+  position: fixed;
+  z-index: 2147483647;
+  display: none;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px 5px 7px;
+  background: #4f46e5;
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  font-size: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(79, 70, 229, 0.45);
+  transition: background 0.15s, transform 0.1s, opacity 0.15s;
+  user-select: none;
+  pointer-events: auto;
+  white-space: nowrap;
+}
+
+#lotus-assistant-btn:hover {
+  background: #4338ca;
+  transform: scale(1.04);
+}
+
+#lotus-assistant-btn.lotus-loading {
+  background: #6d6aff;
+  pointer-events: none;
+}
+
+#lotus-assistant-btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Translate result tooltip */
+#lotus-result-tooltip {
+  position: fixed;
+  z-index: 2147483647;
+  display: none;
+  max-width: 340px;
+  padding: 10px 14px;
+  background: #1e1b4b;
+  color: #e0e7ff;
+  border-radius: 10px;
+  font-size: 13px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  line-height: 1.5;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+  pointer-events: none;
+}
+
+#lotus-result-tooltip .lotus-tooltip-label {
+  font-size: 10px;
+  color: #a5b4fc;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+#lotus-result-tooltip .lotus-tooltip-text {
+  color: #e0e7ff;
+}

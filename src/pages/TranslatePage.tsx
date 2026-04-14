@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { FuriganaText } from '../components/FuriganaText'
+import type { ImageAttachment } from '../components/ImageTranslator'
 import { ImageTranslator } from '../components/ImageTranslator'
+import { LanguageSelector } from '../components/LanguageSelector'
 import { MarkdownEditor } from '../components/MarkdownEditor'
 import { MarkdownText } from '../components/MarkdownText'
-import type { ImageAttachment } from '../components/ImageTranslator'
-import { LanguageSelector } from '../components/LanguageSelector'
 import { ModelSelector } from '../components/ModelSelector'
 import { VoiceRecorder } from '../components/VoiceRecorder'
 import { useAppStore, useT } from '../store/useAppStore'
-import type { HistoryItem, ImageTextRegion, TranslationStyle } from '../types'
+import type { ImageTextRegion, TranslationStyle } from '../types'
 
 // ─── Canvas helpers for image translation overlay ─────────────────────────────
 
@@ -200,7 +200,7 @@ export function TranslatePage() {
           // Gemini may return raw PCM (audio/pcm;rate=24000) — decode manually
           if (result.mimeType?.includes('pcm') || result.mimeType?.includes('l16')) {
             const rateMatch = result.mimeType.match(/rate=(\d+)/)
-            const sampleRate = rateMatch ? Number.parseInt(rateMatch[1]) : 24000
+            const sampleRate = rateMatch ? Number.parseInt(rateMatch[1], 10) : 24000
             const numSamples = bytes.length / 2
             audioBuffer = audioCtx.createBuffer(1, numSamples, sampleRate)
             const channel = audioBuffer.getChannelData(0)
@@ -260,8 +260,6 @@ export function TranslatePage() {
   const [imageAttachment, setImageAttachment] = useState<ImageAttachment | null>(null)
   // Regions returned by AI when translating an image (fallback approach)
   const [imageRegions, setImageRegions] = useState<ImageTextRegion[] | null>(null)
-  // Rendered translated image via canvas (used only for download)
-  const [translatedImageUrl, setTranslatedImageUrl] = useState<string | null>(null)
   // Edited image returned directly by Gemini image-edit model
   const [editedImageUrl, setEditedImageUrl] = useState<string | null>(null)
   // Image translator modal state
@@ -389,7 +387,8 @@ export function TranslatePage() {
     const canvas  = document.createElement('canvas')
     canvas.width  = imageAttachment.width
     canvas.height = imageAttachment.height
-    const ctx = canvas.getContext('2d')!
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
     const img = new Image()
     img.src = imageAttachment.previewDataUrl
     await new Promise<void>(resolve => { img.onload = () => resolve() })
@@ -413,7 +412,6 @@ export function TranslatePage() {
   }, [autoTranslate, autoTranslateDelay, sourceText, isVoiceActive])
 
   // Auto-translate when an image is attached — image has no text to debounce on
-  // biome-ignore lint/correctness/useExhaustiveDependencies: imageAttachment change is the trigger; handleTranslate via stable ref
   useEffect(() => {
     if (!imageAttachment) return
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -465,30 +463,6 @@ export function TranslatePage() {
     handleTranslateRef.current()
   }, [selectedProvider, selectedModels[selectedProvider]])
 
-  // Render translated image whenever regions change (image output for result panel)
-  // biome-ignore lint/correctness/useExhaustiveDependencies: imageAttachment + imageRegions are the triggers
-  useEffect(() => {
-    if (!imageAttachment || !imageRegions || imageRegions.length === 0) {
-      setTranslatedImageUrl(null)
-      return
-    }
-    let cancelled = false
-    const render = async () => {
-      const canvas = document.createElement('canvas')
-      canvas.width = imageAttachment.width
-      canvas.height = imageAttachment.height
-      const ctx = canvas.getContext('2d')!
-      const img = new Image()
-      img.src = imageAttachment.previewDataUrl
-      await new Promise<void>(resolve => { img.onload = () => resolve() })
-      if (cancelled) return
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-      renderTranslatedRegions(ctx, imageRegions, canvas.width, canvas.height)
-      if (!cancelled) setTranslatedImageUrl(canvas.toDataURL('image/png'))
-    }
-    render().catch(() => {})
-    return () => { cancelled = true }
-  }, [imageAttachment, imageRegions])
 
   const handleCopy = async () => {
     const textToCopy = showFurigana && phoneticText ? phoneticText : translatedText

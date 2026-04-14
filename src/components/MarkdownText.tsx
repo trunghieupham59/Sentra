@@ -69,7 +69,6 @@ export function MarkdownText({ text, className }: Props) {
   let tableLines: string[] = []
   let inCodeBlock = false
   let codeLines: string[] = []
-  let codeLang = ''
   let key = 0
 
   const flushList = () => {
@@ -125,8 +124,7 @@ export function MarkdownText({ text, className }: Props) {
             <tr className="border-b border-gray-200 dark:border-gray-700">
               {headerCells.map((cell, ci) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: stable index for table header
-                <th
-                  key={ci}
+                <th key={ci}
                   className="px-3 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 first:rounded-tl last:rounded-tr"
                 >
                   {renderInline(cell)}
@@ -164,7 +162,6 @@ export function MarkdownText({ text, className }: Props) {
       </pre>
     )
     codeLines = []
-    codeLang = ''
   }
 
   for (const line of lines) {
@@ -177,7 +174,6 @@ export function MarkdownText({ text, className }: Props) {
         flushOrderedList()
         flushTable()
         inCodeBlock = true
-        codeLang = trimmed.slice(3).trim()
       } else {
         inCodeBlock = false
         flushCodeBlock()

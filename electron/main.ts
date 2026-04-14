@@ -1,13 +1,16 @@
-import { app, BrowserWindow, ipcMain, shell, nativeTheme, nativeImage, desktopCapturer, systemPreferences, screen } from 'electron'
-import path from 'path'
-import { registerKeychainHandlers } from './ipc/keychain'
+import path from 'node:path'
+import { app, BrowserWindow, desktopCapturer, ipcMain, nativeImage, nativeTheme, screen, shell, systemPreferences } from 'electron'
+import { registerChatHandlers } from './ipc/chat'
+import { initGlobalHotkey } from './ipc/globalHotkey'
 import { registerImageTranslateHandlers } from './ipc/imageTranslate'
+import { registerKeychainHandlers } from './ipc/keychain'
+import { initLegacyAssistant, setLocalServerAccessors } from './ipc/legacyAssistant'
+import { getServerToken, LOCAL_SERVER_PORT, startLocalServer, stopLocalServer } from './ipc/localServer'
 import { registerModelsHandlers } from './ipc/models'
+import { getStoredApiKey } from './ipc/storage'
 import { registerTranscribeHandlers } from './ipc/transcribe'
 import { registerTranslateHandlers, streamTranslation } from './ipc/translate'
 import { registerTtsHandlers } from './ipc/tts'
-import { registerChatHandlers } from './ipc/chat'
-import { getStoredApiKey } from './ipc/storage'
 
 // Allow audio autoplay after async operations (TTS API calls lose user-gesture context)
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
@@ -74,7 +77,7 @@ function createWindow() {
   mainWindow.webContents.session.setDisplayMediaRequestHandler((_request, callback) => {
     desktopCapturer.getSources({ types: ['screen'] }).then((sources) => {
       if (sources.length > 0) {
-        callback({ video: sources[0], audio: 'loopback' as any })
+        callback({ video: sources[0], audio: 'loopback' })
       } else {
         callback({})
       }
@@ -218,7 +221,7 @@ ipcMain.handle('translate:live-stream', async (
     const fullText = await streamTranslation(
       provider, apiKey, model,
       sourceText, sourceLang, targetLang,
-      (translationStyle as any) ?? 'neutral',
+      (translationStyle ?? 'neutral') as 'friendly' | 'neutral' | 'professional' | 'business' | 'slack' | 'polite' | 'technical',
       (token) => sendToSubtitle('subtitle:stream:token', token)
     )
     sendToSubtitle('subtitle:stream:end')
@@ -282,11 +285,28 @@ app.whenReady().then(() => {
   registerImageTranslateHandlers(ipcMain)
   registerChatHandlers(ipcMain)
 
+  // Global hotkey — translate selected text in any OS application
+  initGlobalHotkey(ipcMain, () => mainWindow)
+
+  // Local HTTP server — used by the Lotus Chrome Extension
+  startLocalServer(ipcMain)
+
+  // Legacy Assistant — floating icon injected directly into browsers via osascript
+  setLocalServerAccessors(() => getServerToken(), () => LOCAL_SERVER_PORT)
+  initLegacyAssistant(ipcMain)
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow()
     }
   })
+})
+
+app.on('will-quit', () => {
+  // Unregister all global shortcuts before quitting
+  const { globalShortcut } = require('electron')
+  globalShortcut.unregisterAll()
+  stopLocalServer()
 })
 
 app.on('window-all-closed', () => {
