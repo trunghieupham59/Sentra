@@ -165,8 +165,13 @@ jobs:
               shell: bash
               run: |
                   VERSION="${GITHUB_REF#refs/tags/v}"
-                  echo "Setting package version to $VERSION"
-                  npm version "$VERSION" --no-git-tag-version
+                  CURRENT=$(node -p "require('./package.json').version")
+                  if [ "$CURRENT" != "$VERSION" ]; then
+                    echo "Updating package.json from $CURRENT to $VERSION"
+                    npm version "$VERSION" --no-git-tag-version
+                  else
+                    echo "package.json already at version $VERSION, skipping."
+                  fi
 
             - name: Install dependencies
               run: npm ci
