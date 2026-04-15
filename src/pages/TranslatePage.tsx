@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { FuriganaText } from '../components/FuriganaText'
 import type { ImageAttachment } from '../components/ImageTranslator'
-import { ImageTranslator } from '../components/ImageTranslator'
+import { DragOverlay } from '../components/translate/DragOverlay'
 import { ImageAttachmentPreview } from '../components/translate/ImageAttachmentPreview'
 import { VoiceOverlay } from '../components/translate/VoiceOverlay'
 import { translationService } from '../services/translationService'
@@ -19,8 +19,10 @@ import { SpeakButton } from '../components/ui/SpeakButton'
 import { TranslateButton } from '../components/ui/TranslateButton'
 import { AlertTriangleIcon, ArrowRightIcon, AutoDetectIcon, ChevronDownIcon, DownloadIcon, SpinnerIcon } from '../components/ui/icons'
 import { VoiceRecorder } from '../components/VoiceRecorder'
+import { MAX_TRANSLATE_IMAGE_DIMENSION } from '../constants/image'
 import { MAX_INPUT_CHARS } from '../constants/providers'
 import { COPY_FEEDBACK_DURATION_MS, IMAGE_AUTO_TRANSLATE_DELAY_MS } from '../constants/ui'
+import { resizeImageFile } from '../utils/imageUtils'
 import { useTTS } from '../hooks/useTTS'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import { useAppStore, useT } from '../store/useAppStore'
@@ -54,17 +56,72 @@ export function TranslatePage() {
   // TTS — delegated to useTTS hook (Web Audio API + OS synthesis fallback, no console.log)
   const { speakingPanel, speakLoading, handleSpeak, stopSpeak } = useTTS({ ttsVoice })
 
-  // Image attachment state (set when user uploads an image via the popup)
+  // Image attachment state
   const [imageAttachment, setImageAttachment] = useState<ImageAttachment | null>(null)
   // Regions returned by AI when translating an image (fallback approach)
   const [imageRegions, setImageRegions] = useState<ImageTextRegion[] | null>(null)
   // Edited image returned directly by Gemini image-edit model
   const [editedImageUrl, setEditedImageUrl] = useState<string | null>(null)
-  // Image translator modal state
-  const [showImageTranslator, setShowImageTranslator] = useState(false)
+  // Drag-over state for source panel drop zone visual feedback
+  const [isDraggingOver, setIsDraggingOver] = useState(false)
+  // Ref to hidden file input — triggered when user clicks the image icon
+  const fileInputRef = useRef<HTMLInputElement>(null)
   // Stable ref so lang-change effect can check imageAttachment without re-subscribing
   const imageAttachmentRef = useRef(imageAttachment)
   imageAttachmentRef.current = imageAttachment
+
+  /** Process an image File: resize, convert to base64, attach to translate area */
+  const processImageFile = useCallback(async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      setTranslateError(t.image_translate_type_error)
+      return
+    }
+    try {
+      const result = await resizeImageFile(file, MAX_TRANSLATE_IMAGE_DIMENSION, { useQualityLoop: true })
+      const attachment: ImageAttachment = {
+        base64:         result.base64,
+        mimeType:       result.mimeType,
+        width:          result.width,
+        height:         result.height,
+        previewDataUrl: result.previewUrl,
+        fileName:       result.fileName,
+      }
+      setImageAttachment(attachment)
+      setImageRegions(null)
+      setEditedImageUrl(null)
+      setTranslatedText('')
+      setPhoneticText('')
+      setTranslateError(null)
+    } catch (err) {
+      setTranslateError(err instanceof Error ? err.message : 'Failed to process image')
+    }
+  }, [setTranslateError, setTranslatedText, setPhoneticText, t])
+
+  const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) processImageFile(file)
+    // Reset input so the same file can be re-selected
+    e.target.value = ''
+  }, [processImageFile])
+
+  const handleSourcePanelDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setIsDraggingOver(true)
+  }, [])
+
+  const handleSourcePanelDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    // Only clear when leaving the panel itself, not a child element
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDraggingOver(false)
+    }
+  }, [])
+
+  const handleSourcePanelDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setIsDraggingOver(false)
+    const file = e.dataTransfer.files[0]
+    if (file) processImageFile(file)
+  }, [processImageFile])
 
   // ── Voice input — shared hook (same logic as ChatPage) ──
   const {
@@ -406,8 +463,20 @@ export function TranslatePage() {
 
         {/* Text panels */}
       <div className="flex flex-1 min-h-0 divide-x divide-gray-200 dark:divide-gray-800">
-        {/* Source panel */}
-        <div className="flex-1 basis-0 flex flex-col min-w-0 relative">
+        {/* Source panel — also acts as an image drop zone */}
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: drop zone requires drag event handlers on the panel container */}
+        <section
+          aria-label={t.image_translate_title}
+          className={`flex-1 basis-0 flex flex-col min-w-0 relative transition-colors duration-150
+                      ${isDraggingOver ? 'bg-emerald-50 dark:bg-emerald-950/20 ring-2 ring-inset ring-emerald-300 dark:ring-emerald-700' : ''}`}
+          onDragOver={handleSourcePanelDragOver}
+          onDragLeave={handleSourcePanelDragLeave}
+          onDrop={handleSourcePanelDrop}
+        >
+          {/* Drop indicator overlay */}
+          {isDraggingOver && (
+            <DragOverlay label={t.image_translate_upload_hint.split('\n')[0]} zIndex="z-30" />
+          )}
 
           {/* ── Listening overlay (shown while voice is active) ── */}
           <VoiceOverlay
@@ -481,10 +550,18 @@ export function TranslatePage() {
                 useWhisper={keyStatus.openai}
               />
 
-              {/* Image translation button */}
+              {/* Image translation button — opens native file picker directly */}
               <ImageTranslateButton
-                onClick={() => setShowImageTranslator(true)}
+                onClick={() => fileInputRef.current?.click()}
                 title={t.image_translate_title}
+              />
+              {/* Hidden file input for image selection */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={handleFileInputChange}
               />
 
               {!isVoiceActive && (
@@ -530,7 +607,7 @@ export function TranslatePage() {
               </div>
             )}
           </div>
-        </div>
+        </section>
 
         {/* Result panel */}
         <div className="flex-1 basis-0 flex flex-col min-w-0 bg-gray-50 dark:bg-gray-900/50">
@@ -656,20 +733,6 @@ export function TranslatePage() {
         </div>
       </div>
 
-      {/* Image translator modal — opens popup, resizes image, attaches to translate area */}
-      {showImageTranslator && (
-        <ImageTranslator
-          onImageReady={(attachment) => {
-            setImageAttachment(attachment)
-            setImageRegions(null)
-            setEditedImageUrl(null)
-            setTranslatedText('')
-            setPhoneticText('')
-            setTranslateError(null)
-          }}
-          onClose={() => setShowImageTranslator(false)}
-        />
-      )}
     </div>
   )
 }

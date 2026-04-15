@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { DragOverlay } from '../components/translate/DragOverlay'
 import { AppLogoIcon } from '../components/AppLogo'
 import { SystemPromptDropdown } from '../components/chat/SystemPromptDropdown'
 import { MarkdownText } from '../components/MarkdownText'
@@ -164,6 +165,8 @@ export function ChatPage() {
   } | null>(null)
   /** User-visible error shown in the input area when image processing fails. */
   const [attachImageError, setAttachImageError] = useState<string | null>(null)
+  /** Visual feedback state when user drags a file over the chat area */
+  const [isDraggingOver, setIsDraggingOver] = useState(false)
   // Active preset = the preset whose content matches chatSystemPrompt
   const activePreset = systemPromptPresets.find((p) => p.content === chatSystemPrompt) ?? null
 
@@ -210,7 +213,7 @@ export function ChatPage() {
   }, [activeChatSessionId, chatSessions, createChatSession, selectedProvider, selectedModels])
 
   // ── Image attachment ──
-  const handleImageSelect = async (file: File) => {
+  const handleImageSelect = useCallback(async (file: File) => {
     setAttachImageError(null)
     try {
       // DUP-05: use shared resizeImageFile (fixed quality, no compression loop needed for chat)
@@ -221,13 +224,26 @@ export function ChatPage() {
       const msg = err instanceof Error ? err.message : 'Failed to process image'
       setAttachImageError(msg)
     }
-  }
+  }, [])
 
-  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleFileDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
+    setIsDraggingOver(false)
     const file = e.dataTransfer.files[0]
-    if (file && file.type.startsWith('image/')) handleImageSelect(file)
-  }
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setAttachImageError(t.image_translate_type_error)
+      return
+    }
+    handleImageSelect(file)
+  }, [handleImageSelect, t])
+
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    // Only clear when leaving the container itself, not a child element
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDraggingOver(false)
+    }
+  }, [])
 
   // ── Send message ──
   // ── Regenerate last assistant response ──
@@ -413,10 +429,16 @@ export function ChatPage() {
     <div
       role="application"
       aria-label="Chat drop zone"
-      className="flex flex-col h-full bg-gray-50 dark:bg-gray-950"
-      onDragOver={(e) => e.preventDefault()}
+      className={`flex flex-col h-full bg-gray-50 dark:bg-gray-950 relative transition-colors duration-150
+                  ${isDraggingOver ? 'bg-emerald-50 dark:bg-emerald-950/20' : ''}`}
+      onDragOver={(e) => { e.preventDefault(); setIsDraggingOver(true) }}
+      onDragLeave={handleDragLeave}
       onDrop={handleFileDrop}
     >
+      {/* Drop indicator overlay */}
+      {isDraggingOver && (
+        <DragOverlay label={t.chat_attach_image} zIndex="z-50" showRing />
+      )}
       {/* ── Toolbar ── */}
       <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5
                       bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">

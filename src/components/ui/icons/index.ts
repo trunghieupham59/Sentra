@@ -4,7 +4,7 @@
  *
  * Category breakdown:
  *   actions    — copy, check, trash, arrow-right, download, X, plus, refresh,
- *                send, pencil, image, translate, rewrite, layers
+ *                send, pencil, image, translate, rewrite, layers, upload
  *   navigation — chevron-down, chevron-right, gear, auto-detect, arrow-up
  *   media      — spinner, stop, speaker, microphone, monitor, subtitles
  *   status     — alert-triangle, radio-checked, info-circle, lightbulb,
