@@ -46,3 +46,12 @@ export function AutoDetectIcon({ className = 'w-3.5 h-3.5' }: IconProps) {
     </svg>
   )
 }
+
+/** Arrow-up icon — used on the bookmarklet drag hint (drag to bookmarks bar). */
+export function ArrowUpIcon({ className = 'w-3.5 h-3.5' }: IconProps) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4" />
+    </svg>
+  )
+}

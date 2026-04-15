@@ -4,6 +4,7 @@
  *
  * Fixed width (88 px) prevents layout shift when the label text changes.
  */
+import { MiniToggleTrack } from './MiniToggleTrack'
 
 interface AutoTranslateToggleProps {
   autoTranslate: boolean
@@ -34,19 +35,7 @@ export function AutoTranslateToggle({
           : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700',
       ].join(' ')}
     >
-      <span
-        className={[
-          'relative inline-flex shrink-0 items-center w-7 h-4 rounded-full transition-colors duration-200',
-          autoTranslate ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600',
-        ].join(' ')}
-      >
-        <span
-          className={[
-            'absolute w-3 h-3 bg-white rounded-full shadow transition-transform duration-200',
-            autoTranslate ? 'translate-x-3.5' : 'translate-x-0.5',
-          ].join(' ')}
-        />
-      </span>
+      <MiniToggleTrack checked={autoTranslate} color="green" />
       <span>{autoTranslate ? 'Auto' : 'Manual'}</span>
     </button>
   )

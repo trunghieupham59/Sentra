@@ -4,10 +4,11 @@
  *
  * Category breakdown:
  *   actions    — copy, check, trash, arrow-right, download, X, plus, refresh,
- *                send, pencil, image, translate, rewrite
- *   navigation — chevron-down, chevron-right, gear, auto-detect
+ *                send, pencil, image, translate, rewrite, layers
+ *   navigation — chevron-down, chevron-right, gear, auto-detect, arrow-up
  *   media      — spinner, stop, speaker, microphone, monitor, subtitles
- *   status     — alert-triangle, radio-checked, info-circle, lightbulb, user
+ *   status     — alert-triangle, radio-checked, info-circle, lightbulb,
+ *                check-circle, user
  *   auth       — lock, eye, eye-off
  *   files      — document, clipboard
  */

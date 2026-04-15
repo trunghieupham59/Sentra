@@ -45,6 +45,16 @@ export function LightbulbIcon({ className = 'w-3.5 h-3.5' }: IconProps) {
   )
 }
 
+/** Check-circle / success icon — used on update-downloaded and success states. */
+export function CheckCircleIcon({ className = 'w-4 h-4' }: IconProps) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  )
+}
+
 /** User / person icon — used on user avatars. */
 export function UserIcon({ className = 'w-4 h-4' }: IconProps) {
   return (

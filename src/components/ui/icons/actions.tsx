@@ -121,6 +121,15 @@ export function ImageIcon({ className = 'w-4 h-4' }: IconProps) {
   )
 }
 
+/** Layers / stacked-pages icon — used on the bookmarklet drag link. */
+export function LayersIcon({ className = 'w-4 h-4' }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+    </svg>
+  )
+}
+
 /** Translate / language icon — used on translate empty-state panels. */
 export function TranslateIcon({ className = 'w-6 h-6' }: IconProps) {
   return (

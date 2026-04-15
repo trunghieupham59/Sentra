@@ -1,4 +1,4 @@
-name: Release Electron App
+name: Release Production
 
 on:
     push:
@@ -61,7 +61,7 @@ jobs:
 
                   {
                     echo "RELEASE_BODY<<ENDOFBODY"
-                    echo "## 🌸 Lotus ${CURRENT_TAG} — Release Notes"
+                    echo "## Lotus ${CURRENT_TAG} — Release Notes"
                     echo ""
                     echo "> **Lotus** is a local AI-powered translation desktop app for macOS and Windows,"
                     echo "> supporting models from OpenAI, Anthropic Claude, and Google Gemini."
@@ -104,14 +104,14 @@ jobs:
                     echo ""
                     echo "## 📦 Installation"
                     echo ""
-                    echo "### 🍎 macOS"
+                    echo "###  macOS"
                     echo "1. Download the \`.dmg\` file matching your chip:"
                     echo "   - **Apple Silicon (M1/M2/M3):** \`Lotus-*-arm64.dmg\`"
                     echo "   - **Intel Mac:** \`Lotus-*-x64.dmg\`"
                     echo "2. Open the \`.dmg\` and drag **Lotus** to your **Applications** folder."
                     echo "3. On first launch, right-click → **Open** to bypass Gatekeeper if needed."
                     echo ""
-                    echo "### 🪟 Windows"
+                    echo "### ⊞ Windows"
                     echo "1. Download \`Lotus-*-x64-Setup.exe\`."
                     echo "2. Run the installer and follow the setup wizard."
                     echo "3. You can choose a custom installation directory during setup."
@@ -145,7 +145,7 @@ jobs:
             matrix:
                 include:
                     - os: macos-latest
-                      cmd: npx electron-builder --mac dmg zip --arm64 --x64 --publish always
+                      cmd: npx electron-builder --mac --arm64 --x64 --publish always
                     - os: windows-latest
                       cmd: npx electron-builder --win nsis --x64 --publish always
 

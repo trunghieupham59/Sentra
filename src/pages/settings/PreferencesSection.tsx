@@ -1,0 +1,142 @@
+import { FontSizePicker } from '../../components/ui/FontSizePicker'
+import { ToggleSwitch } from '../../components/ui/ToggleSwitch'
+import { ChevronDownIcon } from '../../components/ui/icons'
+import { type AppLocale, LOCALE_NAMES } from '../../i18n'
+import { useAppStore, useT } from '../../store/useAppStore'
+import { detectSystemLocale } from '../../utils/locale'
+
+export function PreferencesSection() {
+  const {
+    autoTranslate, setAutoTranslate, autoTranslateDelay, setAutoTranslateDelay,
+    showFurigana, setShowFurigana,
+    locale, localeAuto, setLocale, setLocaleAuto, setLocaleFromSystem,
+    fontSize, setFontSize,
+  } = useAppStore()
+  const t = useT()
+
+  const handleToggleLocaleAuto = () => {
+    if (localeAuto) {
+      setLocale(locale)
+    } else {
+      setLocaleAuto(true)
+      setLocaleFromSystem(detectSystemLocale())
+    }
+  }
+
+  return (
+    <section className="space-y-3">
+      <h2 className="section-label">{t.settings_prefs}</h2>
+
+      <div className="card divide-y divide-gray-100 dark:divide-gray-700">
+
+        {/* Follow System Language toggle */}
+        <div className="flex items-center justify-between px-4 py-3.5">
+          <div>
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_locale_auto}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_locale_auto_desc}</p>
+          </div>
+          <ToggleSwitch
+            checked={localeAuto}
+            onChange={handleToggleLocaleAuto}
+            aria-label={t.settings_locale_auto}
+          />
+        </div>
+
+        {/* App Language selector */}
+        <div className="flex items-center justify-between px-4 py-3.5">
+          <div>
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_app_language}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_app_language_desc}</p>
+          </div>
+          <div className="relative">
+            <select
+              value={locale}
+              onChange={(e) => setLocale(e.target.value as AppLocale)}
+              className="select-field py-1.5 pl-3 pr-8 text-xs min-w-[130px]"
+            >
+              {(Object.entries(LOCALE_NAMES) as [AppLocale, string][]).map(([code, name]) => (
+                <option key={code} value={code}>{name}</option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute right-2.5 inset-y-0 flex items-center">
+              <ChevronDownIcon className="w-3.5 h-3.5 text-gray-400" />
+            </div>
+          </div>
+        </div>
+
+        {/* Font Size */}
+        <div className="flex items-center justify-between px-4 py-3.5 gap-4">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_font_size}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_font_size_desc}</p>
+          </div>
+          <FontSizePicker
+            value={fontSize}
+            onChange={setFontSize}
+            labels={{
+              small: t.settings_font_size_small,
+              medium: t.settings_font_size_medium,
+              large: t.settings_font_size_large,
+            }}
+          />
+        </div>
+
+        {/* Phonetic / Furigana toggle */}
+        <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_furigana}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_furigana_desc}</p>
+          </div>
+          <ToggleSwitch
+            checked={showFurigana}
+            onChange={setShowFurigana}
+            aria-label={t.settings_furigana}
+          />
+        </div>
+
+        {/* Auto / Manual translation mode toggle */}
+        <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+              {`${t.settings_translate_mode} — ${autoTranslate ? t.settings_mode_auto : t.settings_mode_manual}`}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              {t.settings_translate_mode_desc}
+            </p>
+          </div>
+          <ToggleSwitch
+            checked={autoTranslate}
+            onChange={setAutoTranslate}
+            aria-label="Auto translate toggle"
+            color="green"
+          />
+        </div>
+
+        {/* Delay slider (only for auto) */}
+        {autoTranslate && (
+          <div className="flex items-center justify-between px-4 py-3.5">
+            <div>
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_translate_delay}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_translate_delay_desc}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min={300}
+                max={2000}
+                step={100}
+                value={autoTranslateDelay}
+                onChange={(e) => setAutoTranslateDelay(Number(e.target.value))}
+                className="w-24 accent-blue-600"
+              />
+              <span className="text-xs text-gray-500 font-mono w-14 text-right tabular-nums">
+                {autoTranslateDelay}ms
+              </span>
+            </div>
+          </div>
+        )}
+
+      </div>
+    </section>
+  )
+}

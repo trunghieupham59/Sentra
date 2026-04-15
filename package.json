@@ -1,5 +1,5 @@
 {
-  "name": "lotus-app",
+  "name": "lotus",
   "version": "1.1.3",
   "description": "Lotus - Local AI Translation - macOS & Windows",
   "main": "dist-electron/main.js",
@@ -11,9 +11,9 @@
     "build:mac": "npm run build && electron-builder --mac",
     "build:win": "npm run build && electron-builder --win",
     "build:linux": "npm run build && electron-builder --linux",
-    "dist:mac": "npm run build && electron-builder --mac dmg --arm64 --x64",
+    "dist:mac": "npm run build && electron-builder --mac --arm64 --x64",
     "dist:win": "npm run build && electron-builder --win nsis --x64",
-    "release:mac": "npm run build && electron-builder --mac dmg --arm64 --x64 --publish always",
+    "release:mac": "npm run build && electron-builder --mac --arm64 --x64 --publish always",
     "release:win": "npm run build && electron-builder --win nsis --x64 --publish always",
     "postinstall": "electron-builder install-app-deps || true",
     "preview": "vite preview",
@@ -30,7 +30,7 @@
     "gpt",
     "lotus"
   ],
-  "author": "LOTUS APP Vietnam",
+  "author": "Lotus",
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
@@ -78,9 +78,17 @@
     ],
     "mac": {
       "icon": "build/icon.icns",
+      "identity": null,
       "target": [
         {
           "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
           "arch": [
             "arm64",
             "x64"

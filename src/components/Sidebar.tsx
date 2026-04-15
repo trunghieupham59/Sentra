@@ -1,6 +1,7 @@
 import { ReactNode } from 'react'
 import { useAppStore, useT } from '../store/useAppStore'
 import { AppLogoIcon } from './AppLogo'
+import { GearIcon, MicrophoneIcon, TranslateIcon } from './ui/icons'
 import { PROVIDERS } from '../constants/providers'
 import { Provider } from '../types'
 
@@ -69,12 +70,7 @@ export function Sidebar() {
         label={t.nav_translate}
         active={activePage === 'translate'}
         onClick={handleNewTranslate}
-        icon={
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round"
-              d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
-          </svg>
-        }
+        icon={<TranslateIcon className="w-5 h-5" />}
       />
 
       {/* Live Translate */}
@@ -82,14 +78,7 @@ export function Sidebar() {
         label={t.nav_live_translate}
         active={activePage === 'live'}
         onClick={() => setActivePage('live')}
-        icon={
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2" />
-            <line x1="12" y1="19" x2="12" y2="23" strokeLinecap="round" />
-            <line x1="8" y1="23" x2="16" y2="23" strokeLinecap="round" />
-          </svg>
-        }
+        icon={<MicrophoneIcon className="w-5 h-5" />}
       />
 
       {/* Chat with AI */}
@@ -130,13 +119,7 @@ export function Sidebar() {
         active={activePage === 'settings'}
         badge={!hasAnyKey}
         onClick={() => setActivePage('settings')}
-        icon={
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        }
+        icon={<GearIcon className="w-5 h-5" />}
       />
     </aside>
   )

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { AlertTriangleIcon, ImageIcon, SpinnerIcon, XIcon } from './ui/icons'
 import { useT } from '../store/useAppStore'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -144,11 +145,7 @@ export function ImageTranslator({ onImageReady, onClose }: ImageTranslatorProps)
                         border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center">
-              <svg className="w-4 h-4 text-emerald-600 dark:text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
-              </svg>
+              <ImageIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             </div>
             <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
               {t.image_translate_title}
@@ -161,9 +158,7 @@ export function ImageTranslator({ onImageReady, onClose }: ImageTranslatorProps)
                        text-gray-400 hover:text-gray-600 hover:bg-gray-100
                        dark:hover:text-gray-300 dark:hover:bg-gray-800 transition-colors cursor-pointer"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <XIcon className="w-4 h-4" />
           </button>
         </div>
 
@@ -175,10 +170,7 @@ export function ImageTranslator({ onImageReady, onClose }: ImageTranslatorProps)
               <div className="relative w-14 h-14">
                 <div className="absolute inset-0 rounded-full bg-emerald-100 dark:bg-emerald-900/30 animate-ping" style={{ animationDuration: '1.5s' }} />
                 <div className="relative w-14 h-14 rounded-full bg-emerald-500 flex items-center justify-center shadow-md">
-                  <svg className="w-6 h-6 text-white animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                    <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
+                  <SpinnerIcon className="w-6 h-6 text-white animate-spin" />
                 </div>
               </div>
               <div className="text-center">
@@ -228,10 +220,7 @@ export function ImageTranslator({ onImageReady, onClose }: ImageTranslatorProps)
               {errorMsg && (
                 <div className="mt-3 flex items-start gap-2 p-3 rounded-lg
                                 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900">
-                  <svg className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
+                  <AlertTriangleIcon className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-red-700 dark:text-red-300">{errorMsg}</p>
                 </div>
               )}
