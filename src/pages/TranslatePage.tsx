@@ -6,9 +6,15 @@ import { LanguageSelector } from '../components/LanguageSelector'
 import { MarkdownEditor } from '../components/MarkdownEditor'
 import { MarkdownText } from '../components/MarkdownText'
 import { ModelSelector } from '../components/ModelSelector'
+import { AutoTranslateToggle } from '../components/ui/AutoTranslateToggle'
+import { ClearButton } from '../components/ui/ClearButton'
+import { CopyButton } from '../components/ui/CopyButton'
+import { ImageTranslateButton } from '../components/ui/ImageTranslateButton'
+import { PhoneticToggle } from '../components/ui/PhoneticToggle'
 import { RewriteButton } from '../components/ui/RewriteButton'
 import { SpeakButton } from '../components/ui/SpeakButton'
-import { CheckIcon, CopyIcon, DownloadIcon, SpinnerIcon, XIcon } from '../components/ui/icons'
+import { TranslateButton } from '../components/ui/TranslateButton'
+import { AlertTriangleIcon, ArrowRightIcon, AutoDetectIcon, ChevronDownIcon, DownloadIcon, MicrophoneIcon, XIcon } from '../components/ui/icons'
 import { VoiceRecorder } from '../components/VoiceRecorder'
 import { MAX_INPUT_CHARS } from '../constants/providers'
 import { useTTS } from '../hooks/useTTS'
@@ -60,7 +66,6 @@ export function TranslatePage() {
   const {
     isVoiceActive,
     isVoiceInterim,
-    voicePrefixRef,
     handleVoiceRecordingChange,
     handleVoiceTranscript,
     resetVoicePrefix,
@@ -353,53 +358,25 @@ export function TranslatePage() {
                 <option value="technical">{t.translate_style_technical}</option>
               </select>
               <div className="pointer-events-none absolute right-2 inset-y-0 flex items-center">
-                <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
+                <ChevronDownIcon className="w-3 h-3 text-gray-400" />
               </div>
             </div>
           </div>
 
           {/* Auto / Manual translation mode toggle — fixed width to prevent layout shift */}
-          <button
-            type="button"
-            onClick={() => setAutoTranslate(!autoTranslate)}
-            title={autoTranslate ? 'Tự động dịch — click để chuyển sang thủ công' : 'Dịch thủ công — click để chuyển sang tự động'}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium
-                        border transition-all duration-200 select-none cursor-pointer
-                        w-[88px] justify-start
-                        ${autoTranslate
-                          ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100 dark:bg-green-950 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900'
-                          : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700'
-                        }`}
-          >
-            <span className={`relative inline-flex shrink-0 items-center w-7 h-4 rounded-full transition-colors duration-200
-                              ${autoTranslate ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
-              <span className={`absolute w-3 h-3 bg-white rounded-full shadow transition-transform duration-200
-                                ${autoTranslate ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
-            </span>
-            <span>{autoTranslate ? 'Auto' : 'Manual'}</span>
-          </button>
+          <AutoTranslateToggle
+            autoTranslate={autoTranslate}
+            onChange={setAutoTranslate}
+            titleAuto={t.translate_mode_auto_title}
+            titleManual={t.translate_mode_manual_title}
+          />
 
           {/* Phonetic reading toggle */}
-          <button
-            type="button"
-            onClick={() => setShowFurigana(!showFurigana)}
-            title={t.translate_phonetic}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium
-                        border transition-all duration-200 select-none cursor-pointer whitespace-nowrap
-                        ${showFurigana
-                          ? 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 dark:bg-purple-950 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-900'
-                          : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700'
-                        }`}
-          >
-            <span className={`relative inline-flex shrink-0 items-center w-7 h-4 rounded-full transition-colors duration-200
-                              ${showFurigana ? 'bg-purple-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
-              <span className={`absolute w-3 h-3 bg-white rounded-full shadow transition-transform duration-200
-                                ${showFurigana ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
-            </span>
-            <span>{t.translate_phonetic}</span>
-          </button>
+          <PhoneticToggle
+            showFurigana={showFurigana}
+            onChange={setShowFurigana}
+            label={t.translate_phonetic}
+          />
         </div>
       </div>
 
@@ -410,18 +387,12 @@ export function TranslatePage() {
         <div className="flex-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg
                         bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700
                         text-sm text-gray-500 dark:text-gray-400 select-none">
-          <svg className="w-3.5 h-3.5 flex-shrink-0 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-            <circle cx="11" cy="11" r="8" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M11 8v3m0 0v3m0-3h3m-3 0H8" />
-          </svg>
+          <AutoDetectIcon className="w-3.5 h-3.5 flex-shrink-0 text-blue-400" />
           <span className="truncate">{t.lang_auto}</span>
         </div>
 
         {/* Arrow separator */}
-        <svg className="flex-shrink-0 w-4 h-4 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-        </svg>
+        <ArrowRightIcon className="flex-shrink-0 w-4 h-4 text-gray-300 dark:text-gray-600" />
 
         {/* Target language selector */}
         <div className="flex-1">
@@ -446,12 +417,7 @@ export function TranslatePage() {
 
                 {/* Microphone circle */}
                 <div className="relative w-16 h-16 rounded-full bg-red-500 dark:bg-red-600 flex items-center justify-center shadow-md">
-                  <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                    <line x1="12" y1="19" x2="12" y2="23" strokeLinecap="round" />
-                    <line x1="8" y1="23" x2="16" y2="23" strokeLinecap="round" />
-                  </svg>
+                  <MicrophoneIcon className="w-7 h-7 text-white" />
                 </div>
               </div>
 
@@ -515,9 +481,7 @@ export function TranslatePage() {
                 className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center
                            rounded-full bg-black/50 hover:bg-black/70 text-white cursor-pointer z-10"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <XIcon className="w-3.5 h-3.5" />
               </button>
               {/* File name */}
               <div className="absolute bottom-0 inset-x-0 px-2 py-1
@@ -555,31 +519,13 @@ export function TranslatePage() {
             <div className="flex items-center gap-2">
               {/* Manual translate button — in source panel bottom bar when in manual mode */}
               {!autoTranslate && (
-                <button
-                  type="button"
+                <TranslateButton
+                  isTranslating={isTranslating}
+                  disabled={!sourceText.trim() && !imageAttachment}
                   onClick={handleTranslate}
-                  disabled={isTranslating || (!sourceText.trim() && !imageAttachment)}
-                  className={[
-                    'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold',
-                    'bg-blue-600 text-white shadow-sm transition-all duration-200 cursor-pointer select-none',
-                    'hover:bg-blue-700 active:scale-95',
-                    'disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100',
-                  ].join(' ')}
-                >
-                  {isTranslating ? (
-                    <>
-                      <SpinnerIcon />
-                      <span>{t.translate_btn_loading}</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                      </svg>
-                      <span>{t.translate_btn ?? 'Dịch'}</span>
-                    </>
-                  )}
-                </button>
+                  labelTranslate={t.translate_btn ?? 'Dịch'}
+                  labelLoading={t.translate_btn_loading}
+                />
               )}
               {/* Voice recorder — shows its own inline status labels */}
               <VoiceRecorder
@@ -594,21 +540,10 @@ export function TranslatePage() {
               />
 
               {/* Image translation button */}
-              <button
-                type="button"
+              <ImageTranslateButton
                 onClick={() => setShowImageTranslator(true)}
                 title={t.image_translate_title}
-                className="relative flex items-center justify-center w-8 h-8 rounded-full
-                           transition-all duration-200 cursor-pointer
-                           text-gray-400 hover:text-emerald-500 hover:bg-emerald-50
-                           dark:hover:bg-emerald-950 dark:hover:text-emerald-400"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                  <circle cx="8.5" cy="8.5" r="1.5" />
-                  <polyline points="21 15 16 10 5 21" />
-                </svg>
-              </button>
+              />
 
               {!isVoiceActive && (
                 charCount > MAX_INPUT_CHARS ? (
@@ -646,16 +581,10 @@ export function TranslatePage() {
                 />
 
                 {/* Clear source text */}
-                <button
-                  type="button"
+                <ClearButton
                   onClick={() => { stopSpeak(); setSourceText(''); setTranslatedText(''); setPhoneticText(''); setTranslateError(null) }}
-                  className="btn-ghost py-1 px-2 text-xs flex items-center gap-1"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  <span className="hidden min-[1100px]:inline">{t.translate_clear}</span>
-                </button>
+                  label={t.translate_clear}
+                />
               </div>
             )}
           </div>
@@ -678,10 +607,7 @@ export function TranslatePage() {
               <div className="fade-in flex flex-col gap-3">
                 <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950/30
                                 border border-red-200 dark:border-red-900 rounded-lg">
-                  <svg className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
+                  <AlertTriangleIcon className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
                   <p className="text-sm text-red-700 dark:text-red-300">{translateError}</p>
                 </div>
                 {(translateError.includes('API key') || translateError.includes('Settings') ||
@@ -778,23 +704,12 @@ export function TranslatePage() {
 
                 {/* Copy translated text */}
                 {!editedImageUrl && (
-                  <button
-                    type="button"
+                  <CopyButton
+                    copied={copied}
                     onClick={handleCopy}
-                    className={`btn-ghost py-1 px-2 text-xs transition-all ${copied ? 'text-green-600' : ''}`}
-                  >
-                    {copied ? (
-                      <>
-                        <CheckIcon />
-                        <span className="hidden min-[1100px]:inline">{t.translate_copied}</span>
-                      </>
-                    ) : (
-                      <>
-                        <CopyIcon />
-                        <span className="hidden min-[1100px]:inline">{t.translate_copy}</span>
-                      </>
-                    )}
-                  </button>
+                    labelCopy={t.translate_copy}
+                    labelCopied={t.translate_copied}
+                  />
                 )}
               </div>
             )}

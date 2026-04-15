@@ -36,6 +36,10 @@ export interface Translations {
   translate_speak_stop: string
   translate_rewrite: string
   translate_rewriting: string
+  /** Tooltip on the Auto/Manual toggle when currently in auto mode */
+  translate_mode_auto_title: string
+  /** Tooltip on the Auto/Manual toggle when currently in manual mode */
+  translate_mode_manual_title: string
 
   // Voice recording
   voice_record: string
@@ -332,6 +336,8 @@ const en: Translations = {
   translate_speak_stop: 'Stop reading',
   translate_rewrite: 'Rewrite',
   translate_rewriting: 'Rewriting…',
+  translate_mode_auto_title: 'Auto-translate — click to switch to Manual',
+  translate_mode_manual_title: 'Manual translate — click to switch to Auto',
   voice_record: 'Record voice',
   voice_stop: 'Stop recording',
   voice_listening: 'Listening…',
@@ -617,6 +623,8 @@ const vi: Translations = {
   translate_speak_stop: 'Dừng đọc',
   translate_rewrite: 'Viết lại',
   translate_rewriting: 'Đang viết lại…',
+  translate_mode_auto_title: 'Tự động dịch — click để chuyển sang thủ công',
+  translate_mode_manual_title: 'Dịch thủ công — click để chuyển sang tự động',
   voice_record: 'Thu âm giọng nói',
   voice_stop: 'Dừng thu âm',
   voice_listening: 'Đang nghe…',
@@ -902,6 +910,8 @@ const ja: Translations = {
   translate_speak_stop: '読み上げ停止',
   translate_rewrite: '書き直す',
   translate_rewriting: '書き直し中…',
+  translate_mode_auto_title: '自動翻訳 — クリックして手動に切り替え',
+  translate_mode_manual_title: '手動翻訳 — クリックして自動に切り替え',
   voice_record: '音声録音',
   voice_stop: '録音停止',
   voice_listening: '聞き取り中…',
