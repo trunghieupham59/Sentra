@@ -124,11 +124,15 @@ export interface Translations {
   image_translate_btn: string
   image_translate_upload_hint: string
   image_translate_processing: string
+  /** HC-10: Sub-status shown while resizing/compressing the image */
+  image_translate_compress_status: string
   image_translate_no_text: string
   image_translate_download: string
   image_translate_result_label: string
   image_translate_change: string
   image_translate_error_no_key: string
+  /** HC-10: Error shown when user uploads a non-image file */
+  image_translate_type_error: string
 
   // History page
   history_title: string

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AlertTriangleIcon, ImageIcon, SpinnerIcon, XIcon } from './ui/icons'
 import { useT } from '../store/useAppStore'
-import { MAX_TRANSLATE_IMAGE_DIMENSION, MAX_IMAGE_BYTES, IMAGE_JPEG_QUALITY } from '../constants/image'
+import { MAX_TRANSLATE_IMAGE_DIMENSION } from '../constants/image'
+import { resizeImageFile } from '../utils/imageUtils'
 
-// HC-09: MAX_DIMENSION, MAX_BYTES, JPEG_QUALITY now imported from src/constants/image.ts
+// DUP-05: processImageFile replaced by shared resizeImageFile from imageUtils.ts
+// HC-09: MAX_TRANSLATE_IMAGE_DIMENSION imported from constants/image.ts
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface ImageAttachment {
@@ -13,60 +15,6 @@ export interface ImageAttachment {
   height: number
   previewDataUrl: string   // full data URL for display
   fileName: string
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload  = (e) => resolve(e.target?.result as string)
-    reader.onerror = () => reject(new Error('Failed to read file'))
-    reader.readAsDataURL(file)
-  })
-}
-
-function loadImageFromSrc(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload  = () => resolve(img)
-    img.onerror = () => reject(new Error('Failed to load image'))
-    img.src = src
-  })
-}
-
-async function processImageFile(file: File): Promise<ImageAttachment> {
-  // Read original for preview (async in parallel with resize)
-  const previewDataUrl = await readFileAsDataUrl(file)
-  const img = await loadImageFromSrc(previewDataUrl)
-
-  let { width, height } = img
-
-  // Scale down if needed
-  if (width > MAX_TRANSLATE_IMAGE_DIMENSION || height > MAX_TRANSLATE_IMAGE_DIMENSION) {
-    const ratio = Math.min(MAX_TRANSLATE_IMAGE_DIMENSION / width, MAX_TRANSLATE_IMAGE_DIMENSION / height)
-    width  = Math.round(width  * ratio)
-    height = Math.round(height * ratio)
-  }
-
-  const canvas = document.createElement('canvas')
-  canvas.width  = width
-  canvas.height = height
-  const ctx = canvas.getContext('2d')!
-  ctx.drawImage(img, 0, 0, width, height)
-
-  const mimeType = 'image/jpeg'
-  let quality = IMAGE_JPEG_QUALITY
-  let base64  = ''
-
-  while (quality >= 0.4) {
-    const dataUrl = canvas.toDataURL(mimeType, quality)
-    base64 = dataUrl.split(',')[1]
-    if (base64.length * 0.75 <= MAX_IMAGE_BYTES) break
-    quality -= 0.1
-  }
-  if (!base64) base64 = canvas.toDataURL(mimeType, 0.4).split(',')[1]
-
-  return { base64, mimeType, width, height, previewDataUrl, fileName: file.name }
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -91,20 +39,29 @@ export function ImageTranslator({ onImageReady, onClose }: ImageTranslatorProps)
 
   const processFile = useCallback(async (file: File) => {
     if (!file.type.startsWith('image/')) {
-      setErrorMsg('Please upload an image file (JPEG, PNG, WebP, GIF)')
+      setErrorMsg(t.image_translate_type_error)  // HC-10
       return
     }
     setIsProcessing(true)
     setErrorMsg(null)
     try {
-      const attachment = await processImageFile(file)
+      // DUP-05: use shared resizeImageFile with quality loop for ImageTranslator
+      const result = await resizeImageFile(file, MAX_TRANSLATE_IMAGE_DIMENSION, { useQualityLoop: true })
+      const attachment: ImageAttachment = {
+        base64: result.base64,
+        mimeType: result.mimeType,
+        width: result.width,
+        height: result.height,
+        previewDataUrl: result.previewUrl,
+        fileName: result.fileName,
+      }
       onImageReady(attachment)
       onClose()
     } catch (err) {
       setIsProcessing(false)
       setErrorMsg(err instanceof Error ? err.message : 'Failed to process image')
     }
-  }, [onImageReady, onClose])
+  }, [onImageReady, onClose, t])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -173,7 +130,7 @@ export function ImageTranslator({ onImageReady, onClose }: ImageTranslatorProps)
               </div>
               <div className="text-center">
                 <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">{t.image_translate_processing}</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Resizing & compressing…</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t.image_translate_compress_status}</p>
               </div>
             </div>
           ) : (

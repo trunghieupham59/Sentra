@@ -12,6 +12,27 @@ interface FetchedModel {
   description: string
 }
 
+// ── HC-04: Named score constants for model ranking ────────────────────────────
+// Gemini tier scores (higher = preferred for translation)
+const GEMINI_SCORE_FLASH   = 200  // Flash: fast + excellent translation quality
+const GEMINI_SCORE_PRO     = 80   // Pro: capable but slower
+const GEMINI_SCORE_ULTRA   = 60   // Ultra: most capable but expensive/slow
+const GEMINI_SCORE_LITE_PENALTY = 50  // Lite/nano: too limited for quality translation
+
+// Claude tier scores
+const CLAUDE_SCORE_HAIKU   = 200  // Haiku: fastest + great for translation
+const CLAUDE_SCORE_SONNET  = 100  // Sonnet: balanced capability
+const CLAUDE_SCORE_OPUS    = 40   // Opus: most powerful but too slow/expensive
+
+// OpenAI tier scores
+const OPENAI_SCORE_MINI        = 200  // Mini: fast + good translation quality
+const OPENAI_SCORE_4O_BASE     = 120  // 4o base model tier
+const OPENAI_SCORE_4_BASE      = 80   // GPT-4 base tier
+const OPENAI_SCORE_35          = 50   // GPT-3.5 economy tier
+const OPENAI_SCORE_4O_BONUS    = 30   // Extra bonus for 'o' optimised variant
+const OPENAI_SCORE_4_BONUS     = 10   // Small bonus for GPT-4 family
+const OPENAI_GENERATION_WEIGHT = 20   // Score per Gemini generation unit
+
 /**
  * Scores a model for translation suitability.
  * Higher score = better balance of speed + quality for translation.
@@ -23,19 +44,19 @@ function scoreModelForTranslation(provider: string, modelId: string): number {
 
   if (provider === 'gemini') {
     // Flash = fast + good quality for translation
-    if (id.includes('flash')) score += 200
-    else if (id.includes('pro')) score += 80
-    else if (id.includes('ultra')) score += 60
+    if (id.includes('flash')) score += GEMINI_SCORE_FLASH
+    else if (id.includes('pro')) score += GEMINI_SCORE_PRO
+    else if (id.includes('ultra')) score += GEMINI_SCORE_ULTRA
     // Prefer newer generation numbers  (gemini-2 > gemini-1.5 > gemini-1)
     const gen = id.match(/gemini-(\d+)\.?(\d*)/)
-    if (gen) score += parseFloat(`${gen[1]}.${gen[2] || 0}`) * 20
+    if (gen) score += parseFloat(`${gen[1]}.${gen[2] || 0}`) * OPENAI_GENERATION_WEIGHT
     // Avoid experimental / lite variants
-    if (id.includes('lite') || id.includes('nano')) score -= 50
+    if (id.includes('lite') || id.includes('nano')) score -= GEMINI_SCORE_LITE_PENALTY
   } else if (provider === 'claude') {
     // Haiku = fastest + great for translation
-    if (id.includes('haiku')) score += 200
-    else if (id.includes('sonnet')) score += 100
-    else if (id.includes('opus')) score += 40   // too slow/expensive
+    if (id.includes('haiku')) score += CLAUDE_SCORE_HAIKU
+    else if (id.includes('sonnet')) score += CLAUDE_SCORE_SONNET
+    else if (id.includes('opus')) score += CLAUDE_SCORE_OPUS   // too slow/expensive
     // Version bonus: claude-3-5 > claude-3
     const ver = id.match(/claude-(\d+)-?(\d*)/)
     if (ver) score += parseFloat(`${ver[1]}.${ver[2] || 0}`) * 15
@@ -44,13 +65,13 @@ function scoreModelForTranslation(provider: string, modelId: string): number {
     if (date) score += parseInt(date[1]) / 2000000
   } else if (provider === 'openai') {
     // Mini models: fast + good translation quality
-    if (id.includes('mini')) score += 200
-    else if (id.includes('4o')) score += 120
-    else if (id.includes('4')) score += 80
-    else if (id.includes('3.5')) score += 50
+    if (id.includes('mini')) score += OPENAI_SCORE_MINI
+    else if (id.includes('4o')) score += OPENAI_SCORE_4O_BASE
+    else if (id.includes('4')) score += OPENAI_SCORE_4_BASE
+    else if (id.includes('3.5')) score += OPENAI_SCORE_35
     // Version bonus: 4o > 4 > 3.5
-    if (id.includes('4o')) score += 30
-    if (id.includes('4')) score += 10
+    if (id.includes('4o')) score += OPENAI_SCORE_4O_BONUS
+    if (id.includes('4')) score += OPENAI_SCORE_4_BONUS
     // Avoid reasoning models
     if (id.startsWith('o1') || id.startsWith('o3') || id.startsWith('o4')) score = 0
   }

@@ -11,47 +11,16 @@ import {
 import { chatService } from '../services/chatService'
 import { VoiceRecorder } from '../components/VoiceRecorder'
 import { MAX_CHAT_INPUT_CHARS } from '../constants/providers'
-import { MAX_CHAT_IMAGE_DIMENSION, IMAGE_JPEG_QUALITY } from '../constants/image'
+import { MAX_CHAT_IMAGE_DIMENSION } from '../constants/image'
 import { COPY_FEEDBACK_DURATION_MS } from '../constants/ui'
+import { resizeImageFile } from '../utils/imageUtils'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { ChatMessage, ChatMessageContent } from '../types'
 
-// HC-09: MAX_CHAT_IMAGE_DIMENSION and IMAGE_JPEG_QUALITY now imported from src/constants/image.ts
+// DUP-05: resizeImageToBase64 replaced by shared resizeImageFile from imageUtils.ts
+// HC-09: MAX_CHAT_IMAGE_DIMENSION imported from constants/image.ts
 // MAX_CHAT_SESSIONS is enforced in useAppStore.createChatSession — defined there as the single source of truth
-
-// ─── Resize image helper ──────────────────────────────────────────────────────
-async function resizeImageToBase64(
-  file: File,
-  maxSize: number
-): Promise<{ base64: string; mimeType: string; previewUrl: string; fileName: string }> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file)
-    const img = new Image()
-    img.onload = () => {
-      let { width, height } = img
-      if (width > maxSize || height > maxSize) {
-        if (width > height) { height = Math.round((height * maxSize) / width); width = maxSize }
-        else { width = Math.round((width * maxSize) / height); height = maxSize }
-      }
-      const canvas = document.createElement('canvas')
-      canvas.width = width; canvas.height = height
-      const ctx = canvas.getContext('2d')!
-      ctx.drawImage(img, 0, 0, width, height)
-      const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg'
-      const dataUrl = canvas.toDataURL(mimeType, IMAGE_JPEG_QUALITY)
-      URL.revokeObjectURL(url)
-      resolve({
-        base64: dataUrl.split(',')[1],
-        mimeType,
-        previewUrl: dataUrl,
-        fileName: file.name,
-      })
-    }
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Failed to load image')) }
-    img.src = url
-  })
-}
 
 // ─── Message bubble component ─────────────────────────────────────────────────
 function MessageBubble({
@@ -235,7 +204,8 @@ export function ChatPage() {
   const handleImageSelect = async (file: File) => {
     setAttachImageError(null)
     try {
-      const result = await resizeImageToBase64(file, MAX_CHAT_IMAGE_DIMENSION)  // HC-09
+      // DUP-05: use shared resizeImageFile (fixed quality, no compression loop needed for chat)
+      const result = await resizeImageFile(file, MAX_CHAT_IMAGE_DIMENSION)
       setAttachedImage(result)
     } catch (err) {
       // Show error in the UI so the user knows the attachment failed
