@@ -48,6 +48,13 @@ export function TranslatePage() {
   const t = useT()
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /**
+   * Monotonically-increasing counter that identifies the "current" translation job.
+   * Incremented each time a new job starts OR when the user cancels (clears content/image).
+   * Every async step checks its captured generation against the current value before
+   * touching state — if they differ the job was cancelled and results are silently dropped.
+   */
+  const translateGenerationRef = useRef(0)
   const hasKey = keyStatus[selectedProvider]
   const charCount = sourceText.length
   const [copied, setCopied] = useState(false)
@@ -140,6 +147,9 @@ export function TranslatePage() {
     setTranslateError(null)
     setPhoneticText('')
 
+    // Capture the generation at job start — used to detect cancellation below
+    const generation = ++translateGenerationRef.current
+
     // ── IMAGE mode: translate the attached image ──────────────────────────
     if (imageAttachment) {
       try {
@@ -151,6 +161,8 @@ export function TranslatePage() {
           sourceLang,
           targetLang,
         })
+        // Bail out silently if the user cancelled while we were waiting
+        if (translateGenerationRef.current !== generation) return
         if (result.success && result.editedImageBase64) {
           // ── Gemini image-edit: show the directly edited image ──
           const mimeType = imageAttachment.mimeType
@@ -170,9 +182,10 @@ export function TranslatePage() {
           setTranslateError(result.error || 'Image translation failed')
         }
       } catch (err) {
+        if (translateGenerationRef.current !== generation) return
         setTranslateError(err instanceof Error ? err.message : 'Unexpected error')
       } finally {
-        setIsTranslating(false)
+        if (translateGenerationRef.current === generation) setIsTranslating(false)
       }
       return
     }
@@ -191,6 +204,9 @@ export function TranslatePage() {
 
       const plainResult = await translationService.translate({ ...baseParams, showFurigana: false })
 
+      // Bail out silently if the user cancelled while we were waiting
+      if (translateGenerationRef.current !== generation) return
+
       if (plainResult.success && plainResult.translatedText) {
         const plainText = plainResult.translatedText
         setTranslatedText(plainText)
@@ -208,15 +224,20 @@ export function TranslatePage() {
         })
 
         translationService.translate({ ...baseParams, sourceText: plainText, showFurigana: true, phoneticOnly: true })
-          .then((res) => { if (res.success && res.translatedText) setPhoneticText(res.translatedText) })
+          .then((res) => {
+            // Also guard the phonetic pass against cancellation
+            if (translateGenerationRef.current !== generation) return
+            if (res.success && res.translatedText) setPhoneticText(res.translatedText)
+          })
           .catch(() => {})
       } else {
         setTranslateError(plainResult.error || 'Translation failed')
       }
     } catch (err) {
+      if (translateGenerationRef.current !== generation) return
       setTranslateError(err instanceof Error ? err.message : 'Unexpected error')
     } finally {
-      setIsTranslating(false)
+      if (translateGenerationRef.current === generation) setIsTranslating(false)
     }
   }, [imageAttachment, sourceText, sourceLang, targetLang, selectedProvider, selectedModels,
       isTranslating, hasKey, translationStyle, setIsTranslating, setTranslateError,
@@ -492,6 +513,9 @@ export function TranslatePage() {
             <ImageAttachmentPreview
               imageAttachment={imageAttachment}
               onRemove={() => {
+                // Cancel any in-flight translation job before clearing image state
+                translateGenerationRef.current++
+                setIsTranslating(false)
                 setImageAttachment(null)
                 setImageRegions(null)
                 setEditedImageUrl(null)
@@ -601,7 +625,16 @@ export function TranslatePage() {
 
                 {/* Clear source text */}
                 <ClearButton
-                  onClick={() => { stopSpeak(); setSourceText(''); setTranslatedText(''); setPhoneticText(''); setTranslateError(null) }}
+                  onClick={() => {
+                    // Cancel any in-flight translation job before clearing state
+                    translateGenerationRef.current++
+                    setIsTranslating(false)
+                    stopSpeak()
+                    setSourceText('')
+                    setTranslatedText('')
+                    setPhoneticText('')
+                    setTranslateError(null)
+                  }}
                   label={t.translate_clear}
                 />
               </div>
