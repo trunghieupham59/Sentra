@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppLogoIcon } from '../components/AppLogo'
+import { SystemPromptDropdown } from '../components/chat/SystemPromptDropdown'
 import { MarkdownText } from '../components/MarkdownText'
 import { ModelSelector } from '../components/ModelSelector'
 import {
-  ChevronDownIcon, ChevronRightIcon, ClipboardIcon, DocumentIcon,
-  PlusIcon, RadioCheckedIcon, RefreshIcon, SendIcon,
+  ClipboardIcon, ImageIcon,
+  PlusIcon, RefreshIcon, SendIcon,
   SpinnerIcon, TrashIcon, UserIcon, XIcon,
 } from '../components/ui/icons'
+import { chatService } from '../services/chatService'
 import { VoiceRecorder } from '../components/VoiceRecorder'
 import { MAX_CHAT_INPUT_CHARS } from '../constants/providers'
 import { useVoiceInput } from '../hooks/useVoiceInput'
@@ -184,23 +186,8 @@ export function ChatPage() {
   } | null>(null)
   /** User-visible error shown in the input area when image processing fails. */
   const [attachImageError, setAttachImageError] = useState<string | null>(null)
-  const [showPromptDropdown, setShowPromptDropdown] = useState(false)
-  const promptDropdownRef = useRef<HTMLDivElement>(null)
-
   // Active preset = the preset whose content matches chatSystemPrompt
   const activePreset = systemPromptPresets.find((p) => p.content === chatSystemPrompt) ?? null
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    if (!showPromptDropdown) return
-    const handleOutside = (e: MouseEvent) => {
-      if (promptDropdownRef.current && !promptDropdownRef.current.contains(e.target as Node)) {
-        setShowPromptDropdown(false)
-      }
-    }
-    document.addEventListener('mousedown', handleOutside)
-    return () => document.removeEventListener('mousedown', handleOutside)
-  }, [showPromptDropdown])
 
   // ── Voice input — shared hook (same logic as TranslatePage) ──
   const {
@@ -292,7 +279,7 @@ export function ChatPage() {
     })
 
     try {
-      const result = await window.api.chat({
+      const result = await chatService.send({
         provider: selectedProvider,
         model: selectedModels[selectedProvider],
         messages: historyMessages.map((m) => ({
@@ -388,7 +375,7 @@ export function ChatPage() {
           })),
         }))
 
-      const result = await window.api.chat({
+      const result = await chatService.send({
         provider: selectedProvider,
         model: selectedModels[selectedProvider],
         messages,
@@ -459,111 +446,15 @@ export function ChatPage() {
         </div>
 
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          {/* System Prompt Dropdown */}
-          <div className="relative" ref={promptDropdownRef}>
-            <button
-              type="button"
-              onClick={() => setShowPromptDropdown((v) => !v)}
-              title={t.chat_system_prompt}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium border
-                          transition-all duration-200 select-none cursor-pointer whitespace-nowrap
-                          ${(chatSystemPrompt || activePreset)
-                            ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950 dark:border-indigo-800 dark:text-indigo-400'
-                            : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700'}`}
-            >
-              <DocumentIcon />
-              <span className="max-w-[120px] truncate">
-                {activePreset ? activePreset.name : chatSystemPrompt ? t.chat_system_prompt : t.chat_system_prompt}
-              </span>
-              {(chatSystemPrompt || activePreset) && (
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />
-              )}
-              <ChevronDownIcon className="w-2.5 h-2.5 flex-shrink-0" />
-            </button>
-
-            {/* Dropdown panel */}
-            {showPromptDropdown && (
-              <div className="absolute right-0 top-full mt-1 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-xl
-                              border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
-
-                {/* Header with label */}
-                <p className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider border-b border-gray-100 dark:border-gray-700">
-                  {t.settings_chat_presets}
-                </p>
-
-                {/* None option — always at top, styled like a preset */}
-                <button
-                  type="button"
-                  onClick={() => { setChatSystemPrompt(''); setShowPromptDropdown(false) }}
-                  className={`w-full text-left px-3 py-2 text-sm transition-colors cursor-pointer
-                              flex items-center gap-2
-                              ${!chatSystemPrompt
-                                ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300'
-                                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <span className="font-medium">None</span>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">No system prompt</p>
-                  </div>
-                  {!chatSystemPrompt && (
-                    <RadioCheckedIcon className="w-4 h-4 text-indigo-500 flex-shrink-0" />
-                  )}
-                </button>
-
-                {/* Presets list */}
-                <div className="border-t border-gray-100 dark:border-gray-700">
-                  {systemPromptPresets.length === 0 ? (
-                    <p className="px-3 py-3 text-xs text-gray-400 dark:text-gray-600">
-                      {t.settings_chat_presets_empty}
-                    </p>
-                  ) : (
-                    systemPromptPresets.map((preset) => (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        onClick={() => {
-                          setChatSystemPrompt(preset.content)
-                          setShowPromptDropdown(false)
-                        }}
-                        className={`w-full text-left px-3 py-2 text-sm transition-colors cursor-pointer
-                                    flex items-start gap-2
-                                    ${chatSystemPrompt === preset.content
-                                      ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300'
-                                      : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-medium truncate">{preset.name}</span>
-                            {preset.isDefault && (
-                              <span className="text-[9px] px-1 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 shrink-0">
-                                {t.settings_chat_preset_is_default}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-gray-400 dark:text-gray-500 truncate mt-0.5">{preset.content}</p>
-                        </div>
-                        {chatSystemPrompt === preset.content && (
-                          <RadioCheckedIcon className="w-4 h-4 text-indigo-500 flex-shrink-0 mt-0.5" />
-                        )}
-                      </button>
-                    ))
-                  )}
-                </div>
-
-                {/* Footer: Go to settings */}
-                <div className="px-3 py-2.5 flex items-center justify-end border-t border-gray-100 dark:border-gray-700">
-                  <button
-                    type="button"
-                    onClick={() => { setShowPromptDropdown(false); setActivePage('settings') }}
-                    className="text-xs text-blue-500 dark:text-blue-400 hover:underline cursor-pointer transition-colors flex items-center gap-1"
-                  >
-                    {t.settings_title}
-                    <ChevronRightIcon />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* System Prompt Dropdown — state is managed inside the component */}
+          <SystemPromptDropdown
+            chatSystemPrompt={chatSystemPrompt}
+            systemPromptPresets={systemPromptPresets}
+            activePreset={activePreset}
+            onSetChatSystemPrompt={setChatSystemPrompt}
+            onNavigateSettings={() => setActivePage('settings')}
+            t={t}
+          />
 
           {/* New chat */}
           <button
@@ -730,7 +621,7 @@ export function ChatPage() {
               useWhisper={keyStatus.openai}
             />
 
-            {/* Image attach */}
+            {/* Image attach — uses ImageIcon from icons/actions instead of inline SVG */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -739,11 +630,7 @@ export function ChatPage() {
                          text-gray-400 hover:text-emerald-500 hover:bg-emerald-50
                          dark:hover:bg-emerald-950 dark:hover:text-emerald-400 transition-all duration-200 cursor-pointer"
             >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
-              </svg>
+              <ImageIcon className="w-4 h-4" />
             </button>
             <input
               ref={fileInputRef}

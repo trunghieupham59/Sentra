@@ -1,5 +1,13 @@
 import { IpcMain } from 'electron'
 import { getStoredApiKey } from './storage'
+import { classifyProviderError, noApiKeyResponse } from './errorUtils'
+import {
+  MAX_OUTPUT_TOKENS_CLAUDE,
+  MAX_OUTPUT_TOKENS_OPENAI,
+  VERIFY_MODEL_GEMINI,
+  VERIFY_MODEL_CLAUDE,
+  VERIFY_MODEL_OPENAI,
+} from './ipcConstants'
 
 type TranslationStyle = 'friendly' | 'neutral' | 'professional' | 'business' | 'slack' | 'polite' | 'technical'
 
@@ -428,6 +436,12 @@ async function verifyOpenAIKey(apiKey: string): Promise<void> {
  * Note: showFurigana / phoneticOnly are deliberately excluded from the live
  * streaming path to keep latency minimal.
  */
+// ── Exported for unit testing ─────────────────────────────────────────────────
+/** @internal — exported for unit tests only */
+export { splitIntoChunks, buildPrompt, withTimeout, promisePool }
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export async function streamTranslation(
   provider: string,
   apiKey: string,

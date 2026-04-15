@@ -263,6 +263,12 @@ async function translateImageWithOpenAI(
   try { return JSON.parse(jsonMatch[0]) as TextRegion[] } catch { return [] }
 }
 
+// ── Exported for unit testing ─────────────────────────────────────────────────
+/** @internal — exported for unit tests only */
+export { langName, buildPrompt as buildImageTranslatePrompt }
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function registerImageTranslateHandlers(ipcMain: IpcMain) {
   ipcMain.handle('image:translate', async (_event, params: ImageTranslateParams) => {
     const { provider, model, imageBase64, imageMimeType, sourceLang, targetLang } = params

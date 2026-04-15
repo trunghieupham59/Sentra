@@ -115,6 +115,15 @@ npm run rebuild
 npm run dev
 ```
 
+### Test
+
+```bash
+npm test              # Run all tests (unit + integration)
+npm run test:watch    # Watch mode for development
+```
+
+Tests are located in `src/**/__tests__/` and `electron/ipc/__tests__/`.
+
 ### Build
 
 ```bash
@@ -199,6 +208,13 @@ lotus/
 
 ### v1.0.0
 - Initial release
+
+---
+
+## 🤝 Contributing
+
+Contributions, bug reports, and feature requests are welcome!
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 

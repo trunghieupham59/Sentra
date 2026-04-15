@@ -2,6 +2,9 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { FuriganaText } from '../components/FuriganaText'
 import type { ImageAttachment } from '../components/ImageTranslator'
 import { ImageTranslator } from '../components/ImageTranslator'
+import { ImageAttachmentPreview } from '../components/translate/ImageAttachmentPreview'
+import { VoiceOverlay } from '../components/translate/VoiceOverlay'
+import { translationService } from '../services/translationService'
 import { LanguageSelector } from '../components/LanguageSelector'
 import { MarkdownEditor } from '../components/MarkdownEditor'
 import { MarkdownText } from '../components/MarkdownText'
@@ -14,7 +17,7 @@ import { PhoneticToggle } from '../components/ui/PhoneticToggle'
 import { RewriteButton } from '../components/ui/RewriteButton'
 import { SpeakButton } from '../components/ui/SpeakButton'
 import { TranslateButton } from '../components/ui/TranslateButton'
-import { AlertTriangleIcon, ArrowRightIcon, AutoDetectIcon, ChevronDownIcon, DownloadIcon, MicrophoneIcon, SpinnerIcon, XIcon } from '../components/ui/icons'
+import { AlertTriangleIcon, ArrowRightIcon, AutoDetectIcon, ChevronDownIcon, DownloadIcon, SpinnerIcon } from '../components/ui/icons'
 import { VoiceRecorder } from '../components/VoiceRecorder'
 import { MAX_INPUT_CHARS } from '../constants/providers'
 import { useTTS } from '../hooks/useTTS'
@@ -82,7 +85,7 @@ export function TranslatePage() {
     // ── IMAGE mode: translate the attached image ──────────────────────────
     if (imageAttachment) {
       try {
-        const result = await window.api.translateImage({
+        const result = await translationService.translateImage({
           provider:      selectedProvider,
           model:         selectedModels[selectedProvider],
           imageBase64:   imageAttachment.base64,
@@ -128,7 +131,7 @@ export function TranslatePage() {
         translationStyle,
       }
 
-      const plainResult = await window.api.translate({ ...baseParams, showFurigana: false })
+      const plainResult = await translationService.translate({ ...baseParams, showFurigana: false })
 
       if (plainResult.success && plainResult.translatedText) {
         const plainText = plainResult.translatedText
@@ -146,7 +149,7 @@ export function TranslatePage() {
           translatedText: plainText,
         })
 
-        window.api.translate({ ...baseParams, sourceText: plainText, showFurigana: true, phoneticOnly: true })
+        translationService.translate({ ...baseParams, sourceText: plainText, showFurigana: true, phoneticOnly: true })
           .then((res) => { if (res.success && res.translatedText) setPhoneticText(res.translatedText) })
           .catch(() => {})
       } else {
@@ -300,7 +303,7 @@ export function TranslatePage() {
     if (!text.trim()) return
     setIsRewriting(panel)
     try {
-      const result = await window.api.rewriteText({
+      const result = await translationService.rewriteText({
         provider: selectedProvider,
         model: selectedModels[selectedProvider],
         text,
@@ -406,89 +409,27 @@ export function TranslatePage() {
         <div className="flex-1 basis-0 flex flex-col min-w-0 relative">
 
           {/* ── Listening overlay (shown while voice is active) ── */}
-          {isVoiceActive && (
-            <div className="absolute inset-x-0 top-0 bottom-12 z-10 flex flex-col items-center justify-center
-                            bg-white dark:bg-gray-900 fade-in">
-              {/* Animated rings */}
-              <div className="relative flex items-center justify-center mb-5">
-                <span className="absolute w-28 h-28 rounded-full bg-red-100 dark:bg-red-900/20 animate-ping" style={{ animationDuration: '1.8s' }} />
-                <span className="absolute w-20 h-20 rounded-full bg-red-200 dark:bg-red-900/30 animate-ping" style={{ animationDuration: '1.4s', animationDelay: '0.2s' }} />
-                <span className="absolute w-14 h-14 rounded-full bg-red-300 dark:bg-red-900/50 animate-ping" style={{ animationDuration: '1.1s', animationDelay: '0.1s' }} />
-
-                {/* Microphone circle */}
-                <div className="relative w-16 h-16 rounded-full bg-red-500 dark:bg-red-600 flex items-center justify-center shadow-md">
-                  <MicrophoneIcon className="w-7 h-7 text-white" />
-                </div>
-              </div>
-
-              {/* Status label */}
-              <p className="text-sm font-semibold text-red-500 dark:text-red-400 animate-pulse tracking-wide mb-3">
-                {t.voice_listening}
-              </p>
-
-              {/* Sound-wave bars */}
-              <div className="flex items-end gap-[3px] h-6 mb-4">
-                {[1,2,3,4,5,6,7].map((i) => (
-                  <span
-                    key={i}
-                    className="w-1 rounded-full bg-red-400 dark:bg-red-500 animate-bounce"
-                    style={{
-                      height: `${8 + (i % 3) * 6 + (i % 2) * 4}px`,
-                      animationDuration: `${0.6 + i * 0.08}s`,
-                      animationDelay: `${i * 0.07}s`,
-                    }}
-                  />
-                ))}
-              </div>
-
-              {/* Interim / final transcript preview */}
-              {sourceText ? (
-                <p className={`max-w-[80%] text-center text-[13px] leading-relaxed line-clamp-3
-                               ${isVoiceInterim
-                                 ? 'text-gray-400 dark:text-gray-500 italic'
-                                 : 'text-gray-700 dark:text-gray-300 font-medium'}`}>
-                  {sourceText}
-                </p>
-              ) : (
-                <p className="text-xs text-gray-400 dark:text-gray-600 select-none">
-                  {t.voice_record}…
-                </p>
-              )}
-            </div>
-          )}
+          <VoiceOverlay
+            isVoiceActive={isVoiceActive}
+            isVoiceInterim={isVoiceInterim}
+            sourceText={sourceText}
+            listeningLabel={t.voice_listening}
+            recordLabel={t.voice_record}
+          />
 
           {/* ── Image attachment preview (shown when an image is attached) ── */}
           {imageAttachment && !isVoiceActive && (
-            <div className="flex-shrink-0 mx-4 mt-3 relative rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800
-                            border border-gray-200 dark:border-gray-700 max-h-48 flex items-center justify-center">
-              <img
-                src={imageAttachment.previewDataUrl}
-                alt={imageAttachment.fileName}
-                className="max-w-full max-h-48 object-contain"
-              />
-              {/* × to remove image */}
-              <button
-                type="button"
-                onClick={() => {
-                  setImageAttachment(null)
-                  setImageRegions(null)
-                  setEditedImageUrl(null)
-                  setTranslatedText('')
-                  setPhoneticText('')
-                  setTranslateError(null)
-                }}
-                title="Remove image"
-                className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center
-                           rounded-full bg-black/50 hover:bg-black/70 text-white cursor-pointer z-10"
-              >
-                <XIcon className="w-3.5 h-3.5" />
-              </button>
-              {/* File name */}
-              <div className="absolute bottom-0 inset-x-0 px-2 py-1
-                              bg-black/40 text-white text-[10px] truncate">
-                {imageAttachment.fileName}
-              </div>
-            </div>
+            <ImageAttachmentPreview
+              imageAttachment={imageAttachment}
+              onRemove={() => {
+                setImageAttachment(null)
+                setImageRegions(null)
+                setEditedImageUrl(null)
+                setTranslatedText('')
+                setPhoneticText('')
+                setTranslateError(null)
+              }}
+            />
           )}
 
           {/* ── Typora-like markdown editor (line being edited = raw, others = rendered) ── */}
