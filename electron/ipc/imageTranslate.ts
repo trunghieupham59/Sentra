@@ -1,5 +1,11 @@
 import { IpcMain } from 'electron'
 import { getStoredApiKey } from './storage'
+import { classifyProviderError, noApiKeyResponse } from './errorUtils'
+import { GEMINI_API_BASE, GEMINI_IMAGE_EDIT_MODEL, MAX_CHAT_OUTPUT_TOKENS } from './ipcConstants'
+
+// DUP-02: Removed local `getApiKey` wrapper — call getStoredApiKey directly.
+// HC-06: Gemini base URL now uses GEMINI_API_BASE constant.
+// HC-02: Token limits now use MAX_CHAT_OUTPUT_TOKENS constant.
 
 /** Map language codes → human-readable English names for prompts */
 const LANG_NAMES: Record<string, string> = {
@@ -34,10 +40,6 @@ export interface TextRegion {
   fontSize: number  // 0.0–1.0 fraction of image height
   bgColor: string   // estimated background color hex
   textColor: string // estimated text color hex
-}
-
-async function getApiKey(provider: string): Promise<string | null> {
-  return getStoredApiKey(provider)
 }
 
 function buildPrompt(sourceLang: string, targetLang: string): string {
@@ -88,15 +90,13 @@ async function translateImageWithGeminiEdit(
   sourceLang: string,
   targetLang: string
 ): Promise<string | null> {
-  // Use the dedicated image-generation model
-  const editModel = 'gemini-2.0-flash-exp-image-generation'
+  // HC-06: Use GEMINI_API_BASE instead of hardcoded URL prefix
+  const url = `${GEMINI_API_BASE}/models/${GEMINI_IMAGE_EDIT_MODEL}:generateContent?key=${apiKey}`
   const sourceName = langName(sourceLang)
   const targetName = langName(targetLang)
 
   // We call the REST endpoint directly because the JS SDK may not yet expose
   // responseModalities in a typed way for all versions.
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${editModel}:generateContent?key=${apiKey}`
-
   const body = {
     contents: [
       {
@@ -190,7 +190,7 @@ async function translateImageWithClaude(
 
   const message = await client.messages.create({
     model,
-    max_tokens: 4096,
+    max_tokens: MAX_CHAT_OUTPUT_TOKENS,  // HC-02
     messages: [
       {
         role: 'user',
@@ -236,7 +236,7 @@ async function translateImageWithOpenAI(
 
   const completion = await client.chat.completions.create({
     model: visionModel,
-    max_completion_tokens: 4096,
+    max_completion_tokens: MAX_CHAT_OUTPUT_TOKENS,  // HC-02
     messages: [
       {
         role: 'user',
@@ -277,14 +277,9 @@ export function registerImageTranslateHandlers(ipcMain: IpcMain) {
       return { success: false, error: 'No image data provided' }
     }
 
-    const apiKey = await getApiKey(provider)
-    if (!apiKey) {
-      return {
-        success: false,
-        error: `No API key found for ${provider}. Please add it in Settings.`,
-        errorCode: 'NO_API_KEY',
-      }
-    }
+    // DUP-02 + DUP-03
+    const apiKey = getStoredApiKey(provider)
+    if (!apiKey) return noApiKeyResponse(provider)
 
     try {
       // ── Gemini: try image-edit model first for best quality ───────────────
@@ -323,16 +318,12 @@ export function registerImageTranslateHandlers(ipcMain: IpcMain) {
       console.error(`Image translation error with ${provider}:`, error)
       const msg = error instanceof Error ? error.message : String(error)
 
-      if (msg.includes('401') || msg.includes('invalid_api_key') || msg.includes('authentication')) {
-        return { success: false, error: 'Invalid API key. Please check your key in Settings.', errorCode: 'INVALID_KEY' }
-      }
-      if (msg.includes('429') || msg.includes('rate_limit') || msg.includes('quota')) {
-        return { success: false, error: 'Rate limit exceeded. Please wait and try again.', errorCode: 'RATE_LIMIT' }
-      }
+      // Image translate has an extra error case for no-vision models
       if (msg.includes('vision') || msg.includes('image') || msg.includes('multimodal')) {
         return { success: false, error: 'The selected model does not support image input. Please use a vision-capable model (e.g. gpt-4o, gemini-1.5-flash, claude-3).', errorCode: 'NO_VISION' }
       }
-      return { success: false, error: `Image translation failed: ${msg}` }
+      // DUP-01: use classifyProviderError for standard error categorization
+      return classifyProviderError(msg)
     }
   })
 }

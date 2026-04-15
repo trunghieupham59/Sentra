@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AlertTriangleIcon, ImageIcon, SpinnerIcon, XIcon } from './ui/icons'
 import { useT } from '../store/useAppStore'
+import { MAX_TRANSLATE_IMAGE_DIMENSION, MAX_IMAGE_BYTES, IMAGE_JPEG_QUALITY } from '../constants/image'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-const MAX_DIMENSION = 1500
-const MAX_BYTES     = 900_000
-const JPEG_QUALITY  = 0.85
+// HC-09: MAX_DIMENSION, MAX_BYTES, JPEG_QUALITY now imported from src/constants/image.ts
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface ImageAttachment {
@@ -44,8 +42,8 @@ async function processImageFile(file: File): Promise<ImageAttachment> {
   let { width, height } = img
 
   // Scale down if needed
-  if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
-    const ratio = Math.min(MAX_DIMENSION / width, MAX_DIMENSION / height)
+  if (width > MAX_TRANSLATE_IMAGE_DIMENSION || height > MAX_TRANSLATE_IMAGE_DIMENSION) {
+    const ratio = Math.min(MAX_TRANSLATE_IMAGE_DIMENSION / width, MAX_TRANSLATE_IMAGE_DIMENSION / height)
     width  = Math.round(width  * ratio)
     height = Math.round(height * ratio)
   }
@@ -57,13 +55,13 @@ async function processImageFile(file: File): Promise<ImageAttachment> {
   ctx.drawImage(img, 0, 0, width, height)
 
   const mimeType = 'image/jpeg'
-  let quality = JPEG_QUALITY
+  let quality = IMAGE_JPEG_QUALITY
   let base64  = ''
 
   while (quality >= 0.4) {
     const dataUrl = canvas.toDataURL(mimeType, quality)
     base64 = dataUrl.split(',')[1]
-    if (base64.length * 0.75 <= MAX_BYTES) break
+    if (base64.length * 0.75 <= MAX_IMAGE_BYTES) break
     quality -= 0.1
   }
   if (!base64) base64 = canvas.toDataURL(mimeType, 0.4).split(',')[1]

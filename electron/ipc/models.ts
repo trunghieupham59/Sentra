@@ -1,14 +1,15 @@
 import { IpcMain } from 'electron'
 import { getStoredApiKey } from './storage'
+import { GEMINI_API_BASE, ANTHROPIC_API_VERSION } from './ipcConstants'
+
+// DUP-02: Removed local `getApiKey` wrapper — call getStoredApiKey directly.
+// HC-06: Gemini base URL now uses GEMINI_API_BASE constant.
+// HC-07: Anthropic API version now uses ANTHROPIC_API_VERSION constant.
 
 interface FetchedModel {
   id: string
   name: string
   description: string
-}
-
-async function getApiKey(provider: string): Promise<string | null> {
-  return getStoredApiKey(provider)
 }
 
 /**
@@ -74,7 +75,7 @@ function describeModel(id: string): string {
 
 // ─── Gemini: REST API ──────────────────────────────────────────────────────────
 async function fetchGeminiModels(apiKey: string): Promise<FetchedModel[]> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}&pageSize=50`
+  const url = `${GEMINI_API_BASE}/models?key=${apiKey}&pageSize=50`  // HC-06
   const res = await fetch(url)
   if (!res.ok) {
     const body = await res.text()
@@ -108,7 +109,7 @@ async function fetchClaudeModels(apiKey: string): Promise<FetchedModel[]> {
   const res = await fetch('https://api.anthropic.com/v1/models?limit=20', {
     headers: {
       'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
+      'anthropic-version': ANTHROPIC_API_VERSION,  // HC-07
       'content-type': 'application/json',
     },
   })
@@ -156,7 +157,7 @@ async function fetchOpenAIModels(apiKey: string): Promise<FetchedModel[]> {
 
 export function registerModelsHandlers(ipcMain: IpcMain) {
   ipcMain.handle('models:fetch', async (_event, provider: string) => {
-    const apiKey = await getApiKey(provider)
+    const apiKey = getStoredApiKey(provider)  // DUP-02
     if (!apiKey) {
       return { success: false, errorCode: 'NO_API_KEY', models: [] }
     }

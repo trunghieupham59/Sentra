@@ -9,6 +9,8 @@ import {
   VERIFY_MODEL_OPENAI,
 } from './ipcConstants'
 
+// DUP-02: Removed local `getApiKey` wrapper — call getStoredApiKey directly.
+
 type TranslationStyle = 'friendly' | 'neutral' | 'professional' | 'business' | 'slack' | 'polite' | 'technical'
 
 interface TranslateParams {
@@ -29,10 +31,6 @@ interface RewriteParams {
   text: string
   lang: string
   translationStyle?: TranslationStyle
-}
-
-async function getApiKey(provider: string): Promise<string | null> {
-  return getStoredApiKey(provider)
 }
 
 const STYLE_TONE: Record<TranslationStyle, string> = {
@@ -315,7 +313,7 @@ async function translateWithClaude(
   const client = new Anthropic({ apiKey })
   const message = await client.messages.create({
     model,
-    max_tokens: 16000,
+    max_tokens: MAX_OUTPUT_TOKENS_CLAUDE,  // HC-01
     system: SYSTEM_PROMPT,
     messages: [
       {
@@ -353,7 +351,7 @@ async function translateWithOpenAI(
         content: buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style, phoneticOnly),
       },
     ],
-    max_completion_tokens: 16384,
+    max_completion_tokens: MAX_OUTPUT_TOKENS_OPENAI,  // HC-01
   })
   return (completion.choices[0]?.message?.content ?? '').trim()
 }
@@ -373,7 +371,7 @@ async function rewriteWithClaude(apiKey: string, model: string, text: string, la
   const client = new Anthropic({ apiKey })
   const message = await client.messages.create({
     model,
-    max_tokens: 16000,
+    max_tokens: MAX_OUTPUT_TOKENS_CLAUDE,  // HC-01
     system: REWRITE_SYSTEM_PROMPT,
     messages: [{ role: 'user', content: buildRewritePrompt(text, lang, style) }],
   })
@@ -391,7 +389,7 @@ async function rewriteWithOpenAI(apiKey: string, model: string, text: string, la
       { role: 'system', content: REWRITE_SYSTEM_PROMPT },
       { role: 'user', content: buildRewritePrompt(text, lang, style) },
     ],
-    max_completion_tokens: 16384,
+    max_completion_tokens: MAX_OUTPUT_TOKENS_OPENAI,  // HC-01
   })
   return (completion.choices[0]?.message?.content ?? '').trim()
 }
@@ -399,8 +397,8 @@ async function rewriteWithOpenAI(apiKey: string, model: string, text: string, la
 async function verifyGeminiKey(apiKey: string): Promise<void> {
   const { GoogleGenerativeAI } = await import('@google/generative-ai')
   const genAI = new GoogleGenerativeAI(apiKey)
-  // List models as a lightweight verification call
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+  // Lightweight verification — use the cheapest model available
+  const model = genAI.getGenerativeModel({ model: VERIFY_MODEL_GEMINI })  // HC-05
   const result = await model.generateContent('Say "ok" in one word.')
   const text = result.response.text()
   if (!text) throw new Error('No response from Gemini')
@@ -410,7 +408,7 @@ async function verifyClaudeKey(apiKey: string): Promise<void> {
   const Anthropic = (await import('@anthropic-ai/sdk')).default
   const client = new Anthropic({ apiKey })
   const message = await client.messages.create({
-    model: 'claude-3-haiku-20240307',
+    model: VERIFY_MODEL_CLAUDE,  // HC-05
     max_tokens: 10,
     messages: [{ role: 'user', content: 'Say "ok".' }],
   })
@@ -421,7 +419,7 @@ async function verifyOpenAIKey(apiKey: string): Promise<void> {
   const OpenAI = (await import('openai')).default
   const client = new OpenAI({ apiKey })
   const completion = await client.chat.completions.create({
-    model: 'gpt-4o-mini',
+    model: VERIFY_MODEL_OPENAI,  // HC-05
     messages: [{ role: 'user', content: 'Say "ok".' }],
     max_completion_tokens: 5,
   })
@@ -465,7 +463,7 @@ export async function streamTranslation(
         { role: 'user',   content: prompt },
       ],
       stream: true,
-      max_completion_tokens: 16384,
+      max_completion_tokens: MAX_OUTPUT_TOKENS_OPENAI,  // HC-01
     })
     for await (const chunk of stream) {
       const token = chunk.choices[0]?.delta?.content ?? ''
@@ -487,7 +485,7 @@ export async function streamTranslation(
     const client = new Anthropic({ apiKey })
     const stream = client.messages.stream({
       model,
-      max_tokens: 16000,
+      max_tokens: MAX_OUTPUT_TOKENS_CLAUDE,  // HC-01
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: prompt }],
     })
@@ -550,6 +548,7 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
       return { success: true }
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error)
+      // Verify handler has a special case: rate-limit means key IS valid
       if (msg.includes('401') || msg.includes('invalid_api_key') || msg.includes('authentication') || msg.includes('API key')) {
         return { success: false, error: 'Invalid API key', errorCode: 'INVALID_KEY' }
       }
@@ -570,14 +569,10 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
       return { success: false, error: 'Source text is empty' }
     }
 
-    const apiKey = await getApiKey(provider)
-    if (!apiKey) {
-      return {
-        success: false,
-        error: `No API key found for ${provider}. Please add it in Settings.`,
-        errorCode: 'NO_API_KEY',
-      }
-    }
+    // DUP-02: call getStoredApiKey directly (no local wrapper)
+    // DUP-03: use noApiKeyResponse() helper
+    const apiKey = getStoredApiKey(provider)
+    if (!apiKey) return noApiKeyResponse(provider)
 
     try {
       let translatedText = ''
@@ -618,19 +613,9 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
     } catch (error: unknown) {
       console.error(`Translation error with ${provider}:`, error)
       const msg = error instanceof Error ? error.message : String(error)
-
-      // Categorize common errors
-      if (msg.includes('401') || msg.includes('invalid_api_key') || msg.includes('authentication')) {
-        return { success: false, error: 'Invalid API key. Please check your key in Settings.', errorCode: 'INVALID_KEY' }
-      }
-      if (msg.includes('429') || msg.includes('rate_limit') || msg.includes('quota')) {
-        return { success: false, error: 'Rate limit exceeded. Please wait and try again.', errorCode: 'RATE_LIMIT' }
-      }
-      if (msg.includes('ENOTFOUND') || msg.includes('network') || msg.includes('fetch')) {
-        return { success: false, error: 'No internet connection.', errorCode: 'NETWORK' }
-      }
-
-      return { success: false, error: `Translation failed: ${msg}` }
+      // DUP-01: use classifyProviderError for consistent error categorization
+      const classified = classifyProviderError(msg)
+      return { ...classified, error: classified.errorCode ? classified.error : `Translation failed: ${msg}` }
     }
   })
 
@@ -642,14 +627,9 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
       return { success: false, error: 'Text is empty' }
     }
 
-    const apiKey = await getApiKey(provider)
-    if (!apiKey) {
-      return {
-        success: false,
-        error: `No API key found for ${provider}. Please add it in Settings.`,
-        errorCode: 'NO_API_KEY',
-      }
-    }
+    // DUP-02 + DUP-03
+    const apiKey = getStoredApiKey(provider)
+    if (!apiKey) return noApiKeyResponse(provider)
 
     try {
       let rewrittenText = ''
@@ -679,18 +659,9 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
     } catch (error: unknown) {
       console.error(`Rewrite error with ${provider}:`, error)
       const msg = error instanceof Error ? error.message : String(error)
-
-      if (msg.includes('401') || msg.includes('invalid_api_key') || msg.includes('authentication')) {
-        return { success: false, error: 'Invalid API key. Please check your key in Settings.', errorCode: 'INVALID_KEY' }
-      }
-      if (msg.includes('429') || msg.includes('rate_limit') || msg.includes('quota')) {
-        return { success: false, error: 'Rate limit exceeded. Please wait and try again.', errorCode: 'RATE_LIMIT' }
-      }
-      if (msg.includes('ENOTFOUND') || msg.includes('network') || msg.includes('fetch')) {
-        return { success: false, error: 'No internet connection.', errorCode: 'NETWORK' }
-      }
-
-      return { success: false, error: `Rewrite failed: ${msg}` }
+      // DUP-01: use classifyProviderError for consistent error categorization
+      const classified = classifyProviderError(msg)
+      return { ...classified, error: classified.errorCode ? classified.error : `Rewrite failed: ${msg}` }
     }
   })
 }

@@ -1,5 +1,9 @@
 import { IpcMain } from 'electron'
 import { getStoredApiKey } from './storage'
+import { classifyProviderError, noApiKeyResponse } from './errorUtils'
+import { MAX_CHAT_OUTPUT_TOKENS, MAX_CHAT_REQUEST_CHARS } from './ipcConstants'
+
+// DUP-02: Removed local `getApiKey` wrapper — call getStoredApiKey directly.
 
 export interface ChatMessageContent {
   type: 'text' | 'image'
@@ -20,12 +24,8 @@ interface ChatParams {
   systemPrompt?: string
 }
 
-/**
- * Maximum total text characters allowed in a single chat request.
- * Mirrors MAX_CHAT_INPUT_CHARS enforced in the renderer — prevents UI bypass
- * (e.g., direct IPC calls skipping the input field limit).
- */
-const MAX_CHAT_REQUEST_CHARS = 3000
+// HC-08: MAX_CHAT_REQUEST_CHARS now imported from ipcConstants — stays in sync with
+// MAX_CHAT_INPUT_CHARS in src/constants/providers.ts (renderer-side enforcement).
 
 /** Wrap user system prompt to enforce strict compliance */
 function buildEnforcedSystemPrompt(userPrompt: string): string {
@@ -35,10 +35,6 @@ function buildEnforcedSystemPrompt(userPrompt: string): string {
   return `${userPrompt.trim()}
 
 IMPORTANT: You MUST strictly follow the instructions above in every response. Do not deviate, explain or refuse these instructions. Apply them to all messages unconditionally.`
-}
-
-async function getApiKey(provider: string): Promise<string | null> {
-  return getStoredApiKey(provider)
 }
 
 async function chatWithGemini(
@@ -119,7 +115,7 @@ async function chatWithClaude(
 
   const message = await client.messages.create({
     model,
-    max_tokens: 4096,
+    max_tokens: MAX_CHAT_OUTPUT_TOKENS,  // HC-02
     system: buildEnforcedSystemPrompt(systemPrompt || ''),
     messages: formattedMessages,
   })
@@ -277,7 +273,7 @@ async function chatWithOpenAI(
     const completion = await client.chat.completions.create({
       model: m,
       messages: formattedMessages,
-      max_completion_tokens: 4096,
+      max_completion_tokens: MAX_CHAT_OUTPUT_TOKENS,  // HC-02
     })
     return (completion.choices[0]?.message?.content ?? '').trim()
   }
@@ -335,7 +331,7 @@ export function registerChatHandlers(ipcMain: IpcMain) {
       const lastMsgTextChars = lastMsg.content.reduce(
         (sum, c) => sum + (c.text?.length ?? 0), 0
       )
-      if (lastMsgTextChars > MAX_CHAT_REQUEST_CHARS) {
+      if (lastMsgTextChars > MAX_CHAT_REQUEST_CHARS) {  // HC-08
         return {
           success: false,
           error: `Message too long (${lastMsgTextChars} chars). Maximum is ${MAX_CHAT_REQUEST_CHARS} characters.`,
@@ -343,14 +339,9 @@ export function registerChatHandlers(ipcMain: IpcMain) {
       }
     }
 
-    const apiKey = await getApiKey(provider)
-    if (!apiKey) {
-      return {
-        success: false,
-        error: `No API key found for ${provider}. Please add it in Settings.`,
-        errorCode: 'NO_API_KEY',
-      }
-    }
+    // DUP-02 + DUP-03
+    const apiKey = getStoredApiKey(provider)
+    if (!apiKey) return noApiKeyResponse(provider)
 
     try {
       let reply = ''
@@ -373,17 +364,9 @@ export function registerChatHandlers(ipcMain: IpcMain) {
     } catch (error: unknown) {
       console.error(`Chat error with ${provider}:`, error)
       const msg = error instanceof Error ? error.message : String(error)
-
-      if (msg.includes('401') || msg.includes('invalid_api_key') || msg.includes('authentication')) {
-        return { success: false, error: 'Invalid API key. Please check your key in Settings.', errorCode: 'INVALID_KEY' }
-      }
-      if (msg.includes('429') || msg.includes('rate_limit') || msg.includes('quota')) {
-        return { success: false, error: 'Rate limit exceeded. Please wait and try again.', errorCode: 'RATE_LIMIT' }
-      }
-      if (msg.includes('ENOTFOUND') || msg.includes('network') || msg.includes('fetch')) {
-        return { success: false, error: 'No internet connection.', errorCode: 'NETWORK' }
-      }
-      return { success: false, error: `Chat failed: ${msg}` }
+      // DUP-01: use classifyProviderError for consistent error categorization
+      const classified = classifyProviderError(msg)
+      return { ...classified, error: classified.errorCode ? classified.error : `Chat failed: ${msg}` }
     }
   })
 }

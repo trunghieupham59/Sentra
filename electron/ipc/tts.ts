@@ -1,5 +1,8 @@
 import type { IpcMain } from 'electron'
 import { getStoredApiKey } from './storage'
+import { GEMINI_API_BASE, GEMINI_TTS_MODEL } from './ipcConstants'
+
+// HC-06: Gemini base URL now uses GEMINI_API_BASE constant.
 
 interface TtsParams {
   text: string
@@ -90,8 +93,8 @@ async function ttsWithOpenAI(
 // ─── Gemini TTS ───────────────────────────────────────────────────────────────
 
 async function ttsWithGemini(text: string, apiKey: string): Promise<TtsResult> {
-  // gemini-2.5-flash-preview-tts: Flash tier = fast + cost-efficient
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`
+  // HC-06: Use GEMINI_API_BASE + GEMINI_TTS_MODEL instead of hardcoded URL
+  const url = `${GEMINI_API_BASE}/models/${GEMINI_TTS_MODEL}:generateContent?key=${apiKey}`
 
   const body = {
     contents: [{ parts: [{ text }] }],

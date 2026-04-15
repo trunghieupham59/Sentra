@@ -11,13 +11,13 @@ import {
 import { chatService } from '../services/chatService'
 import { VoiceRecorder } from '../components/VoiceRecorder'
 import { MAX_CHAT_INPUT_CHARS } from '../constants/providers'
+import { MAX_CHAT_IMAGE_DIMENSION, IMAGE_JPEG_QUALITY } from '../constants/image'
+import { COPY_FEEDBACK_DURATION_MS } from '../constants/ui'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { ChatMessage, ChatMessageContent } from '../types'
 
-const MAX_IMAGE_SIZE = 1200
-/** JPEG quality used when resizing images before attaching (0.0–1.0). */
-const IMAGE_JPEG_QUALITY = 0.85
+// HC-09: MAX_CHAT_IMAGE_DIMENSION and IMAGE_JPEG_QUALITY now imported from src/constants/image.ts
 // MAX_CHAT_SESSIONS is enforced in useAppStore.createChatSession — defined there as the single source of truth
 
 // ─── Resize image helper ──────────────────────────────────────────────────────
@@ -235,7 +235,7 @@ export function ChatPage() {
   const handleImageSelect = async (file: File) => {
     setAttachImageError(null)
     try {
-      const result = await resizeImageToBase64(file, MAX_IMAGE_SIZE)
+      const result = await resizeImageToBase64(file, MAX_CHAT_IMAGE_DIMENSION)  // HC-09
       setAttachedImage(result)
     } catch (err) {
       // Show error in the UI so the user knows the attachment failed
@@ -415,7 +415,7 @@ export function ChatPage() {
     navigator.clipboard.writeText(text).catch(() => {})
     // Use timestamp as unique copy ID — avoids collision when 2 messages share the same opening chars
     setCopiedId(String(Date.now()))
-    setTimeout(() => setCopiedId(null), 1500)
+    setTimeout(() => setCopiedId(null), COPY_FEEDBACK_DURATION_MS)  // HC-03
   }
 
   const handleNewChat = () => {

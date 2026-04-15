@@ -20,6 +20,7 @@ import { TranslateButton } from '../components/ui/TranslateButton'
 import { AlertTriangleIcon, ArrowRightIcon, AutoDetectIcon, ChevronDownIcon, DownloadIcon, SpinnerIcon } from '../components/ui/icons'
 import { VoiceRecorder } from '../components/VoiceRecorder'
 import { MAX_INPUT_CHARS } from '../constants/providers'
+import { COPY_FEEDBACK_DURATION_MS, IMAGE_AUTO_TRANSLATE_DELAY_MS } from '../constants/ui'
 import { useTTS } from '../hooks/useTTS'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import { useAppStore, useT } from '../store/useAppStore'
@@ -198,7 +199,7 @@ export function TranslatePage() {
   useEffect(() => {
     if (!imageAttachment) return
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => { handleTranslateRef.current() }, 300)
+    debounceRef.current = setTimeout(() => { handleTranslateRef.current() }, IMAGE_AUTO_TRANSLATE_DELAY_MS)  // HC-03
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [imageAttachment])
 
@@ -252,7 +253,7 @@ export function TranslatePage() {
     if (!textToCopy) return
     await navigator.clipboard.writeText(textToCopy)
     setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
+    setTimeout(() => setCopied(false), COPY_FEEDBACK_DURATION_MS)  // HC-03
   }
 
   // Scroll-sync refs — keeps both panels scrolled to the same relative position
