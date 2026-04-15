@@ -10,6 +10,9 @@ import type { HistoryItem, LiveSession } from '../../types'
 /** Maximum number of translation history entries to keep. */
 const MAX_HISTORY = 100
 
+/** Maximum number of live-translate sessions to keep. */
+const MAX_LIVE_SESSIONS = 50
+
 export interface HistorySlice {
   // State
   history: HistoryItem[]
@@ -46,7 +49,7 @@ export const createHistorySlice: StateCreator<any, [], [], HistorySlice> = (set)
 
   addLiveSession: (session) =>
     set((state: HistorySlice) => ({
-      liveSessions: [session, ...state.liveSessions].slice(0, 50),
+      liveSessions: [session, ...state.liveSessions].slice(0, MAX_LIVE_SESSIONS),
     })),
 
   updateLiveSession: (id, updates) =>

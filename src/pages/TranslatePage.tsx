@@ -12,6 +12,7 @@ import { CheckIcon, CopyIcon, DownloadIcon, SpinnerIcon, XIcon } from '../compon
 import { VoiceRecorder } from '../components/VoiceRecorder'
 import { MAX_INPUT_CHARS } from '../constants/providers'
 import { useTTS } from '../hooks/useTTS'
+import { useVoiceInput } from '../hooks/useVoiceInput'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { ImageTextRegion, TranslationStyle } from '../types'
 import { renderTranslatedRegions } from '../utils/canvas'
@@ -55,28 +56,15 @@ export function TranslatePage() {
   const imageAttachmentRef = useRef(imageAttachment)
   imageAttachmentRef.current = imageAttachment
 
-  // Voice recording state
-  const [isVoiceActive, setIsVoiceActive] = useState(false)
-  const [isVoiceInterim, setIsVoiceInterim] = useState(false)
-  // Store the text that was in the textarea when recording started, so voice appends to it
-  const voicePrefixRef = useRef('')
-
-  const handleVoiceRecordingChange = useCallback((recording: boolean) => {
-    if (recording) {
-      // Capture the current text as prefix — voice transcript will append after it
-      voicePrefixRef.current = sourceText ? `${sourceText.trimEnd()} ` : ''
-      setIsVoiceActive(true)
-    } else {
-      setIsVoiceActive(false)
-      setIsVoiceInterim(false)
-    }
-  }, [sourceText])
-
-  const handleVoiceTranscript = useCallback((transcript: string, isFinal: boolean) => {
-    const combined = voicePrefixRef.current + transcript
-    setSourceText(combined)
-    setIsVoiceInterim(!isFinal)
-  }, [setSourceText])
+  // ── Voice input — shared hook (same logic as ChatPage) ──
+  const {
+    isVoiceActive,
+    isVoiceInterim,
+    voicePrefixRef,
+    handleVoiceRecordingChange,
+    handleVoiceTranscript,
+    resetVoicePrefix,
+  } = useVoiceInput({ currentText: sourceText, onTextChange: setSourceText })
 
   const handleTranslate = useCallback(async () => {
     if (isTranslating) return
@@ -553,7 +541,9 @@ export function TranslatePage() {
                   setTranslatedText('')
                   setPhoneticText('')
                 }
-                if (isVoiceActive) voicePrefixRef.current = ''
+                // User edited manually while voice is active — reset prefix so next
+                // transcript chunk replaces the field content, not appends to stale prefix
+                if (isVoiceActive) resetVoicePrefix()
               }}
               placeholder={t.translate_placeholder}
               className={`min-h-full ${isVoiceInterim ? 'opacity-50 italic' : ''}`}

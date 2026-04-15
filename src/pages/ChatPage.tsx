@@ -9,10 +9,13 @@ import {
 } from '../components/ui/icons'
 import { VoiceRecorder } from '../components/VoiceRecorder'
 import { MAX_CHAT_INPUT_CHARS } from '../constants/providers'
+import { useVoiceInput } from '../hooks/useVoiceInput'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { ChatMessage, ChatMessageContent } from '../types'
 
 const MAX_IMAGE_SIZE = 1200
+/** JPEG quality used when resizing images before attaching (0.0–1.0). */
+const IMAGE_JPEG_QUALITY = 0.85
 // MAX_CHAT_SESSIONS is enforced in useAppStore.createChatSession — defined there as the single source of truth
 
 // ─── Resize image helper ──────────────────────────────────────────────────────
@@ -34,7 +37,7 @@ async function resizeImageToBase64(
       const ctx = canvas.getContext('2d')!
       ctx.drawImage(img, 0, 0, width, height)
       const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg'
-      const dataUrl = canvas.toDataURL(mimeType, 0.85)
+      const dataUrl = canvas.toDataURL(mimeType, IMAGE_JPEG_QUALITY)
       URL.revokeObjectURL(url)
       resolve({
         base64: dataUrl.split(',')[1],
@@ -179,8 +182,9 @@ export function ChatPage() {
   const [attachedImage, setAttachedImage] = useState<{
     base64: string; mimeType: string; previewUrl: string; fileName: string
   } | null>(null)
+  /** User-visible error shown in the input area when image processing fails. */
+  const [attachImageError, setAttachImageError] = useState<string | null>(null)
   const [showPromptDropdown, setShowPromptDropdown] = useState(false)
-  const [isVoiceActive, setIsVoiceActive] = useState(false)
   const promptDropdownRef = useRef<HTMLDivElement>(null)
 
   // Active preset = the preset whose content matches chatSystemPrompt
@@ -197,8 +201,16 @@ export function ChatPage() {
     document.addEventListener('mousedown', handleOutside)
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [showPromptDropdown])
-  const [isVoiceInterim, setIsVoiceInterim] = useState(false)
-  const voicePrefixRef = useRef('')
+
+  // ── Voice input — shared hook (same logic as TranslatePage) ──
+  const {
+    isVoiceActive,
+    isVoiceInterim,
+    voicePrefixRef,
+    handleVoiceRecordingChange,
+    handleVoiceTranscript,
+    resetVoicePrefix,
+  } = useVoiceInput({ currentText: inputText, onTextChange: setInputText })
 
   const hasKey = keyStatus[selectedProvider]
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -232,29 +244,16 @@ export function ChatPage() {
     return createChatSession(selectedProvider, selectedModels[selectedProvider])
   }, [activeChatSessionId, chatSessions, createChatSession, selectedProvider, selectedModels])
 
-  // ── Voice handlers ──
-  const handleVoiceRecordingChange = useCallback((recording: boolean) => {
-    if (recording) {
-      voicePrefixRef.current = inputText ? `${inputText.trimEnd()} ` : ''
-      setIsVoiceActive(true)
-    } else {
-      setIsVoiceActive(false)
-      setIsVoiceInterim(false)
-    }
-  }, [inputText])
-
-  const handleVoiceTranscript = useCallback((transcript: string, isFinal: boolean) => {
-    setInputText(voicePrefixRef.current + transcript)
-    setIsVoiceInterim(!isFinal)
-  }, [])
-
   // ── Image attachment ──
   const handleImageSelect = async (file: File) => {
+    setAttachImageError(null)
     try {
       const result = await resizeImageToBase64(file, MAX_IMAGE_SIZE)
       setAttachedImage(result)
     } catch (err) {
-      console.error('Failed to process image:', err)
+      // Show error in the UI so the user knows the attachment failed
+      const msg = err instanceof Error ? err.message : 'Failed to process image'
+      setAttachImageError(msg)
     }
   }
 
@@ -657,6 +656,21 @@ export function ChatPage() {
       {/* ── Input area ── */}
       <div className="flex-shrink-0 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
 
+        {/* Image attach error — shown when resizing/loading the image fails */}
+        {attachImageError && (
+          <div className="px-4 pt-2 flex items-center gap-2">
+            <p className="text-xs text-red-500 dark:text-red-400">{attachImageError}</p>
+            <button
+              type="button"
+              onClick={() => setAttachImageError(null)}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
+              aria-label="Dismiss"
+            >
+              <XIcon className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+
         {/* Image preview */}
         {attachedImage && (
           <div className="px-4 pt-3 flex items-start gap-2">
@@ -751,7 +765,9 @@ export function ChatPage() {
               value={inputText}
               onChange={(e) => {
                 setInputText(e.target.value)
-                if (isVoiceActive) voicePrefixRef.current = ''
+                // User edited manually while voice is active — reset prefix so next
+                // transcript chunk replaces the field content, not appends to stale prefix
+                if (isVoiceActive) resetVoicePrefix()
               }}
               onKeyDown={handleKeyDown}
               placeholder={t.chat_placeholder}

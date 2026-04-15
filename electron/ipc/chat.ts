@@ -20,6 +20,13 @@ interface ChatParams {
   systemPrompt?: string
 }
 
+/**
+ * Maximum total text characters allowed in a single chat request.
+ * Mirrors MAX_CHAT_INPUT_CHARS enforced in the renderer — prevents UI bypass
+ * (e.g., direct IPC calls skipping the input field limit).
+ */
+const MAX_CHAT_REQUEST_CHARS = 3000
+
 /** Wrap user system prompt to enforce strict compliance */
 function buildEnforcedSystemPrompt(userPrompt: string): string {
   if (!userPrompt.trim()) {
@@ -121,6 +128,13 @@ async function chatWithClaude(
   if (block.type === 'text') return block.text.trim()
   throw new Error('Unexpected response type from Claude')
 }
+
+// ── Exported for unit testing ─────────────────────────────────────────────────
+
+/** @internal — exported for unit tests only */
+export { buildEnforcedSystemPrompt, isLikelyChatModel, scoreOpenAIChatModel }
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 /** Patterns for models that do NOT support v1/chat/completions */
 const NON_CHAT_PATTERNS = [
@@ -311,6 +325,22 @@ export function registerChatHandlers(ipcMain: IpcMain) {
 
     if (!messages || messages.length === 0) {
       return { success: false, error: 'No messages provided' }
+    }
+
+    // Validate the last user message doesn't exceed the character limit.
+    // This enforces the same limit as MAX_CHAT_INPUT_CHARS in the renderer,
+    // preventing bypass via direct IPC calls.
+    const lastMsg = messages[messages.length - 1]
+    if (lastMsg.role === 'user') {
+      const lastMsgTextChars = lastMsg.content.reduce(
+        (sum, c) => sum + (c.text?.length ?? 0), 0
+      )
+      if (lastMsgTextChars > MAX_CHAT_REQUEST_CHARS) {
+        return {
+          success: false,
+          error: `Message too long (${lastMsgTextChars} chars). Maximum is ${MAX_CHAT_REQUEST_CHARS} characters.`,
+        }
+      }
     }
 
     const apiKey = await getApiKey(provider)

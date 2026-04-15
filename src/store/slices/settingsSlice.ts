@@ -6,7 +6,7 @@
  * fetched model lists — all independently versioned from chat/history state.
  */
 import type { StateCreator } from 'zustand'
-import { DEFAULT_SETTINGS } from '../../constants/providers'
+import { DEFAULT_SETTINGS, PROVIDERS } from '../../constants/providers'
 import type { AppLocale } from '../../i18n'
 import type { FetchedModel, Provider, TranslationStyle, TtsVoice } from '../../types'
 
@@ -64,10 +64,12 @@ export const createSettingsSlice: StateCreator<any, [], [], SettingsSlice> = (se
   translationStyle: 'neutral' as TranslationStyle,
   ttsVoice: 'nova' as TtsVoice,
   fontSize: 'medium' as const,
-  keyStatus: { gemini: false, claude: false, openai: false },
-  dynamicModels: { gemini: [], claude: [], openai: [] },
-  modelsLoading: { gemini: false, claude: false, openai: false },
-  modelsError: { gemini: null, claude: null, openai: null },
+  // Build initial provider maps from PROVIDERS registry — adding a new provider only requires
+  // updating constants/providers.ts; no need to touch this slice.
+  keyStatus: Object.fromEntries(PROVIDERS.map((p) => [p.id, false])) as Record<Provider, boolean>,
+  dynamicModels: Object.fromEntries(PROVIDERS.map((p): [string, FetchedModel[]] => [p.id, []])) as Record<Provider, FetchedModel[]>,
+  modelsLoading: Object.fromEntries(PROVIDERS.map((p) => [p.id, false])) as Record<Provider, boolean>,
+  modelsError: Object.fromEntries(PROVIDERS.map((p): [string, string | null] => [p.id, null])) as Record<Provider, string | null>,
 
   // Locale — explicit user choice turns off auto-follow
   setLocale: (locale) => set({ locale, localeAuto: false }),
