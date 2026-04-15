@@ -22,6 +22,15 @@ import type { ChatMessage, ChatMessageContent } from '../types'
 // HC-09: MAX_CHAT_IMAGE_DIMENSION imported from constants/image.ts
 // MAX_CHAT_SESSIONS is enforced in useAppStore.createChatSession — defined there as the single source of truth
 
+// HC-11: Named animation constants for loading dots and voice bars
+// (dynamic inline styles are necessary for staggered animation — these names add intent)
+const DOT_ANIM_DELAY_STEP_S    = 0.15  // s between each loading dot's bounce start
+const VOICE_BAR_HEIGHT_BASE_PX = 6     // px base height for voice bars
+const VOICE_BAR_HEIGHT_STEP_PX = 4     // px added per (i % 3) pattern unit
+const VOICE_BAR_DURATION_BASE_S = 0.5  // s base animation duration for voice bars
+const VOICE_BAR_DURATION_STEP_S = 0.1  // s added per bar index
+const VOICE_BAR_DELAY_STEP_S    = 0.05 // s between each bar's animation start
+
 // ─── Message bubble component ─────────────────────────────────────────────────
 function MessageBubble({
   message,
@@ -76,7 +85,7 @@ function MessageBubble({
                 <span
                   key={i}
                   className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
-                  style={{ animationDelay: `${i * 0.15}s` }}
+                  style={{ animationDelay: `${i * DOT_ANIM_DELAY_STEP_S}s` }}
                 />
               ))}
             </div>
@@ -565,7 +574,7 @@ export function ChatPage() {
                 <span
                   key={i}
                   className="w-1 rounded-full bg-red-400 dark:bg-red-500 animate-bounce"
-                  style={{ height: `${6 + (i % 3) * 4}px`, animationDuration: `${0.5 + i * 0.1}s`, animationDelay: `${i * 0.05}s` }}
+                  style={{ height: `${VOICE_BAR_HEIGHT_BASE_PX + (i % 3) * VOICE_BAR_HEIGHT_STEP_PX}px`, animationDuration: `${VOICE_BAR_DURATION_BASE_S + i * VOICE_BAR_DURATION_STEP_S}s`, animationDelay: `${i * VOICE_BAR_DELAY_STEP_S}s` }}
                 />
               ))}
             </div>

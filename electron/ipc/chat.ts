@@ -5,6 +5,13 @@ import { MAX_CHAT_OUTPUT_TOKENS, MAX_CHAT_REQUEST_CHARS } from './ipcConstants'
 
 // DUP-02: Removed local `getApiKey` wrapper — call getStoredApiKey directly.
 
+/**
+ * DUP-07: This interface is intentionally kept here (not imported from src/types/index.ts)
+ * because tsconfig.electron.json only includes ["electron"] — the main process build
+ * cannot import from src/. The src/types/index.ts version is the canonical definition
+ * (with extra renderer-only fields: imagePreviewUrl, imageFileName) while this version
+ * contains only the IPC-relevant fields that need to be transmitted to the main process.
+ */
 export interface ChatMessageContent {
   type: 'text' | 'image'
   text?: string
@@ -298,6 +305,20 @@ async function chatWithOpenAI(
   }
 }
 
+// ── Provider registry — DUP-04 / DUP-06 ──────────────────────────────────────
+// Registry eliminates the switch/case dispatch block and makes the provider
+// contract explicit. Per-provider functions remain separate (each SDK is different).
+
+type ChatFn = (
+  apiKey: string, model: string, messages: ChatMessage[], systemPrompt?: string
+) => Promise<string>
+
+const CHAT_PROVIDERS: Record<string, ChatFn> = {
+  gemini: chatWithGemini,
+  claude: chatWithClaude,
+  openai: chatWithOpenAI,
+}
+
 /**
  * Register all chat-related IPC handlers with the Electron main process.
  *
@@ -346,19 +367,10 @@ export function registerChatHandlers(ipcMain: IpcMain) {
     try {
       let reply = ''
 
-      switch (provider) {
-        case 'gemini':
-          reply = await chatWithGemini(apiKey, model, messages, systemPrompt)
-          break
-        case 'claude':
-          reply = await chatWithClaude(apiKey, model, messages, systemPrompt)
-          break
-        case 'openai':
-          reply = await chatWithOpenAI(apiKey, model, messages, systemPrompt)
-          break
-        default:
-          return { success: false, error: `Unknown provider: ${provider}` }
-      }
+      // DUP-06: registry lookup replaces switch/case
+      const chatFn = CHAT_PROVIDERS[provider]
+      if (!chatFn) return { success: false, error: `Unknown provider: ${provider}` }
+      reply = await chatFn(apiKey, model, messages, systemPrompt)
 
       return { success: true, reply }
     } catch (error: unknown) {

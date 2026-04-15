@@ -7,6 +7,9 @@ import { resizeImageFile } from '../utils/imageUtils'
 // DUP-05: processImageFile replaced by shared resizeImageFile from imageUtils.ts
 // HC-09: MAX_TRANSLATE_IMAGE_DIMENSION imported from constants/image.ts
 
+// HC-11: Named constant for the ping animation duration (processing state spinner)
+const PROCESSING_PING_DURATION_S = '1.5s'
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface ImageAttachment {
   base64: string
@@ -123,7 +126,7 @@ export function ImageTranslator({ onImageReady, onClose }: ImageTranslatorProps)
             /* Processing state */
             <div className="flex flex-col items-center gap-4 py-10">
               <div className="relative w-14 h-14">
-                <div className="absolute inset-0 rounded-full bg-emerald-100 dark:bg-emerald-900/30 animate-ping" style={{ animationDuration: '1.5s' }} />
+                <div className="absolute inset-0 rounded-full bg-emerald-100 dark:bg-emerald-900/30 animate-ping" style={{ animationDuration: PROCESSING_PING_DURATION_S }} />
                 <div className="relative w-14 h-14 rounded-full bg-emerald-500 flex items-center justify-center shadow-md">
                   <SpinnerIcon className="w-6 h-6 text-white animate-spin" />
                 </div>

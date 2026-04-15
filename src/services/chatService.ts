@@ -9,21 +9,27 @@
  *   import { chatService } from '../services/chatService'
  *   const result = await chatService.send({ ... })
  */
-import type { ChatResult } from '../types'
+// DUP-07: ChatMessageContent is the canonical definition in src/types/index.ts.
+// It has extra renderer-only fields (imagePreviewUrl, imageFileName) compared to the
+// main-process version in electron/ipc/chat.ts, but the IPC layer ignores unknown fields,
+// so using the richer type here is safe.
+import type { ChatResult, ChatMessageContent } from '../types'
 
-export interface ChatMessageContent {
-  type: 'text' | 'image'
-  text?: string
-  imageBase64?: string
-  imageMimeType?: string
-}
+// Re-export for any consumers that import ChatMessageContent from chatService
+export type { ChatMessageContent }
 
+/**
+ * IPC-format ChatMessage — contains only fields transmitted over the IPC boundary.
+ * Intentionally does NOT include UI-only fields (id, timestamp, isLoading, error)
+ * that exist in the full ChatMessage type in src/types/index.ts.
+ * These are two different concepts: the store type vs the API transport type.
+ */
 export interface ChatMessage {
   role: 'user' | 'assistant'
   content: ChatMessageContent[]
 }
 
-export interface ChatParams {
+interface ChatParams {
   provider: string
   model: string
   messages: ChatMessage[]

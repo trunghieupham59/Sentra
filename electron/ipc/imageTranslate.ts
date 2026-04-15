@@ -267,6 +267,21 @@ async function translateImageWithOpenAI(
 /** @internal — exported for unit tests only */
 export { langName, buildPrompt as buildImageTranslatePrompt }
 
+// ── Provider registry — DUP-04 / DUP-06 ──────────────────────────────────────
+// Registry eliminates the switch/case dispatch block and makes the provider
+// contract explicit. Per-provider functions remain separate (each SDK is different).
+
+type ImageTranslateFn = (
+  apiKey: string, model: string, imageBase64: string, imageMimeType: string,
+  sourceLang: string, targetLang: string
+) => Promise<TextRegion[]>
+
+const IMAGE_TRANSLATE_PROVIDERS: Record<string, ImageTranslateFn> = {
+  gemini: translateImageWithGemini,
+  claude: translateImageWithClaude,
+  openai: translateImageWithOpenAI,
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function registerImageTranslateHandlers(ipcMain: IpcMain) {
@@ -299,19 +314,10 @@ export function registerImageTranslateHandlers(ipcMain: IpcMain) {
 
       let regions: TextRegion[] = []
 
-      switch (provider) {
-        case 'gemini':
-          regions = await translateImageWithGemini(apiKey, model, imageBase64, imageMimeType, sourceLang, targetLang)
-          break
-        case 'claude':
-          regions = await translateImageWithClaude(apiKey, model, imageBase64, imageMimeType, sourceLang, targetLang)
-          break
-        case 'openai':
-          regions = await translateImageWithOpenAI(apiKey, model, imageBase64, imageMimeType, sourceLang, targetLang)
-          break
-        default:
-          return { success: false, error: `Unknown provider: ${provider}` }
-      }
+      // DUP-06: registry lookup replaces switch/case
+      const imageFn = IMAGE_TRANSLATE_PROVIDERS[provider]
+      if (!imageFn) return { success: false, error: `Unknown provider: ${provider}` }
+      regions = await imageFn(apiKey, model, imageBase64, imageMimeType, sourceLang, targetLang)
 
       return { success: true, regions }
     } catch (error: unknown) {

@@ -434,6 +434,35 @@ async function verifyOpenAIKey(apiKey: string): Promise<void> {
  * Note: showFurigana / phoneticOnly are deliberately excluded from the live
  * streaming path to keep latency minimal.
  */
+// ── Provider registries — DUP-04 / DUP-06 ─────────────────────────────────────
+// Typed function registries replace the switch/case dispatch blocks and make the
+// provider contract explicit via TypeScript types. Per-provider implementations are
+// kept separate because each SDK has a fundamentally different API surface —
+// the structural similarity is intentional (same contract, different SDKs), not
+// avoidable duplication.
+
+type TranslateFn = (
+  apiKey: string, model: string,
+  sourceText: string, sourceLang: string, targetLang: string,
+  showFurigana: boolean, style: TranslationStyle, phoneticOnly: boolean
+) => Promise<string>
+
+type RewriteFn = (
+  apiKey: string, model: string, text: string, lang: string, style?: TranslationStyle
+) => Promise<string>
+
+const TRANSLATE_PROVIDERS: Record<string, TranslateFn> = {
+  gemini: translateWithGemini,
+  claude: translateWithClaude,
+  openai: translateWithOpenAI,
+}
+
+const REWRITE_PROVIDERS: Record<string, RewriteFn> = {
+  gemini: rewriteWithGemini,
+  claude: rewriteWithClaude,
+  openai: rewriteWithOpenAI,
+}
+
 // ── Exported for unit testing ─────────────────────────────────────────────────
 /** @internal — exported for unit tests only */
 export { splitIntoChunks, buildPrompt, withTimeout, promisePool }
@@ -580,34 +609,16 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
       // phoneticOnly (furigana pass) operates on already-translated short text — skip chunking
       const needsChunking = !phoneticOnly && sourceText.length > CHUNK_CHAR_LIMIT
 
-      switch (provider) {
-        case 'gemini':
-          translatedText = needsChunking
-            ? await translateChunked(
-                (text) => translateWithGemini(apiKey, model, text, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', false),
-                sourceText,
-              )
-            : await translateWithGemini(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', !!phoneticOnly)
-          break
-        case 'claude':
-          translatedText = needsChunking
-            ? await translateChunked(
-                (text) => translateWithClaude(apiKey, model, text, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', false),
-                sourceText,
-              )
-            : await translateWithClaude(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', !!phoneticOnly)
-          break
-        case 'openai':
-          translatedText = needsChunking
-            ? await translateChunked(
-                (text) => translateWithOpenAI(apiKey, model, text, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', false),
-                sourceText,
-              )
-            : await translateWithOpenAI(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', !!phoneticOnly)
-          break
-        default:
-          return { success: false, error: `Unknown provider: ${provider}` }
-      }
+      // DUP-06: registry lookup replaces switch/case
+      const translateFn = TRANSLATE_PROVIDERS[provider]
+      if (!translateFn) return { success: false, error: `Unknown provider: ${provider}` }
+
+      translatedText = needsChunking
+        ? await translateChunked(
+            (text) => translateFn(apiKey, model, text, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', false),
+            sourceText,
+          )
+        : await translateFn(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', !!phoneticOnly)
 
       return { success: true, translatedText }
     } catch (error: unknown) {
@@ -635,25 +646,13 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
       let rewrittenText = ''
       const needsChunking = text.length > CHUNK_CHAR_LIMIT
 
-      switch (provider) {
-        case 'gemini':
-          rewrittenText = needsChunking
-            ? await translateChunked((t) => rewriteWithGemini(apiKey, model, t, lang, translationStyle), text)
-            : await rewriteWithGemini(apiKey, model, text, lang, translationStyle)
-          break
-        case 'claude':
-          rewrittenText = needsChunking
-            ? await translateChunked((t) => rewriteWithClaude(apiKey, model, t, lang, translationStyle), text)
-            : await rewriteWithClaude(apiKey, model, text, lang, translationStyle)
-          break
-        case 'openai':
-          rewrittenText = needsChunking
-            ? await translateChunked((t) => rewriteWithOpenAI(apiKey, model, t, lang, translationStyle), text)
-            : await rewriteWithOpenAI(apiKey, model, text, lang, translationStyle)
-          break
-        default:
-          return { success: false, error: `Unknown provider: ${provider}` }
-      }
+      // DUP-06: registry lookup replaces switch/case
+      const rewriteFn = REWRITE_PROVIDERS[provider]
+      if (!rewriteFn) return { success: false, error: `Unknown provider: ${provider}` }
+
+      rewrittenText = needsChunking
+        ? await translateChunked((t) => rewriteFn(apiKey, model, t, lang, translationStyle), text)
+        : await rewriteFn(apiKey, model, text, lang, translationStyle)
 
       return { success: true, translatedText: rewrittenText }
     } catch (error: unknown) {
