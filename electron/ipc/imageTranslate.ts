@@ -10,6 +10,9 @@ import {
   MAX_CHAT_OUTPUT_TOKENS,
 } from './ipcConstants'
 
+/** Allowed image MIME types for Gemini image-edit (whitelist prevents injection via IPC). */
+const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+
 /** Returns a fetch with a timeout via AbortController. Rejects with AbortError on timeout. */
 function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response> {
   const controller = new AbortController()
@@ -130,9 +133,12 @@ async function fetchVisionModels(provider: string, apiKey: string): Promise<stri
         })
     }
 
-    return ids
-      .filter(id => scoreModelForVision(provider, id) > 0)
-      .sort((a, b) => scoreModelForVision(provider, b) - scoreModelForVision(provider, a))
+    // R-PRF-02: precompute scores once to avoid O(n log n × 2) calls in sort comparator
+    const scored = ids.map(id => ({ id, score: scoreModelForVision(provider, id) }))
+    return scored
+      .filter(x => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(x => x.id)
   } catch (err) {
     console.warn(`fetchVisionModels(${provider}) failed, no fallback candidates:`, err)
     return []
@@ -226,6 +232,11 @@ async function translateImageWithGeminiEdit(
   sourceLang: string,
   targetLang: string
 ): Promise<string | null> {
+  // R-SEC-02: Whitelist validate MIME type before embedding in JSON request body
+  if (!ALLOWED_IMAGE_MIME_TYPES.has(imageMimeType)) {
+    throw new Error(`Unsupported image MIME type: ${imageMimeType}`)
+  }
+
   // HC-06: Use GEMINI_API_BASE instead of hardcoded URL prefix
   const url = `${GEMINI_API_BASE}/models/${GEMINI_IMAGE_EDIT_MODEL}:generateContent?key=${apiKey}`
   const sourceName = langName(sourceLang)
@@ -254,11 +265,12 @@ async function translateImageWithGeminiEdit(
     },
   }
 
-  const res = await fetch(url, {
+  // R-REL-03: Use fetchWithTimeout (already defined above) to prevent indefinite hang
+  const res = await fetchWithTimeout(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-  })
+  }, VISION_DISCOVERY_TIMEOUT_MS)
 
   if (!res.ok) {
     const errText = await res.text()
@@ -438,6 +450,10 @@ export function registerImageTranslateHandlers(ipcMain: IpcMain) {
     const apiKey = getStoredApiKey(provider)
     if (!apiKey) return noApiKeyResponse(provider)
 
+    if (!IMAGE_TRANSLATE_PROVIDERS[provider]) {
+      return { success: false, error: `Unknown provider: ${provider}` }
+    }
+
     try {
       // ── Gemini: try image-edit model first for best quality ───────────────
       if (provider === 'gemini') {
@@ -517,13 +533,19 @@ export function registerImageTranslateHandlers(ipcMain: IpcMain) {
               if (fb !== model) candidates.push({ p: provider, m: fb })
             }
 
-            // Cross-provider fallbacks: try other providers if they have a key
-            for (const otherProvider of Object.keys(IMAGE_TRANSLATE_PROVIDERS)) {
-              if (otherProvider === provider) continue
-              const otherKey = getStoredApiKey(otherProvider)
-              if (!otherKey) continue
-              const otherModels = await fetchVisionModels(otherProvider, otherKey)
-              if (otherModels.length > 0) candidates.push({ p: otherProvider, m: otherModels[0] })
+            // Cross-provider fallbacks: fetch all other providers in parallel (R-PRF-02)
+            const otherProviders = Object.keys(IMAGE_TRANSLATE_PROVIDERS)
+              .filter(op => op !== provider)
+              .map(op => ({ op, key: getStoredApiKey(op) }))
+              .filter((x): x is { op: string; key: string } => !!x.key)
+
+            const crossResults = await Promise.all(
+              otherProviders.map(({ op, key }) =>
+                fetchVisionModels(op, key).then(models => ({ op, models }))
+              )
+            )
+            for (const { op, models } of crossResults) {
+              if (models.length > 0) candidates.push({ p: op, m: models[0] })
             }
           }
           // Continue loop — next iteration picks the next candidate

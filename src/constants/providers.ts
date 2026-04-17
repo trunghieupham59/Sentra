@@ -102,6 +102,15 @@ export const MAX_INPUT_CHARS = 5000
  */
 export const MAX_CHAT_INPUT_CHARS = 3000
 
+/**
+ * Maximum characters of source text sent to the AI for language detection.
+ * Enough to reliably identify any language; truncating saves tokens on long inputs.
+ *
+ * IMPORTANT: Must stay in sync with DETECT_LANG_MAX_CHARS in electron/ipc/ipcConstants.ts
+ * which applies the same limit in the main process (defence-in-depth).
+ */
+export const DETECT_LANG_MAX_CHARS = 500
+
 export const DEFAULT_SETTINGS = {
   defaultProvider: 'gemini' as const,
   defaultSourceLang: 'auto',

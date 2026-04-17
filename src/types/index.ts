@@ -243,6 +243,12 @@ export interface WindowApi {
     lang: string
     translationStyle?: TranslationStyle
   }) => Promise<TranslateResult>
+  /** Detect the BCP-47 language code of source text (e.g. "vi", "en", "ja"). */
+  detectLanguage: (params: {
+    provider: string
+    model: string
+    text: string
+  }) => Promise<{ success: boolean; lang?: string; error?: string }>
   transcribeAudio: (params: {
     audioData: ArrayBuffer
     mimeType: string

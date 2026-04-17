@@ -45,4 +45,8 @@ export const translationService = {
   /** Verify an API key with a minimal test request. */
   verifyKey: (provider: string, apiKey: string) =>
     window.api.verifyKey(provider, apiKey),
+
+  /** Detect the BCP-47 language code of source text (e.g. "vi", "en", "ja"). */
+  detectLanguage: (params: { provider: string; model: string; text: string }) =>
+    window.api.detectLanguage(params),
 }

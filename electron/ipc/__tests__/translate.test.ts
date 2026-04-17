@@ -3,11 +3,13 @@
  * Unit tests for electron/ipc/translate.ts
  *
  * Tests focus on:
- *   1. splitIntoChunks   — chunk boundary logic (paragraph / line / sentence / hard)
- *   2. buildPrompt       — prompt modes: translate, phoneticOnly, furigana, styles
- *   3. withTimeout       — resolves on time, rejects on timeout, cleans up
- *   4. promisePool       — concurrency limit, ordering, error propagation
- *   5. IPC handlers      — input validation, NO_API_KEY, unknown provider
+ *   1. splitIntoChunks       — chunk boundary logic (paragraph / line / sentence / hard)
+ *   2. buildPrompt           — prompt modes: translate, phoneticOnly, furigana, styles
+ *   3. withTimeout           — resolves on time, rejects on timeout, cleans up
+ *   4. promisePool           — concurrency limit, ordering, error propagation
+ *   5. normalizeDetectedLang — BCP-47 code normalisation: exact, capitalisation, partial, null
+ *   6. IPC handlers          — input validation, NO_API_KEY, unknown provider
+ *   7. translate:detect-lang — empty text, no API key, unknown provider
  *
  * Provider SDKs are NOT imported — no real API calls made.
  */
@@ -28,6 +30,7 @@ import {
   buildPrompt,
   withTimeout,
   promisePool,
+  normalizeDetectedLang,
   registerTranslateHandlers,
 } from '../translate'
 import { getStoredApiKey } from '../storage'
@@ -376,5 +379,112 @@ describe('registerTranslateHandlers — error code categorization', () => {
       sourceText: 'Hello', sourceLang: 'en', targetLang: 'vi',
     })
     expect(result.success).toBe(false)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('normalizeDetectedLang', () => {
+  // ── Happy path — exact codes ──
+  it('returns "vi" for exact match "vi"', () => {
+    expect(normalizeDetectedLang('vi')).toBe('vi')
+  })
+
+  it('returns "en" for exact match "en"', () => {
+    expect(normalizeDetectedLang('en')).toBe('en')
+  })
+
+  it('returns "ja" for exact match "ja"', () => {
+    expect(normalizeDetectedLang('ja')).toBe('ja')
+  })
+
+  it('returns "ko" for exact match "ko"', () => {
+    expect(normalizeDetectedLang('ko')).toBe('ko')
+  })
+
+  // ── Capitalisation normalisation ──
+  it('returns "zh-TW" (correct casing) when AI returns "zh-tw"', () => {
+    expect(normalizeDetectedLang('zh-tw')).toBe('zh-TW')
+  })
+
+  it('returns "zh-TW" when AI returns "ZH-TW" (uppercase)', () => {
+    expect(normalizeDetectedLang('ZH-TW')).toBe('zh-TW')
+  })
+
+  it('normalises uppercase input "VI" to "vi"', () => {
+    expect(normalizeDetectedLang('VI')).toBe('vi')
+  })
+
+  // ── Quote and whitespace stripping ──
+  it('strips surrounding double-quotes from AI response', () => {
+    expect(normalizeDetectedLang('"vi"')).toBe('vi')
+  })
+
+  it('strips surrounding single-quotes from AI response', () => {
+    expect(normalizeDetectedLang("'en'")).toBe('en')
+  })
+
+  it('strips surrounding whitespace from AI response', () => {
+    expect(normalizeDetectedLang('  ja  ')).toBe('ja')
+  })
+
+  // ── Partial match fallback ──
+  it('returns "vi" when AI returns "vietnamese" (partial match)', () => {
+    expect(normalizeDetectedLang('vietnamese')).toBe('vi')
+  })
+
+  it('returns "en" when AI returns "english" (partial match)', () => {
+    expect(normalizeDetectedLang('english')).toBe('en')
+  })
+
+  // ── Unknown / null cases ──
+  it('returns null for completely unknown code "xx"', () => {
+    expect(normalizeDetectedLang('xx')).toBeNull()
+  })
+
+  it('returns null for empty string', () => {
+    expect(normalizeDetectedLang('')).toBeNull()
+  })
+
+  it('returns null for random gibberish', () => {
+    expect(normalizeDetectedLang('🤔???')).toBeNull()
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('translate:detect-lang IPC handler', () => {
+  let invoke: ReturnType<typeof buildMockIpcMain>['invoke']
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    const mock = buildMockIpcMain()
+    // biome-ignore lint/suspicious/noExplicitAny: mock IpcMain
+    registerTranslateHandlers(mock.ipcMain as any)
+    invoke = mock.invoke
+  })
+
+  it('returns error when text is empty', async () => {
+    const result = await invoke('translate:detect-lang', {
+      provider: 'gemini', model: 'gemini-2.0-flash', text: '   ',
+    })
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('empty')
+  })
+
+  it('returns NO_API_KEY when API key is missing', async () => {
+    vi.mocked(getStoredApiKey).mockReturnValue(null)
+    const result = await invoke('translate:detect-lang', {
+      provider: 'gemini', model: 'gemini-2.0-flash', text: 'Xin chào',
+    })
+    expect(result.success).toBe(false)
+    expect(result.errorCode).toBe('NO_API_KEY')
+  })
+
+  it('returns error for unknown provider', async () => {
+    vi.mocked(getStoredApiKey).mockReturnValue('fake-key')
+    const result = await invoke('translate:detect-lang', {
+      provider: 'unknown-llm', model: 'some-model', text: 'Hello',
+    })
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('Unknown provider')
   })
 })

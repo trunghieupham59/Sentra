@@ -7,6 +7,7 @@ import {
   VERIFY_MODEL_GEMINI,
   VERIFY_MODEL_CLAUDE,
   VERIFY_MODEL_OPENAI,
+  DETECT_LANG_MAX_CHARS,
 } from './ipcConstants'
 
 // DUP-02: Removed local `getApiKey` wrapper — call getStoredApiKey directly.
@@ -463,9 +464,70 @@ const REWRITE_PROVIDERS: Record<string, RewriteFn> = {
   openai: rewriteWithOpenAI,
 }
 
+// ── Language detection helpers — one per provider ─────────────────────────────
+// Each receives a pre-built detection prompt and returns the raw AI response string.
+// max_tokens / maxOutputTokens is deliberately tiny (10) — we only need a short lang code.
+
+type DetectFn = (apiKey: string, model: string, prompt: string) => Promise<string>
+
+async function detectWithGemini(apiKey: string, model: string, prompt: string): Promise<string> {
+  const { GoogleGenerativeAI } = await import('@google/generative-ai')
+  const genAI = new GoogleGenerativeAI(apiKey)
+  const genModel = genAI.getGenerativeModel({ model })
+  const result = await genModel.generateContent(prompt)
+  return result.response.text().trim()
+}
+
+async function detectWithClaude(apiKey: string, model: string, prompt: string): Promise<string> {
+  const Anthropic = (await import('@anthropic-ai/sdk')).default
+  const client = new Anthropic({ apiKey })
+  const message = await client.messages.create({
+    model,
+    max_tokens: 10,
+    messages: [{ role: 'user', content: prompt }],
+  })
+  const block = message.content[0]
+  if (block.type === 'text') return block.text.trim()
+  throw new Error('Unexpected response type from Claude')
+}
+
+async function detectWithOpenAI(apiKey: string, model: string, prompt: string): Promise<string> {
+  const OpenAI = (await import('openai')).default
+  const client = new OpenAI({ apiKey })
+  const completion = await client.chat.completions.create({
+    model,
+    messages: [{ role: 'user', content: prompt }],
+    max_completion_tokens: 10,
+  })
+  return (completion.choices[0]?.message?.content ?? '').trim()
+}
+
+const DETECT_PROVIDERS: Record<string, DetectFn> = {
+  gemini: detectWithGemini,
+  claude: detectWithClaude,
+  openai: detectWithOpenAI,
+}
+
 // ── Exported for unit testing ─────────────────────────────────────────────────
 /** @internal — exported for unit tests only */
-export { splitIntoChunks, buildPrompt, withTimeout, promisePool }
+export { splitIntoChunks, buildPrompt, withTimeout, promisePool, normalizeDetectedLang }
+
+// ── Language detection — known BCP-47 codes this app supports ─────────────────
+const KNOWN_LANG_CODES = ['vi', 'en', 'zh', 'zh-tw', 'ja', 'ko', 'fr', 'de', 'es', 'pt', 'ru', 'ar', 'th', 'id', 'it', 'nl', 'pl', 'tr', 'hi']
+
+function normalizeDetectedLang(raw: string): string | null {
+  // Strip quotes, whitespace, punctuation
+  const cleaned = raw.toLowerCase().replace(/^["'`\s]+|["'`\s]+$/g, '').replace(/\s+/g, '-')
+  if (KNOWN_LANG_CODES.includes(cleaned)) {
+    // Fix capitalization: zh-TW must be zh-TW not zh-tw
+    if (cleaned === 'zh-tw') return 'zh-TW'
+    return cleaned
+  }
+  // Partial match as fallback (e.g. "vietnamese" → "vi")
+  const partial = KNOWN_LANG_CODES.find(l => cleaned.startsWith(l) || l.startsWith(cleaned))
+  if (partial) return partial === 'zh-tw' ? 'zh-TW' : partial
+  return null
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -661,6 +723,43 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
       // DUP-01: use classifyProviderError for consistent error categorization
       const classified = classifyProviderError(msg)
       return { ...classified, error: classified.errorCode ? classified.error : `Rewrite failed: ${msg}` }
+    }
+  })
+
+  // Language detection handler — identify the language of source text so the swap button
+  // can set the correct target language after switching source ↔ target panels.
+  ipcMain.handle('translate:detect-lang', async (_event, params: { provider: string; model: string; text: string }) => {
+    const { provider, model, text } = params
+    if (!text.trim()) return { success: false, error: 'Text is empty' }
+
+    const apiKey = getStoredApiKey(provider)
+    if (!apiKey) return noApiKeyResponse(provider)
+
+    // Truncate to DETECT_LANG_MAX_CHARS — enough for reliable detection, minimises token cost
+    const snippet = text.slice(0, DETECT_LANG_MAX_CHARS)
+    const prompt = `Identify the language of the following text. Reply with ONLY the BCP-47 language code (e.g. vi, en, ja, zh, zh-TW, ko, fr, de, es, pt, ru, ar, th, id, it, nl, pl, tr, hi). Nothing else — no punctuation, no explanation, no quotes.\n\nText:\n${snippet}`
+
+    try {
+      // DUP: use per-provider detect function via DETECT_PROVIDERS registry
+      const detectFn = DETECT_PROVIDERS[provider]
+      if (!detectFn) return { success: false, error: `Unknown provider: ${provider}` }
+
+      let raw = ''
+      try {
+        raw = await detectFn(apiKey, model, prompt)
+      } catch {
+        // Detection is best-effort — convert provider errors to a clean failure response
+        return { success: false, error: 'Detection call failed' }
+      }
+
+      const lang = normalizeDetectedLang(raw)
+      if (!lang) return { success: false, error: `Unrecognized language code: "${raw}"` }
+
+      return { success: true, lang }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error)
+      const classified = classifyProviderError(msg)
+      return { ...classified, error: classified.errorCode ? classified.error : `Language detection failed: ${msg}` }
     }
   })
 }

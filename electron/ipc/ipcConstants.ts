@@ -88,6 +88,16 @@ export const ANTHROPIC_MODELS_LIMIT = 20
 /** Timeout (ms) for provider models-list API calls used during vision fallback discovery. */
 export const VISION_DISCOVERY_TIMEOUT_MS = 5_000
 
+// ── Language detection input limit ───────────────────────────────────────────
+/**
+ * Maximum characters of source text sent to the AI for language detection.
+ * Enough to reliably identify any language; truncating saves tokens on long inputs.
+ *
+ * NOTE: Must stay in sync with DETECT_LANG_MAX_CHARS in src/constants/providers.ts
+ * which trims the text in the renderer before the IPC call (defence-in-depth).
+ */
+export const DETECT_LANG_MAX_CHARS = 500
+
 // ── Vision model scoring weights ─────────────────────────────────────────────
 // Used by scoreModelForVision() to rank candidates cheapest/fastest first.
 // Higher score = more preferred. Adjust when provider pricing tiers change.

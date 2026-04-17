@@ -41,6 +41,13 @@ contextBridge.exposeInMainWorld('api', {
     translationStyle?: string
   }) => ipcRenderer.invoke('translate:rewrite', params),
 
+  // Detect the language of source text — returns the BCP-47 code (e.g. "vi", "en", "ja")
+  detectLanguage: (params: {
+    provider: string
+    model: string
+    text: string
+  }) => ipcRenderer.invoke('translate:detect-lang', params),
+
   // Audio transcription via OpenAI Whisper (avoids Google Speech API dependency)
   transcribeAudio: (params: {
     audioData: ArrayBuffer

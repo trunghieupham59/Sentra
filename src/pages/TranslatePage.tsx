@@ -17,10 +17,10 @@ import { PhoneticToggle } from '../components/ui/PhoneticToggle'
 import { RewriteButton } from '../components/ui/RewriteButton'
 import { SpeakButton } from '../components/ui/SpeakButton'
 import { TranslateButton } from '../components/ui/TranslateButton'
-import { AlertTriangleIcon, ArrowRightIcon, AutoDetectIcon, ChevronDownIcon, DownloadIcon, SpinnerIcon, XIcon } from '../components/ui/icons'
+import { AlertTriangleIcon, AutoDetectIcon, ChevronDownIcon, DownloadIcon, SpinnerIcon, SwapIcon, XIcon } from '../components/ui/icons'
 import { VoiceRecorder } from '../components/VoiceRecorder'
 import { MAX_TRANSLATE_IMAGE_DIMENSION } from '../constants/image'
-import { MAX_INPUT_CHARS } from '../constants/providers'
+import { MAX_INPUT_CHARS, DETECT_LANG_MAX_CHARS } from '../constants/providers'
 import { COPY_FEEDBACK_DURATION_MS, IMAGE_AUTO_TRANSLATE_DELAY_MS } from '../constants/ui'
 import { resizeImageFile, extractImageFromClipboard } from '../utils/imageUtils'
 import { useTTS } from '../hooks/useTTS'
@@ -61,6 +61,10 @@ export function TranslatePage() {
   const [isRewriting, setIsRewriting] = useState<'source' | 'translated' | null>(null)
   /** Shown when image translation silently switched to a different model/provider */
   const [imageSwitchNotice, setImageSwitchNotice] = useState<{ model: string; provider: string } | null>(null)
+  /** Language detected by AI from the last source text — drives the swap button */
+  const [detectedSourceLang, setDetectedSourceLang] = useState<string | null>(null)
+  /** True while background language detection is in progress */
+  const [isDetectingLang, setIsDetectingLang] = useState(false)
 
   // TTS — delegated to useTTS hook (Web Audio API + OS synthesis fallback, no console.log)
   const { speakingPanel, speakLoading, handleSpeak, stopSpeak } = useTTS({ ttsVoice })
@@ -160,24 +164,53 @@ export function TranslatePage() {
     resetVoicePrefix,
   } = useVoiceInput({ currentText: sourceText, onTextChange: setSourceText })
 
-  const handleTranslate = useCallback(async () => {
-    if (isTranslating) return
-    if (!hasKey) { setTranslateError(t.translate_error_no_key); return }
+  /**
+   * Triggers background language detection for `text` (best-effort, non-blocking).
+   * On success → sets `detectedSourceLang`; on failure → degrades gracefully.
+   * The swap button remains functional either way — it just won't auto-set target
+   * language if detection fails.
+   *
+   * All values are passed as parameters (not closed over) so this callback never
+   * needs to be recreated — stable empty-dep memoisation is safe here.
+   */
+  const detectLanguageInBackground = useCallback((
+    text: string,
+    generation: number,
+    provider: string,
+    model: string,
+  ) => {
+    setIsDetectingLang(true)
+    translationService.detectLanguage({ provider, model, text: text.slice(0, DETECT_LANG_MAX_CHARS) })
+      .then((res) => {
+        if (translateGenerationRef.current !== generation) return
+        if (res.success && res.lang) setDetectedSourceLang(res.lang)
+      })
+      .catch((_err) => {
+        // Detection is best-effort — a failure here means the swap button won't
+        // automatically change the target language, but it will still move the
+        // translated text into the source panel correctly.
+      })
+      .finally(() => {
+        if (translateGenerationRef.current === generation) setIsDetectingLang(false)
+      })
+  }, []) // All values are passed as params → no external deps needed
 
+  const handleTranslate = useCallback(async () => {
+    if (!hasKey) { setTranslateError(t.no_api_key); return }
+    if (isTranslating) return
+
+    const generation = ++translateGenerationRef.current
     setIsTranslating(true)
     setTranslateError(null)
-    setPhoneticText('')
-
-    // Capture the generation at job start — used to detect cancellation below
-    const generation = ++translateGenerationRef.current
+    setImageSwitchNotice(null)
 
     // ── IMAGE mode: translate the attached image ──────────────────────────
     if (imageAttachment) {
       try {
-        const result = await translationService.translateImage({
-          provider:      selectedProvider,
-          model:         selectedModels[selectedProvider],
-          imageBase64:   imageAttachment.base64,
+        const result = await window.api.translateImage({
+          provider: selectedProvider,
+          model: selectedModels[selectedProvider],
+          imageBase64: imageAttachment.base64,
           imageMimeType: imageAttachment.mimeType,
           sourceLang,
           targetLang,
@@ -222,6 +255,9 @@ export function TranslatePage() {
     }
 
     // ── TEXT mode: normal translation ─────────────────────────────────────
+    // Clear stale detection result whenever a new translation starts
+    setDetectedSourceLang(null)
+    setIsDetectingLang(false)
     if (!sourceText.trim()) { setIsTranslating(false); return }
     try {
       const baseParams = {
@@ -261,6 +297,10 @@ export function TranslatePage() {
             if (res.success && res.translatedText) setPhoneticText(res.translatedText)
           })
           .catch(() => {})
+
+        // Background language detection — runs in parallel with phonetic pass.
+        // Identifies the source language so the swap button can set the correct target.
+        detectLanguageInBackground(sourceText, generation, selectedProvider, selectedModels[selectedProvider])
       } else {
         setTranslateError(plainResult.error || 'Translation failed')
       }
@@ -270,9 +310,10 @@ export function TranslatePage() {
     } finally {
       if (translateGenerationRef.current === generation) setIsTranslating(false)
     }
+  // biome-ignore lint/correctness/useExhaustiveDependencies: detectLanguageInBackground has stable empty-dep memoisation — safe to omit
   }, [imageAttachment, sourceText, sourceLang, targetLang, selectedProvider, selectedModels,
-      isTranslating, hasKey, translationStyle, setIsTranslating, setTranslateError,
-      setTranslatedText, setPhoneticText, addHistory, t])
+       isTranslating, hasKey, translationStyle, setIsTranslating, setTranslateError,
+       setTranslatedText, setPhoneticText, addHistory, t, detectLanguageInBackground])
 
   /** Download the translated image (original + text regions overlaid) */
   const handleDownloadTranslatedImage = useCallback(async () => {
@@ -356,6 +397,24 @@ export function TranslatePage() {
     handleTranslateRef.current()
   }, [selectedProvider, selectedModels[selectedProvider]])
 
+
+  /** Swap translation panels — puts translated text into source, sets detected language as target. */
+  const handleSwapLanguages = useCallback(() => {
+    if (!translatedText || translatedText === IMAGE_TRANSLATED_SENTINEL) return
+    translateGenerationRef.current++
+    stopSpeak()
+    setSourceText(translatedText)
+    setTranslatedText('')
+    setPhoneticText('')
+    setTranslateError(null)
+    setIsTranslating(false)
+    if (detectedSourceLang) {
+      setTargetLang(detectedSourceLang)
+    }
+    setDetectedSourceLang(null)
+    setIsDetectingLang(false)
+  }, [translatedText, detectedSourceLang, stopSpeak, setSourceText, setTranslatedText,
+      setPhoneticText, setTranslateError, setIsTranslating, setTargetLang])
 
   const handleCopy = async () => {
     const textToCopy = showFurigana && phoneticText ? phoneticText : translatedText
@@ -496,16 +555,35 @@ export function TranslatePage() {
       {/* Language bar */}
       <div className="flex-shrink-0 flex items-center gap-3 px-4 py-2
                       bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
-        {/* Source: auto-detect badge */}
+        {/* Source: auto-detect badge — shows detected language name when known */}
         <div className="flex-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg
                         bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700
-                        text-sm text-gray-500 dark:text-gray-400 select-none">
+                        text-sm text-gray-500 dark:text-gray-400 select-none overflow-hidden">
           <AutoDetectIcon className="w-3.5 h-3.5 flex-shrink-0 text-blue-400" />
           <span className="truncate">{t.lang_auto}</span>
+          {detectedSourceLang && (
+            <span className="ml-auto pl-1.5 text-xs font-medium text-blue-500 dark:text-blue-400 shrink-0 truncate">
+              {t.lang_names[detectedSourceLang] ?? detectedSourceLang}
+            </span>
+          )}
         </div>
 
-        {/* Arrow separator */}
-        <ArrowRightIcon className="flex-shrink-0 w-4 h-4 text-gray-300 dark:text-gray-600" />
+        {/* Swap languages button — replaces the static arrow; shows spinner while detecting */}
+        <button
+          type="button"
+          onClick={handleSwapLanguages}
+          disabled={!translatedText || translatedText === IMAGE_TRANSLATED_SENTINEL || !!imageAttachment}
+          title={t.translate_swap}
+          className={`flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-full
+                      transition-all duration-200
+                      ${(!translatedText || translatedText === IMAGE_TRANSLATED_SENTINEL || !!imageAttachment)
+                        ? 'text-gray-200 dark:text-gray-700 cursor-not-allowed'
+                        : 'cursor-pointer text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/50 dark:hover:text-blue-400'}`}
+        >
+          {isDetectingLang
+            ? <SpinnerIcon className="w-4 h-4 animate-spin" />
+            : <SwapIcon className="w-4 h-4" />}
+        </button>
 
         {/* Target language selector */}
         <div className="flex-1">
@@ -668,6 +746,8 @@ export function TranslatePage() {
                     setTranslatedText('')
                     setPhoneticText('')
                     setTranslateError(null)
+                    setDetectedSourceLang(null)
+                    setIsDetectingLang(false)
                   }}
                   label={t.translate_clear}
                 />

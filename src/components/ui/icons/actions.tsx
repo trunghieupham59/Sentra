@@ -141,6 +141,15 @@ export function UploadIcon({ className = 'w-4 h-4' }: IconProps) {
   )
 }
 
+/** Swap / switch-arrows icon — used on the language-swap button in the translate bar. */
+export function SwapIcon({ className = 'w-4 h-4' }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4M16 17H4m0 0l4 4m-4-4l4-4" />
+    </svg>
+  )
+}
+
 /** Translate / language icon — used on translate empty-state panels. */
 export function TranslateIcon({ className = 'w-6 h-6' }: IconProps) {
   return (
