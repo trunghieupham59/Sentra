@@ -14,7 +14,7 @@ import { VoiceRecorder } from '../components/VoiceRecorder'
 import { MAX_CHAT_INPUT_CHARS } from '../constants/providers'
 import { MAX_CHAT_IMAGE_DIMENSION } from '../constants/image'
 import { COPY_FEEDBACK_DURATION_MS } from '../constants/ui'
-import { resizeImageFile } from '../utils/imageUtils'
+import { resizeImageFile, extractImageFromClipboard } from '../utils/imageUtils'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { ChatMessage, ChatMessageContent } from '../types'
@@ -92,11 +92,11 @@ function MessageBubble({
             </div>
           </div>
         ) : message.error ? (
-          <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-2xl px-4 py-3 text-sm text-red-700 dark:text-red-300">
+          <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-2xl px-4 py-3 text-sm text-red-700 dark:text-red-300 select-text cursor-text">
             {message.error}
           </div>
         ) : textContent ? (
-          <div className={`rounded-2xl px-4 py-3 break-words
+          <div className={`rounded-2xl px-4 py-3 break-words select-text cursor-text
                            ${isUser
                              ? 'bg-blue-500 text-white rounded-br-md'
                              : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-md'}`}>
@@ -406,6 +406,14 @@ export function ChatPage() {
     }
   }
 
+  // ── Paste image from clipboard ──
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const file = extractImageFromClipboard(e.clipboardData)
+    if (!file) return
+    e.preventDefault()
+    handleImageSelect(file)
+  }, [handleImageSelect])
+
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text).catch(() => {})
     // Use timestamp as unique copy ID — avoids collision when 2 messages share the same opening chars
@@ -563,27 +571,26 @@ export function ChatPage() {
           </div>
         )}
 
-        {/* Image preview */}
+        {/* Image preview — Gemini-style large thumbnail */}
         {attachedImage && (
-          <div className="px-4 pt-3 flex items-start gap-2">
+          <div className="px-4 pt-4 pb-1 flex items-start">
             <div className="relative group">
               <img
                 src={attachedImage.previewUrl}
                 alt={attachedImage.fileName}
-                className="h-16 w-16 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
+                className="w-32 h-32 object-cover rounded-3xl shadow-sm
+                           border border-gray-200 dark:border-gray-700"
               />
               <button
                 type="button"
                 onClick={() => setAttachedImage(null)}
                 title={t.chat_remove_image}
-                className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center
-                           rounded-full bg-gray-800 hover:bg-gray-700 text-white cursor-pointer shadow"
+                className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center
+                           rounded-full bg-gray-700/90 hover:bg-gray-900 text-white cursor-pointer shadow-md
+                           opacity-0 group-hover:opacity-100 transition-opacity duration-150"
               >
-                <XIcon className="w-3 h-3" />
+                <XIcon className="w-3.5 h-3.5" />
               </button>
-              <div className="absolute bottom-0 inset-x-0 px-1 py-0.5 bg-black/50 text-white text-[9px] truncate rounded-b-lg">
-                {attachedImage.fileName}
-              </div>
             </div>
           </div>
         )}
@@ -658,6 +665,7 @@ export function ChatPage() {
                 if (isVoiceActive) resetVoicePrefix()
               }}
               onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
               placeholder={t.chat_placeholder}
               rows={1}
               disabled={isSending}

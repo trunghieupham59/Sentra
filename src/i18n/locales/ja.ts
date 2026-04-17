@@ -125,6 +125,8 @@ const ja: Translations = {
   settings_about_platform: 'プラットフォーム',
   settings_about_supports: '対応',
   settings_about_footer: '🔒 完全ローカル · サーバーなし · 追跡なし · APIキーはデバイスに留まる',
+  image_model_switched_title: 'モデルを切り替えました',
+  image_model_switched_body: '画像入力をサポートしていません',
   image_translate_title: '画像翻訳',
   image_translate_btn: '画像を翻訳',
   image_translate_upload_hint: '画像をここにドロップ、またはクリックして選択\nJPEG, PNG, WebP — 大きな画像は自動リサイズされます',

@@ -119,6 +119,16 @@ export interface ImageTranslateResult {
   editedImageBase64?: string
   error?: string
   errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'NO_VISION' | string
+  /**
+   * Set when a different model was automatically used due to vision-capability fallback.
+   * Only present when the effective model differs from what the user selected.
+   */
+  usedModel?: string
+  /**
+   * Set when a different provider was automatically used due to vision-capability fallback.
+   * Only present when the effective provider differs from what the user selected.
+   */
+  usedProvider?: string
 }
 
 export interface FetchModelsResult {
@@ -250,6 +260,12 @@ export interface WindowApi {
     sourceLang: string
     targetLang: string
   }) => Promise<ImageTranslateResult>
+  /**
+   * Subscribe to model/provider switch events pushed during image translation fallback.
+   * Fired immediately when the system decides to try a different model (before translation completes).
+   * Returns a cleanup function — call it to unsubscribe.
+   */
+  onImageModelSwitched: (cb: (data: { model: string; provider: string }) => void) => () => void
   chat: (params: {
     provider: string
     model: string

@@ -72,6 +72,17 @@ contextBridge.exposeInMainWorld('api', {
     targetLang: string
   }) => ipcRenderer.invoke('image:translate', params),
 
+  /**
+   * Subscribe to model/provider switch events pushed during image translation fallback.
+   * Fired immediately when the system decides to try a different model, before translation completes.
+   * Returns a cleanup function — call it to unsubscribe.
+   */
+  onImageModelSwitched: (cb: (data: { model: string; provider: string }) => void) => {
+    const handler = (_: unknown, data: { model: string; provider: string }) => cb(data)
+    ipcRenderer.on('image:model-switched', handler)
+    return () => ipcRenderer.removeListener('image:model-switched', handler)
+  },
+
   // AI Chat — supports text + image messages, multi-turn conversation
   chat: (params: {
     provider: string

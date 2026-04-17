@@ -1,7 +1,143 @@
 import { IpcMain } from 'electron'
 import { getStoredApiKey } from './storage'
 import { classifyProviderError, noApiKeyResponse } from './errorUtils'
-import { GEMINI_API_BASE, GEMINI_IMAGE_EDIT_MODEL, MAX_CHAT_OUTPUT_TOKENS } from './ipcConstants'
+import {
+  GEMINI_API_BASE, GEMINI_IMAGE_EDIT_MODEL,
+  ANTHROPIC_API_BASE, ANTHROPIC_API_VERSION,
+  GEMINI_MODELS_PAGE_SIZE, ANTHROPIC_MODELS_LIMIT, VISION_DISCOVERY_TIMEOUT_MS,
+  VISION_SCORE_CHEAP, VISION_SCORE_MID, VISION_SCORE_CAPABLE, VISION_SCORE_BASIC,
+  VISION_SCORE_SLOW, VISION_SCORE_GEN_WEIGHT, VISION_SCORE_LITE_PENALTY,
+  MAX_CHAT_OUTPUT_TOKENS,
+} from './ipcConstants'
+
+/** Returns a fetch with a timeout via AbortController. Rejects with AbortError on timeout. */
+function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  return fetch(url, { ...options, signal: controller.signal })
+    .finally(() => clearTimeout(timer))
+}
+
+// ── Vision model discovery (no hardcoded model IDs) ───────────────────────────
+
+/**
+ * Patterns that indicate a model is NOT capable of image/vision input.
+ * Used to filter out TTS, embedding, reasoning-only, and generation-only models.
+ */
+const NON_VISION_PATTERN = /tts|embed|aqa|image-generation|learnlm|thinking|whisper|dall-?e|moderation|realtime|transcribe|instruct|codex/i
+
+/** Returns true if the error indicates the model does not support image/vision input. */
+function isVisionUnsupportedError(msg: string): boolean {
+  const lower = msg.toLowerCase()
+  return lower.includes('image input') || lower.includes('modality') ||
+    lower.includes('vision') || lower.includes('multimodal') ||
+    lower.includes('not enabled') || lower.includes('does not support') ||
+    lower.includes('image generation') || lower.includes('image modality')
+}
+
+/**
+ * Returns true if the error indicates the model does not exist / was deprecated.
+ * These errors are retryable — try the next fallback model.
+ */
+function isModelNotFoundError(msg: string): boolean {
+  const lower = msg.toLowerCase()
+  return lower.includes('not_found_error') || lower.includes('model not found') ||
+    lower.includes('no such model') || lower.includes('does not exist') ||
+    (lower.includes('404') && lower.includes('model'))
+}
+
+/**
+ * Score a model for vision fallback selection: higher score = cheaper/faster (preferred).
+ * Used to sort the dynamically-fetched model list so cheap models are tried first.
+ */
+function scoreModelForVision(provider: string, modelId: string): number {
+  const id = modelId.toLowerCase()
+  let score = 0
+
+  if (provider === 'gemini') {
+    if (id.includes('flash'))      score += VISION_SCORE_CHEAP
+    else if (id.includes('pro'))   score += VISION_SCORE_CAPABLE
+    if (id.includes('lite') || id.includes('nano')) score -= VISION_SCORE_LITE_PENALTY
+    // Bonus per generation number: gemini-2 > gemini-1.5 > gemini-1
+    const gen = id.match(/gemini-(\d+)\.?(\d*)/)
+    if (gen) score += parseFloat(`${gen[1]}.${gen[2] || 0}`) * VISION_SCORE_GEN_WEIGHT
+  } else if (provider === 'claude') {
+    if (id.includes('haiku'))       score += VISION_SCORE_CHEAP
+    else if (id.includes('sonnet')) score += VISION_SCORE_MID
+    else if (id.includes('opus'))   score += VISION_SCORE_SLOW
+    // Newer versions preferred (claude-3-7 > claude-3-5 > claude-3)
+    const ver = id.match(/claude-(\d+)-?(\d*)/)
+    if (ver) score += parseFloat(`${ver[1]}.${ver[2] || 0}`) * VISION_SCORE_GEN_WEIGHT
+  } else if (provider === 'openai') {
+    if (id.includes('mini'))          score += VISION_SCORE_CHEAP
+    else if (id.includes('4o'))       score += VISION_SCORE_MID
+    else if (id.startsWith('gpt-4'))  score += VISION_SCORE_BASIC
+    // gpt-3.5 / o1 / o3 don't support vision — give zero so they're excluded
+    if (id.includes('3.5') || id.startsWith('o1') || id.startsWith('o3') || id.startsWith('o4')) score = 0
+  }
+
+  return score
+}
+
+/**
+ * Fetch vision-capable models for a provider from its API, sorted cheapest/fastest first.
+ * Returns an empty array on any error (fail silently — the caller handles graceful degradation).
+ * No hardcoded model IDs — the list is always fresh from the provider's models API.
+ */
+async function fetchVisionModels(provider: string, apiKey: string): Promise<string[]> {
+  try {
+    let ids: string[] = []
+
+    if (provider === 'gemini') {
+      const url = `${GEMINI_API_BASE}/models?key=${apiKey}&pageSize=${GEMINI_MODELS_PAGE_SIZE}`
+      const res = await fetchWithTimeout(url, {}, VISION_DISCOVERY_TIMEOUT_MS)
+      if (!res.ok) return []
+      const data = await res.json() as {
+        models?: Array<{ name: string; supportedGenerationMethods?: string[] }>
+      }
+      ids = (data.models ?? [])
+        .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
+        .map(m => m.name.replace('models/', ''))
+        .filter(id => id.startsWith('gemini-') && !NON_VISION_PATTERN.test(id))
+    } else if (provider === 'claude') {
+      const res = await fetchWithTimeout(
+        `${ANTHROPIC_API_BASE}/v1/models?limit=${ANTHROPIC_MODELS_LIMIT}`,
+        {
+          headers: {
+            'x-api-key': apiKey,
+            'anthropic-version': ANTHROPIC_API_VERSION,
+            'content-type': 'application/json',
+          },
+        },
+        VISION_DISCOVERY_TIMEOUT_MS,
+      )
+      if (!res.ok) return []
+      const data = await res.json() as { data?: Array<{ id: string }> }
+      ids = (data.data ?? [])
+        .map(m => m.id)
+        .filter(id => id.startsWith('claude') && !NON_VISION_PATTERN.test(id))
+    } else if (provider === 'openai') {
+      const OpenAI = (await import('openai')).default
+      // Pass timeout to the client so models.list() respects VISION_DISCOVERY_TIMEOUT_MS
+      const client = new OpenAI({ apiKey, timeout: VISION_DISCOVERY_TIMEOUT_MS })
+      const response = await client.models.list()
+      ids = response.data
+        .map(m => m.id)
+        .filter(id => {
+          const lower = id.toLowerCase()
+          // Only gpt-4+ family supports vision; gpt-3.5 and reasoning models do not
+          return lower.startsWith('gpt-4') && !NON_VISION_PATTERN.test(id)
+        })
+    }
+
+    return ids
+      .filter(id => scoreModelForVision(provider, id) > 0)
+      .sort((a, b) => scoreModelForVision(provider, b) - scoreModelForVision(provider, a))
+  } catch (err) {
+    console.warn(`fetchVisionModels(${provider}) failed, no fallback candidates:`, err)
+    return []
+  }
+}
 
 // DUP-02: Removed local `getApiKey` wrapper — call getStoredApiKey directly.
 // HC-06: Gemini base URL now uses GEMINI_API_BASE constant.
@@ -265,7 +401,13 @@ async function translateImageWithOpenAI(
 
 // ── Exported for unit testing ─────────────────────────────────────────────────
 /** @internal — exported for unit tests only */
-export { langName, buildPrompt as buildImageTranslatePrompt }
+export {
+  langName,
+  buildPrompt as buildImageTranslatePrompt,
+  scoreModelForVision,
+  isVisionUnsupportedError,
+  isModelNotFoundError,
+}
 
 // ── Provider registry — DUP-04 / DUP-06 ──────────────────────────────────────
 // Registry eliminates the switch/case dispatch block and makes the provider
@@ -285,7 +427,7 @@ const IMAGE_TRANSLATE_PROVIDERS: Record<string, ImageTranslateFn> = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function registerImageTranslateHandlers(ipcMain: IpcMain) {
-  ipcMain.handle('image:translate', async (_event, params: ImageTranslateParams) => {
+  ipcMain.handle('image:translate', async (event, params: ImageTranslateParams) => {
     const { provider, model, imageBase64, imageMimeType, sourceLang, targetLang } = params
 
     if (!imageBase64) {
@@ -312,22 +454,99 @@ export function registerImageTranslateHandlers(ipcMain: IpcMain) {
         }
       }
 
+      // ── Smart vision fallback ─────────────────────────────────────────────
+      // Strategy:
+      //   1. Try user's selected model first (always, regardless of type)
+      //   2. On vision/not-found error → fetch available models from the same provider API,
+      //      filter vision-capable, sort cheapest/fastest first, try each
+      //   3. If all same-provider models fail → try other providers (if key available),
+      //      using their dynamically-fetched vision models
+      // No hardcoded model IDs — always uses live data from the provider's models API.
+
+      // Start with just the user's model; fallback candidates are fetched lazily on first failure
+      const triedModels = new Set<string>()
+      let fallbacksFetched = false
+      let candidates: Array<{ p: string; m: string }> = [{ p: provider, m: model }]
+
       let regions: TextRegion[] = []
+      let usedModel = model
+      let usedProvider = provider
+      let succeeded = false
 
-      // DUP-06: registry lookup replaces switch/case
-      const imageFn = IMAGE_TRANSLATE_PROVIDERS[provider]
-      if (!imageFn) return { success: false, error: `Unknown provider: ${provider}` }
-      regions = await imageFn(apiKey, model, imageBase64, imageMimeType, sourceLang, targetLang)
+      for (let i = 0; i < candidates.length; i++) {
+        const { p, m } = candidates[i]
+        const candidateKey = `${p}/${m}`
+        if (triedModels.has(candidateKey)) continue
+        triedModels.add(candidateKey)
 
-      return { success: true, regions }
+        const fn = IMAGE_TRANSLATE_PROVIDERS[p]
+        if (!fn) continue
+        const key = p === provider ? apiKey : getStoredApiKey(p)
+        if (!key) continue
+
+        // Notify renderer immediately when switching to a fallback model/provider
+        if (m !== model || p !== provider) {
+          event.sender.send('image:model-switched', { model: m, provider: p })
+          console.info(`Image translate: switching to ${p}/${m} (requested: ${provider}/${model})`)
+        }
+
+        try {
+          regions = await fn(key, m, imageBase64, imageMimeType, sourceLang, targetLang)
+          usedModel = m
+          usedProvider = p
+          succeeded = true
+          break
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          const retryable = isVisionUnsupportedError(msg) || isModelNotFoundError(msg)
+
+          if (!retryable) {
+            // Non-retryable error (auth, rate-limit, network) → stop immediately
+            throw err
+          }
+
+          console.warn(`Image translate: ${p}/${m} failed (${retryable ? 'retryable' : 'fatal'}): ${msg.slice(0, 120)}`)
+
+          // Lazily fetch fallback candidates on first retryable failure
+          if (!fallbacksFetched) {
+            fallbacksFetched = true
+
+            // Same-provider fallbacks: fetch vision models from provider API
+            const sameProviderModels = await fetchVisionModels(provider, apiKey)
+            for (const fb of sameProviderModels) {
+              if (fb !== model) candidates.push({ p: provider, m: fb })
+            }
+
+            // Cross-provider fallbacks: try other providers if they have a key
+            for (const otherProvider of Object.keys(IMAGE_TRANSLATE_PROVIDERS)) {
+              if (otherProvider === provider) continue
+              const otherKey = getStoredApiKey(otherProvider)
+              if (!otherKey) continue
+              const otherModels = await fetchVisionModels(otherProvider, otherKey)
+              if (otherModels.length > 0) candidates.push({ p: otherProvider, m: otherModels[0] })
+            }
+          }
+          // Continue loop — next iteration picks the next candidate
+        }
+      }
+
+      if (!succeeded) {
+        return {
+          success: false,
+          error: 'No vision-capable model available. Please select a vision-capable model (e.g. gemini-2.0-flash, gpt-4o, claude-3-5-haiku).',
+          errorCode: 'NO_VISION',
+        }
+      }
+
+      const switched = usedModel !== model || usedProvider !== provider
+      return {
+        success: true,
+        regions,
+        ...(switched ? { usedModel, usedProvider } : {}),
+      }
     } catch (error: unknown) {
       console.error(`Image translation error with ${provider}:`, error)
       const msg = error instanceof Error ? error.message : String(error)
-
-      // Image translate has an extra error case for no-vision models
-      if (msg.includes('vision') || msg.includes('image') || msg.includes('multimodal')) {
-        return { success: false, error: 'The selected model does not support image input. Please use a vision-capable model (e.g. gpt-4o, gemini-1.5-flash, claude-3).', errorCode: 'NO_VISION' }
-      }
       // DUP-01: use classifyProviderError for standard error categorization
       return classifyProviderError(msg)
     }

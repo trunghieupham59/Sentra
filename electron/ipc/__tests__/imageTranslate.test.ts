@@ -24,6 +24,9 @@ import {
   langName,
   buildImageTranslatePrompt,
   registerImageTranslateHandlers,
+  scoreModelForVision,
+  isVisionUnsupportedError,
+  isModelNotFoundError,
 } from '../imageTranslate'
 import { getStoredApiKey } from '../storage'
 
@@ -229,5 +232,127 @@ describe('registerImageTranslateHandlers — error code categorization', () => {
     })
     expect(result.success).toBe(false)
     expect(['RATE_LIMIT', undefined]).toContain(result.errorCode)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('scoreModelForVision', () => {
+  // ── Gemini ────────────────────────────────────────────────────────────────
+  it('scores gemini flash higher than pro (cheaper preferred)', () => {
+    expect(scoreModelForVision('gemini', 'gemini-2.0-flash'))
+      .toBeGreaterThan(scoreModelForVision('gemini', 'gemini-1.5-pro'))
+  })
+
+  it('penalizes gemini lite variants', () => {
+    expect(scoreModelForVision('gemini', 'gemini-2.0-flash'))
+      .toBeGreaterThan(scoreModelForVision('gemini', 'gemini-2.0-flash-lite'))
+  })
+
+  it('prefers newer gemini generation over older (gemini-2 > gemini-1)', () => {
+    expect(scoreModelForVision('gemini', 'gemini-2.0-flash'))
+      .toBeGreaterThan(scoreModelForVision('gemini', 'gemini-1.5-flash'))
+  })
+
+  // ── Claude ────────────────────────────────────────────────────────────────
+  it('scores claude haiku highest (cheapest)', () => {
+    const haiku  = scoreModelForVision('claude', 'claude-3-5-haiku-20241022')
+    const sonnet = scoreModelForVision('claude', 'claude-3-5-sonnet-20241022')
+    const opus   = scoreModelForVision('claude', 'claude-3-opus-20240229')
+    expect(haiku).toBeGreaterThan(sonnet)
+    expect(sonnet).toBeGreaterThan(opus)
+  })
+
+  it('gives positive score to all valid claude vision models', () => {
+    expect(scoreModelForVision('claude', 'claude-3-5-haiku-20241022')).toBeGreaterThan(0)
+    expect(scoreModelForVision('claude', 'claude-3-5-sonnet-20241022')).toBeGreaterThan(0)
+    expect(scoreModelForVision('claude', 'claude-3-7-sonnet-20250219')).toBeGreaterThan(0)
+  })
+
+  // ── OpenAI ────────────────────────────────────────────────────────────────
+  it('scores gpt-4o-mini highest for openai (cheapest vision)', () => {
+    expect(scoreModelForVision('openai', 'gpt-4o-mini'))
+      .toBeGreaterThan(scoreModelForVision('openai', 'gpt-4o'))
+  })
+
+  it('gives zero score to gpt-3.5-turbo (no vision support)', () => {
+    expect(scoreModelForVision('openai', 'gpt-3.5-turbo')).toBe(0)
+  })
+
+  it('gives zero score to o1 reasoning models (no vision support)', () => {
+    expect(scoreModelForVision('openai', 'o1-mini')).toBe(0)
+    expect(scoreModelForVision('openai', 'o3-mini')).toBe(0)
+  })
+
+  it('returns 0 for unknown provider', () => {
+    expect(scoreModelForVision('unknown', 'some-model')).toBe(0)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('isVisionUnsupportedError', () => {
+  it('detects "Image input modality is not enabled" error', () => {
+    expect(isVisionUnsupportedError('Image input modality is not enabled for this model')).toBe(true)
+  })
+
+  it('detects "modality" keyword', () => {
+    expect(isVisionUnsupportedError('[400 Bad Request] modality not supported')).toBe(true)
+  })
+
+  it('detects "does not support" phrase', () => {
+    expect(isVisionUnsupportedError('This model does not support image inputs')).toBe(true)
+  })
+
+  it('detects "not enabled" phrase', () => {
+    expect(isVisionUnsupportedError('Vision not enabled for this endpoint')).toBe(true)
+  })
+
+  it('detects "multimodal" keyword', () => {
+    expect(isVisionUnsupportedError('multimodal input is not available')).toBe(true)
+  })
+
+  it('returns false for unrelated errors', () => {
+    expect(isVisionUnsupportedError('401 Unauthorized invalid_api_key')).toBe(false)
+    expect(isVisionUnsupportedError('429 rate_limit exceeded quota')).toBe(false)
+    expect(isVisionUnsupportedError('Network request failed')).toBe(false)
+  })
+
+  it('is case-insensitive', () => {
+    expect(isVisionUnsupportedError('IMAGE INPUT MODALITY IS NOT ENABLED')).toBe(true)
+    expect(isVisionUnsupportedError('Does Not Support images')).toBe(true)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('isModelNotFoundError', () => {
+  it('detects Anthropic not_found_error', () => {
+    expect(isModelNotFoundError('{"type":"not_found_error","message":"model: claude-3-5-haiku-20241022"}')).toBe(true)
+  })
+
+  it('detects "model not found" phrase', () => {
+    expect(isModelNotFoundError('model not found: gpt-4-turbo-preview')).toBe(true)
+  })
+
+  it('detects "does not exist" phrase', () => {
+    expect(isModelNotFoundError('The model gemini-old does not exist')).toBe(true)
+  })
+
+  it('detects 404 + model combination', () => {
+    expect(isModelNotFoundError('404 models/gemini-exp is not found')).toBe(true)
+  })
+
+  it('returns false for 404 without model context', () => {
+    // A plain 404 on a non-model endpoint should not be treated as model-not-found
+    expect(isModelNotFoundError('404 Not Found on endpoint /v1/chat/completions')).toBe(false)
+  })
+
+  it('returns false for unrelated errors', () => {
+    expect(isModelNotFoundError('401 Unauthorized')).toBe(false)
+    expect(isModelNotFoundError('429 rate_limit')).toBe(false)
+    expect(isModelNotFoundError('Image input modality is not enabled')).toBe(false)
+  })
+
+  it('is case-insensitive', () => {
+    expect(isModelNotFoundError('MODEL NOT FOUND')).toBe(true)
+    expect(isModelNotFoundError('Not_Found_Error for this request')).toBe(true)
   })
 })

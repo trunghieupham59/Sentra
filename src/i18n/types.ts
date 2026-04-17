@@ -119,6 +119,12 @@ export interface Translations {
   settings_about_supports: string
   settings_about_footer: string
 
+  // Image translation — model switch notice
+  /** Toast title when the system auto-switched to a different model for image translation */
+  image_model_switched_title: string
+  /** Toast body suffix: "Using {model} — {this string}" */
+  image_model_switched_body: string
+
   // Image translation
   image_translate_title: string
   image_translate_btn: string

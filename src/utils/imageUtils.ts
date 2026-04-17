@@ -126,3 +126,15 @@ export async function resizeImageFile(
 
   return { base64, mimeType, previewUrl, width, height, fileName: file.name }
 }
+
+/**
+ * Extracts the first image File from a clipboard DataTransfer.
+ * Returns `null` if no image item is present.
+ *
+ * Shared between ChatPage and TranslatePage paste handlers to avoid
+ * duplicating the clipboard-item extraction logic (DRY).
+ */
+export function extractImageFromClipboard(clipboardData: DataTransfer): File | null {
+  const imageItem = Array.from(clipboardData.items).find(item => item.type.startsWith('image/'))
+  return imageItem?.getAsFile() ?? null
+}

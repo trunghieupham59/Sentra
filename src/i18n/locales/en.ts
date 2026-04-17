@@ -125,6 +125,8 @@ const en: Translations = {
   settings_about_platform: 'Platform',
   settings_about_supports: 'Supports',
   settings_about_footer: '🔒 100% local · No server · No telemetry · API keys stay on your device',
+  image_model_switched_title: 'Model switched',
+  image_model_switched_body: "doesn't support image input",
   image_translate_title: 'Translate Image',
   image_translate_btn: 'Translate Image',
   image_translate_upload_hint: 'Drop an image here or click to browse\nJPEG, PNG, WebP — large images are auto-resized',

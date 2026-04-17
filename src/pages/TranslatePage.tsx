@@ -17,12 +17,12 @@ import { PhoneticToggle } from '../components/ui/PhoneticToggle'
 import { RewriteButton } from '../components/ui/RewriteButton'
 import { SpeakButton } from '../components/ui/SpeakButton'
 import { TranslateButton } from '../components/ui/TranslateButton'
-import { AlertTriangleIcon, ArrowRightIcon, AutoDetectIcon, ChevronDownIcon, DownloadIcon, SpinnerIcon } from '../components/ui/icons'
+import { AlertTriangleIcon, ArrowRightIcon, AutoDetectIcon, ChevronDownIcon, DownloadIcon, SpinnerIcon, XIcon } from '../components/ui/icons'
 import { VoiceRecorder } from '../components/VoiceRecorder'
 import { MAX_TRANSLATE_IMAGE_DIMENSION } from '../constants/image'
 import { MAX_INPUT_CHARS } from '../constants/providers'
 import { COPY_FEEDBACK_DURATION_MS, IMAGE_AUTO_TRANSLATE_DELAY_MS } from '../constants/ui'
-import { resizeImageFile } from '../utils/imageUtils'
+import { resizeImageFile, extractImageFromClipboard } from '../utils/imageUtils'
 import { useTTS } from '../hooks/useTTS'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import { useAppStore, useT } from '../store/useAppStore'
@@ -59,9 +59,22 @@ export function TranslatePage() {
   const charCount = sourceText.length
   const [copied, setCopied] = useState(false)
   const [isRewriting, setIsRewriting] = useState<'source' | 'translated' | null>(null)
+  /** Shown when image translation silently switched to a different model/provider */
+  const [imageSwitchNotice, setImageSwitchNotice] = useState<{ model: string; provider: string } | null>(null)
 
   // TTS — delegated to useTTS hook (Web Audio API + OS synthesis fallback, no console.log)
   const { speakingPanel, speakLoading, handleSpeak, stopSpeak } = useTTS({ ttsVoice })
+
+  // ── Real-time model-switch notice from main process ──
+  // Subscribe once on mount — main process emits 'image:model-switched' immediately
+  // before the fallback translation starts, so the user sees the warning right away.
+  useEffect(() => {
+    if (!window.api?.onImageModelSwitched) return
+    const cleanup = window.api.onImageModelSwitched(({ model: m, provider: p }) => {
+      setImageSwitchNotice({ model: m, provider: p })
+    })
+    return cleanup
+  }, [])
 
   // Image attachment state
   const [imageAttachment, setImageAttachment] = useState<ImageAttachment | null>(null)
@@ -109,6 +122,14 @@ export function TranslatePage() {
     if (file) processImageFile(file)
     // Reset input so the same file can be re-selected
     e.target.value = ''
+  }, [processImageFile])
+
+  // ── Paste image from clipboard into the source panel ──
+  const handleSourcePanelPaste = useCallback((e: React.ClipboardEvent<HTMLElement>) => {
+    const file = extractImageFromClipboard(e.clipboardData)
+    if (!file) return
+    e.preventDefault()
+    processImageFile(file)
   }, [processImageFile])
 
   const handleSourcePanelDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -180,6 +201,16 @@ export function TranslatePage() {
           setTranslateError('No text found in image')
         } else {
           setTranslateError(result.error || 'Image translation failed')
+        }
+
+        // Show notice if system auto-switched to a different model/provider
+        if (result.success && (result.usedModel || result.usedProvider)) {
+          setImageSwitchNotice({
+            model: result.usedModel ?? selectedModels[selectedProvider],
+            provider: result.usedProvider ?? selectedProvider,
+          })
+        } else {
+          setImageSwitchNotice(null)
         }
       } catch (err) {
         if (translateGenerationRef.current !== generation) return
@@ -493,6 +524,7 @@ export function TranslatePage() {
           onDragOver={handleSourcePanelDragOver}
           onDragLeave={handleSourcePanelDragLeave}
           onDrop={handleSourcePanelDrop}
+          onPaste={handleSourcePanelPaste}
         >
           {/* Drop indicator overlay */}
           {isDraggingOver && (
@@ -522,9 +554,11 @@ export function TranslatePage() {
                 setTranslatedText('')
                 setPhoneticText('')
                 setTranslateError(null)
+                setImageSwitchNotice(null)
               }}
             />
           )}
+
 
           {/* ── Typora-like markdown editor (line being edited = raw, others = rendered) ── */}
           <div
@@ -766,6 +800,35 @@ export function TranslatePage() {
         </div>
       </div>
 
+      {/* ── Model-switch warning toast — floating red popup at bottom center ── */}
+      {imageSwitchNotice && (
+        <div className="pointer-events-auto fixed bottom-16 left-1/2 -translate-x-1/2 z-50
+                        max-w-sm w-full mx-4 fade-in">
+          <div className="flex items-start gap-2.5 px-4 py-3
+                          bg-red-600 dark:bg-red-700 text-white
+                          rounded-xl shadow-lg shadow-red-900/20">
+            <AlertTriangleIcon className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold leading-snug">{t.image_model_switched_title}</p>
+              <p className="text-xs opacity-90 leading-snug mt-0.5">
+                Using <strong>{imageSwitchNotice.model}</strong>
+                {imageSwitchNotice.provider !== selectedProvider && (
+                  <> ({imageSwitchNotice.provider})</>
+                )}
+                {' '}— {t.image_model_switched_body}.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setImageSwitchNotice(null)}
+              className="flex-shrink-0 text-white/70 hover:text-white cursor-pointer mt-0.5"
+              aria-label="Dismiss"
+            >
+              <XIcon className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

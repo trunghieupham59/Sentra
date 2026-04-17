@@ -72,4 +72,30 @@ export const VERIFY_MODEL_OPENAI = 'gpt-4o-mini'
 export const GEMINI_TTS_MODEL = 'gemini-2.5-flash-preview-tts'
 
 /** Gemini image-editing model — used for in-image text translation. */
-export const GEMINI_IMAGE_EDIT_MODEL = 'gemini-2.0-flash-exp-image-generation'
+export const GEMINI_IMAGE_EDIT_MODEL = 'gemini-2.0-flash-preview-image-generation'
+
+// ── External API base URLs ────────────────────────────────────────────────────
+/** Anthropic REST API base URL. HC: centralised so it can be updated in one place. */
+export const ANTHROPIC_API_BASE = 'https://api.anthropic.com'
+
+// ── Vision model discovery ────────────────────────────────────────────────────
+/** Max models to request from Gemini models list API. */
+export const GEMINI_MODELS_PAGE_SIZE = 50
+
+/** Max models to request from Anthropic models list API. */
+export const ANTHROPIC_MODELS_LIMIT = 20
+
+/** Timeout (ms) for provider models-list API calls used during vision fallback discovery. */
+export const VISION_DISCOVERY_TIMEOUT_MS = 5_000
+
+// ── Vision model scoring weights ─────────────────────────────────────────────
+// Used by scoreModelForVision() to rank candidates cheapest/fastest first.
+// Higher score = more preferred. Adjust when provider pricing tiers change.
+export const VISION_SCORE_CHEAP   = 100  // flash / mini / haiku — fastest & cheapest
+export const VISION_SCORE_MID     = 70   // 4o / sonnet — balanced
+export const VISION_SCORE_CAPABLE = 60   // pro — more capable
+export const VISION_SCORE_BASIC   = 50   // gpt-4 base tier
+export const VISION_SCORE_SLOW    = 20   // opus — most powerful but slowest/priciest
+export const VISION_SCORE_GEN_WEIGHT = 10  // bonus per generation number unit
+export const VISION_SCORE_LITE_PENALTY = 30 // penalty for lite/nano variants
+

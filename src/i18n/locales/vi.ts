@@ -125,6 +125,8 @@ const vi: Translations = {
   settings_about_platform: 'Nền tảng',
   settings_about_supports: 'Hỗ trợ',
   settings_about_footer: '🔒 100% cục bộ · Không có server · Không theo dõi · API key ở lại thiết bị',
+  image_model_switched_title: 'Đã chuyển model',
+  image_model_switched_body: 'không hỗ trợ nhận ảnh làm đầu vào',
   image_translate_title: 'Dịch ảnh',
   image_translate_btn: 'Dịch ảnh',
   image_translate_upload_hint: 'Kéo ảnh vào đây hoặc nhấn để chọn\nJPEG, PNG, WebP — ảnh lớn sẽ tự động thu nhỏ',
