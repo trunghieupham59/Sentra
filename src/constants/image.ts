@@ -21,3 +21,9 @@ export const IMAGE_JPEG_QUALITY = 0.85
 /** Maximum compressed image size in bytes before attempting quality reduction.
  *  ~900 KB keeps base64-encoded payloads well within API limits. */
 export const MAX_IMAGE_BYTES = 900_000
+
+/**
+ * Accepted MIME types string for <input type="file" accept="..."> on image pickers.
+ * Used in TranslatePage and any other file-input that accepts images.
+ */
+export const ACCEPTED_IMAGE_MIME_TYPES = 'image/jpeg,image/png,image/webp,image/gif'

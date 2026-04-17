@@ -111,6 +111,12 @@ export const MAX_CHAT_INPUT_CHARS = 3000
  */
 export const DETECT_LANG_MAX_CHARS = 500
 
+/**
+ * Fallback language code for TTS when source language is set to 'auto'.
+ * 'auto' is not a valid BCP-47 tag for speech synthesis, so we fall back to English.
+ */
+export const DEFAULT_TTS_FALLBACK_LANG = 'en'
+
 export const DEFAULT_SETTINGS = {
   defaultProvider: 'gemini' as const,
   defaultSourceLang: 'auto',

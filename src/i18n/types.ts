@@ -23,6 +23,14 @@ export interface Translations {
   translate_swap: string
   translate_error_no_key: string
   translate_error_open_settings: string
+  /** Button label to dismiss / close the error banner */
+  translate_error_dismiss: string
+  /** Button label to retry the last failed translation */
+  translate_error_retry: string
+  /** Error shown when rewrite fails */
+  translate_error_rewrite: string
+  /** Error shown when copy to clipboard fails */
+  translate_error_copy: string
   translate_phonetic: string
   translate_style_label: string
   translate_style_friendly: string
@@ -128,6 +136,8 @@ export interface Translations {
   image_model_switched_title: string
   /** Toast body suffix: "Using {model} — {this string}" */
   image_model_switched_body: string
+  /** Template: "Using {model}" — shown before the body in the model-switch toast */
+  image_model_switched_using: string
 
   // Image translation
   image_translate_title: string

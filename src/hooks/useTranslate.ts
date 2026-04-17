@@ -55,6 +55,19 @@ export function useTranslate() {
   const hasKey = keyStatus[selectedProvider]
   const charCount = sourceText.length
 
+  /**
+   * True when the current error is due to a missing or invalid API key.
+   * Computed once here instead of via fragile substring matching in the view.
+   */
+  const isApiKeyError = !!(translateError && (
+    !hasKey ||
+    translateError === t.translate_error_no_key ||
+    translateError.toLowerCase().includes('api key') ||
+    translateError.toLowerCase().includes('apikey') ||
+    translateError.toLowerCase().includes('unauthorized') ||
+    translateError.toLowerCase().includes('invalid key')
+  ))
+
   const [copied, setCopied] = useState(false)
   const [isRewriting, setIsRewriting] = useState<'source' | 'translated' | null>(null)
   /** Shown when image translation silently switched to a different model/provider */
@@ -317,21 +330,28 @@ export function useTranslate() {
   /** Download the translated image (original + text regions overlaid) */
   const handleDownloadTranslatedImage = useCallback(async () => {
     if (!imageAttachment || !imageRegions) return
-    const canvas  = document.createElement('canvas')
-    canvas.width  = imageAttachment.width
-    canvas.height = imageAttachment.height
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    const img = new Image()
-    img.src = imageAttachment.previewDataUrl
-    await new Promise<void>(resolve => { img.onload = () => resolve() })
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-    renderTranslatedRegions(ctx, imageRegions, canvas.width, canvas.height)
-    const a = document.createElement('a')
-    a.href = canvas.toDataURL('image/png')
-    a.download = `translated_${Date.now()}.png`
-    a.click()
-  }, [imageAttachment, imageRegions])
+    try {
+      const canvas  = document.createElement('canvas')
+      canvas.width  = imageAttachment.width
+      canvas.height = imageAttachment.height
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+      const img = new Image()
+      img.src = imageAttachment.previewDataUrl
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve()
+        img.onerror = () => reject(new Error('Failed to load image'))
+      })
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      renderTranslatedRegions(ctx, imageRegions, canvas.width, canvas.height)
+      const a = document.createElement('a')
+      a.href = canvas.toDataURL('image/png')
+      a.download = `translated_${Date.now()}.png`
+      a.click()
+    } catch (err) {
+      setTranslateError(err instanceof Error ? err.message : 'Failed to download image')
+    }
+  }, [imageAttachment, imageRegions, setTranslateError])
 
   /** Download the Gemini-edited image directly */
   const handleDownloadEditedImage = useCallback(() => {
@@ -423,9 +443,13 @@ export function useTranslate() {
   const handleCopy = async () => {
     const textToCopy = showFurigana && phoneticText ? phoneticText : translatedText
     if (!textToCopy) return
-    await navigator.clipboard.writeText(textToCopy)
-    setCopied(true)
-    setTimeout(() => setCopied(false), COPY_FEEDBACK_DURATION_MS)  // HC-03
+    try {
+      await navigator.clipboard.writeText(textToCopy)
+      setCopied(true)
+      setTimeout(() => setCopied(false), COPY_FEEDBACK_DURATION_MS)  // HC-03
+    } catch (_err) {
+      setTranslateError(t.translate_error_copy)
+    }
   }
 
   // Rewrite: make text more natural in its own language without changing meaning
@@ -476,7 +500,7 @@ export function useTranslate() {
         }
       }
     } catch (err) {
-      console.error('[rewrite] error:', err)
+      setTranslateError(err instanceof Error ? err.message : t.translate_error_rewrite)
     } finally {
       setIsRewriting(null)
     }
@@ -508,6 +532,11 @@ export function useTranslate() {
     setDetectedSourceLang(null)
     setIsDetectingLang(false)
   }, [stopSpeak, setIsTranslating, setSourceText, setTranslatedText, setPhoneticText, setTranslateError])
+
+  /** Dismisses the current error banner — clears translateError in store */
+  const handleDismissError = useCallback(() => {
+    setTranslateError(null)
+  }, [setTranslateError])
 
   /** Removes the attached image (ImageAttachmentPreview onRemove) — cancels in-flight job */
   const handleRemoveImage = useCallback(() => {
@@ -555,6 +584,7 @@ export function useTranslate() {
     setImageSwitchNotice,
     // ── Computed ───────────────────────────────────────────────────────────
     charCount,
+    isApiKeyError,
     // ── TTS ────────────────────────────────────────────────────────────────
     speakingPanel,
     speakLoading,
@@ -571,6 +601,7 @@ export function useTranslate() {
     handleRewrite,
     handleSwapLanguages,
     handleCopy,
+    handleDismissError,
     handleDownloadTranslatedImage,
     handleDownloadEditedImage,
     handleSourceChange,
