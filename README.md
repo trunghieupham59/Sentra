@@ -177,7 +177,7 @@ lotus/
 | [Vite v5](https://vitejs.dev/) | Build tool |
 | [Tailwind CSS v3](https://tailwindcss.com/) | Styling |
 | [Zustand v5](https://zustand-demo.pmnd.rs/) | State management |
-| [keytar v7](https://github.com/atom/node-keytar) | OS Keychain integration |
+| [Electron safeStorage](https://www.electronjs.org/docs/latest/api/safe-storage) | OS-level encrypted key storage (built-in, no native compilation) |
 | [electron-builder v26](https://www.electron.build/) | App packaging & distribution |
 
 ---

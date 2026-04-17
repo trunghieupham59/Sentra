@@ -41,6 +41,7 @@ export function LiveTranslatePage() {
   const {
     audioMode, setAudioMode, screenPermission,
     isActive, rawTranscript, translation, isTranscribing, isTranslating, micError,
+    pipelineError,
     showSubtitles, setShowSubtitles, latestSubtitle,
     showSubtitleConfig, setShowSubtitleConfig, subtitleSettings, setSubtitleSettings,
     showSummaryBtn, summary, isSummarizing,
@@ -72,7 +73,7 @@ export function LiveTranslatePage() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-950">
+    <div className="relative flex flex-col h-full bg-gray-50 dark:bg-gray-950">
 
       {/* Toolbar */}
       <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5
@@ -477,6 +478,21 @@ export function LiveTranslatePage() {
           {wordCount > 0 ? `${wordCount.toLocaleString()} ${t.live_words}` : ''}
         </span>
       </div>
+
+      {/* Pipeline error toast — transient amber, auto-dismissed by the hook after 4 s */}
+      {pipelineError && (
+        <div className="pointer-events-none absolute bottom-14 inset-x-0 flex justify-center px-4 z-50">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg
+                          bg-amber-50 dark:bg-amber-950/60
+                          border border-amber-200 dark:border-amber-700/60
+                          text-amber-700 dark:text-amber-300
+                          text-xs font-medium shadow-md
+                          animate-[fadeIn_0.15s_ease-out]">
+            <AlertTriangleIcon className="w-3.5 h-3.5 flex-shrink-0" />
+            {pipelineError}
+          </div>
+        </div>
+      )}
 
     </div>
   )

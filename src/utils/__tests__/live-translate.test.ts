@@ -1,191 +1,421 @@
+/**
+ * Unit tests for src/utils/live-translate.ts
+ *
+ * Tests cover all 3 exported pure functions:
+ *   1. isHallucination   — Whisper hallucination filter
+ *   2. jaccardSimilarity — Word-bag Jaccard similarity
+ *   3. extractCompleteSentences — Sentence boundary splitter
+ */
 import { describe, it, expect } from 'vitest'
-import { isHallucination, jaccardSimilarity, extractCompleteSentences } from '../live-translate'
+import {
+  isHallucination,
+  jaccardSimilarity,
+  extractCompleteSentences,
+} from '../live-translate'
 
-// ─── isHallucination ──────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 describe('isHallucination', () => {
-  it('rejects text shorter than 4 chars', () => {
-    expect(isHallucination('hi')).toBe(true)
-    expect(isHallucination('ok')).toBe(true)
-    expect(isHallucination('ab')).toBe(true)
-    expect(isHallucination('   ')).toBe(true)
+
+  // ── Check 1: too short ────────────────────────────────────────────────────
+  describe('text too short (< 4 chars after trim)', () => {
+    it('returns true for empty string', () => {
+      expect(isHallucination('')).toBe(true)
+    })
+
+    it('returns true for single character', () => {
+      expect(isHallucination('A')).toBe(true)
+    })
+
+    it('returns true for 3-character string', () => {
+      expect(isHallucination('abc')).toBe(true)
+    })
+
+    it('returns true for whitespace-only string (trims to < 4 chars)', () => {
+      expect(isHallucination('   ')).toBe(true)
+    })
+
+    it('returns false for string with exactly 4 meaningful chars', () => {
+      expect(isHallucination('abcd')).toBe(false)
+    })
   })
 
-  it('accepts text 4+ chars that is valid speech', () => {
-    expect(isHallucination('Hello world')).toBe(false)
-    expect(isHallucination('This is a test.')).toBe(false)
+  // ── Check 2: known hallucination patterns ────────────────────────────────
+  describe('English hallucination phrases', () => {
+    it('returns true for "thanks for watching"', () => {
+      expect(isHallucination('thanks for watching')).toBe(true)
+    })
+
+    it('returns true for "Thank you for watching" (case-insensitive)', () => {
+      expect(isHallucination('Thank you for watching')).toBe(true)
+    })
+
+    it('returns true for "Please like and subscribe"', () => {
+      expect(isHallucination('Please like and subscribe')).toBe(true)
+    })
+
+    it('returns true for "subtitles by auto-generated"', () => {
+      expect(isHallucination('subtitles by auto-generated')).toBe(true)
+    })
+
+    it('returns true for lone punctuation "..."', () => {
+      expect(isHallucination('...')).toBe(true)
+    })
+
+    it('returns true for lone dashes "---"', () => {
+      expect(isHallucination('----')).toBe(true)
+    })
   })
 
-  // ── English hallucination patterns ──
-  it('rejects "thanks for watching" patterns', () => {
-    expect(isHallucination('Thanks for watching!')).toBe(true)
-    expect(isHallucination('thank you for watching this video')).toBe(true)
+  describe('bracketed / parenthesised sound effects', () => {
+    it('returns true for "[Music]"', () => {
+      expect(isHallucination('[Music]')).toBe(true)
+    })
+
+    it('returns true for "(music)" (case-insensitive)', () => {
+      expect(isHallucination('(music)')).toBe(true)
+    })
+
+    it('returns true for "[Applause]"', () => {
+      expect(isHallucination('[Applause]')).toBe(true)
+    })
+
+    it('returns true for "[Laughter]"', () => {
+      expect(isHallucination('[Laughter]')).toBe(true)
+    })
+
+    it('returns true for "[inaudible]"', () => {
+      expect(isHallucination('[inaudible]')).toBe(true)
+    })
+
+    it('returns true for Japanese bracketed sound "(笑)"', () => {
+      expect(isHallucination('(笑)')).toBe(true)
+    })
+
+    it('returns true for "(音楽)"', () => {
+      expect(isHallucination('(音楽)')).toBe(true)
+    })
+
+    it('returns true for Vietnamese "(tiếng nhạc)"', () => {
+      expect(isHallucination('(tiếng nhạc)')).toBe(true)
+    })
+
+    it('returns true for "[tiếng vỗ tay]"', () => {
+      expect(isHallucination('[tiếng vỗ tay]')).toBe(true)
+    })
   })
 
-  it('rejects subscribe/like CTAs', () => {
-    expect(isHallucination('Please like and subscribe')).toBe(true)
-    expect(isHallucination("Don't forget to subscribe")).toBe(true)
+  describe('Japanese hallucination phrases', () => {
+    it('returns true for "ご視聴ありがとうございました"', () => {
+      expect(isHallucination('ご視聴ありがとうございました')).toBe(true)
+    })
+
+    it('returns true for "チャンネル登録をお願いします"', () => {
+      expect(isHallucination('チャンネル登録をお願いします')).toBe(true)
+    })
+
+    it('returns true for standalone "ありがとうございます。"', () => {
+      expect(isHallucination('ありがとうございます。')).toBe(true)
+    })
+
+    it('returns true for standalone "ありがとう！"', () => {
+      expect(isHallucination('ありがとう！')).toBe(true)
+    })
   })
 
-  it('rejects bracketed sound effects', () => {
-    expect(isHallucination('[Music]')).toBe(true)
-    expect(isHallucination('[Applause]')).toBe(true)
-    expect(isHallucination('[Silence]')).toBe(true)
-    expect(isHallucination('(music)')).toBe(true)
+  describe('Korean hallucination phrases', () => {
+    it('returns true for "시청해 주셔서 감사합니다"', () => {
+      expect(isHallucination('시청해 주셔서 감사합니다')).toBe(true)
+    })
+
+    it('returns true for "구독 좋아요 눌러주세요"', () => {
+      expect(isHallucination('구독 좋아요 눌러주세요')).toBe(true)
+    })
+
+    it('returns true for standalone "감사합니다"', () => {
+      expect(isHallucination('감사합니다')).toBe(true)
+    })
   })
 
-  it('rejects lone punctuation', () => {
-    expect(isHallucination('...')).toBe(true)
-    expect(isHallucination('—')).toBe(true)
+  describe('Vietnamese hallucination phrases', () => {
+    it('returns true for "cảm ơn các bạn đã xem"', () => {
+      expect(isHallucination('cảm ơn các bạn đã xem')).toBe(true)
+    })
+
+    it('returns true for "Cảm ơn bạn đã xem video này" (case-insensitive)', () => {
+      expect(isHallucination('Cảm ơn bạn đã xem video này')).toBe(true)
+    })
+
+    it('returns true for "đăng ký kênh ngay nhé"', () => {
+      expect(isHallucination('đăng ký kênh ngay nhé')).toBe(true)
+    })
+
+    it('returns true for "like và đăng ký ủng hộ mình nhé"', () => {
+      expect(isHallucination('like và đăng ký ủng hộ mình nhé')).toBe(true)
+    })
+
+    it('returns true for standalone "cảm ơn."', () => {
+      expect(isHallucination('cảm ơn.')).toBe(true)
+    })
+
+    it('returns true for standalone "vâng,"', () => {
+      expect(isHallucination('vâng,')).toBe(true)
+    })
   })
 
-  // ── Japanese patterns ──
-  it('rejects Japanese thank you / channel subscription phrases', () => {
-    expect(isHallucination('ご視聴ありがとうございました')).toBe(true)
-    expect(isHallucination('チャンネル登録をお願いします')).toBe(true)
-    expect(isHallucination('ありがとうございます。')).toBe(true)
+  // ── Check 3: single-character flooding ───────────────────────────────────
+  describe('single-character repetition flooding (> 60% same char)', () => {
+    it('returns true for "aaaaaaaaaa" (all same char)', () => {
+      expect(isHallucination('aaaaaaaaaa')).toBe(true)
+    })
+
+    it('returns true for string where one char covers > 60% of text', () => {
+      // "aaaaaaa bcd" — 7 a's out of 11 chars (63.6%)
+      expect(isHallucination('aaaaaaa bcd')).toBe(true)
+    })
+
+    it('returns false when no single char covers > 60% of text', () => {
+      // evenly distributed characters — no flooding
+      expect(isHallucination('abcdefghij')).toBe(false)
+    })
   })
 
-  it('rejects Japanese sound effect brackets', () => {
-    expect(isHallucination('（音楽）')).toBe(true)
-    expect(isHallucination('[音楽]')).toBe(true)
-    expect(isHallucination('（拍手）')).toBe(true)
+  // ── Check 4: n-gram word repetition ─────────────────────────────────────
+  describe('bigram repetition (≥ 3 occurrences)', () => {
+    it('returns true for "hello world hello world hello world"', () => {
+      expect(isHallucination('hello world hello world hello world')).toBe(true)
+    })
+
+    it('returns true for repeated bigram with extra tokens', () => {
+      expect(isHallucination('foo bar foo bar foo bar baz')).toBe(true)
+    })
   })
 
-  // ── Korean patterns ──
-  it('rejects Korean thank you / subscribe patterns', () => {
-    expect(isHallucination('시청해 주셔서 감사합니다')).toBe(true)
-    expect(isHallucination('구독 좋아요 눌러주세요')).toBe(true)
-    expect(isHallucination('감사합니다.')).toBe(true)
+  describe('trigram repetition (≥ 3 occurrences)', () => {
+    it('returns true for "xin chào bạn xin chào bạn xin chào bạn"', () => {
+      expect(isHallucination('xin chào bạn xin chào bạn xin chào bạn')).toBe(true)
+    })
+
+    it('returns true for English trigram repeated 3 times', () => {
+      expect(isHallucination('one two three one two three one two three')).toBe(true)
+    })
   })
 
-  // ── Vietnamese patterns ──
-  it('rejects Vietnamese CTA phrases', () => {
-    expect(isHallucination('Cảm ơn các bạn đã xem video')).toBe(true)
-    expect(isHallucination('Đăng ký kênh nhé')).toBe(true)
-    expect(isHallucination('like và đăng ký')).toBe(true)
-  })
+  // ── Negative cases: real content ─────────────────────────────────────────
+  describe('real content (should return false)', () => {
+    it('returns false for English sentence "Today\'s meeting covered the Q3 roadmap"', () => {
+      expect(isHallucination("Today's meeting covered the Q3 roadmap")).toBe(false)
+    })
 
-  it('rejects standalone Vietnamese fillers', () => {
-    expect(isHallucination('vâng.')).toBe(true)
-    expect(isHallucination('ừ,')).toBe(true)
-  })
+    it('returns false for Japanese sentence "今日の会議では第3四半期の方針を議論しました"', () => {
+      expect(isHallucination('今日の会議では第3四半期の方針を議論しました')).toBe(false)
+    })
 
-  // ── Character flooding ──
-  it('rejects character flooding (≥4 reps covering >60%)', () => {
-    expect(isHallucination('aaaaaaaaaaaaaaaaaaa')).toBe(true)
-    expect(isHallucination('.......................')).toBe(true)
-  })
+    it('returns false for Vietnamese sentence "Hôm nay thời tiết rất đẹp và mát mẻ"', () => {
+      expect(isHallucination('Hôm nay thời tiết rất đẹp và mát mẻ')).toBe(false)
+    })
 
-  // ── N-gram repetition ──
-  it('rejects bigram repetition (≥3 occurrences)', () => {
-    expect(isHallucination('hello world hello world hello world extra')).toBe(true)
-  })
+    it('returns false for Korean natural sentence', () => {
+      expect(isHallucination('오늘 회의에서 3분기 로드맵에 대해 논의했습니다')).toBe(false)
+    })
 
-  it('rejects trigram repetition (≥3 occurrences)', () => {
-    expect(isHallucination('a b c a b c a b c d')).toBe(true)
-  })
-
-  it('accepts valid non-repetitive speech', () => {
-    expect(isHallucination('Today we are going to discuss machine learning techniques.')).toBe(false)
-    expect(isHallucination('Hôm nay chúng ta sẽ nói về học máy và trí tuệ nhân tạo.')).toBe(false)
-    expect(isHallucination('今日は機械学習について詳しく説明します。')).toBe(false)
+    it('returns false for a regular English sentence without hallucination signals', () => {
+      expect(isHallucination('The quick brown fox jumps over the lazy dog')).toBe(false)
+    })
   })
 })
 
-// ─── jaccardSimilarity ────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 describe('jaccardSimilarity', () => {
+
+  // ── Boundary cases ────────────────────────────────────────────────────────
   it('returns 1.0 for identical strings', () => {
-    expect(jaccardSimilarity('hello world', 'hello world')).toBe(1)
+    expect(jaccardSimilarity('hello world', 'hello world')).toBe(1.0)
   })
 
-  it('returns 1.0 for two empty strings', () => {
-    expect(jaccardSimilarity('', '')).toBe(1)
+  it('returns 1.0 when both strings are empty', () => {
+    expect(jaccardSimilarity('', '')).toBe(1.0)
   })
 
-  it('returns 0 for completely different single-word strings', () => {
-    expect(jaccardSimilarity('hello', 'world')).toBe(0)
+  it('returns 0.0 for completely different words', () => {
+    expect(jaccardSimilarity('alpha beta gamma', 'delta epsilon zeta')).toBe(0.0)
   })
 
-  it('returns partial similarity for overlapping words', () => {
-    const sim = jaccardSimilarity('the cat sat on the mat', 'the dog sat on the mat')
-    expect(sim).toBeGreaterThan(0.5)
-    expect(sim).toBeLessThan(1)
+  // ── Partial overlap ───────────────────────────────────────────────────────
+  it('returns a value between 0 and 1 for partial overlap', () => {
+    const result = jaccardSimilarity('hello world foo', 'hello earth bar')
+    expect(result).toBeGreaterThan(0)
+    expect(result).toBeLessThan(1)
   })
 
-  it('is case-insensitive', () => {
-    expect(jaccardSimilarity('Hello World', 'hello world')).toBe(1)
+  it('returns correct value for 50% word overlap (1 shared out of 3 unique)', () => {
+    // a = {'hello', 'world'}, b = {'hello', 'earth'}
+    // intersection = 1, union = 3 → 1/3
+    const result = jaccardSimilarity('hello world', 'hello earth')
+    expect(result).toBeCloseTo(1 / 3, 5)
   })
 
-  it('detects near-duplicate meeting text', () => {
-    const sim = jaccardSimilarity(
-      'The meeting is scheduled for Monday morning at nine',
-      'The meeting is scheduled for Tuesday morning at nine'
-    )
-    expect(sim).toBeGreaterThanOrEqual(0.8)
+  it('returns 1.0 when both strings contain the same words in different order', () => {
+    expect(jaccardSimilarity('world hello', 'hello world')).toBe(1.0)
   })
 
-  it('returns low similarity for very different text', () => {
-    const sim = jaccardSimilarity(
-      'We need to discuss the quarterly budget',
-      'The weather is nice today outside'
-    )
-    expect(sim).toBeLessThan(0.2)
+  // ── Case-insensitivity ────────────────────────────────────────────────────
+  it('is case-insensitive: "Hello" and "hello" are the same word', () => {
+    expect(jaccardSimilarity('Hello World', 'hello world')).toBe(1.0)
+  })
+
+  it('treats "HELLO WORLD" and "hello world" as identical', () => {
+    expect(jaccardSimilarity('HELLO WORLD', 'hello world')).toBe(1.0)
+  })
+
+  it('case-insensitive partial overlap is calculated correctly', () => {
+    // 'Hello Earth' vs 'hello world' — 'hello' matches, 'earth'/'world' don't
+    // intersection=1, union=3 → 1/3
+    const result = jaccardSimilarity('Hello Earth', 'hello world')
+    expect(result).toBeCloseTo(1 / 3, 5)
+  })
+
+  // ── Edge cases ────────────────────────────────────────────────────────────
+  it('returns 0.0 when one string is empty and the other is not', () => {
+    // setA empty, setB non-empty → intersection=0, union=setB.size → 0/n = 0
+    expect(jaccardSimilarity('', 'hello world')).toBe(0.0)
+  })
+
+  it('handles duplicate words within the same string (treated as a set)', () => {
+    // 'hello hello' → set {'hello'}, same as 'hello'
+    expect(jaccardSimilarity('hello hello', 'hello')).toBe(1.0)
+  })
+
+  it('returns a higher score for strings with more shared words', () => {
+    const lowOverlap  = jaccardSimilarity('a b c d', 'a x y z')  // 1 shared
+    const highOverlap = jaccardSimilarity('a b c d', 'a b c z')  // 3 shared
+    expect(highOverlap).toBeGreaterThan(lowOverlap)
   })
 })
 
-// ─── extractCompleteSentences ─────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 describe('extractCompleteSentences', () => {
-  it('extracts sentence ending with period', () => {
-    const { complete, pending } = extractCompleteSentences('Hello world. How are you')
-    expect(complete).toBe('Hello world.')
-    expect(pending).toBe('How are you')
+
+  // ── No boundary ──────────────────────────────────────────────────────────
+  it('returns complete="" and pending=full text when there is no sentence boundary', () => {
+    const result = extractCompleteSentences('Hello world')
+    expect(result.complete).toBe('')
+    expect(result.pending).toBe('Hello world')
   })
 
-  it('extracts sentence ending with exclamation mark', () => {
-    const { complete, pending } = extractCompleteSentences('Great! Keep going')
-    expect(complete).toBe('Great!')
-    expect(pending).toBe('Keep going')
+  it('returns complete="" and pending=trimmed text for empty string', () => {
+    const result = extractCompleteSentences('')
+    expect(result.complete).toBe('')
+    expect(result.pending).toBe('')
   })
 
-  it('extracts sentence ending with question mark', () => {
-    const { complete, pending } = extractCompleteSentences('How are you? Fine')
-    expect(complete).toBe('How are you?')
-    expect(pending).toBe('Fine')
+  // ── ASCII period ─────────────────────────────────────────────────────────
+  it('splits on "." followed by a space', () => {
+    const result = extractCompleteSentences('Hello world. This is pending')
+    expect(result.complete).toBe('Hello world.')
+    expect(result.pending).toBe('This is pending')
   })
 
-  it('extracts multiple sentences, keeps remainder as pending', () => {
-    const { complete, pending } = extractCompleteSentences('First. Second! Third')
-    expect(complete).toBe('First. Second!')
-    expect(pending).toBe('Third')
+  it('splits on "." at end of string — pending is empty', () => {
+    const result = extractCompleteSentences('Hello world.')
+    expect(result.complete).toBe('Hello world.')
+    expect(result.pending).toBe('')
   })
 
-  it('returns empty complete when no sentence boundary', () => {
-    const { complete, pending } = extractCompleteSentences('No ending here at all')
-    expect(complete).toBe('')
-    expect(pending).toBe('No ending here at all')
+  it('uses the LAST sentence boundary when multiple "." exist', () => {
+    const result = extractCompleteSentences('First sentence. Second sentence. Pending here')
+    expect(result.complete).toBe('First sentence. Second sentence.')
+    expect(result.pending).toBe('Pending here')
   })
 
-  it('handles Japanese sentence endings (。)', () => {
-    const { complete, pending } = extractCompleteSentences('こんにちは。元気ですか')
-    expect(complete).toBe('こんにちは。')
-    expect(pending).toBe('元気ですか')
+  // ── Question mark and exclamation mark ───────────────────────────────────
+  it('splits on "?" followed by a space', () => {
+    const result = extractCompleteSentences('Are you there? Still pending')
+    expect(result.complete).toBe('Are you there?')
+    expect(result.pending).toBe('Still pending')
   })
 
-  it('handles Japanese exclamation (！)', () => {
-    const { complete, pending } = extractCompleteSentences('すごい！それは面白い')
-    expect(complete).toBe('すごい！')
-    expect(pending).toBe('それは面白い')
+  it('splits on "!" followed by a space', () => {
+    const result = extractCompleteSentences('Watch out! Some pending text')
+    expect(result.complete).toBe('Watch out!')
+    expect(result.pending).toBe('Some pending text')
   })
 
-  it('handles ellipsis as sentence boundary', () => {
-    const { complete, pending } = extractCompleteSentences('Well… I think')
-    expect(complete).toBe('Well…')
-    expect(pending).toBe('I think')
+  it('splits on "!" at end of string — pending is empty', () => {
+    const result = extractCompleteSentences('Watch out!')
+    expect(result.complete).toBe('Watch out!')
+    expect(result.pending).toBe('')
   })
 
-  it('returns empty pending when text ends with boundary', () => {
-    const { complete, pending } = extractCompleteSentences('Hello world.')
-    expect(complete).toBe('Hello world.')
-    expect(pending).toBe('')
+  // ── CJK full-width punctuation ────────────────────────────────────────────
+  it('splits on "。" (Japanese period) without requiring trailing space', () => {
+    const result = extractCompleteSentences('こんにちは。待機テキスト')
+    expect(result.complete).toBe('こんにちは。')
+    expect(result.pending).toBe('待機テキスト')
+  })
+
+  it('splits on "！" (full-width exclamation mark)', () => {
+    const result = extractCompleteSentences('すごい！続きのテキスト')
+    expect(result.complete).toBe('すごい！')
+    expect(result.pending).toBe('続きのテキスト')
+  })
+
+  it('splits on "？" (full-width question mark)', () => {
+    const result = extractCompleteSentences('どうですか？続きのテキスト')
+    expect(result.complete).toBe('どうですか？')
+    expect(result.pending).toBe('続きのテキスト')
+  })
+
+  it('handles "。" at end of string — pending is empty', () => {
+    const result = extractCompleteSentences('日本語のテスト。')
+    expect(result.complete).toBe('日本語のテスト。')
+    expect(result.pending).toBe('')
+  })
+
+  it('handles "…" (ellipsis) as a sentence boundary', () => {
+    const result = extractCompleteSentences('Something happened…and then')
+    expect(result.complete).toBe('Something happened…')
+    expect(result.pending).toBe('and then')
+  })
+
+  // ── Text ends with boundary ───────────────────────────────────────────────
+  it('returns pending="" when text ends with "."', () => {
+    const result = extractCompleteSentences('This is a complete sentence.')
+    expect(result.pending).toBe('')
+  })
+
+  it('returns pending="" when text ends with "?"', () => {
+    const result = extractCompleteSentences('Is this complete?')
+    expect(result.pending).toBe('')
+  })
+
+  it('returns pending="" when text ends with "。"', () => {
+    const result = extractCompleteSentences('完全な文です。')
+    expect(result.pending).toBe('')
+  })
+
+  // ── Mixed script ─────────────────────────────────────────────────────────
+  it('handles mixed script: English sentence + Japanese sentence + pending', () => {
+    const result = extractCompleteSentences('Hello world. こんにちは！ pending text')
+    expect(result.complete).toBe('Hello world. こんにちは！')
+    expect(result.pending).toBe('pending text')
+  })
+
+  it('trims whitespace from complete and pending', () => {
+    const result = extractCompleteSentences('  Hello world.   pending  ')
+    expect(result.complete).toBe('Hello world.')
+    expect(result.pending).toBe('pending')
+  })
+
+  // ── Multiple consecutive boundaries ──────────────────────────────────────
+  it('handles "!!" as a single boundary token', () => {
+    const result = extractCompleteSentences('Wow!! Still going')
+    expect(result.complete).toBe('Wow!!')
+    expect(result.pending).toBe('Still going')
+  })
+
+  it('handles "?!" as a single boundary token', () => {
+    const result = extractCompleteSentences('Really?! Pending here')
+    expect(result.complete).toBe('Really?!')
+    expect(result.pending).toBe('Pending here')
   })
 })

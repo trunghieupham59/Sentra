@@ -86,4 +86,46 @@ describe('TranslatePage', () => {
     const phoneticBtn = screen.getByTitle(/phonetic|phiên âm|furigana/i)
     expect(phoneticBtn).toBeInTheDocument()
   })
+
+  // ── Required: source text input nhận giá trị ──────────────────────────────
+  it('source text input renders the entered value', () => {
+    act(() => {
+      useAppStore.setState({ sourceText: 'Hello world' })
+    })
+    render(<TranslatePage />)
+    // MarkdownEditor renders unfocused lines as <RenderedLine> → <p>text</p>
+    expect(screen.getByText('Hello world')).toBeInTheDocument()
+  })
+
+  // ── Required: clear button xuất hiện khi có source text ───────────────────
+  it('clear button does NOT appear when source text is empty', () => {
+    // beforeEach already sets sourceText: ''
+    render(<TranslatePage />)
+    // ClearButton uses class btn-ghost — not rendered when sourceText is empty
+    expect(document.querySelector('.btn-ghost')).toBeNull()
+  })
+
+  it('clear button appears when source text is present', () => {
+    act(() => {
+      useAppStore.setState({ sourceText: 'Some text to translate' })
+    })
+    render(<TranslatePage />)
+    // ClearButton (btn-ghost) should render in the source panel bottom bar
+    expect(document.querySelector('.btn-ghost')).not.toBeNull()
+  })
+
+  // ── Required: character counter hiển thị đúng ─────────────────────────────
+  it('character counter displays the correct character count', () => {
+    act(() => {
+      useAppStore.setState({ sourceText: 'Hello' }) // exactly 5 characters
+    })
+    render(<TranslatePage />)
+    // Counter: <span className="text-xs tabular-nums ...">5 chars</span>
+    // (shown when !isVoiceActive; the source counter is first in DOM order)
+    const counter = document.querySelector('.tabular-nums')
+    expect(counter).not.toBeNull()
+    // Must contain the number "5"
+    expect(counter?.textContent).toMatch(/5/)
+  })
 })
+

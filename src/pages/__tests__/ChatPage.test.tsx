@@ -67,4 +67,25 @@ describe('ChatPage', () => {
     const promptButtons = screen.getAllByRole('button')
     expect(promptButtons.length).toBeGreaterThan(1)
   })
+
+  // ── Required: input field nhận text ───────────────────────────────────────
+  it('input field accepts typed text', () => {
+    render(<ChatPage />)
+    // The chat textarea has placeholder t.chat_placeholder = "Type a message…"
+    const textarea = screen.getByPlaceholderText(/type a message/i)
+    expect(textarea).toBeInTheDocument()
+    fireEvent.change(textarea, { target: { value: 'Hello chatbot' } })
+    expect(textarea).toHaveValue('Hello chatbot')
+  })
+
+  // ── Required: empty state hiển thị khi không có session ───────────────────
+  it('empty state is shown when there are no chat sessions', () => {
+    // chatSessions: [] from beforeEach — no session, no messages
+    render(<ChatPage />)
+    // Empty state renders an <h2> with chat_empty_title and a <p> with chat_empty_desc
+    expect(screen.getByRole('heading', { level: 2 })).toBeInTheDocument()
+    // The messages list div should NOT be present (only shown when messages.length > 0)
+    expect(document.querySelector('.space-y-4')).toBeNull()
+  })
 })
+

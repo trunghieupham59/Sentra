@@ -164,6 +164,7 @@ export function useLiveTranslate() {
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [isTranslating,  setIsTranslating]  = useState(false)
   const [micError,       setMicError]       = useState<string | null>(null)
+  const [pipelineError,  setPipelineError]  = useState<string | null>(null)
 
   // ── Subtitle overlay state ─────────────────────────────────────────────────
   const [showSubtitles,      setShowSubtitles]      = useState(false)
@@ -207,6 +208,9 @@ export function useLiveTranslate() {
   // When it hits SILENCE_RESET_CHUNKS, the decoder context is wiped so stale
   // transcript from before a long pause cannot bias the next decode cycle.
   const silentChunkCountRef = useRef(0)
+
+  // Timer ref for auto-clearing pipelineError — avoids stale closures in processChunk
+  const pipelineErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const rawEndRef        = useRef<HTMLDivElement>(null)
   const txEndRef         = useRef<HTMLDivElement>(null)
@@ -263,7 +267,11 @@ export function useLiveTranslate() {
         mimeType,
         language: sourceLang === 'auto' ? undefined : sourceLang,
       })
-    } catch { /* skip */ }
+    } catch {
+      setPipelineError('STT failed — retrying next chunk')
+      if (pipelineErrorTimerRef.current) clearTimeout(pipelineErrorTimerRef.current)
+      pipelineErrorTimerRef.current = setTimeout(() => setPipelineError(null), 4000)
+    }
     finally { setIsTranscribing(false) }
 
     const newText = stt?.success && stt.text?.trim() ? stt.text.trim() : ''
@@ -387,7 +395,11 @@ export function useLiveTranslate() {
           ? `${fullTxForSummaryRef.current} ${newTx}`
           : newTx
       }
-    } catch { /* keep existing */ }
+    } catch {
+      setPipelineError('Translation failed — will retry')
+      if (pipelineErrorTimerRef.current) clearTimeout(pipelineErrorTimerRef.current)
+      pipelineErrorTimerRef.current = setTimeout(() => setPipelineError(null), 4000)
+    }
     finally { setIsTranslating(false) }
 
     recentSentencesRef.current.push(complete)
@@ -716,6 +728,7 @@ export function useLiveTranslate() {
     return () => {
       activeRef.current = false
       if (vadTimerRef.current) clearInterval(vadTimerRef.current)
+      if (pipelineErrorTimerRef.current) clearTimeout(pipelineErrorTimerRef.current)
       try { audioCtxRef.current?.close() } catch {}
       if (streamRef.current) {
         for (const track of streamRef.current.getTracks()) track.stop()
@@ -742,6 +755,7 @@ export function useLiveTranslate() {
     isTranscribing,
     isTranslating,
     micError,
+    pipelineError,
     // Subtitle state
     showSubtitles,
     setShowSubtitles,

@@ -103,6 +103,28 @@ describe('swapLanguages', () => {
     expect(state.sourceLang).toBe('vi')
     expect(state.targetLang).toBe('ja') // falls back to 'ja', not 'auto'
   })
+
+  it('uses detectedLang as new targetLang when provided', () => {
+    act(() => {
+      useAppStore.setState({ sourceLang: 'auto', targetLang: 'vi', sourceText: 'Hello', translatedText: 'Xin chào' })
+      useAppStore.getState().swapLanguages('en')
+    })
+    const state = useAppStore.getState()
+    expect(state.sourceLang).toBe('vi')
+    expect(state.targetLang).toBe('en') // detectedLang wins over 'auto' → 'ja' fallback
+    expect(state.sourceText).toBe('Xin chào')
+    expect(state.translatedText).toBe('Hello')
+  })
+
+  it('uses detectedLang over sourceLang when both are present', () => {
+    act(() => {
+      useAppStore.setState({ sourceLang: 'ja', targetLang: 'vi', sourceText: 'こんにちは', translatedText: 'Xin chào' })
+      useAppStore.getState().swapLanguages('ja')
+    })
+    const state = useAppStore.getState()
+    expect(state.sourceLang).toBe('vi')
+    expect(state.targetLang).toBe('ja') // detectedLang matches sourceLang — same result, but via detected path
+  })
 })
 
 // ─── Chat Sessions ─────────────────────────────────────────────────────────────

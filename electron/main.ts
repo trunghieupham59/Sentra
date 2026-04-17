@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { app, BrowserWindow, desktopCapturer, ipcMain, nativeImage, nativeTheme, screen, shell, systemPreferences } from 'electron'
+import { app, BrowserWindow, desktopCapturer, ipcMain, nativeImage, nativeTheme, screen, shell } from 'electron'
 import { registerChatHandlers } from './ipc/chat'
 import { initGlobalHotkey } from './ipc/globalHotkey'
 import { registerImageTranslateHandlers } from './ipc/imageTranslate'
@@ -7,9 +7,10 @@ import { registerKeychainHandlers } from './ipc/keychain'
 import { initLegacyAssistant, setLocalServerAccessors } from './ipc/legacyAssistant'
 import { getServerToken, LOCAL_SERVER_PORT, startLocalServer, stopLocalServer } from './ipc/localServer'
 import { registerModelsHandlers } from './ipc/models'
-import { getStoredApiKey } from './ipc/storage'
 import { registerTranscribeHandlers } from './ipc/transcribe'
-import { registerTranslateHandlers, streamTranslation } from './ipc/translate'
+import { registerTranslateHandlers } from './ipc/translate'
+import { registerSubtitleHandlers } from './ipc/subtitle'
+import { registerSystemHandlers } from './ipc/system'
 import { registerTtsHandlers } from './ipc/tts'
 import { registerUpdaterHandlers } from './ipc/updater'
 
@@ -37,7 +38,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
     },
     show: false,
     icon: process.platform === 'win32'
@@ -116,7 +117,7 @@ function createSubtitleWindow() {
       preload: path.join(__dirname, 'subtitle-preload.js'),
       contextIsolation: true,
       nodeIntegration:  false,
-      sandbox: false,
+      sandbox: true,
     },
   })
 
@@ -141,118 +142,6 @@ function createSubtitleWindow() {
     mainWindow?.webContents.send('subtitle:closed')
   })
 }
-
-ipcMain.handle('subtitle:show', () => {
-  if (!subtitleWindow || subtitleWindow.isDestroyed()) {
-    createSubtitleWindow()
-  } else {
-    subtitleWindow.show()
-  }
-})
-
-ipcMain.handle('subtitle:hide', () => {
-  if (subtitleWindow && !subtitleWindow.isDestroyed()) {
-    subtitleWindow.close()
-    subtitleWindow = null
-  }
-})
-
-ipcMain.handle('subtitle:update', (_event, { text, isTranslating }: { text: string; isTranslating: boolean }) => {
-  if (subtitleWindow && !subtitleWindow.isDestroyed()) {
-    subtitleWindow.webContents.send('subtitle:text', { text, isTranslating })
-  }
-})
-
-ipcMain.handle('subtitle:setStyle', (_event, style: { textColor: string; fontSize: number; bgOpacity: number }) => {
-  if (subtitleWindow && !subtitleWindow.isDestroyed()) {
-    subtitleWindow.webContents.send('subtitle:style', style)
-    // Resize window height to comfortably fit text at the chosen font size
-    const winH = Math.max(90, Math.round(style.fontSize * 3.8 + 48))
-    const [w] = subtitleWindow.getSize()
-    subtitleWindow.setSize(w, winH)
-  }
-})
-
-// Fired when the ✕ button inside subtitle.html is clicked
-ipcMain.on('subtitle:close', () => {
-  if (subtitleWindow && !subtitleWindow.isDestroyed()) {
-    subtitleWindow.close()
-    subtitleWindow = null
-  }
-  mainWindow?.webContents.send('subtitle:closed')
-})
-
-// ── Streaming translation for subtitle window ─────────────────────────────────
-/**
- * `translate:live-stream` — like `translate` but streams each AI token directly
- * to the subtitle window in real-time so the user sees text appear as the AI
- * generates it, rather than waiting for the full response.
- *
- * Protocol pushed to subtitleWindow:
- *   subtitle:stream:start  — clears the current subtitle text
- *   subtitle:stream:token  — appends one token string
- *   subtitle:stream:end    — signals completion (hide cursor)
- *
- * Returns the complete translated text to the renderer (same shape as `translate`).
- */
-ipcMain.handle('translate:live-stream', async (
-  _event,
-  params: {
-    provider: string; model: string
-    sourceText: string; sourceLang: string; targetLang: string
-    translationStyle?: string
-  }
-) => {
-  const { provider, model, sourceText, sourceLang, targetLang, translationStyle } = params
-
-  if (!sourceText.trim()) return { success: false, error: 'Source text is empty' }
-
-  const apiKey = await getStoredApiKey(provider)
-  if (!apiKey) return { success: false, error: `No API key for ${provider}`, errorCode: 'NO_API_KEY' }
-
-  const sendToSubtitle = (channel: string, payload?: unknown) => {
-    if (subtitleWindow && !subtitleWindow.isDestroyed()) {
-      subtitleWindow.webContents.send(channel, payload)
-    }
-  }
-
-  sendToSubtitle('subtitle:stream:start')
-
-  try {
-    const fullText = await streamTranslation(
-      provider, apiKey, model,
-      sourceText, sourceLang, targetLang,
-      (translationStyle ?? 'neutral') as 'friendly' | 'neutral' | 'professional' | 'business' | 'slack' | 'polite' | 'technical',
-      (token) => sendToSubtitle('subtitle:stream:token', token)
-    )
-    sendToSubtitle('subtitle:stream:end')
-    return { success: true, translatedText: fullText }
-  } catch (error: unknown) {
-    sendToSubtitle('subtitle:stream:end')
-    const msg = error instanceof Error ? error.message : String(error)
-    return { success: false, error: msg }
-  }
-})
-
-// ── Check Screen Recording permission (macOS) ─────────────────────────────────
-ipcMain.handle('app:checkScreenPermission', () => {
-  if (process.platform === 'darwin') {
-    return systemPreferences.getMediaAccessStatus('screen') // 'granted' | 'denied' | 'restricted' | 'unknown' | 'not-determined'
-  }
-  return 'granted'
-})
-
-// ── Open external URL (used by renderer to open System Settings deep links) ──
-ipcMain.handle('app:openExternal', async (_event, url: string) => {
-  // Allowlist: only permit known safe URL schemes
-  const allowed = url.startsWith('https://') || url.startsWith('x-apple.systempreferences:')
-  if (!allowed) return
-  try {
-    await shell.openExternal(url)
-  } catch (err) {
-    console.error('[openExternal] failed:', err)
-  }
-})
 
 app.whenReady().then(() => {
   // Set macOS dock icon using base64 (no file path dependency)
@@ -295,6 +184,12 @@ app.whenReady().then(() => {
   // Legacy Assistant — floating icon injected directly into browsers via osascript
   setLocalServerAccessors(() => getServerToken(), () => LOCAL_SERVER_PORT)
   initLegacyAssistant(ipcMain)
+
+  // Subtitle window IPC handlers
+  registerSubtitleHandlers(ipcMain, () => subtitleWindow, () => mainWindow, createSubtitleWindow)
+
+  // System handlers — screen permission & openExternal
+  registerSystemHandlers(ipcMain)
 
   // Auto-updater — check & install updates from GitHub Releases
   registerUpdaterHandlers(ipcMain, () => mainWindow)

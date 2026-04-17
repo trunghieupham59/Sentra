@@ -1,4 +1,7 @@
 import { IpcMain } from 'electron'
+import type { Part, Content } from '@google/generative-ai'
+import type { TextBlockParam, ImageBlockParam } from '@anthropic-ai/sdk/resources/messages'
+import type { ChatCompletionMessageParam, ChatCompletionContentPartText, ChatCompletionContentPartImage } from 'openai/resources/chat/completions'
 import { getStoredApiKey } from './storage'
 import { classifyProviderError, noApiKeyResponse } from './errorUtils'
 import { MAX_CHAT_OUTPUT_TOKENS, MAX_CHAT_REQUEST_CHARS } from './ipcConstants'
@@ -58,9 +61,8 @@ async function chatWithGemini(
   })
 
   // Build chat history (all messages except the last user message)
-  const history = messages.slice(0, -1).map((msg) => {
-    // biome-ignore lint/suspicious/noExplicitAny: Gemini SDK Part type compatibility
-    const parts: any[] = []
+  const history: Content[] = messages.slice(0, -1).map((msg) => {
+    const parts: Part[] = []
     for (const c of msg.content) {
       if (c.type === 'text' && c.text) {
         parts.push({ text: c.text })
@@ -71,13 +73,12 @@ async function chatWithGemini(
     return { role: msg.role === 'user' ? 'user' : 'model', parts }
   })
 
-  // biome-ignore lint/suspicious/noExplicitAny: Gemini SDK Content[] type compatibility
-  const chat = genModel.startChat({ history: history as any[] })
+  const chat = genModel.startChat({ history })
 
   // Last message is the current user input
   const lastMsg = messages[messages.length - 1]
-  // biome-ignore lint/suspicious/noExplicitAny: Gemini SDK parts type
-  const parts: any[] = []
+  // sendMessage accepts Array<string | Part>: strings for plain text, Part objects for inline data
+  const parts: Array<string | Part> = []
   for (const c of lastMsg.content) {
     if (c.type === 'text' && c.text) {
       parts.push(c.text)
@@ -99,10 +100,8 @@ async function chatWithClaude(
   const Anthropic = (await import('@anthropic-ai/sdk')).default
   const client = new Anthropic({ apiKey })
 
-  // biome-ignore lint/suspicious/noExplicitAny: Anthropic SDK content type
-  const formattedMessages: { role: 'user' | 'assistant'; content: any[] }[] = messages.map((msg) => {
-    // biome-ignore lint/suspicious/noExplicitAny: Anthropic SDK content type
-    const content: any[] = []
+  const formattedMessages: { role: 'user' | 'assistant'; content: Array<TextBlockParam | ImageBlockParam> }[] = messages.map((msg) => {
+    const content: Array<TextBlockParam | ImageBlockParam> = []
     for (const c of msg.content) {
       if (c.type === 'text' && c.text) {
         content.push({ type: 'text', text: c.text })
@@ -244,8 +243,7 @@ async function chatWithOpenAI(
   const OpenAI = (await import('openai')).default
   const client = new OpenAI({ apiKey })
 
-  // biome-ignore lint/suspicious/noExplicitAny: OpenAI SDK message type
-  const formattedMessages: any[] = [
+  const formattedMessages: ChatCompletionMessageParam[] = [
     {
       role: 'system',
       content: buildEnforcedSystemPrompt(systemPrompt || ''),
@@ -253,8 +251,7 @@ async function chatWithOpenAI(
   ]
 
   for (const msg of messages) {
-    // biome-ignore lint/suspicious/noExplicitAny: OpenAI SDK content type
-    const content: any[] = []
+    const content: Array<ChatCompletionContentPartText | ChatCompletionContentPartImage> = []
     for (const c of msg.content) {
       if (c.type === 'text' && c.text) {
         content.push({ type: 'text', text: c.text })
@@ -272,7 +269,9 @@ async function chatWithOpenAI(
     if (content.length === 1 && content[0].type === 'text') {
       formattedMessages.push({ role: msg.role, content: content[0].text })
     } else {
-      formattedMessages.push({ role: msg.role, content })
+      // Cast required: SDK types split user/assistant content arrays into separate
+      // discriminated variants; at runtime only user messages carry image parts.
+      formattedMessages.push({ role: msg.role, content } as ChatCompletionMessageParam)
     }
   }
 
