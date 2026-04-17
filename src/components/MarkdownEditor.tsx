@@ -250,6 +250,9 @@ export function MarkdownEditor({ value, onChange, placeholder, className, onBlur
             key={`view-${idx}`}
             onClick={(e) => {
               e.stopPropagation()
+              // If the user drag-selected text, preserve the selection instead of
+              // switching this line into edit mode (which would destroy the selection).
+              if (window.getSelection()?.type === 'Range') return
               focusLine(idx, 'end')
             }}
           >

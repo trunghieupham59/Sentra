@@ -275,6 +275,7 @@ export function useTranslate() {
       if (plainResult.success && plainResult.translatedText) {
         const plainText = plainResult.translatedText
         setTranslatedText(plainText)
+        setPhoneticText('')   // clear stale phonetic — phonetic pass below will repopulate it
         setIsTranslating(false)
 
         addHistory({
@@ -448,6 +449,9 @@ export function useTranslate() {
       if (result.success && result.translatedText) {
         if (panel === 'source') {
           setSourceText(result.translatedText)
+          // Clear stale phonetic immediately — auto-translate will regenerate it after the
+          // new source text is translated; prevents old phonetic showing for new content.
+          setPhoneticText('')
         } else {
           const rewrittenText = result.translatedText
           setTranslatedText(rewrittenText)

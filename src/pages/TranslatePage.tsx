@@ -139,11 +139,16 @@ export function TranslatePage() {
             labelManual={t.translate_mode_manual}
           />
 
-          {/* Phonetic reading toggle */}
+          {/* Phonetic reading toggle — show spinner while phonetic pass is in flight */}
           <PhoneticToggle
             showFurigana={showFurigana}
             onChange={setShowFurigana}
             label={t.translate_phonetic}
+            isLoading={
+              showFurigana &&
+              !phoneticText &&
+              (isTranslating || (!!translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL))
+            }
           />
         </div>
       </div>

@@ -3,18 +3,22 @@
  * phonetic reading (furigana / romanisation) on the translation result.
  */
 import { MiniToggleTrack } from './MiniToggleTrack'
+import { SpinnerIcon } from './icons'
 
 interface PhoneticToggleProps {
   showFurigana: boolean
   onChange: (value: boolean) => void
   /** Button label and tooltip text, e.g. t.translate_phonetic */
   label: string
+  /** Show a loading spinner when phonetic text is being generated */
+  isLoading?: boolean
 }
 
 export function PhoneticToggle({
   showFurigana,
   onChange,
   label,
+  isLoading = false,
 }: PhoneticToggleProps) {
   return (
     <button
@@ -31,6 +35,9 @@ export function PhoneticToggle({
     >
       <MiniToggleTrack checked={showFurigana} color="purple" />
       <span>{label}</span>
+      {isLoading && (
+        <SpinnerIcon className="w-3 h-3 animate-spin opacity-70 flex-shrink-0" />
+      )}
     </button>
   )
 }
