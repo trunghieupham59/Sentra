@@ -5,6 +5,7 @@ import { ModelSelector } from '../components/ModelSelector'
 import {
   AlertTriangleIcon,
   ArrowRightIcon,
+  AutoDetectIcon,
   GearIcon,
   InfoCircleIcon,
   LightbulbIcon,
@@ -34,7 +35,7 @@ const SUBTITLE_FONT_SIZES = [
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function LiveTranslatePage() {
-  const { sourceLang, targetLang, setSourceLang, setTargetLang, setActivePage } = useAppStore()
+  const { targetLang, setTargetLang, setActivePage } = useAppStore()
   const t = useT()
 
   // All business logic lives in the hook — this page owns only UI copy state
@@ -84,8 +85,11 @@ export function LiveTranslatePage() {
       {/* Language + audio source toggle + Start/Stop bar */}
       <div className="flex-shrink-0 flex items-center gap-3 px-4 py-2.5
                       bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
-        <div className="flex-1">
-          <LanguageSelector value={sourceLang} onChange={setSourceLang} includeAuto />
+        <div className="flex-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg
+                        bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700
+                        text-sm text-gray-500 dark:text-gray-400 select-none overflow-hidden">
+          <AutoDetectIcon className="w-3.5 h-3.5 flex-shrink-0 text-blue-400" />
+          <span className="truncate">{t.lang_auto}</span>
         </div>
         <ArrowRightIcon className="flex-shrink-0 w-4 h-4 text-gray-300 dark:text-gray-600" />
         <div className="flex-1">

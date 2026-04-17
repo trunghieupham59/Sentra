@@ -1,3 +1,4 @@
+
 /**
  * useTranslate — encapsulates all business logic for the Translate page.
  *
@@ -448,8 +449,26 @@ export function useTranslate() {
         if (panel === 'source') {
           setSourceText(result.translatedText)
         } else {
-          setTranslatedText(result.translatedText)
+          const rewrittenText = result.translatedText
+          setTranslatedText(rewrittenText)
           setPhoneticText('')
+          // If phonetic mode is active, regenerate phonetic text for the rewritten content
+          if (showFurigana) {
+            translationService.translate({
+              provider: selectedProvider,
+              model: selectedModels[selectedProvider],
+              sourceText: rewrittenText,
+              sourceLang: targetLang,
+              targetLang,
+              translationStyle,
+              showFurigana: true,
+              phoneticOnly: true,
+            })
+              .then((res) => {
+                if (res.success && res.translatedText) setPhoneticText(res.translatedText)
+              })
+              .catch(() => {})
+          }
         }
       }
     } catch (err) {
@@ -458,7 +477,7 @@ export function useTranslate() {
       setIsRewriting(null)
     }
   }, [isRewriting, hasKey, sourceText, translatedText, sourceLang, targetLang, translationStyle,
-      selectedProvider, selectedModels, setSourceText, setTranslatedText, setPhoneticText, setTranslateError, t])
+      selectedProvider, selectedModels, showFurigana, setSourceText, setTranslatedText, setPhoneticText, setTranslateError, t])
 
   /** Handles MarkdownEditor source text changes */
   const handleSourceChange = useCallback((val: string) => {

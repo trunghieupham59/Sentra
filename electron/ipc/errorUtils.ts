@@ -29,7 +29,7 @@ export function classifyProviderError(msg: string): IpcErrorResponse {
   if (msg.includes('429') || msg.includes('rate_limit') || msg.includes('quota')) {
     return { success: false, error: 'Rate limit exceeded. Please wait and try again.', errorCode: 'RATE_LIMIT' }
   }
-  if (msg.includes('ENOTFOUND') || msg.includes('network') || msg.includes('fetch')) {
+  if (msg.includes('ENOTFOUND') || msg.includes('ECONNREFUSED') || msg.includes('Failed to fetch') || msg.includes('FetchError')) {
     return { success: false, error: 'No internet connection.', errorCode: 'NETWORK' }
   }
   return { success: false, error: msg }

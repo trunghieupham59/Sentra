@@ -114,7 +114,10 @@ async function fetchGeminiModels(apiKey: string): Promise<FetchedModel[]> {
         !id.includes('exp') &&
         // Allow preview models — they include newer vision-capable variants (e.g. Gemini 2.5 Flash)
         !id.includes('thinking') &&
-        !id.includes('learnlm')
+        !id.includes('learnlm') &&
+        // Exclude TTS models — they support generateContent but NOT systemInstruction,
+        // causing "[400 Bad Request] Developer instruction is not enabled for this model"
+        !id.includes('tts')
       )
     })
     .map((m) => {
