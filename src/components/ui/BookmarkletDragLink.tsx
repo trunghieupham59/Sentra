@@ -14,9 +14,11 @@ interface BookmarkletDragLinkProps {
   href: string
   /** Text shown while the URL hasn't loaded yet. */
   loadingText: string
+  /** Draggable link label text. */
+  label: string
 }
 
-export function BookmarkletDragLink({ href, loadingText }: BookmarkletDragLinkProps) {
+export function BookmarkletDragLink({ href, loadingText, label }: BookmarkletDragLinkProps) {
   const linkRef = useRef<HTMLAnchorElement>(null)
 
   // Set href directly on the DOM node to bypass React's javascript: URL warning.
@@ -53,7 +55,7 @@ export function BookmarkletDragLink({ href, loadingText }: BookmarkletDragLinkPr
                  hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
     >
       <LayersIcon className="w-4 h-4 text-blue-500" />
-      🌐 Lotus Translate
+      {label}
       <ArrowUpIcon className="w-3.5 h-3.5 text-blue-400" />
     </a>
   )

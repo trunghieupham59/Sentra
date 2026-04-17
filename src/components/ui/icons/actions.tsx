@@ -150,6 +150,16 @@ export function SwapIcon({ className = 'w-4 h-4' }: IconProps) {
   )
 }
 
+/** Reuse / return-arrow icon — used on "reuse in translate" history buttons. */
+export function ReuseIcon({ className = 'w-3.5 h-3.5' }: IconProps) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+    </svg>
+  )
+}
+
 /** Translate / language icon — used on translate empty-state panels. */
 export function TranslateIcon({ className = 'w-6 h-6' }: IconProps) {
   return (

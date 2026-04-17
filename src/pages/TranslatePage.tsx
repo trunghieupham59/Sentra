@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { FuriganaText } from '../components/FuriganaText'
 import type { ImageAttachment } from '../components/ImageTranslator'
-import { DragOverlay } from '../components/translate/DragOverlay'
+import { DragOverlay } from '../components/ui/DragOverlay'
 import { ImageAttachmentPreview } from '../components/translate/ImageAttachmentPreview'
 import { VoiceOverlay } from '../components/translate/VoiceOverlay'
 import { translationService } from '../services/translationService'
@@ -10,6 +10,7 @@ import { MarkdownEditor } from '../components/MarkdownEditor'
 import { MarkdownText } from '../components/MarkdownText'
 import { ModelSelector } from '../components/ModelSelector'
 import { AutoTranslateToggle } from '../components/ui/AutoTranslateToggle'
+import { DownloadImageButton } from '../components/ui/DownloadImageButton'
 import { ClearButton } from '../components/ui/ClearButton'
 import { CopyButton } from '../components/ui/CopyButton'
 import { ImageTranslateButton } from '../components/ui/ImageTranslateButton'
@@ -17,7 +18,7 @@ import { PhoneticToggle } from '../components/ui/PhoneticToggle'
 import { RewriteButton } from '../components/ui/RewriteButton'
 import { SpeakButton } from '../components/ui/SpeakButton'
 import { TranslateButton } from '../components/ui/TranslateButton'
-import { AlertTriangleIcon, AutoDetectIcon, ChevronDownIcon, DownloadIcon, SpinnerIcon, SwapIcon, XIcon } from '../components/ui/icons'
+import { AlertTriangleIcon, AutoDetectIcon, ChevronDownIcon, SpinnerIcon, SwapIcon, XIcon } from '../components/ui/icons'
 import { VoiceRecorder } from '../components/VoiceRecorder'
 import { MAX_TRANSLATE_IMAGE_DIMENSION } from '../constants/image'
 import { MAX_INPUT_CHARS, DETECT_LANG_MAX_CHARS } from '../constants/providers'
@@ -541,6 +542,8 @@ export function TranslatePage() {
             onChange={setAutoTranslate}
             titleAuto={t.translate_mode_auto_title}
             titleManual={t.translate_mode_manual_title}
+            labelAuto={t.translate_mode_auto}
+            labelManual={t.translate_mode_manual}
           />
 
           {/* Phonetic reading toggle */}
@@ -702,8 +705,9 @@ export function TranslatePage() {
 
               {!isVoiceActive && (
                 charCount > MAX_INPUT_CHARS ? (
-                  <span className="text-xs tabular-nums text-amber-500 font-medium" title={t.translate_limit}>
-                    ⚠ {charCount.toLocaleString()} / {MAX_INPUT_CHARS.toLocaleString()}
+                  <span className="flex items-center gap-1 text-xs tabular-nums text-amber-500 font-medium" title={t.translate_limit}>
+                    <AlertTriangleIcon className="w-3 h-3 flex-shrink-0" />
+                    {charCount.toLocaleString()} / {MAX_INPUT_CHARS.toLocaleString()}
                   </span>
                 ) : (
                   <span className="text-xs tabular-nums text-gray-400">
@@ -821,8 +825,7 @@ export function TranslatePage() {
 
                 {/* Download edited image (Gemini image-edit result) */}
                 {editedImageUrl && (
-                  <button
-                    type="button"
+                  <DownloadImageButton
                     title={t.image_translate_download}
                     onClick={() => {
                       const a = document.createElement('a')
@@ -830,28 +833,15 @@ export function TranslatePage() {
                       a.download = `translated_${Date.now()}.png`
                       a.click()
                     }}
-                    className="relative flex items-center justify-center w-8 h-8 rounded-full
-                               transition-all duration-200 cursor-pointer
-                               text-gray-400 hover:text-emerald-500 hover:bg-emerald-50
-                               dark:hover:bg-emerald-950 dark:hover:text-emerald-400"
-                  >
-                    <DownloadIcon />
-                  </button>
+                  />
                 )}
 
                 {/* Download canvas-overlay image (regions fallback) */}
                 {imageRegions && imageAttachment && !editedImageUrl && (
-                  <button
-                    type="button"
-                    onClick={handleDownloadTranslatedImage}
+                  <DownloadImageButton
                     title={t.image_translate_download}
-                    className="relative flex items-center justify-center w-8 h-8 rounded-full
-                               transition-all duration-200 cursor-pointer
-                               text-gray-400 hover:text-emerald-500 hover:bg-emerald-50
-                               dark:hover:bg-emerald-950 dark:hover:text-emerald-400"
-                  >
-                    <DownloadIcon />
-                  </button>
+                    onClick={handleDownloadTranslatedImage}
+                  />
                 )}
 
                 {/* Rewrite translated text */}

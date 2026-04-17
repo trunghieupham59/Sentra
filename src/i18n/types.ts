@@ -40,6 +40,10 @@ export interface Translations {
   translate_mode_auto_title: string
   /** Tooltip on the Auto/Manual toggle when currently in manual mode */
   translate_mode_manual_title: string
+  /** Label on the Auto/Manual toggle when in auto mode */
+  translate_mode_auto: string
+  /** Label on the Auto/Manual toggle when in manual mode */
+  translate_mode_manual: string
 
   // Voice recording
   voice_record: string
@@ -310,6 +314,8 @@ export interface Translations {
   settings_bookmarklet_copied: string
   settings_bookmarklet_step2: string
   settings_bookmarklet_step2_desc: string
+  /** Draggable bookmarklet link label text */
+  settings_bookmarklet_label: string
 
   // Settings — Token management
   settings_token_manage: string

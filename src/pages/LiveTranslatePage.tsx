@@ -4,6 +4,7 @@ import { MarkdownText } from '../components/MarkdownText'
 import { ModelSelector } from '../components/ModelSelector'
 import {
   AlertTriangleIcon,
+  ArrowRightIcon,
   GearIcon,
   InfoCircleIcon,
   LightbulbIcon,
@@ -75,9 +76,7 @@ export function LiveTranslatePage() {
         <div className="flex-1">
           <LanguageSelector value={sourceLang} onChange={setSourceLang} includeAuto />
         </div>
-        <svg className="flex-shrink-0 w-4 h-4 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-        </svg>
+        <ArrowRightIcon className="flex-shrink-0 w-4 h-4 text-gray-300 dark:text-gray-600" />
         <div className="flex-1">
           <LanguageSelector value={targetLang} onChange={setTargetLang} includeAuto={false} />
         </div>

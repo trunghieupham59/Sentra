@@ -5,7 +5,7 @@
  * Accepts a `label` prop for i18n text and optional `zIndex` / `showRing`
  * for small layout differences between the two drop zones.
  */
-import { UploadIcon } from '../ui/icons'
+import { UploadIcon } from './icons'
 
 interface DragOverlayProps {
   /** i18n label displayed below the upload icon */

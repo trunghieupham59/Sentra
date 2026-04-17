@@ -13,6 +13,10 @@ interface AutoTranslateToggleProps {
   titleAuto: string
   /** Tooltip when manual mode is currently active */
   titleManual: string
+  /** Button label when in auto mode */
+  labelAuto: string
+  /** Button label when in manual mode */
+  labelManual: string
 }
 
 export function AutoTranslateToggle({
@@ -20,6 +24,8 @@ export function AutoTranslateToggle({
   onChange,
   titleAuto,
   titleManual,
+  labelAuto,
+  labelManual,
 }: AutoTranslateToggleProps) {
   return (
     <button
@@ -36,7 +42,7 @@ export function AutoTranslateToggle({
       ].join(' ')}
     >
       <MiniToggleTrack checked={autoTranslate} color="green" />
-      <span>{autoTranslate ? 'Auto' : 'Manual'}</span>
+      <span>{autoTranslate ? labelAuto : labelManual}</span>
     </button>
   )
 }

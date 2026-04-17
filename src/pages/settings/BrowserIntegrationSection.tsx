@@ -4,7 +4,7 @@ import { SettingsCopyButton } from '../../components/ui/SettingsCopyButton'
 import { SettingsFormActions } from '../../components/ui/SettingsFormActions'
 import { ToggleSwitch } from '../../components/ui/ToggleSwitch'
 import { TokenTtlPicker } from '../../components/ui/TokenTtlPicker'
-import { PlusIcon, RefreshIcon, SpinnerIcon, TrashIcon, XIcon } from '../../components/ui/icons'
+import { AlertTriangleIcon, PlusIcon, RefreshIcon, SpinnerIcon, TrashIcon, XIcon } from '../../components/ui/icons'
 import { useAppStore, useT } from '../../store/useAppStore'
 
 type ExtTokenInfo = { id: string; name: string; createdAt: number; expiresAt: number }
@@ -245,7 +245,7 @@ export function BrowserIntegrationSection() {
               <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 text-[10px] font-bold flex items-center justify-center mt-0.5">1</span>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">{t.settings_bookmarklet_step1}</p>
-                <BookmarkletDragLink href={laBookmarklet} loadingText={t.settings_bookmarklet_loading} />
+                <BookmarkletDragLink href={laBookmarklet} loadingText={t.settings_bookmarklet_loading} label={t.settings_bookmarklet_label} />
                 <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5">{t.settings_bookmarklet_alt_hint}</p>
                 <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                   <SettingsCopyButton
@@ -397,7 +397,7 @@ export function BrowserIntegrationSection() {
           {/* Token action error */}
           {tokenActionError && (
             <div className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 rounded-lg px-3 py-2 border border-red-100 dark:border-red-900">
-              <span>⚠</span>
+              <AlertTriangleIcon className="w-3.5 h-3.5 text-amber-500" />
               <span className="flex-1">{tokenActionError}</span>
               <button type="button" onClick={() => setTokenActionError('')} className="p-0.5 hover:text-red-700 cursor-pointer" title="Đóng">
                 <XIcon className="w-3 h-3" />
@@ -408,7 +408,7 @@ export function BrowserIntegrationSection() {
           {/* Token list error */}
           {extTokensError && (
             <div className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 rounded-lg px-3 py-2 border border-red-100 dark:border-red-900">
-              <span>⚠</span>
+              <AlertTriangleIcon className="w-3.5 h-3.5 text-amber-500" />
               <span className="flex-1">{extTokensError}</span>
               <button type="button" onClick={loadTokenList} className="underline font-medium cursor-pointer">{t.settings_token_retry}</button>
             </div>

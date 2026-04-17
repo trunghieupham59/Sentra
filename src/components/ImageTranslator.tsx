@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertTriangleIcon, ImageIcon, SpinnerIcon, XIcon } from './ui/icons'
+import { AlertTriangleIcon, ImageIcon, SpinnerIcon, UploadIcon, XIcon } from './ui/icons'
 import { useT } from '../store/useAppStore'
 import { MAX_TRANSLATE_IMAGE_DIMENSION } from '../constants/image'
 import { resizeImageFile } from '../utils/imageUtils'
@@ -154,10 +154,7 @@ export function ImageTranslator({ onImageReady, onClose }: ImageTranslatorProps)
               >
                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-colors
                                 ${isDragging ? 'bg-emerald-100 dark:bg-emerald-900' : 'bg-gray-100 dark:bg-gray-800'}`}>
-                  <svg className={`w-7 h-7 transition-colors ${isDragging ? 'text-emerald-500' : 'text-gray-400'}`}
-                       viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                  </svg>
+                  <UploadIcon className={`w-7 h-7 transition-colors ${isDragging ? 'text-emerald-500' : 'text-gray-400'}`} />
                 </div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
                   {t.image_translate_upload_hint.split('\n')[0]}
