@@ -149,7 +149,7 @@ describe('registerImageTranslateHandlers — IPC validation', () => {
   })
 
   it('returns NO_API_KEY error when API key is not in keychain', async () => {
-    vi.mocked(getStoredApiKey).mockResolvedValue(null)
+    vi.mocked(getStoredApiKey).mockReturnValue(null)
     const result = await invoke('image:translate', {
       provider: 'gemini', model: 'gemini-2.0-flash',
       imageBase64: 'base64encodeddata', imageMimeType: 'image/jpeg',
@@ -161,7 +161,7 @@ describe('registerImageTranslateHandlers — IPC validation', () => {
   })
 
   it('returns NO_API_KEY for claude when key is missing', async () => {
-    vi.mocked(getStoredApiKey).mockResolvedValue(null)
+    vi.mocked(getStoredApiKey).mockReturnValue(null)
     const result = await invoke('image:translate', {
       provider: 'claude', model: 'claude-3-5-sonnet-20241022',
       imageBase64: 'base64data', imageMimeType: 'image/png',
@@ -173,7 +173,7 @@ describe('registerImageTranslateHandlers — IPC validation', () => {
   })
 
   it('returns error for unknown provider', async () => {
-    vi.mocked(getStoredApiKey).mockResolvedValue('fake-key')
+    vi.mocked(getStoredApiKey).mockReturnValue('fake-key')
     const result = await invoke('image:translate', {
       provider: 'unknown-provider', model: 'some-model',
       imageBase64: 'base64data', imageMimeType: 'image/jpeg',
@@ -194,7 +194,7 @@ describe('registerImageTranslateHandlers — error code categorization', () => {
     // biome-ignore lint/suspicious/noExplicitAny: mock IpcMain
     registerImageTranslateHandlers(mock.ipcMain as any)
     invoke = mock.invoke
-    vi.mocked(getStoredApiKey).mockResolvedValue('fake-key')
+    vi.mocked(getStoredApiKey).mockReturnValue('fake-key')
   })
 
   it('categorizes 401 errors as INVALID_KEY', async () => {

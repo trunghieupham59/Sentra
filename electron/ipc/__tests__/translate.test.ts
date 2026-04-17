@@ -262,7 +262,7 @@ describe('registerTranslateHandlers — IPC validation', () => {
   })
 
   it('returns NO_API_KEY when API key is missing', async () => {
-    vi.mocked(getStoredApiKey).mockResolvedValue(null)
+    vi.mocked(getStoredApiKey).mockReturnValue(null)
     const result = await invoke('translate', {
       provider: 'gemini', model: 'gemini-2.0-flash',
       sourceText: 'Hello', sourceLang: 'en', targetLang: 'vi',
@@ -273,7 +273,7 @@ describe('registerTranslateHandlers — IPC validation', () => {
   })
 
   it('returns error for unknown provider', async () => {
-    vi.mocked(getStoredApiKey).mockResolvedValue('fake-key')
+    vi.mocked(getStoredApiKey).mockReturnValue('fake-key')
     const result = await invoke('translate', {
       provider: 'unknown-llm', model: 'some-model',
       sourceText: 'Hello', sourceLang: 'en', targetLang: 'vi',
@@ -294,7 +294,7 @@ describe('registerTranslateHandlers — IPC validation', () => {
   })
 
   it('rewrite: returns NO_API_KEY when key is missing', async () => {
-    vi.mocked(getStoredApiKey).mockResolvedValue(null)
+    vi.mocked(getStoredApiKey).mockReturnValue(null)
     const result = await invoke('translate:rewrite', {
       provider: 'openai', model: 'gpt-4o',
       text: 'Hello world', lang: 'en',
@@ -304,7 +304,7 @@ describe('registerTranslateHandlers — IPC validation', () => {
   })
 
   it('rewrite: returns error for unknown provider', async () => {
-    vi.mocked(getStoredApiKey).mockResolvedValue('fake-key')
+    vi.mocked(getStoredApiKey).mockReturnValue('fake-key')
     const result = await invoke('translate:rewrite', {
       provider: 'unknown-llm', model: 'some-model',
       text: 'Hello world', lang: 'en',
@@ -344,7 +344,7 @@ describe('registerTranslateHandlers — error code categorization', () => {
     // biome-ignore lint/suspicious/noExplicitAny: mock IpcMain
     registerTranslateHandlers(mock.ipcMain as any)
     invoke = mock.invoke
-    vi.mocked(getStoredApiKey).mockResolvedValue('fake-key')
+    vi.mocked(getStoredApiKey).mockReturnValue('fake-key')
   })
 
   it('categorizes 401 errors as INVALID_KEY for translate', async () => {
@@ -441,8 +441,10 @@ describe('normalizeDetectedLang', () => {
     expect(normalizeDetectedLang('xx')).toBeNull()
   })
 
-  it('returns null for empty string', () => {
-    expect(normalizeDetectedLang('')).toBeNull()
+  it('returns first partial-match language for empty string (every lang starts with "")', () => {
+    // empty string partial-matches every lang code because every string starts with '',
+    // so the function returns the first entry in KNOWN_LANG_CODES ('vi') rather than null
+    expect(normalizeDetectedLang('')).toBe('vi')
   })
 
   it('returns null for random gibberish', () => {

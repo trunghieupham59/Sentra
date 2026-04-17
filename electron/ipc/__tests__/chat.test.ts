@@ -152,7 +152,7 @@ describe('registerChatHandlers — IPC validation', () => {
 
   it('accepts message at exactly 3000 chars (boundary — should pass to API key check)', async () => {
     // Mock: no API key to stop execution after validation
-    vi.mocked(getStoredApiKey).mockResolvedValue(null)
+    vi.mocked(getStoredApiKey).mockReturnValue(null)
     const exactText = 'x'.repeat(3000)
     const result = await invoke('chat:send', {
       provider: 'gemini', model: 'gemini-2.0-flash',
@@ -164,7 +164,7 @@ describe('registerChatHandlers — IPC validation', () => {
   })
 
   it('returns NO_API_KEY error when API key is missing', async () => {
-    vi.mocked(getStoredApiKey).mockResolvedValue(null)
+    vi.mocked(getStoredApiKey).mockReturnValue(null)
     const result = await invoke('chat:send', {
       provider: 'gemini', model: 'gemini-2.0-flash',
       messages: [textMsg('user', 'Hello')],
@@ -175,7 +175,7 @@ describe('registerChatHandlers — IPC validation', () => {
   })
 
   it('returns error for unknown provider', async () => {
-    vi.mocked(getStoredApiKey).mockResolvedValue('fake-key')
+    vi.mocked(getStoredApiKey).mockReturnValue('fake-key')
     const result = await invoke('chat:send', {
       provider: 'unknown-provider', model: 'some-model',
       messages: [textMsg('user', 'Hello')],
@@ -196,7 +196,7 @@ describe('registerChatHandlers — error code categorization', () => {
     registerChatHandlers(mock.ipcMain as any)
     invoke = mock.invoke
     // Mock API key available so we reach the provider call
-    vi.mocked(getStoredApiKey).mockResolvedValue('fake-key')
+    vi.mocked(getStoredApiKey).mockReturnValue('fake-key')
   })
 
   it('categorizes 401 errors as INVALID_KEY', async () => {
