@@ -12,6 +12,7 @@ interface MessageBubbleProps {
   onRegenerate?: () => void
   isLastAssistant?: boolean
   isSending?: boolean
+  copyLabel?: string
   regenerateLabel?: string
 }
 
@@ -21,6 +22,7 @@ export function MessageBubble({
   onRegenerate,
   isLastAssistant,
   isSending,
+  copyLabel,
   regenerateLabel,
 }: MessageBubbleProps) {
   const isUser = message.role === 'user'
@@ -94,7 +96,7 @@ export function MessageBubble({
             <button
               type="button"
               onClick={() => onCopy(textContent)}
-              title="Copy"
+              title={copyLabel ?? 'Copy'}
               className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-700 dark:hover:text-gray-200
                          transition-colors duration-150 cursor-pointer"
             >
@@ -113,7 +115,7 @@ export function MessageBubble({
                          disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer"
             >
               <RefreshIcon />
-              {regenerateLabel ?? 'Regenerate'}
+              {regenerateLabel}
             </button>
           )}
         </div>

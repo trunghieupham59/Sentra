@@ -19,6 +19,10 @@ import { useVoiceInput } from '../hooks/useVoiceInput'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { ChatMessage, ChatMessageContent } from '../types'
 
+/** Max height (px) của textarea input — giới hạn scroll khi text dài */
+const CHAT_TEXTAREA_MAX_HEIGHT_PX = 160
+
+
 // DUP-05: resizeImageToBase64 replaced by shared resizeImageFile from imageUtils.ts
 // HC-09: MAX_CHAT_IMAGE_DIMENSION imported from constants/image.ts
 // MAX_CHAT_SESSIONS is enforced in useAppStore.createChatSession — defined there as the single source of truth
@@ -85,7 +89,7 @@ export function ChatPage() {
     const el = textareaRef.current
     if (!el) return
     el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`
+    el.style.height = `${Math.min(el.scrollHeight, CHAT_TEXTAREA_MAX_HEIGHT_PX)}px`
   }, [inputText])
 
   // ── Ensure active session exists for current provider/model ──
@@ -420,7 +424,8 @@ export function ChatPage() {
                   onRegenerate={idx === lastAssistantIdx ? handleRegenerate : undefined}
                   isLastAssistant={idx === lastAssistantIdx}
                   isSending={isSending}
-                  regenerateLabel={t.chat_regenerate}
+                  copyLabel={t.translate_copy}
+              regenerateLabel={t.chat_regenerate}
                 />
               ))
             })()}
@@ -560,7 +565,7 @@ export function ChatPage() {
                           text-gray-900 dark:text-gray-100
                           disabled:opacity-60 transition-colors duration-150
                           ${isVoiceInterim ? 'italic text-gray-400 dark:text-gray-500' : ''}`}
-              style={{ maxHeight: '160px', overflowY: 'auto' }}
+              style={{ maxHeight: `${CHAT_TEXTAREA_MAX_HEIGHT_PX}px`, overflowY: 'auto' }}
             />
           </div>
 

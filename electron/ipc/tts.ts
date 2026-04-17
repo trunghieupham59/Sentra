@@ -1,6 +1,6 @@
 import type { IpcMain } from 'electron'
 import { getStoredApiKey } from './storage'
-import { GEMINI_API_BASE, GEMINI_TTS_MODEL } from './ipcConstants'
+import { GEMINI_API_BASE, GEMINI_TTS_MODEL , GEMINI_TTS_VOICE_NAME } from './ipcConstants'
 
 // HC-06: Gemini base URL now uses GEMINI_API_BASE constant.
 
@@ -102,7 +102,7 @@ async function ttsWithGemini(text: string, apiKey: string): Promise<TtsResult> {
       responseModalities: ['AUDIO'],
       speechConfig: {
         voiceConfig: {
-          prebuiltVoiceConfig: { voiceName: 'Aoede' },
+          prebuiltVoiceConfig: { voiceName: GEMINI_TTS_VOICE_NAME },
         },
       },
     },

@@ -19,7 +19,7 @@ import * as fs from 'node:fs'
 import * as http from 'node:http'
 import * as path from 'node:path'
 import { app } from 'electron'
-import { getStoredApiKey } from './storage'
+import { lightweightTranslate } from './lightweightTranslate'
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -126,64 +126,6 @@ function ttlMs (days: number): number {
   return Math.max(1, Math.min(days, 365)) * 24 * 60 * 60 * 1000
 }
 
-// ── Translation helper ────────────────────────────────────────────────────────
-
-const EXT_SYSTEM_PROMPT =
-  'You are an expert translator. Translate accurately and naturally. ' +
-  'Output ONLY the translation — no notes, no alternatives, no explanations.'
-
-async function handleTranslate (body: {
-  text: string
-  targetLang: string
-  sourceLang?: string
-  provider?: string
-  model?: string
-}): Promise<{ success: boolean; translatedText?: string; error?: string }> {
-  const { text, targetLang, provider = 'gemini', model = 'gemini-2.0-flash' } = body
-  if (!text?.trim()) return { success: false, error: 'Text is empty' }
-  const apiKey = await getStoredApiKey(provider)
-  if (!apiKey) return { success: false, error: `No API key configured for ${provider}` }
-  const prompt = `Translate into ${targetLang}. Tone: neutral. Output only the translation.\n\n${text}`
-  try {
-    if (provider === 'gemini') {
-      const { GoogleGenerativeAI } = await import('@google/generative-ai')
-      const genAI = new GoogleGenerativeAI(apiKey)
-      const genModel = genAI.getGenerativeModel({ model, systemInstruction: EXT_SYSTEM_PROMPT })
-      const result = await genModel.generateContent(prompt)
-      return { success: true, translatedText: result.response.text().trim() }
-    }
-    if (provider === 'openai') {
-      const OpenAI = (await import('openai')).default
-      const client = new OpenAI({ apiKey })
-      const completion = await client.chat.completions.create({
-        model,
-        messages: [
-          { role: 'system', content: EXT_SYSTEM_PROMPT },
-          { role: 'user',   content: prompt },
-        ],
-        max_completion_tokens: 2048,
-      })
-      return { success: true, translatedText: (completion.choices[0]?.message?.content ?? '').trim() }
-    }
-    if (provider === 'claude') {
-      const Anthropic = (await import('@anthropic-ai/sdk')).default
-      const client = new Anthropic({ apiKey })
-      const msg = await client.messages.create({
-        model,
-        max_tokens: 2048,
-        system: EXT_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: prompt }],
-      })
-      const block = msg.content[0]
-      if (block.type === 'text') return { success: true, translatedText: block.text.trim() }
-      return { success: false, error: 'Unexpected response from Claude' }
-    }
-    return { success: false, error: `Unknown provider: ${provider}` }
-  } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : String(e) }
-  }
-}
-
 // ── HTTP server ───────────────────────────────────────────────────────────────
 
 function sendJSON (res: http.ServerResponse, statusCode: number, data: unknown): void {
@@ -224,12 +166,12 @@ export function startLocalServer (ipcMain: Electron.IpcMain): void {
     const url = req.url ?? ''
 
     if (req.method === 'GET' && url === '/api/status') {
-      sendJSON(res, 200, { success: true, version: '1.0.0', appName: 'Lotus' })
+      sendJSON(res, 200, { success: true, version: app.getVersion(), appName: app.getName() })
       return
     }
     if (req.method === 'POST' && url === '/api/translate') {
       try {
-        const result = await handleTranslate(JSON.parse(await readBody(req)))
+        const result = await lightweightTranslate(JSON.parse(await readBody(req)))
         sendJSON(res, 200, result)
       } catch (e) {
         sendJSON(res, 400, { success: false, error: String(e) })

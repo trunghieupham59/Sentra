@@ -1,6 +1,6 @@
 import { IpcMain } from 'electron'
 import { getStoredApiKey } from './storage'
-import { GEMINI_API_BASE, ANTHROPIC_API_VERSION } from './ipcConstants'
+import { GEMINI_API_BASE, GEMINI_MODELS_PAGE_SIZE, ANTHROPIC_API_VERSION } from './ipcConstants'
 
 // DUP-02: Removed local `getApiKey` wrapper — call getStoredApiKey directly.
 // HC-06: Gemini base URL now uses GEMINI_API_BASE constant.
@@ -96,7 +96,7 @@ function describeModel(id: string): string {
 
 // ─── Gemini: REST API ──────────────────────────────────────────────────────────
 async function fetchGeminiModels(apiKey: string): Promise<FetchedModel[]> {
-  const url = `${GEMINI_API_BASE}/models?key=${apiKey}&pageSize=50`  // HC-06
+  const url = `${GEMINI_API_BASE}/models?key=${apiKey}&pageSize=${GEMINI_MODELS_PAGE_SIZE}`  // HC-06
   const res = await fetch(url)
   if (!res.ok) {
     const body = await res.text()

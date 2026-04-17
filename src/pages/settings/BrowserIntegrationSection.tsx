@@ -4,17 +4,14 @@ import { SettingsCopyButton } from '../../components/ui/SettingsCopyButton'
 import { SettingsFormActions } from '../../components/ui/SettingsFormActions'
 import { ToggleSwitch } from '../../components/ui/ToggleSwitch'
 import { TokenTtlPicker } from '../../components/ui/TokenTtlPicker'
-import { AlertTriangleIcon, PlusIcon, RefreshIcon, SpinnerIcon, TrashIcon, XIcon } from '../../components/ui/icons'
+import { AlertTriangleIcon, KeyIcon, PlusIcon, RefreshIcon, SpinnerIcon, TrashIcon, XIcon } from '../../components/ui/icons'
 import { useAppStore, useT } from '../../store/useAppStore'
+import { formatDate, tpl } from '../../utils/tpl'
 
 type ExtTokenInfo = { id: string; name: string; createdAt: number; expiresAt: number }
 
-/** Simple template helper: replaces {key} placeholders */
-const tpl = (str: string, vars: Record<string, string | number>) =>
-  str.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ''))
-
 export function BrowserIntegrationSection() {
-  const { targetLang } = useAppStore()
+  const { targetLang, locale } = useAppStore()
   const t = useT()
 
   const isMac = window.api?.platform === 'darwin'
@@ -92,7 +89,7 @@ export function BrowserIntegrationSection() {
   const [tokenActionError, setTokenActionError] = useState('')
 
   const defaultTokenName = () => {
-    const today = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    const today = formatDate(Date.now(), locale)
     return `Chrome Extension - ${today}`
   }
 
@@ -354,10 +351,10 @@ export function BrowserIntegrationSection() {
           {revealedToken && (
             <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3 space-y-2">
               <div className="flex items-start gap-2">
-                <span className="text-amber-500 text-sm flex-shrink-0">🔑</span>
+                <KeyIcon className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-amber-800 dark:text-amber-200">
-                    Token "{revealedToken.name}" — sao chép ngay!
+                    {tpl(t.settings_token_reveal_title, { name: revealedToken.name })}
                   </p>
                   <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
                     {t.settings_token_reveal_body}
@@ -367,7 +364,7 @@ export function BrowserIntegrationSection() {
                   type="button"
                   onClick={() => setRevealedToken(null)}
                   className="p-1 text-amber-400 hover:text-amber-600 cursor-pointer flex-shrink-0"
-                  title="Đóng"
+                  title={t.settings_token_close}
                 >
                   <XIcon />
                 </button>
@@ -389,7 +386,7 @@ export function BrowserIntegrationSection() {
                 </button>
               </div>
               <p className="text-[11px] text-amber-500 dark:text-amber-400">
-                {t.settings_token_expires_label} {new Date(revealedToken.expiresAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                {t.settings_token_expires_label} {formatDate(revealedToken.expiresAt, locale)}
               </p>
             </div>
           )}
@@ -399,7 +396,7 @@ export function BrowserIntegrationSection() {
             <div className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 rounded-lg px-3 py-2 border border-red-100 dark:border-red-900">
               <AlertTriangleIcon className="w-3.5 h-3.5 text-amber-500" />
               <span className="flex-1">{tokenActionError}</span>
-              <button type="button" onClick={() => setTokenActionError('')} className="p-0.5 hover:text-red-700 cursor-pointer" title="Đóng">
+              <button type="button" onClick={() => setTokenActionError('')} className="p-0.5 hover:text-red-700 cursor-pointer" title={t.settings_token_close}>
                 <XIcon className="w-3 h-3" />
               </button>
             </div>
@@ -437,7 +434,7 @@ export function BrowserIntegrationSection() {
                 const msLeft = tk.expiresAt - now
                 const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24))
                 const expired = msLeft <= 0
-                const expireDate = new Date(tk.expiresAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                const expireDate = formatDate(tk.expiresAt, locale)
                 const isRegen = regeneratingId === tk.id
                 const isDel = deletingId === tk.id
                 return (

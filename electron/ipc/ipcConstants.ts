@@ -109,3 +109,20 @@ export const VISION_SCORE_SLOW    = 20   // opus — most powerful but slowest/p
 export const VISION_SCORE_GEN_WEIGHT = 10  // bonus per generation number unit
 export const VISION_SCORE_LITE_PENALTY = 30 // penalty for lite/nano variants
 
+// ── Lightweight translation token limits & defaults ──────────────────────────
+/** HC-01: Max output tokens cho lightweight translation calls (global hotkey, bookmarklet extension).
+ *  Nhỏ hơn MAX_CHAT_OUTPUT_TOKENS (4096) vì các call này cần nhanh, output ngắn. */
+export const MAX_LIGHTWEIGHT_TRANSLATE_TOKENS = 2_048
+
+/** HC-09: Default Gemini model cho local server extension endpoint. */
+export const EXT_DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash'
+
+// ── Shared lightweight translation system prompt ──────────────────────────────
+/** Shared system prompt cho các lightweight translation calls (bookmarklet, global hotkey).
+ *  Khác với SYSTEM_PROMPT trong translate.ts — bản đó có cultural nuance rules phức tạp hơn. */
+export const LIGHTWEIGHT_TRANSLATOR_PROMPT =
+  'You are an expert translator. Translate accurately and naturally. ' +
+  'Output ONLY the translation — no notes, no alternatives, no explanations.'
+
+/** Tên preset voice dùng cho Gemini TTS. Xem: https://ai.google.dev/gemini-api/docs/speech */
+export const GEMINI_TTS_VOICE_NAME = 'Aoede'

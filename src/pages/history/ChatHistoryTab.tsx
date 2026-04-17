@@ -3,7 +3,7 @@ import { useAppStore, useT } from '../../store/useAppStore'
 import type { ChatSession } from '../../types'
 import { ChatBubbleIcon, ChevronDownIcon } from '../../components/ui/icons'
 import { HistoryDeleteButton } from '../../components/ui/HistoryDeleteButton'
-import { formatTime, ProviderBadge } from './historyUtils'
+import { formatTime, HistoryEmptyState, ProviderBadge } from './historyUtils'
 
 export function ChatHistoryTab() {
   const { chatSessions, deleteChatSession, setActiveChatSession, setActivePage } = useAppStore()
@@ -20,15 +20,11 @@ export function ChatHistoryTab() {
   return (
     <div className="flex-1 overflow-y-auto">
       {sortedSessions.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-8">
-          <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-            <ChatBubbleIcon className="w-7 h-7 text-gray-300 dark:text-gray-600" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t.history_chat_empty}</p>
-            <p className="text-xs text-gray-400 dark:text-gray-600 mt-1">{t.history_chat_empty_desc}</p>
-          </div>
-        </div>
+        <HistoryEmptyState
+          icon={<ChatBubbleIcon className="w-7 h-7 text-gray-300 dark:text-gray-600" />}
+          title={t.history_chat_empty}
+          desc={t.history_chat_empty_desc}
+        />
       ) : (
         <ul className="divide-y divide-gray-100 dark:divide-gray-800/60">
           {sortedSessions.map((session) => {
@@ -65,7 +61,7 @@ export function ChatHistoryTab() {
                       {msgCount} {t.history_chat_messages}
                     </span>
                     <span className="text-[10px] text-gray-300 dark:text-gray-700 ml-auto">
-                      {formatTime(session.updatedAt)}
+                      {formatTime(session.updatedAt, t)}
                     </span>
                   </div>
                 </button>
@@ -87,7 +83,7 @@ export function ChatHistoryTab() {
                                             : 'bg-white dark:bg-gray-900'}`}
                             >
                               <p className="text-[10px] font-semibold text-gray-400 mb-0.5">
-                                {msg.role === 'user' ? 'You' : 'AI'}
+                                {msg.role === 'user' ? t.history_chat_role_user : t.history_chat_role_ai}
                               </p>
                               <p className="text-gray-700 dark:text-gray-300 line-clamp-2">{text}</p>
                             </div>

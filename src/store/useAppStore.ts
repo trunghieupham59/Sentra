@@ -46,6 +46,9 @@ interface CoreSlice {
 /** Full app state = core + all feature slices */
 type AppState = CoreSlice & SettingsSlice & HistorySlice & ChatSlice
 
+/** Zustand persist storage key — đổi giá trị này nếu cần reset toàn bộ persisted state */
+const STORE_PERSIST_KEY = 'translate-app-settings'
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get, store) => ({
@@ -102,7 +105,7 @@ export const useAppStore = create<AppState>()(
       ...createChatSlice(set, get, store),
     }),
     {
-      name: 'translate-app-settings',
+      name: STORE_PERSIST_KEY,
       partialize: (state) => ({
         sourceLang: state.sourceLang,
         targetLang: state.targetLang,

@@ -135,6 +135,14 @@ const MAX_RAW_TRANSCRIPT_CHARS = 50_000
  */
 const CHUNK_MAX_QUEUE_AGE_MS = 10_000 // 10 s
 
+
+/** Default subtitle appearance settings — also used by reset button in LiveTranslatePage */
+export const DEFAULT_SUBTITLE_SETTINGS = {
+  textColor: '#ffffff',
+  fontSize:  18,
+  bgOpacity: 84,
+} as const satisfies SubtitleSettings
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useLiveTranslate() {
@@ -161,11 +169,7 @@ export function useLiveTranslate() {
   const [showSubtitles,      setShowSubtitles]      = useState(false)
   const [latestSubtitle,     setLatestSubtitle]     = useState('')
   const [showSubtitleConfig, setShowSubtitleConfig] = useState(false)
-  const [subtitleSettings,   setSubtitleSettings]   = useState<SubtitleSettings>({
-    textColor: '#ffffff',
-    fontSize:  18,
-    bgOpacity: 84,
-  })
+  const [subtitleSettings,   setSubtitleSettings]   = useState<SubtitleSettings>({ ...DEFAULT_SUBTITLE_SETTINGS })
   // Ref so processChunk (a stable useCallback) can read current subtitle state
   const showSubtitlesRef = useRef(false)
   useEffect(() => { showSubtitlesRef.current = showSubtitles }, [showSubtitles])

@@ -146,8 +146,14 @@ export interface Translations {
 
   // History page
   history_title: string
+  time_just_now: string
+  time_m_ago: string
+  time_h_ago: string
+  time_d_ago: string
   history_empty: string
   history_empty_desc: string
+  history_translate_count: string
+  history_live_count: string
   history_clear_all: string
   history_clear_confirm: string
   history_delete: string
@@ -159,6 +165,8 @@ export interface Translations {
   history_chat_empty: string
   history_chat_empty_desc: string
   history_chat_messages: string
+  history_chat_role_user: string
+  history_chat_role_ai: string
   history_chat_open: string
   history_chat_delete: string
 
@@ -329,6 +337,8 @@ export interface Translations {
   settings_token_cancel: string
   settings_token_generate: string
   settings_token_reveal_body: string
+  settings_token_reveal_title: string
+  settings_token_close: string
   settings_token_copy: string
   settings_token_copied: string
   settings_token_expires_label: string

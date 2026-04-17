@@ -16,11 +16,21 @@ import {
   TrashIcon,
   TranslateIcon,
 } from '../components/ui/icons'
-import { useLiveTranslate } from '../hooks/useLiveTranslate'
+import { useLiveTranslate, DEFAULT_SUBTITLE_SETTINGS } from '../hooks/useLiveTranslate'
+import { COPY_FEEDBACK_DURATION_MS } from '../constants/ui'
 import { useAppStore, useT } from '../store/useAppStore'
 
 // ── Deep link to macOS Screen Recording settings ──────────────────────────────
 const SCREEN_RECORDING_PREFS = 'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'
+
+
+const SUBTITLE_FONT_SIZES = [
+  { size: 14 as const, label: 'S' },
+  { size: 18 as const, label: 'M' },
+  { size: 22 as const, label: 'L' },
+  { size: 28 as const, label: 'XL' },
+  { size: 34 as const, label: '2X' },
+]
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function LiveTranslatePage() {
@@ -47,7 +57,7 @@ export function LiveTranslatePage() {
     if (!text) return
     await navigator.clipboard.writeText(text)
     setFlag(true)
-    setTimeout(() => setFlag(false), 1500)
+    setTimeout(() => setFlag(false), COPY_FEEDBACK_DURATION_MS)
   }
 
   // Subtitle color options driven by i18n labels
@@ -413,24 +423,21 @@ export function LiveTranslatePage() {
                   {t.live_subtitle_font_size} — {subtitleSettings.fontSize}px
                 </p>
                 <div className="flex gap-1">
-                  {([14, 18, 22, 28, 34] as const).map((size, i) => {
-                    const labels = ['S', 'M', 'L', 'XL', '2X']
-                    return (
-                      <button
-                        key={size}
-                        type="button"
-                        onClick={() => setSubtitleSettings(s => ({ ...s, fontSize: size }))}
-                        className={[
-                          'flex-1 py-1 rounded-lg text-xs font-semibold transition-all duration-100 cursor-pointer',
-                          subtitleSettings.fontSize === size
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-blue-50 dark:hover:bg-blue-950/30',
-                        ].join(' ')}
-                      >
-                        {labels[i]}
-                      </button>
-                    )
-                  })}
+                  {SUBTITLE_FONT_SIZES.map(({ size, label }) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => setSubtitleSettings(s => ({ ...s, fontSize: size }))}
+                      className={[
+                        'flex-1 py-1 rounded-lg text-xs font-semibold transition-all duration-100 cursor-pointer',
+                        subtitleSettings.fontSize === size
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-blue-50 dark:hover:bg-blue-950/30',
+                      ].join(' ')}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -457,7 +464,7 @@ export function LiveTranslatePage() {
               {/* Reset */}
               <button
                 type="button"
-                onClick={() => setSubtitleSettings({ textColor: '#ffffff', fontSize: 18, bgOpacity: 84 })}
+                onClick={() => setSubtitleSettings({ ...DEFAULT_SUBTITLE_SETTINGS })}
                 className="text-[10px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer text-center transition-colors"
               >
                 {t.live_subtitle_reset}

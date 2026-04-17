@@ -197,7 +197,7 @@ export function TranslatePage() {
   }, []) // All values are passed as params → no external deps needed
 
   const handleTranslate = useCallback(async () => {
-    if (!hasKey) { setTranslateError(t.no_api_key); return }
+    if (!hasKey) { setTranslateError(t.translate_error_no_key); return }
     if (isTranslating) return
 
     const generation = ++translateGenerationRef.current

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { CheckUpdateButton } from '../../components/ui/CheckUpdateButton'
 import { AlertTriangleIcon, CheckCircleIcon, CheckIcon, DownloadIcon, SpinnerIcon } from '../../components/ui/icons'
 import { useT } from '../../store/useAppStore'
+import { tpl } from '../../utils/tpl'
 
 type UpdaterStatusType = {
   type: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error-codesign' | 'error'
@@ -9,10 +10,6 @@ type UpdaterStatusType = {
   percent?: number
   error?: string
 }
-
-/** Simple template helper: replaces {key} placeholders */
-const tpl = (str: string, vars: Record<string, string | number>) =>
-  str.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ''))
 
 export function UpdaterSection() {
   const t = useT()

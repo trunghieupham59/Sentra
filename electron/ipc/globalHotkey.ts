@@ -14,8 +14,15 @@ import { exec } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { app, type BrowserWindow, clipboard, globalShortcut } from 'electron'
-import { getStoredApiKey } from './storage'
+import { lightweightTranslate } from './lightweightTranslate'
 
+
+/** Thời gian chờ sau khi gửi Cmd+C để OS cập nhật clipboard (ms) */
+const CLIPBOARD_COPY_WAIT_MS  = 220
+/** Thời gian chờ sau khi gửi Cmd+V để paste hoàn thành (ms) */
+const CLIPBOARD_PASTE_WAIT_MS = 100
+/** Thời gian trước khi restore clipboard sau khi paste (ms) */
+const CLIPBOARD_RESTORE_WAIT_MS = 1_500
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export interface HotkeySettings {
@@ -73,16 +80,16 @@ function simulateCopyAndWait(): Promise<void> {
     if (process.platform === 'darwin') {
       exec(
         `osascript -e 'tell application "System Events" to keystroke "c" using command down'`,
-        () => setTimeout(resolve, 220)
+        () => setTimeout(resolve, CLIPBOARD_COPY_WAIT_MS)
       )
     } else if (process.platform === 'win32') {
       exec(
         `powershell -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^c')"`,
-        () => setTimeout(resolve, 220)
+        () => setTimeout(resolve, CLIPBOARD_COPY_WAIT_MS)
       )
     } else {
       // Linux — requires xdotool
-      exec('xdotool key ctrl+c', () => setTimeout(resolve, 220))
+      exec('xdotool key ctrl+c', () => setTimeout(resolve, CLIPBOARD_COPY_WAIT_MS))
     }
   })
 }
@@ -93,73 +100,17 @@ function simulatePaste(): Promise<void> {
     if (process.platform === 'darwin') {
       exec(
         `osascript -e 'tell application "System Events" to keystroke "v" using command down'`,
-        () => setTimeout(resolve, 100)
+        () => setTimeout(resolve, CLIPBOARD_PASTE_WAIT_MS)
       )
     } else if (process.platform === 'win32') {
       exec(
         `powershell -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^v')"`,
-        () => setTimeout(resolve, 100)
+        () => setTimeout(resolve, CLIPBOARD_PASTE_WAIT_MS)
       )
     } else {
-      exec('xdotool key ctrl+v', () => setTimeout(resolve, 100))
+      exec('xdotool key ctrl+v', () => setTimeout(resolve, CLIPBOARD_PASTE_WAIT_MS))
     }
   })
-}
-
-// ── Translation ───────────────────────────────────────────────────────────────
-
-const HOTKEY_SYSTEM_PROMPT =
-  'You are an expert translator. Translate accurately and naturally. ' +
-  'Output ONLY the translation — no notes, no alternatives, no explanations.'
-
-function buildTranslatePrompt(text: string, targetLang: string): string {
-  return `Translate into ${targetLang}. Tone: neutral. Output only the translation.\n\n${text}`
-}
-
-async function translateText(text: string, settings: HotkeySettings): Promise<string> {
-  const { provider, model, targetLang } = settings
-  const apiKey = await getStoredApiKey(provider)
-  if (!apiKey) throw new Error(`No API key configured for ${provider}. Please add it in Settings.`)
-
-  const prompt = buildTranslatePrompt(text, targetLang)
-
-  if (provider === 'gemini') {
-    const { GoogleGenerativeAI } = await import('@google/generative-ai')
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const genModel = genAI.getGenerativeModel({ model, systemInstruction: HOTKEY_SYSTEM_PROMPT })
-    const result = await genModel.generateContent(prompt)
-    return result.response.text().trim()
-  }
-
-  if (provider === 'openai') {
-    const OpenAI = (await import('openai')).default
-    const client = new OpenAI({ apiKey })
-    const completion = await client.chat.completions.create({
-      model,
-      messages: [
-        { role: 'system', content: HOTKEY_SYSTEM_PROMPT },
-        { role: 'user', content: prompt },
-      ],
-      max_completion_tokens: 2048,
-    })
-    return (completion.choices[0]?.message?.content ?? '').trim()
-  }
-
-  if (provider === 'claude') {
-    const Anthropic = (await import('@anthropic-ai/sdk')).default
-    const client = new Anthropic({ apiKey })
-    const msg = await client.messages.create({
-      model,
-      max_tokens: 2048,
-      system: HOTKEY_SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: prompt }],
-    })
-    const block = msg.content[0]
-    if (block.type === 'text') return block.text.trim()
-    throw new Error('Unexpected response from Claude')
-  }
-
-  throw new Error(`Unknown provider: ${provider}`)
 }
 
 // ── Hotkey registration ───────────────────────────────────────────────────────
@@ -191,7 +142,14 @@ function registerHotkey(
         // Notify renderer: translation starting
         getMainWindow()?.webContents.send('hotkey:translating', { text: selectedText })
 
-        const translated = await translateText(selectedText, currentSettings)
+        const result = await lightweightTranslate({
+          text: selectedText,
+          targetLang: currentSettings.targetLang,
+          provider: currentSettings.provider,
+          model: currentSettings.model,
+        })
+        if (!result.success || !result.translatedText) throw new Error(result.error ?? 'Translation failed')
+        const translated = result.translatedText
 
         // Paste translated text
         clipboard.writeText(translated)
@@ -204,7 +162,7 @@ function registerHotkey(
         })
 
         // Restore clipboard after a short delay so paste completes first
-        setTimeout(() => clipboard.writeText(backupClipboard), 1500)
+        setTimeout(() => clipboard.writeText(backupClipboard), CLIPBOARD_RESTORE_WAIT_MS)
       } catch (err) {
         clipboard.writeText(backupClipboard)
         console.error('[GlobalHotkey] Translation error:', err)

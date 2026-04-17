@@ -1,9 +1,13 @@
 import { useState } from 'react'
 import { useAppStore, useT } from '../../store/useAppStore'
+import { tpl } from '../../utils/tpl'
 import { MarkdownText } from '../../components/MarkdownText'
 import { ChevronDownIcon, MicrophoneIcon } from '../../components/ui/icons'
 import { HistoryDeleteButton } from '../../components/ui/HistoryDeleteButton'
-import { formatTime, langLabel, ProviderBadge } from './historyUtils'
+import { formatTime, HistoryClearHeader, HistoryEmptyState, langLabel, ProviderBadge } from './historyUtils'
+
+/** Số ký tự preview hiển thị trong danh sách live session history */
+const LIVE_HISTORY_PREVIEW_CHARS = 120
 
 export function LiveHistoryTab() {
   const { liveSessions, deleteLiveSession, clearLiveSessions, setActivePage } = useAppStore()
@@ -29,43 +33,29 @@ export function LiveHistoryTab() {
   return (
     <div className="flex flex-col h-full">
       {liveSessions.length > 0 && (
-        <div className="flex-shrink-0 flex items-center justify-between px-4 py-2
-                        bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
-          <span className="text-xs text-gray-400">
-            {liveSessions.length} {liveSessions.length === 1 ? 'session' : 'sessions'}
-          </span>
-          <button
-            type="button"
-            onClick={handleClearAll}
-            onBlur={() => setTimeout(() => setConfirmClear(false), 200)}
-            className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all duration-150 ${
-              confirmClear
-                ? 'bg-red-500 text-white hover:bg-red-600'
-                : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
-            }`}
-          >
-            {confirmClear ? t.history_live_clear_confirm : t.history_live_clear_all}
-          </button>
-        </div>
+        <HistoryClearHeader
+          countLabel={tpl(t.history_live_count, { n: liveSessions.length })}
+          confirmClear={confirmClear}
+          labelClear={t.history_live_clear_all}
+          labelConfirm={t.history_live_clear_confirm}
+          onClear={handleClearAll}
+          onBlur={() => setTimeout(() => setConfirmClear(false), 200)}
+        />
       )}
 
       <div className="flex-1 overflow-y-auto">
         {liveSessions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-8">
-            <div className="w-14 h-14 rounded-2xl bg-purple-50 dark:bg-purple-950/30 flex items-center justify-center">
-              <MicrophoneIcon className="w-7 h-7 text-purple-300 dark:text-purple-700" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t.history_live_empty}</p>
-              <p className="text-xs text-gray-400 dark:text-gray-600 mt-1">{t.history_live_empty_desc}</p>
-            </div>
-          </div>
+          <HistoryEmptyState
+            icon={<MicrophoneIcon className="w-7 h-7 text-purple-300 dark:text-purple-700" />}
+            title={t.history_live_empty}
+            desc={t.history_live_empty_desc}
+          />
         ) : (
           <ul className="divide-y divide-gray-100 dark:divide-gray-800/60">
             {liveSessions.map((session) => {
               const isExpanded = expandedId === session.id
-              const previewRaw = session.rawTranscript.slice(0, 120)
-              const previewTx  = session.translation.slice(0, 120)
+              const previewRaw = session.rawTranscript.slice(0, LIVE_HISTORY_PREVIEW_CHARS)
+              const previewTx  = session.translation.slice(0, LIVE_HISTORY_PREVIEW_CHARS)
 
               return (
                 <li key={session.id} className="group bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
@@ -77,11 +67,11 @@ export function LiveHistoryTab() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-gray-800 dark:text-gray-100 leading-snug line-clamp-2 font-medium">
-                          {previewRaw}{session.rawTranscript.length > 120 ? '…' : ''}
+                          {previewRaw}{session.rawTranscript.length > LIVE_HISTORY_PREVIEW_CHARS ? '…' : ''}
                         </p>
                         {previewTx && (
                           <p className="text-xs text-gray-500 dark:text-gray-400 leading-snug mt-1 line-clamp-1">
-                            {previewTx}{session.translation.length > 120 ? '…' : ''}
+                            {previewTx}{session.translation.length > LIVE_HISTORY_PREVIEW_CHARS ? '…' : ''}
                           </p>
                         )}
                       </div>
@@ -98,7 +88,7 @@ export function LiveHistoryTab() {
                         {session.wordCount.toLocaleString()} {t.history_live_words}
                       </span>
                       <span className="text-[10px] text-gray-300 dark:text-gray-700 ml-auto">
-                        {formatTime(session.createdAt)}
+                        {formatTime(session.createdAt, t)}
                       </span>
                     </div>
                   </button>

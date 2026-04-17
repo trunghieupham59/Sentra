@@ -15,6 +15,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { LANG_TO_BCP47 } from '../constants/audio'
 import type { TtsVoice } from '../types'
 
+/** Tốc độ phát audio TTS — thấp hơn 1.0 để dễ nghe hơn */
+const TTS_PLAYBACK_RATE = 0.9
+
 export type SpeakPanel = 'source' | 'translated'
 
 interface UseTTSOptions {
@@ -124,7 +127,7 @@ export function useTTS({ ttsVoice }: UseTTSOptions): UseTTSReturn {
 
         const source = audioCtx.createBufferSource()
         source.buffer = audioBuffer
-        source.playbackRate.value = 0.9 // slightly slower for comprehension
+        source.playbackRate.value = TTS_PLAYBACK_RATE // slightly slower for comprehension
         source.connect(audioCtx.destination)
         source.onended = () => { audioSourceRef.current = null; setSpeakingPanel(null) }
         audioSourceRef.current = source
