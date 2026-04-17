@@ -530,7 +530,7 @@ function LiveHistoryTab() {
 export function HistoryPage() {
   const { history, chatSessions, liveSessions } = useAppStore()
   const t = useT()
-  const [activeTab, setActiveTab] = useState<'translate' | 'chat' | 'live'>('translate')
+  const [activeTab, setActiveTab] = useState<'translate' | 'chat' | 'live'>('chat')
 
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-950">
@@ -543,8 +543,8 @@ export function HistoryPage() {
         {/* Tabs */}
         <div className="flex gap-0 px-4 mt-2">
           {([
-            ['translate', t.history_tab_translate, history.length],
             ['chat',      t.history_tab_chat,      chatSessions.length],
+            ['translate', t.history_tab_translate, history.length],
             ['live',      t.history_tab_live,       liveSessions.length],
           ] as ['translate' | 'chat' | 'live', string, number][]).map(([tab, label, count]) => (
             <button
