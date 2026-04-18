@@ -69,6 +69,7 @@
   "build": {
     "appId": "com.treassistant.app",
     "productName": "T.R.E Assistant",
+    "artifactName": "T.R.E-Assistant-${version}-${arch}.${ext}",
     "directories": {
       "output": "release"
     },
