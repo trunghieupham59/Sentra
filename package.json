@@ -43,6 +43,7 @@
     "zustand": "^5.0.1"
   },
   "devDependencies": {
+    "@electron/notarize": "^2.5.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -80,7 +81,10 @@
     ],
     "mac": {
       "icon": "build/icon.icns",
-      "identity": null,
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
       "target": [
         {
           "target": "dmg",
@@ -99,6 +103,7 @@
       ],
       "category": "public.app-category.productivity"
     },
+    "afterSign": "scripts/notarize.mjs",
     "win": {
       "icon": "build/icon.ico",
       "target": [
