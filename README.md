@@ -184,31 +184,6 @@ T.R.E-Assistant/
 
 ## 📝 Changelog
 
-### v1.0.3
-- Added **Live Translation** page — real-time translation as you type
-- Added **AI Chat** mode with full conversation history
-- Added **Model Selector** — choose specific model per provider
-- Added **Markdown rendering** in translation and chat output
-- Improved image translation pipeline
-- UI language support expanded (English, Vietnamese, Japanese)
-- Bug fixes and performance improvements
-
-### v1.0.2
-- Added **Image Translation** via AI vision models
-- Added **Voice Input** (speech-to-text transcription)
-- Added **Text-to-Speech** for translation output
-- Added **Translation History** with persistence
-- Added **Japanese Furigana** rendering
-
-### v1.0.1
-- Multi-provider support: Google Gemini, Anthropic Claude, OpenAI GPT
-- Translation styles: Standard, Casual, Formal, Technical, Message
-- 20+ language pairs
-- Secure API key storage via OS Keychain
-
-### v1.0.0
-- Initial release
-
 ---
 
 ## 🤝 Contributing
