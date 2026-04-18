@@ -61,9 +61,9 @@ jobs:
 
                   {
                     echo "RELEASE_BODY<<ENDOFBODY"
-                    echo "## Lotus ${CURRENT_TAG} — Release Notes"
+                    echo "## T.R.E Assistant ${CURRENT_TAG} — Release Notes"
                     echo ""
-                    echo "> **Lotus** is a local AI-powered translation desktop app for macOS and Windows,"
+                    echo "> **T.R.E Assistant** is a local AI-powered translation desktop app for macOS and Windows,"
                     echo "> supporting models from OpenAI, Anthropic Claude, and Google Gemini."
                     echo ""
                     echo "---"
@@ -106,13 +106,13 @@ jobs:
                     echo ""
                     echo "###  macOS"
                     echo "1. Download the \`.dmg\` file matching your chip:"
-                    echo "   - **Apple Silicon (M1/M2/M3):** \`Lotus-*-arm64.dmg\`"
-                    echo "   - **Intel Mac:** \`Lotus-*-x64.dmg\`"
-                    echo "2. Open the \`.dmg\` and drag **Lotus** to your **Applications** folder."
+                    echo "   - **Apple Silicon (M1/M2/M3):** \`T.R.E-Assistant-*-arm64.dmg\`"
+                    echo "   - **Intel Mac:** \`T.R.E-Assistant-*-x64.dmg\`"
+                    echo "2. Open the \`.dmg\` and drag **T.R.E Assistant** to your **Applications** folder."
                     echo "3. On first launch, right-click → **Open** to bypass Gatekeeper if needed."
                     echo ""
                     echo "### ⊞ Windows"
-                    echo "1. Download \`Lotus-*-x64-Setup.exe\`."
+                    echo "1. Download \`T.R.E-Assistant-*-x64-Setup.exe\`."
                     echo "2. Run the installer and follow the setup wizard."
                     echo "3. You can choose a custom installation directory during setup."
                     echo ""
@@ -132,8 +132,8 @@ jobs:
             - name: Package Chrome Extension
               shell: bash
               run: |
-                  zip -r lotus-chrome-extension.zip chrome-extension/
-                  echo "Chrome extension packaged: $(du -sh lotus-chrome-extension.zip | cut -f1)"
+                  zip -r tre-assistant-chrome-extension.zip chrome-extension/
+                  echo "Chrome extension packaged: $(du -sh tre-assistant-chrome-extension.zip | cut -f1)"
 
             - name: Create GitHub Release
               id: create_release
@@ -142,7 +142,7 @@ jobs:
                   body: ${{ steps.notes.outputs.RELEASE_BODY }}
                   draft: false
                   prerelease: ${{ contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-rc') }}
-                  files: lotus-chrome-extension.zip
+                  files: tre-assistant-chrome-extension.zip
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
