@@ -5,11 +5,11 @@ const $ = (id) => document.getElementById(id)
 // ── Load saved settings ───────────────────────────────────────────────────────
 
 function loadSettings () {
-  chrome.storage.local.get(['lotusToken', 'lotusTargetLang', 'lotusProvider', 'lotusModel'], (data) => {
-    if (data.lotusToken)     $('token').value = data.lotusToken
-    if (data.lotusTargetLang) $('target-lang').value = data.lotusTargetLang
-    if (data.lotusProvider)  $('provider').value = data.lotusProvider
-    if (data.lotusModel)     $('model').value = data.lotusModel
+  chrome.storage.local.get(['treToken', 'treTargetLang', 'treProvider', 'treModel'], (data) => {
+    if (data.treToken)     $('token').value = data.treToken
+    if (data.treTargetLang) $('target-lang').value = data.treTargetLang
+    if (data.treProvider)  $('provider').value = data.treProvider
+    if (data.treModel)     $('model').value = data.treModel
   })
 }
 
@@ -39,10 +39,10 @@ $('btn-save').addEventListener('click', () => {
   }
 
   chrome.storage.local.set({
-    lotusToken: token,
-    lotusTargetLang: targetLang,
-    lotusProvider: provider,
-    lotusModel: model,
+    treToken: token,
+    treTargetLang: targetLang,
+    treProvider: provider,
+    treModel: model,
   }, () => {
     showStatus('✓ Settings saved!', 'success')
   })

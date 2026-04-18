@@ -79,11 +79,11 @@ const SAFARI_APPS = ['Safari', 'Safari Technology Preview']
 
 function buildAssistantScript (token: string, port: number, targetLang: string): string {
   return `(function(){
-if(window.__lotusLA)return;window.__lotusLA=true;
+if(window.__treLA)return;window.__treLA=true;
 var TK='${token}',PT=${port},TL='${targetLang}';
 // --- button ---
 var b=document.createElement('div');
-b.id='__lotusLA_btn';
+b.id='__treLA_btn';
 b.style.cssText='position:fixed;bottom:20px;right:20px;z-index:2147483647;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#7c3aed);box-shadow:0 3px 14px rgba(79,70,229,.55);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s,opacity .15s;opacity:.85;user-select:none;';
 b.innerHTML='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>';
 b.addEventListener('mouseover',function(){b.style.transform='scale(1.08)';b.style.opacity='1';});
@@ -91,7 +91,7 @@ b.addEventListener('mouseout',function(){b.style.transform='';b.style.opacity='.
 document.body.appendChild(b);
 // --- tooltip ---
 var t=document.createElement('div');
-t.id='__lotusLA_tip';
+t.id='__treLA_tip';
 t.style.cssText='position:fixed;bottom:74px;right:20px;z-index:2147483647;max-width:300px;min-width:160px;background:#1e1b4b;color:#e0e7ff;padding:10px 13px;border-radius:10px;font:13px/1.5 -apple-system,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.4);display:none;word-break:break-word;';
 document.body.appendChild(t);
 var timer;
@@ -103,16 +103,16 @@ b.addEventListener('click',function(){
   show('<span style="opacity:.6;font-size:11px">Translating…</span>',0);
   fetch('http://127.0.0.1:'+PT+'/api/translate',{
     method:'POST',
-    headers:{'Content-Type':'application/json','X-Lotus-Token':TK},
+    headers:{'Content-Type':'application/json','X-TRE-Token':TK},
     body:JSON.stringify({text:txt,targetLang:TL})
   }).then(function(r){return r.json();}).then(function(d){
     if(d.success){
-      show('<span style="opacity:.55;font-size:10px;display:block;margin-bottom:3px">LOTUS TRANSLATION</span>'+d.translatedText,9000);
+      show('<span style="opacity:.55;font-size:10px;display:block;margin-bottom:3px">T.R.E TRANSLATION</span>'+d.translatedText,9000);
       try{navigator.clipboard.writeText(d.translatedText);}catch(e){}
     } else {
       show('⚠ '+(d.error||'Translation failed'),5000);
     }
-  }).catch(function(){show('⚠ Cannot reach Lotus app. Make sure it is running.',5000);});
+  }).catch(function(){show('⚠ Cannot reach T.R.E Assistant app. Make sure it is running.',5000);});
 });
 document.addEventListener('mousedown',function(e){
   if(e.target!==b&&e.target!==t&&!t.contains(e.target))t.style.display='none';

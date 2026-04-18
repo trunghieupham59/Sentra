@@ -305,7 +305,7 @@ export function BrowserIntegrationSection() {
           </div>
           <button
             type="button"
-            onClick={() => window.api?.openExternal('https://github.com/trunghieupham59/lotus-translate/releases/latest')}
+            onClick={() => window.api?.openExternal('https://github.com/trunghieupham59/T.R.E-Assistant/releases/latest')}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg
                        bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600
                        text-white font-medium transition-colors cursor-pointer"

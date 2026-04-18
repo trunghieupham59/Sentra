@@ -12,21 +12,21 @@ const PORT = 39875
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
-    id: 'lotus-translate',
+    id: 'tre-translate',
     title: 'Translate with T.R.E Assistant',
     contexts: ['selection'],
   })
 })
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (info.menuItemId !== 'lotus-translate') return
+  if (info.menuItemId !== 'tre-translate') return
   const text = info.selectionText
   if (!text || !tab?.id) return
 
   // Forward translate request to the active tab's content script
   try {
     await chrome.tabs.sendMessage(tab.id, {
-      type: 'LOTUS_TRANSLATE_SELECTION',
+      type: 'TRE_TRANSLATE_SELECTION',
       text,
     })
   } catch {
@@ -37,7 +37,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 // ── Message relay from content script ─────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === 'LOTUS_TRANSLATE') {
+  if (message.type === 'TRE_TRANSLATE') {
     handleTranslate(message).then(sendResponse).catch((err) => {
       sendResponse({ success: false, error: err.message })
     })

@@ -7,12 +7,12 @@ let lastTranslated = ''
 
 async function getSettings () {
   return new Promise((resolve) => {
-    chrome.storage.local.get(['lotusToken', 'lotusTargetLang', 'lotusProvider', 'lotusModel'], (data) => {
+    chrome.storage.local.get(['treToken', 'treTargetLang', 'treProvider', 'treModel'], (data) => {
       resolve({
-        token: data.lotusToken || '',
-        targetLang: data.lotusTargetLang || 'en',
-        provider: data.lotusProvider || 'gemini',
-        model: data.lotusModel || 'gemini-2.0-flash',
+        token: data.treToken || '',
+        targetLang: data.treTargetLang || 'en',
+        provider: data.treProvider || 'gemini',
+        model: data.treModel || 'gemini-2.0-flash',
       })
     })
   })
@@ -46,7 +46,7 @@ async function init () {
 
     // Persist lang change
     langSelect.addEventListener('change', () => {
-      chrome.storage.local.set({ lotusTargetLang: langSelect.value })
+      chrome.storage.local.set({ treTargetLang: langSelect.value })
     })
 
     // Try to pre-fill with current tab selection

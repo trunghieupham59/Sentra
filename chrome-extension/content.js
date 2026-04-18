@@ -26,7 +26,7 @@
 
   // Build btn (avoid putting chrome-extension:// URL in innerHTML)
   const btn = document.createElement('button')
-  btn.id = 'lotus-assistant-btn'
+  btn.id = 'tre-assistant-btn'
   btn.title = 'T.R.E Assistant Translate'
   const btnImg = document.createElement('img')
   btnImg.src = ICON_URL
@@ -35,20 +35,20 @@
 
   // Build tooltip (avoid putting chrome-extension:// URL in innerHTML)
   const tooltip = document.createElement('div')
-  tooltip.id = 'lotus-result-tooltip'
+  tooltip.id = 'tre-result-tooltip'
   tooltip.innerHTML = `
-    <div class="lotus-tooltip-header">
-      <img class="lotus-tooltip-logo" alt="T.R.E Assistant" />
-      <span class="lotus-tooltip-label">Translation</span>
+    <div class="tre-tooltip-header">
+      <img class="tre-tooltip-logo" alt="T.R.E Assistant" />
+      <span class="tre-tooltip-label">Translation</span>
     </div>
-    <div class="lotus-tooltip-text"></div>
-    <div class="lotus-tooltip-actions">
-      <button class="lotus-action-btn lotus-copy-btn">📋 Copy</button>
-      <button class="lotus-action-btn lotus-replace-btn">↵ Replace</button>
+    <div class="tre-tooltip-text"></div>
+    <div class="tre-tooltip-actions">
+      <button class="tre-action-btn tre-copy-btn">📋 Copy</button>
+      <button class="tre-action-btn tre-replace-btn">↵ Replace</button>
     </div>
   `
   // Set logo src separately after innerHTML is parsed (avoids chrome-extension:// in innerHTML)
-  tooltip.querySelector('.lotus-tooltip-logo').src = ICON_URL
+  tooltip.querySelector('.tre-tooltip-logo').src = ICON_URL
 
   try {
     root.appendChild(btn)
@@ -57,8 +57,8 @@
     return // Failed to inject UI elements, bail out
   }
 
-  const copyBtn = tooltip.querySelector('.lotus-copy-btn')
-  const replaceBtn = tooltip.querySelector('.lotus-replace-btn')
+  const copyBtn = tooltip.querySelector('.tre-copy-btn')
+  const replaceBtn = tooltip.querySelector('.tre-replace-btn')
 
   // ── State ─────────────────────────────────────────────────────────────────
 
@@ -77,12 +77,12 @@
     return new Promise((resolve, reject) => {
       if (!isContextValid()) { reject(new Error('Extension context invalidated. Please reload the page.')); return }
       try {
-        chrome.storage.local.get(['lotusToken', 'lotusTargetLang', 'lotusProvider', 'lotusModel'], (data) => {
+        chrome.storage.local.get(['treToken', 'treTargetLang', 'treProvider', 'treModel'], (data) => {
           resolve({
-            token: data.lotusToken || '',
-            targetLang: data.lotusTargetLang || 'en',
-            provider: data.lotusProvider || 'gemini',
-            model: data.lotusModel || 'gemini-2.0-flash',
+            token: data.treToken || '',
+            targetLang: data.treTargetLang || 'en',
+            provider: data.treProvider || 'gemini',
+            model: data.treModel || 'gemini-2.0-flash',
           })
         })
       } catch {
@@ -128,7 +128,7 @@
   }
 
   function resetBtnIcon () {
-    btn.classList.remove('lotus-loading')
+    btn.classList.remove('tre-loading')
     btn.innerHTML = ''
     const img = document.createElement('img')
     img.src = ICON_URL
@@ -152,7 +152,7 @@
     currentTranslation = text
     savedRange = range || null
 
-    const tooltipText = tooltip.querySelector('.lotus-tooltip-text')
+    const tooltipText = tooltip.querySelector('.tre-tooltip-text')
     tooltipText.textContent = text
     tooltip.style.display = 'block'
     copyBtn.textContent = '📋 Copy'
@@ -266,9 +266,9 @@
     if (!text) return
 
     // Show loading spinner inside the round button
-    btn.classList.add('lotus-loading')
+    btn.classList.add('tre-loading')
     btn.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5" style="animation:lotus-spin 0.8s linear infinite;width:18px;height:18px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5" style="animation:tre-spin 0.8s linear infinite;width:18px;height:18px;">
         <circle cx="12" cy="12" r="9" stroke-opacity="0.2"/>
         <path d="M12 3a9 9 0 0 1 9 9" />
       </svg>
@@ -312,6 +312,6 @@
 
   // Inject spin keyframe
   const style = document.createElement('style')
-  style.textContent = `@keyframes lotus-spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`
+  style.textContent = `@keyframes tre-spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`
   document.head.appendChild(style)
 })()

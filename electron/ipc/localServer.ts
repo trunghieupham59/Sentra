@@ -133,7 +133,7 @@ function sendJSON (res: http.ServerResponse, statusCode: number, data: unknown):
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Lotus-Token',
+    'Access-Control-Allow-Headers': 'Content-Type, X-TRE-Token',
   })
   res.end(JSON.stringify(data))
 }
@@ -154,7 +154,7 @@ export function startLocalServer (ipcMain: Electron.IpcMain): void {
     if (req.method === 'OPTIONS') { sendJSON(res, 200, {}); return }
 
     // Validate token against all active, non-expired tokens
-    const incomingToken = req.headers['x-lotus-token']
+    const incomingToken = req.headers['x-tre-token']
     const now = Date.now()
     purgeExpired()
     const valid = activeTokens.some(t => t.token === incomingToken && t.expiresAt > now)

@@ -1,6 +1,6 @@
-/* Lotus Translate — floating icon button (circular) */
+/* T.R.E Assistant — floating icon button (circular) */
 
-#lotus-assistant-btn {
+#tre-assistant-btn {
   position: fixed;
   z-index: 2147483647;
   display: none;
@@ -19,17 +19,17 @@
   pointer-events: auto;
 }
 
-#lotus-assistant-btn:hover {
+#tre-assistant-btn:hover {
   box-shadow: 0 4px 18px rgba(79, 70, 229, 0.35), 0 2px 6px rgba(0,0,0,0.12);
   transform: scale(1.1);
 }
 
-#lotus-assistant-btn.lotus-loading {
+#tre-assistant-btn.tre-loading {
   background: #f5f5ff;
   pointer-events: none;
 }
 
-#lotus-assistant-btn img {
+#tre-assistant-btn img {
   width: 22px;
   height: 22px;
   border-radius: 6px;
@@ -40,7 +40,7 @@
 
 /* ── Translate result tooltip (light theme) ───────────────────────────────── */
 
-#lotus-result-tooltip {
+#tre-result-tooltip {
   position: fixed;
   z-index: 2147483647;
   display: none;
@@ -61,7 +61,7 @@
 }
 
 /* Header bar */
-#lotus-result-tooltip .lotus-tooltip-header {
+#tre-result-tooltip .tre-tooltip-header {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -70,14 +70,14 @@
   border-bottom: 1px solid #ddd6fe;
 }
 
-#lotus-result-tooltip .lotus-tooltip-logo {
+#tre-result-tooltip .tre-tooltip-logo {
   width: 18px;
   height: 18px;
   border-radius: 4px;
   flex-shrink: 0;
 }
 
-#lotus-result-tooltip .lotus-tooltip-label {
+#tre-result-tooltip .tre-tooltip-label {
   font-size: 10px;
   color: #5b21b6;
   font-weight: 700;
@@ -86,7 +86,7 @@
 }
 
 /* Translation text */
-#lotus-result-tooltip .lotus-tooltip-text {
+#tre-result-tooltip .tre-tooltip-text {
   color: #1e1b4b;
   padding: 11px 14px 10px;
   font-size: 13.5px;
@@ -94,13 +94,13 @@
 }
 
 /* Action buttons row */
-#lotus-result-tooltip .lotus-tooltip-actions {
+#tre-result-tooltip .tre-tooltip-actions {
   display: flex;
   gap: 0;
   border-top: 1px solid #e9e6fc;
 }
 
-#lotus-result-tooltip .lotus-action-btn {
+#tre-result-tooltip .tre-action-btn {
   flex: 1;
   padding: 8px 10px;
   border: none;
@@ -115,19 +115,19 @@
   background: transparent;
 }
 
-#lotus-result-tooltip .lotus-copy-btn {
+#tre-result-tooltip .tre-copy-btn {
   color: #4f46e5;
   border-right: 1px solid #e9e6fc;
 }
 
-#lotus-result-tooltip .lotus-copy-btn:hover {
+#tre-result-tooltip .tre-copy-btn:hover {
   background: #ede9fe;
 }
 
-#lotus-result-tooltip .lotus-replace-btn {
+#tre-result-tooltip .tre-replace-btn {
   color: #0f766e;
 }
 
-#lotus-result-tooltip .lotus-replace-btn:hover {
+#tre-result-tooltip .tre-replace-btn:hover {
   background: #f0fdf4;
 }
