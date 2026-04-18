@@ -1,7 +1,7 @@
 # T.R.E Assistant — AI Translation Desktop App
 
 <p align="center">
-  <img src="public/logo.png" width="96" alt="T.R.E Assistant logo">
+  <img src="public/icon.png" width="96" alt="T.R.E Assistant logo">
 </p>
 
 <p align="center">
