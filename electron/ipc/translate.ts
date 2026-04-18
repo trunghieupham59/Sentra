@@ -59,7 +59,9 @@ CRITICAL — Proper names and honorifics:
 - For Vietnamese relational address pronouns used as names or titles (Anh, Em, Chị, Cô, Chú, Bác, Ông, Bà): preserve or adapt them appropriately to fit the target language's cultural register.
 - Korean honorifics (씨, 님, 선생님 etc.) and Chinese honorifics (先生, 女士, 老师 etc.) should similarly be adapted appropriately.`
 
-const REWRITE_SYSTEM_PROMPT = `You are a native speaker and expert editor with deep cultural knowledge. Your task is to rewrite text so it sounds completely authentic and natural — exactly the way a confident, educated native speaker of that language would write or speak. You understand the subtle idioms, colloquialisms, cultural references, and speech patterns that distinguish native writing from translated or non-native text. While preserving the original meaning, intent, and register, you elevate the language so it feels genuine, fluent, and culturally resonant.`
+const REWRITE_SYSTEM_PROMPT = `You are a brilliant native writer — not a translator, not an editor of translations. You have never "fixed" translated text in your life. Your only instinct when reading text is: "Would a real native speaker of this language actually write or say this?" If not, you reimagine it entirely from the inside out.
+
+You restructure sentences, choose authentic collocations, apply real idioms, and match the natural rhythm and feel of the target language — until every trace of foreignness disappears. You eliminate translationese ruthlessly: awkward word order, calques, unnatural prepositions, overly literal phrasing, stiff sentence length, and anything that reveals a foreign source. You think in the target language, not about it.`
 
 function buildPrompt(sourceText: string, sourceLang: string, targetLang: string, showFurigana = false, style: TranslationStyle = 'neutral', phoneticOnly = false): string {
   // phoneticOnly mode: add phonetic annotations to already-translated text without re-translating
@@ -97,23 +99,33 @@ function buildRewritePrompt(text: string, lang: string, style?: TranslationStyle
   const styleName = style ?? 'neutral'
   const toneDesc = STYLE_TONE[styleName] ?? STYLE_TONE.neutral
 
-  return `Rewrite the following text so it sounds completely natural and authentic in ${lang} — as a native speaker with full cultural fluency would express it.
+  return `Make the text below indistinguishable from something a confident, articulate native speaker of ${lang} would genuinely write or say — not a polished translation, but authentic original expression.
 
-Style to match: ${styleName} — ${toneDesc}
+Target language: ${lang}
+Style: ${styleName} — ${toneDesc}
 
-Requirements:
-- Rewrite it so it sounds genuinely native: use natural idioms, culturally authentic expressions, and real speech patterns of ${lang}
-- Apply the style above precisely — not just vocabulary but sentence rhythm, formality level, and overall feel
-- Keep the EXACT same meaning, intent, nuance, emotional tone, and subject matter
-- Keep the same perspective (first/second/third person)
-- Do NOT change the language (must stay in ${lang})
-- Do NOT add new information or remove important content
-- Eliminate any phrasing that feels translated, awkward, unnatural, or non-idiomatic
-- The result should be indistinguishable from something written by a confident, articulate native speaker of ${lang}
+How to approach this:
+1. Grasp the core idea and emotional intent — forget the exact words.
+2. Ask yourself: "If I were a native speaker of ${lang} who just had this thought, how would I actually express it?"
+3. Rewrite from that perspective. Change word order, sentence structure, and phrasing freely — as long as meaning, intent, and register stay intact.
+4. Apply the style above to every dimension: vocabulary, sentence rhythm, formality level, and overall feel — not just surface-level word swaps.
+5. Use collocations, idioms, and expressions that are natural and current in ${lang}.
+6. Ruthlessly eliminate:
+   - Literal translations or calques of foreign structures
+   - Unnatural word order or awkward prepositions
+   - Any phrase that "feels foreign" when a native reads it aloud
+   - Formality mismatches (too stiff or too casual for the style)
+   - Overly long or artificially short sentences for the register
+
+Constraints:
+- Preserve the exact meaning, intent, emotional tone, nuance, and perspective (1st/2nd/3rd person)
+- Keep the language as ${lang} — do NOT translate into another language
+- Keep names, numbers, URLs, code, and technical terms unchanged
+- Do NOT add new information or omit important content
 
 Output ONLY the rewritten text. No explanations, no notes, no alternatives.
 
-Text to rewrite:
+Text:
 ${text}`
 }
 
