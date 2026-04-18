@@ -1,3 +1,3 @@
-[submodule "lotus-agent"]
-	path = lotus-agent
+[submodule "T.R.E-Agent"]
+	path = T.R.E-Agent
 	url = https://github.com/trunghieupham59/lotus-agent.git
