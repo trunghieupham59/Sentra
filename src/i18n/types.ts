@@ -303,6 +303,14 @@ export interface Translations {
   settings_extension_install_hint: string
   settings_extension_port: string
   settings_extension_connected: string
+  /** Download & install card */
+  settings_extension_download_title: string
+  settings_extension_download_desc: string
+  settings_extension_download_btn: string
+  settings_extension_install_step1: string
+  settings_extension_install_step2: string
+  settings_extension_install_step3: string
+  settings_extension_install_step4: string
 
   // Settings — Updates
   settings_update_section: string

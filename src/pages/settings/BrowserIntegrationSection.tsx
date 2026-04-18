@@ -73,7 +73,6 @@ export function BrowserIntegrationSection() {
   }
 
   // ── Extension token state ──────────────────────────────────────────────────
-  const [extPort, setExtPort] = useState(39875)
   const [extTokens, setExtTokens] = useState<ExtTokenInfo[]>([])
   const [extTokensLoading, setExtTokensLoading] = useState(false)
   const [extTokensError, setExtTokensError] = useState('')
@@ -85,7 +84,6 @@ export function BrowserIntegrationSection() {
   const [creating, setCreating] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null)
-  const [extPortCopied, setExtPortCopied] = useState(false)
   const [tokenActionError, setTokenActionError] = useState('')
 
   const defaultTokenName = () => {
@@ -104,7 +102,6 @@ export function BrowserIntegrationSection() {
       const res = await window.api.localServer.listTokens()
       if (res?.success) {
         setExtTokens(res.tokens ?? [])
-        setExtPort(res.port ?? 39875)
       } else {
         setExtTokensError(t.settings_token_error_load)
       }
@@ -178,12 +175,6 @@ export function BrowserIntegrationSection() {
     await navigator.clipboard.writeText(revealedToken.token)
     setRevealedCopied(true)
     setTimeout(() => setRevealedCopied(false), 2000)
-  }
-
-  const handleCopyExtUrl = async () => {
-    await navigator.clipboard.writeText(`http://localhost:${extPort}`)
-    setExtPortCopied(true)
-    setTimeout(() => setExtPortCopied(false), 2000)
   }
 
   return (
@@ -289,6 +280,48 @@ export function BrowserIntegrationSection() {
 
         <div className="px-4 pt-3 pb-1">
           <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Chrome Extension</p>
+        </div>
+
+        {/* Download & Install */}
+        <div className="px-4 py-4 space-y-3">
+          <div>
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_extension_download_title}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_extension_download_desc}</p>
+          </div>
+          <div className="space-y-1.5">
+            {([
+              t.settings_extension_install_step1,
+              t.settings_extension_install_step2,
+              t.settings_extension_install_step3,
+              t.settings_extension_install_step4,
+            ] as const).map((step, i) => (
+              <div key={step} className="flex items-start gap-2.5">
+                <span className="flex-shrink-0 w-4 h-4 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 text-[10px] font-bold flex items-center justify-center mt-0.5">
+                  {i + 1}
+                </span>
+                <p className="text-xs text-gray-600 dark:text-gray-400">{step}</p>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => window.api?.openExternal('https://github.com/trunghieupham59/lotus-translate/releases/latest')}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg
+                       bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600
+                       text-white font-medium transition-colors cursor-pointer"
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
+                       0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13
+                       -.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66
+                       .07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15
+                       -.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27
+                       .68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12
+                       .51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48
+                       0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+            </svg>
+            {t.settings_extension_download_btn}
+          </button>
         </div>
 
         <div className="px-4 py-3.5 space-y-3">
@@ -482,23 +515,6 @@ export function BrowserIntegrationSection() {
               })}
             </div>
           )}
-        </div>
-
-        {/* Port info + Copy URL */}
-        <div className="flex items-center justify-between px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
-          <span>{t.settings_extension_port}</span>
-          <div className="flex items-center gap-2">
-            <code className="font-mono text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
-              {extPort}
-            </code>
-            <SettingsCopyButton
-              copied={extPortCopied}
-              onClick={handleCopyExtUrl}
-              labelCopy={t.settings_token_copy_url_title}
-              labelCopied={t.settings_bookmarklet_copied}
-              title={t.settings_token_copy_url_title}
-            />
-          </div>
         </div>
 
       </div>

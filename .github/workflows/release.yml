@@ -129,6 +129,12 @@ jobs:
                   echo "PREV_TAG=$PREV_TAG" >> "$GITHUB_OUTPUT"
                   echo "CURRENT_TAG=$CURRENT_TAG" >> "$GITHUB_OUTPUT"
 
+            - name: Package Chrome Extension
+              shell: bash
+              run: |
+                  zip -r lotus-chrome-extension.zip chrome-extension/
+                  echo "Chrome extension packaged: $(du -sh lotus-chrome-extension.zip | cut -f1)"
+
             - name: Create GitHub Release
               id: create_release
               uses: softprops/action-gh-release@v2
@@ -136,6 +142,7 @@ jobs:
                   body: ${{ steps.notes.outputs.RELEASE_BODY }}
                   draft: false
                   prerelease: ${{ contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-rc') }}
+                  files: lotus-chrome-extension.zip
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
