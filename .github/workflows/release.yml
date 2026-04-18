@@ -152,7 +152,9 @@ jobs:
             matrix:
                 include:
                     - os: macos-latest
-                      cmd: npx electron-builder --mac --arm64 --x64 --publish always
+                      cmd: npx electron-builder --mac --arm64 --publish always
+                    - os: macos-latest
+                      cmd: npx electron-builder --mac --x64 --publish always
                     - os: windows-latest
                       cmd: npx electron-builder --win nsis --x64 --publish always
 
