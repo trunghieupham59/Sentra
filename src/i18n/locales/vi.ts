@@ -288,6 +288,7 @@ const vi: Translations = {
   settings_update_downloading: 'Đang tải… {percent}%',
   settings_update_downloaded: 'Sẵn sàng cài đặt — v{version}',
   settings_update_download: 'Tải bản cập nhật',
+  settings_update_download_browser: 'Tải về (mở trình duyệt)',
   settings_update_install: 'Khởi động lại & Cài đặt',
   settings_update_error: 'Kiểm tra cập nhật thất bại',
   settings_update_error_codesign: 'Không thể tự động cập nhật do ứng dụng chưa được ký số (code signing). Vui lòng tải phiên bản mới nhất về và cài đặt thủ công từ trang GitHub Releases.',

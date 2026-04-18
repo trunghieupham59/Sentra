@@ -288,6 +288,7 @@ const en: Translations = {
   settings_update_downloading: 'Downloading… {percent}%',
   settings_update_downloaded: 'Ready to install — v{version}',
   settings_update_download: 'Download Update',
+  settings_update_download_browser: 'Download (opens browser)',
   settings_update_install: 'Restart & Install',
   settings_update_error: 'Update check failed',
   settings_update_error_codesign: 'Auto-update is unavailable because the app is not code-signed. Please download the latest version manually from GitHub Releases.',

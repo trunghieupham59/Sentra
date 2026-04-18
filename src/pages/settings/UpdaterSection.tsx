@@ -9,6 +9,8 @@ type UpdaterStatusType = {
   version?: string
   percent?: number
   error?: string
+  /** Present on macOS (unsigned build): direct link to the DMG asset or release page. */
+  downloadUrl?: string
 }
 
 export function UpdaterSection() {
@@ -33,7 +35,19 @@ export function UpdaterSection() {
     await window.api.updater.check()
   }
 
-  const handleDownloadUpdate = () => window.api?.updater?.download()
+  /**
+   * On macOS (unsigned build) the status payload includes a `downloadUrl`.
+   * In that case we open the browser so the user can manually download & install
+   * the DMG — Squirrel.Mac cannot silently update unsigned bundles.
+   * On Windows / Linux we use the normal in-app electron-updater flow.
+   */
+  const handleDownloadUpdate = () => {
+    if (updaterStatus.type === 'available' && updaterStatus.downloadUrl) {
+      window.api?.updater?.openDownload(updaterStatus.downloadUrl)
+    } else {
+      window.api?.updater?.download()
+    }
+  }
   const handleInstallUpdate  = () => window.api?.updater?.install()
 
   return (
@@ -77,7 +91,9 @@ export function UpdaterSection() {
                   onClick={handleDownloadUpdate}
                   className="flex-shrink-0 px-3 py-1.5 text-xs rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors cursor-pointer"
                 >
-                  {t.settings_update_download}
+                  {updaterStatus.downloadUrl
+                    ? t.settings_update_download_browser
+                    : t.settings_update_download}
                 </button>
               </div>
             )}

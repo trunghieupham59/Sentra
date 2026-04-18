@@ -340,9 +340,16 @@ export interface WindowApi {
   /** Auto-updater — check and install updates from GitHub Releases */
   updater: {
     check: () => Promise<{ success: boolean; error?: string }>
+    /** In-app download — Windows / Linux only (uses electron-updater / NSIS). */
     download: () => Promise<{ success: boolean; error?: string }>
+    /** Quit & install — Windows / Linux only. */
     install: () => Promise<{ success: boolean; error?: string }>
     getVersion: () => Promise<{ version: string }>
+    /**
+     * Open the download URL in the system browser.
+     * Used on macOS (unsigned build) — falls back to GitHub Releases page.
+     */
+    openDownload: (url?: string) => Promise<{ success: boolean }>
     onStatus: (cb: (status: {
       type: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'
       version?: string
@@ -351,6 +358,8 @@ export interface WindowApi {
       transferred?: number
       total?: number
       error?: string
+      /** macOS only: direct asset URL (DMG) or release page URL. */
+      downloadUrl?: string
     }) => void) => () => void
   }
 

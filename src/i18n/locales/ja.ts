@@ -288,6 +288,7 @@ const ja: Translations = {
   settings_update_downloading: 'ダウンロード中… {percent}%',
   settings_update_downloaded: 'インストール準備完了 — v{version}',
   settings_update_download: 'アップデートをダウンロード',
+  settings_update_download_browser: 'ダウンロード（ブラウザで開く）',
   settings_update_install: '再起動してインストール',
   settings_update_error: 'アップデート確認に失敗しました',
   settings_update_error_codesign: 'アプリがコード署名されていないため、自動アップデートは利用できません。GitHub Releasesから最新バージョンを手動でダウンロードしてください。',
