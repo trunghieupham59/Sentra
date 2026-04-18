@@ -1,8 +1,8 @@
 /**
- * Lotus Translate — Background Service Worker (Manifest V3)
+ * T.R.E Assistant — Background Service Worker (Manifest V3)
  *
  * Handles:
- *  • Context-menu "Translate with Lotus" entry on selected text
+ *  • Context-menu "Translate with T.R.E Assistant" entry on selected text
  *  • Relaying translate requests from content scripts if needed
  */
 
@@ -13,7 +13,7 @@ const PORT = 39875
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'lotus-translate',
-    title: 'Translate with Lotus',
+    title: 'Translate with T.R.E Assistant',
     contexts: ['selection'],
   })
 })
@@ -52,7 +52,7 @@ async function handleTranslate (message) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Lotus-Token': token,
+      'X-TRE-Token': token,
     },
     body: JSON.stringify({ text, targetLang, provider, model }),
   })

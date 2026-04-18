@@ -1,7 +1,7 @@
 {
-  "name": "lotus",
+  "name": "tre-assistant",
   "version": "1.1.5",
-  "description": "Lotus - Local AI Translation - macOS & Windows",
+  "description": "T.R.E Assistant - Local AI Translation - macOS & Windows",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "concurrently -k -n \"VITE,ELECTRON\" -c \"cyan,yellow\" \"npm run dev:vite\" \"npm run dev:electron\"",
@@ -19,7 +19,8 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "generate-icons": "node scripts/generate-icons.mjs"
   },
   "keywords": [
     "translation",
@@ -28,9 +29,9 @@
     "gemini",
     "claude",
     "gpt",
-    "lotus"
+    "tre-assistant"
   ],
-  "author": "Lotus",
+  "author": "T.R.E Assistant",
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
@@ -66,8 +67,8 @@
     "wait-on": "^8.0.1"
   },
   "build": {
-    "appId": "com.lotusapp.vietnam",
-    "productName": "Lotus",
+    "appId": "com.treassistant.app",
+    "productName": "T.R.E Assistant",
     "directories": {
       "output": "release"
     },

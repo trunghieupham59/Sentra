@@ -9,7 +9,7 @@ export function AppLogoIcon({ size = 64 }: { size?: number }) {
   return (
     <img
       src={logoSrc}
-      alt="Lotus App Logo Icon"
+      alt="T.R.E Assistant App Logo Icon"
       width={size}
       height={size}
       style={{ objectFit: 'contain' }}

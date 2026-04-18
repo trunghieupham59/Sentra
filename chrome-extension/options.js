@@ -61,11 +61,11 @@ $('btn-test').addEventListener('click', async () => {
 
   try {
     const resp = await fetch(`http://127.0.0.1:${PORT}/api/status`, {
-      headers: { 'X-Lotus-Token': token },
+      headers: { 'X-TRE-Token': token },
     })
 
     if (resp.status === 401) {
-      showStatus('❌ Token is invalid. Copy it again from the Lotus app.', 'error')
+      showStatus('❌ Token is invalid. Copy it again from the T.R.E Assistant app.', 'error')
       return
     }
     if (!resp.ok) {
@@ -75,13 +75,13 @@ $('btn-test').addEventListener('click', async () => {
 
     const data = await resp.json()
     if (data.success) {
-      showStatus(`✓ Connected to Lotus ${data.appName || ''} v${data.version || '?'}`, 'success')
+      showStatus(`✓ Connected to T.R.E Assistant ${data.appName || ''} v${data.version || '?'}`, 'success')
     } else {
-      showStatus('❌ Unexpected response from Lotus app.', 'error')
+      showStatus('❌ Unexpected response from T.R.E Assistant app.', 'error')
     }
   } catch (err) {
     if (err.message.includes('fetch') || err.message.includes('Failed')) {
-      showStatus('❌ Cannot reach Lotus app. Make sure the Lotus app is running.', 'error')
+      showStatus('❌ Cannot reach T.R.E Assistant app. Make sure the T.R.E Assistant app is running.', 'error')
     } else {
       showStatus(`❌ ${err.message}`, 'error')
     }

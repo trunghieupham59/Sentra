@@ -20,7 +20,7 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 
 // Set app name
-app.setName('Lotus')
+app.setName('T.R.E Assistant')
 
 let mainWindow: BrowserWindow | null = null
 
@@ -30,7 +30,7 @@ function createWindow() {
     height: 700,
     minWidth: 780,
     minHeight: 520,
-    title: 'Lotus',
+    title: 'T.R.E Assistant',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 16, y: 14 },
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#1a1a2e' : '#ffffff',

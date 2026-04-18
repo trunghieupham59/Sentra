@@ -1,8 +1,8 @@
 /**
- * Lotus Translate — Content Script
+ * T.R.E Assistant — Content Script
  *
  * Injects a small floating icon button whenever the user selects text.
- * Clicking the button calls the Lotus local API (localhost:39875) to translate
+ * Clicking the button calls the T.R.E Assistant local API (localhost:39875) to translate
  * and shows the result in a tooltip above the selection.
  */
 
@@ -27,10 +27,10 @@
   // Build btn (avoid putting chrome-extension:// URL in innerHTML)
   const btn = document.createElement('button')
   btn.id = 'lotus-assistant-btn'
-  btn.title = 'Lotus Translate'
+  btn.title = 'T.R.E Assistant Translate'
   const btnImg = document.createElement('img')
   btnImg.src = ICON_URL
-  btnImg.alt = 'Lotus'
+  btnImg.alt = 'T.R.E Assistant'
   btn.appendChild(btnImg)
 
   // Build tooltip (avoid putting chrome-extension:// URL in innerHTML)
@@ -38,7 +38,7 @@
   tooltip.id = 'lotus-result-tooltip'
   tooltip.innerHTML = `
     <div class="lotus-tooltip-header">
-      <img class="lotus-tooltip-logo" alt="Lotus" />
+      <img class="lotus-tooltip-logo" alt="T.R.E Assistant" />
       <span class="lotus-tooltip-label">Translation</span>
     </div>
     <div class="lotus-tooltip-text"></div>
@@ -96,7 +96,7 @@
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Lotus-Token': settings.token,
+        'X-TRE-Token': settings.token,
       },
       body: JSON.stringify({
         text,
@@ -132,7 +132,7 @@
     btn.innerHTML = ''
     const img = document.createElement('img')
     img.src = ICON_URL
-    img.alt = 'Lotus'
+    img.alt = 'T.R.E Assistant'
     btn.appendChild(img)
   }
 
@@ -278,7 +278,7 @@
       const settings = await getSettings()
       if (!settings.token) {
         hideButton()
-        alert('Lotus Extension: Please set your connection token in the extension Options page first.')
+        alert('T.R.E Assistant Extension: Please set your connection token in the extension Options page first.')
         return
       }
 
@@ -299,13 +299,13 @@
       hideButton()
       const errMsg = err.message || 'Unknown error'
       if (errMsg.includes('context invalidated') || errMsg.includes('reload the page')) {
-        alert('Lotus Extension: Extension was updated. Please reload this page (F5) to use it again.')
+        alert('T.R.E Assistant Extension: Extension was updated. Please reload this page (F5) to use it again.')
       } else if (errMsg.includes('401') || errMsg.includes('Unauthorized')) {
-        alert('Lotus Extension: Token is invalid. Please update it in the Options page.')
+        alert('T.R.E Assistant Extension: Token is invalid. Please update it in the Options page.')
       } else if (errMsg.includes('fetch') || errMsg.includes('Failed to fetch')) {
-        alert('Lotus Extension: Cannot connect to Lotus app. Make sure the Lotus app is running.')
+        alert('T.R.E Assistant Extension: Cannot connect to T.R.E Assistant app. Make sure the T.R.E Assistant app is running.')
       } else {
-        alert(`Lotus Extension: ${errMsg}`)
+        alert(`T.R.E Assistant Extension: ${errMsg}`)
       }
     }
   })
