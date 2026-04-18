@@ -3,7 +3,6 @@ import { AboutSection } from './settings/AboutSection'
 import { ApiKeysSection } from './settings/ApiKeysSection'
 import { BrowserIntegrationSection } from './settings/BrowserIntegrationSection'
 import { ChatPresetsSection } from './settings/ChatPresetsSection'
-import { HotkeySection } from './settings/HotkeySection'
 import { PreferencesSection } from './settings/PreferencesSection'
 import { TtsSection } from './settings/TtsSection'
 import { UpdaterSection } from './settings/UpdaterSection'
@@ -24,7 +23,6 @@ export function SettingsPage() {
         <ApiKeysSection />
         <PreferencesSection />
         <TtsSection />
-        <HotkeySection />
         <BrowserIntegrationSection />
         <ChatPresetsSection />
         <UpdaterSection />

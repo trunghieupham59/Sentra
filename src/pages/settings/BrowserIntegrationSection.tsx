@@ -1,76 +1,41 @@
 import { useCallback, useEffect, useState } from 'react'
-import { BookmarkletDragLink } from '../../components/ui/BookmarkletDragLink'
-import { SettingsCopyButton } from '../../components/ui/SettingsCopyButton'
+import { InlineErrorBanner } from '../../components/ui/InlineErrorBanner'
 import { SettingsFormActions } from '../../components/ui/SettingsFormActions'
-import { ToggleSwitch } from '../../components/ui/ToggleSwitch'
 import { TokenTtlPicker } from '../../components/ui/TokenTtlPicker'
-import { AlertTriangleIcon, KeyIcon, PlusIcon, RefreshIcon, SpinnerIcon, TrashIcon, XIcon } from '../../components/ui/icons'
+import {
+  GitHubIcon, KeyIcon,
+  PlusIcon, RefreshIcon, SpinnerIcon, TrashIcon, XIcon,
+} from '../../components/ui/icons'
+import { GITHUB_RELEASES_URL } from '../../constants/urls'
 import { useAppStore, useT } from '../../store/useAppStore'
 import { formatDate, tpl } from '../../utils/tpl'
 
+// ── Token-scoped constants ────────────────────────────────────────────────────
+
+/** Default TTL (days) pre-selected when opening the create-token form. */
+const DEFAULT_TOKEN_TTL_DAYS = 30
+
+/** Days remaining below which the expiry badge turns amber as a warning. */
+const TOKEN_EXPIRY_WARNING_DAYS = 7
+
+/** Milliseconds in one day — used to convert expiry timestamps to days. */
+const ONE_DAY_MS = 1_000 * 60 * 60 * 24
+
+/** How long (ms) the "Copied!" badge stays visible after copying a token. */
+const TOKEN_COPY_FEEDBACK_MS = 2_000
+
+/** Prefix used when auto-generating a default token name. */
+const DEFAULT_TOKEN_NAME_PREFIX = 'Chrome Extension'
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 type ExtTokenInfo = { id: string; name: string; createdAt: number; expiresAt: number }
 
+// ── Main component ────────────────────────────────────────────────────────────
+
 export function BrowserIntegrationSection() {
-  const { targetLang, locale } = useAppStore()
+  const { locale } = useAppStore()
   const t = useT()
-
-  const isMac = window.api?.platform === 'darwin'
-  const laTargetLang = targetLang
-
-  // ── Legacy Assistant state ─────────────────────────────────────────────────
-  const [laEnabled, setLaEnabled] = useState(false)
-  const [laBookmarklet, setLaBookmarklet] = useState('')
-  const [laBookmarkletCopied, setLaBookmarkletCopied] = useState(false)
-
-  useEffect(() => {
-    if (!window.api?.legacyAssistant) return
-    window.api.legacyAssistant.get().then((res: { success: boolean; settings?: Record<string, unknown> }) => {
-      if (res?.success && res.settings) {
-        setLaEnabled(res.settings.enabled === true)
-      }
-    })
-  }, [])
-
-  const loadBookmarklet = useCallback(async () => {
-    if (!window.api?.legacyAssistant) return
-    const res = await window.api.legacyAssistant.getBookmarklet()
-    if (res?.success) setLaBookmarklet(res.bookmarklet ?? '')
-  }, [])
-
-  useEffect(() => { loadBookmarklet() }, [loadBookmarklet])
-
-  // Auto-sync targetLang to legacy assistant backend when store changes
-  // biome-ignore lint/correctness/useExhaustiveDependencies: laEnabled accessed inside
-  useEffect(() => {
-    if (!window.api?.legacyAssistant) return
-    window.api.legacyAssistant.update({ targetLang: laTargetLang })
-    loadBookmarklet()
-  }, [laTargetLang, loadBookmarklet])
-
-  const handleLaToggle = async () => {
-    const next = !laEnabled
-    setLaEnabled(next)
-    await window.api?.legacyAssistant?.update({ enabled: next, targetLang: laTargetLang })
-  }
-
-  const handleCopyBookmarklet = async () => {
-    let url = laBookmarklet
-    if (!url && window.api?.legacyAssistant) {
-      const res = await window.api.legacyAssistant.getBookmarklet()
-      if (res?.success && res.bookmarklet) {
-        url = res.bookmarklet
-        setLaBookmarklet(url)
-      }
-    }
-    if (!url) return
-    await navigator.clipboard.writeText(url)
-    setLaBookmarkletCopied(true)
-    setTimeout(() => setLaBookmarkletCopied(false), 2000)
-  }
-
-  const handleInjectNow = () => {
-    window.api?.legacyAssistant?.injectNow()
-  }
 
   // ── Extension token state ──────────────────────────────────────────────────
   const [extTokens, setExtTokens] = useState<ExtTokenInfo[]>([])
@@ -80,7 +45,7 @@ export function BrowserIntegrationSection() {
   const [revealedCopied, setRevealedCopied] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newTokenName, setNewTokenName] = useState('')
-  const [newTokenTtl, setNewTokenTtl] = useState(30)
+  const [newTokenTtl, setNewTokenTtl] = useState(DEFAULT_TOKEN_TTL_DAYS)
   const [creating, setCreating] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null)
@@ -88,9 +53,22 @@ export function BrowserIntegrationSection() {
 
   const defaultTokenName = () => {
     const today = formatDate(Date.now(), locale)
-    return `Chrome Extension - ${today}`
+    return `${DEFAULT_TOKEN_NAME_PREFIX} - ${today}`
   }
 
+  // ── D-2: Token request helper — removes guard+try/catch duplication ────────
+  async function tokenRequest<T>(fn: () => Promise<T>): Promise<T | null> {
+    if (!window.api?.localServer) return null
+    setTokenActionError('')
+    try {
+      return await fn()
+    } catch (e) {
+      setTokenActionError(e instanceof Error ? e.message : String(e))
+      return null
+    }
+  }
+
+  // ── Data loading ───────────────────────────────────────────────────────────
   const loadTokenList = useCallback(async () => {
     if (!window.api?.localServer) {
       setExtTokensError(t.settings_token_error_connect)
@@ -110,175 +88,82 @@ export function BrowserIntegrationSection() {
     } finally {
       setExtTokensLoading(false)
     }
-  // biome-ignore lint/correctness/useExhaustiveDependencies: t is included to keep error messages in sync with locale
+  // biome-ignore lint/correctness/useExhaustiveDependencies: t keeps error messages in sync with locale
   }, [t])
 
   useEffect(() => { loadTokenList() }, [loadTokenList])
 
+  // ── Token mutation handlers ────────────────────────────────────────────────
+
   const handleCreateToken = async () => {
-    if (!window.api?.localServer) return
     setCreating(true)
-    setTokenActionError('')
-    try {
-      const res = await window.api.localServer.createToken({
+    const res = await tokenRequest(() =>
+      window.api.localServer.createToken({
         name: newTokenName.trim() || defaultTokenName(),
         ttlDays: newTokenTtl,
       })
-      if (res?.success && res.token) {
-        setRevealedToken({ token: res.token, name: res.name ?? '', expiresAt: res.expiresAt ?? 0 })
-        setRevealedCopied(false)
-        setShowCreateForm(false)
-        setNewTokenName('')
-        setNewTokenTtl(30)
-        await loadTokenList()
-      } else if (!res?.success) {
-        setTokenActionError(res?.error ?? t.settings_token_error_create)
-      }
-    } catch (e) {
-      setTokenActionError(e instanceof Error ? e.message : t.settings_token_error_create)
-    } finally { setCreating(false) }
+    )
+    if (res?.success && res.token) {
+      setRevealedToken({ token: res.token, name: res.name ?? '', expiresAt: res.expiresAt ?? 0 })
+      setRevealedCopied(false)
+      setShowCreateForm(false)
+      setNewTokenName('')
+      setNewTokenTtl(DEFAULT_TOKEN_TTL_DAYS)
+      await loadTokenList()
+    } else if (res && !res.success) {
+      setTokenActionError(res.error ?? t.settings_token_error_create)
+    }
+    setCreating(false)
   }
 
   const handleDeleteToken = async (id: string) => {
-    if (!window.api?.localServer) return
     setDeletingId(id)
-    setTokenActionError('')
-    try {
-      await window.api.localServer.deleteToken({ id })
+    const res = await tokenRequest(() =>
+      window.api.localServer.deleteToken({ id })
+    )
+    if (res) {
       setExtTokens(prev => prev.filter(tk => tk.id !== id))
       if (revealedToken) setRevealedToken(null)
-    } catch (e) {
-      setTokenActionError(e instanceof Error ? e.message : t.settings_token_error_delete)
-    } finally { setDeletingId(null) }
+    }
+    setDeletingId(null)
   }
 
   const handleRegenerateToken = async (id: string) => {
-    if (!window.api?.localServer) return
     setRegeneratingId(id)
-    setTokenActionError('')
-    try {
-      const res = await window.api.localServer.regenerateToken({ id })
-      if (res?.success && res.token) {
-        setRevealedToken({ token: res.token, name: res.name ?? '', expiresAt: res.expiresAt ?? 0 })
-        setRevealedCopied(false)
-        await loadTokenList()
-      } else if (!res?.success) {
-        setTokenActionError(res?.error ?? t.settings_token_error_regenerate)
-      }
-    } catch (e) {
-      setTokenActionError(e instanceof Error ? e.message : t.settings_token_error_regenerate)
-    } finally { setRegeneratingId(null) }
+    const res = await tokenRequest(() =>
+      window.api.localServer.regenerateToken({ id })
+    )
+    if (res?.success && res.token) {
+      setRevealedToken({ token: res.token, name: res.name ?? '', expiresAt: res.expiresAt ?? 0 })
+      setRevealedCopied(false)
+      await loadTokenList()
+    } else if (res && !res.success) {
+      setTokenActionError(res.error ?? t.settings_token_error_regenerate)
+    }
+    setRegeneratingId(null)
   }
 
   const handleCopyRevealed = async () => {
     if (!revealedToken) return
     await navigator.clipboard.writeText(revealedToken.token)
     setRevealedCopied(true)
-    setTimeout(() => setRevealedCopied(false), 2000)
+    setTimeout(() => setRevealedCopied(false), TOKEN_COPY_FEEDBACK_MS)
   }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <section className="space-y-3">
       <div>
-        <h2 className="section-label">{t.settings_legacy_section}</h2>
+        <h2 className="section-label">{t.settings_extension_section}</h2>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_legacy_section_desc}</p>
-      </div>
-
-      {/* ── Legacy Assistant card ── */}
-      <div className="card divide-y divide-gray-100 dark:divide-gray-700">
-
-        <div className="px-4 pt-3 pb-1">
-          <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Legacy Assistant</p>
-        </div>
-
-        {/* Auto-inject toggle — macOS only */}
-        {isMac ? (
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_la_auto_enabled}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_la_auto_enabled_desc}</p>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button
-                type="button"
-                onClick={handleInjectNow}
-                className="px-2.5 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600
-                           text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-              >
-                {t.settings_la_inject_now}
-              </button>
-              <ToggleSwitch
-                checked={laEnabled}
-                onChange={() => handleLaToggle()}
-                color="green"
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="px-4 py-3.5">
-            <p className="text-xs text-amber-600 dark:text-amber-400">{t.settings_la_macos_only}</p>
-          </div>
-        )}
-
-        {/* Bookmarklet */}
-        <div className="px-4 py-4 space-y-3">
-          <div>
-            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Bookmarklet</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_bookmarklet_desc}</p>
-          </div>
-
-          <div className="space-y-2">
-            {/* Step 1: Drag */}
-            <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
-              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 text-[10px] font-bold flex items-center justify-center mt-0.5">1</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">{t.settings_bookmarklet_step1}</p>
-                <BookmarkletDragLink href={laBookmarklet} loadingText={t.settings_bookmarklet_loading} label={t.settings_bookmarklet_label} />
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5">{t.settings_bookmarklet_alt_hint}</p>
-                <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                  <SettingsCopyButton
-                    copied={laBookmarkletCopied}
-                    onClick={handleCopyBookmarklet}
-                    labelCopy={t.settings_bookmarklet_copy}
-                    labelCopied={t.settings_bookmarklet_copied}
-                  />
-                  <button
-                    type="button"
-                    onClick={loadBookmarklet}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] rounded-lg border border-gray-200 dark:border-gray-600
-                               bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300
-                               hover:border-amber-400 hover:text-amber-600 transition-colors cursor-pointer font-medium"
-                    title={t.settings_bookmarklet_reload_title}
-                  >
-                    <RefreshIcon />
-                    {t.settings_bookmarklet_reload}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Step 2: Use */}
-            <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
-              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 text-[10px] font-bold flex items-center justify-center mt-0.5">2</span>
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{t.settings_bookmarklet_step2}</p>
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
-                  {t.settings_bookmarklet_step2_desc}{' '}
-                  <span className="font-medium text-gray-600 dark:text-gray-300">
-                    {(t.lang_names as Record<string, string>)[laTargetLang] ?? laTargetLang}
-                  </span>
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
       </div>
 
       {/* ── Chrome Extension token card ── */}
       <div className="card divide-y divide-gray-100 dark:divide-gray-700">
 
         <div className="px-4 pt-3 pb-1">
+          {/* TODO: H-8 — move to i18n key (settings_chrome_extension_label) */}
           <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Chrome Extension</p>
         </div>
 
@@ -303,23 +188,15 @@ export function BrowserIntegrationSection() {
               </div>
             ))}
           </div>
+          {/* H-1 + H-2: use GitHubIcon component + GITHUB_RELEASES_URL constant */}
           <button
             type="button"
-            onClick={() => window.api?.openExternal('https://github.com/trunghieupham59/T.R.E-Assistant/releases/latest')}
+            onClick={() => window.api?.openExternal(GITHUB_RELEASES_URL)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg
                        bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600
                        text-white font-medium transition-colors cursor-pointer"
           >
-            <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
-                       0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13
-                       -.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66
-                       .07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15
-                       -.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27
-                       .68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12
-                       .51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48
-                       0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-            </svg>
+            <GitHubIcon />
             {t.settings_extension_download_btn}
           </button>
         </div>
@@ -370,7 +247,11 @@ export function BrowserIntegrationSection() {
                 />
               </div>
               <SettingsFormActions
-                onCancel={() => { setShowCreateForm(false); setNewTokenName(''); setNewTokenTtl(30) }}
+                onCancel={() => {
+                  setShowCreateForm(false)
+                  setNewTokenName('')
+                  setNewTokenTtl(DEFAULT_TOKEN_TTL_DAYS)
+                }}
                 onSubmit={handleCreateToken}
                 cancelLabel={t.settings_token_cancel}
                 submitLabel={t.settings_token_generate}
@@ -424,24 +305,18 @@ export function BrowserIntegrationSection() {
             </div>
           )}
 
-          {/* Token action error */}
           {tokenActionError && (
-            <div className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 rounded-lg px-3 py-2 border border-red-100 dark:border-red-900">
-              <AlertTriangleIcon className="w-3.5 h-3.5 text-amber-500" />
-              <span className="flex-1">{tokenActionError}</span>
-              <button type="button" onClick={() => setTokenActionError('')} className="p-0.5 hover:text-red-700 cursor-pointer" title={t.settings_token_close}>
-                <XIcon className="w-3 h-3" />
-              </button>
-            </div>
+            <InlineErrorBanner
+              message={tokenActionError}
+              onDismiss={() => setTokenActionError('')}
+            />
           )}
-
-          {/* Token list error */}
           {extTokensError && (
-            <div className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 rounded-lg px-3 py-2 border border-red-100 dark:border-red-900">
-              <AlertTriangleIcon className="w-3.5 h-3.5 text-amber-500" />
-              <span className="flex-1">{extTokensError}</span>
-              <button type="button" onClick={loadTokenList} className="underline font-medium cursor-pointer">{t.settings_token_retry}</button>
-            </div>
+            <InlineErrorBanner
+              message={extTokensError}
+              retryLabel={t.settings_token_retry}
+              onRetry={loadTokenList}
+            />
           )}
 
           {/* Loading */}
@@ -465,7 +340,8 @@ export function BrowserIntegrationSection() {
               {extTokens.map((tk) => {
                 const now = Date.now()
                 const msLeft = tk.expiresAt - now
-                const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24))
+                // H-5: use named constant instead of magic expression
+                const daysLeft = Math.ceil(msLeft / ONE_DAY_MS)
                 const expired = msLeft <= 0
                 const expireDate = formatDate(tk.expiresAt, locale)
                 const isRegen = regeneratingId === tk.id
@@ -477,7 +353,8 @@ export function BrowserIntegrationSection() {
                       <div className="flex items-center gap-1.5 mt-0.5">
                         {expired ? (
                           <span className="text-[10px] text-red-500 font-medium">{t.settings_token_expired}</span>
-                        ) : daysLeft <= 7 ? (
+                        ) : daysLeft <= TOKEN_EXPIRY_WARNING_DAYS ? (
+                          // H-4: TOKEN_EXPIRY_WARNING_DAYS instead of magic 7
                           <span className="text-[10px] text-amber-500 font-medium">{tpl(t.settings_token_days_warning, { days: daysLeft, date: expireDate })}</span>
                         ) : (
                           <span className="text-[10px] text-gray-400 dark:text-gray-500">{tpl(t.settings_token_days_info, { date: expireDate, days: daysLeft })}</span>

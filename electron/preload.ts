@@ -270,5 +270,12 @@ contextBridge.exposeInMainWorld('api', {
         success: boolean; token?: string; id?: string; name?: string
         createdAt?: number; expiresAt?: number; error?: string
       }>,
+    /**
+     * Sync the app's currently selected provider/model to the main process
+     * so the local server can serve it via GET /api/config.
+     * Call on startup and whenever selectedProvider or selectedModels changes.
+     */
+    syncConfig: (params: { provider: string; model: string }) =>
+      ipcRenderer.invoke('localServer:syncConfig', params) as Promise<{ success: boolean }>,
   },
 })

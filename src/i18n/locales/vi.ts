@@ -268,7 +268,7 @@ const vi: Translations = {
   settings_la_bookmarklet_copied: 'Đã sao chép!',
   settings_la_bookmarklet_drag_hint: '← Kéo vào thanh bookmarks',
   settings_la_macos_only: 'Tự động inject chỉ hỗ trợ macOS',
-  settings_extension_section: 'Tiện ích trình duyệt (Legacy Assistant)',
+  settings_extension_section: 'Tiện ích trình duyệt',
   settings_extension_section_desc: 'Kết nối tiện ích T.R.E Assistant Chrome để dịch văn bản trực tiếp trên trình duyệt. Tiện ích sử dụng API key bạn đã cấu hình ở trên.',
   settings_extension_token_label: 'Token kết nối',
   settings_extension_token_desc: 'Sao chép token này vào trang Options của tiện ích T.R.E Assistant. Giữ bí mật token.',

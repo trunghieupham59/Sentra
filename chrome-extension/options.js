@@ -2,17 +2,6 @@ const PORT = 39875
 
 const $ = (id) => document.getElementById(id)
 
-// ── Load saved settings ───────────────────────────────────────────────────────
-
-function loadSettings () {
-  chrome.storage.local.get(['treToken', 'treTargetLang', 'treProvider', 'treModel'], (data) => {
-    if (data.treToken)     $('token').value = data.treToken
-    if (data.treTargetLang) $('target-lang').value = data.treTargetLang
-    if (data.treProvider)  $('provider').value = data.treProvider
-    if (data.treModel)     $('model').value = data.treModel
-  })
-}
-
 // ── Show status ───────────────────────────────────────────────────────────────
 
 function showStatus (msg, type, duration) {
@@ -30,20 +19,13 @@ function showStatus (msg, type, duration) {
 $('btn-save').addEventListener('click', () => {
   const token = $('token').value.trim()
   const targetLang = $('target-lang').value
-  const provider = $('provider').value
-  const model = $('model').value
 
   if (!token) {
     showStatus('❌ Please enter a Connection Token.', 'error')
     return
   }
 
-  chrome.storage.local.set({
-    treToken: token,
-    treTargetLang: targetLang,
-    treProvider: provider,
-    treModel: model,
-  }, () => {
+  chrome.storage.local.set({ treToken: token, treTargetLang: targetLang }, () => {
     showStatus('✓ Settings saved!', 'success')
   })
 })
@@ -75,19 +57,82 @@ $('btn-test').addEventListener('click', async () => {
 
     const data = await resp.json()
     if (data.success) {
-      showStatus(`✓ Connected to T.R.E Assistant ${data.appName || ''} v${data.version || '?'}`, 'success')
+      // Auto-save settings on successful connection so content script & popup
+      // always have the correct token without requiring a separate "Save" click.
+      const targetLang = $('target-lang').value
+      chrome.storage.local.set({ treToken: token, treTargetLang: targetLang })
+      showStatus(`✓ Connected to T.R.E Assistant v${data.version || '?'} — Settings saved!`, 'success')
+      // Refresh the active provider/model display
+      loadAiConfig(token)
     } else {
       showStatus('❌ Unexpected response from T.R.E Assistant app.', 'error')
     }
   } catch (err) {
-    if (err.message.includes('fetch') || err.message.includes('Failed')) {
-      showStatus('❌ Cannot reach T.R.E Assistant app. Make sure the T.R.E Assistant app is running.', 'error')
+    const msg = err?.message || String(err)
+    if (msg.includes('fetch') || msg.includes('Failed') || msg.includes('NetworkError')) {
+      showStatus(
+        '❌ Cannot reach T.R.E Assistant app on port 39875. ' +
+        'Make sure the app is running. If it is, try reloading the extension (chrome://extensions → Reload).',
+        'error'
+      )
     } else {
-      showStatus(`❌ ${err.message}`, 'error')
+      showStatus(`❌ ${msg}`, 'error')
     }
   }
 })
 
+// ── Fetch & display active AI config ─────────────────────────────────────────
+
+const PROVIDER_LABELS = {
+  gemini: '✨ Google Gemini',
+  openai: '🤖 OpenAI GPT',
+  claude: '🧠 Anthropic Claude',
+}
+
+async function loadAiConfig (token) {
+  const loading = document.getElementById('ai-config-loading')
+  const info    = document.getElementById('ai-config-info')
+  const error   = document.getElementById('ai-config-error')
+
+  loading.style.display = 'flex'
+  info.style.display    = 'none'
+  error.style.display   = 'none'
+
+  try {
+    const resp = await fetch(`http://127.0.0.1:${PORT}/api/config`, {
+      headers: { 'X-TRE-Token': token },
+    })
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+    const data = await resp.json()
+    if (!data.success) throw new Error('bad response')
+
+    document.getElementById('ai-provider-badge').textContent =
+      PROVIDER_LABELS[data.provider] || data.provider
+    document.getElementById('ai-model-badge').textContent = data.model || '—'
+
+    loading.style.display = 'none'
+    info.style.display    = 'block'
+  } catch {
+    loading.style.display = 'none'
+    error.style.display   = 'block'
+  }
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
-loadSettings()
+function init () {
+  chrome.storage.local.get(['treToken', 'treTargetLang'], (data) => {
+    if (data.treToken)      $('token').value = data.treToken
+    if (data.treTargetLang) $('target-lang').value = data.treTargetLang
+
+    if (data.treToken) {
+      loadAiConfig(data.treToken)
+    } else {
+      // No token yet — show "not connected" state
+      document.getElementById('ai-config-loading').style.display = 'none'
+      document.getElementById('ai-config-error').style.display = 'block'
+    }
+  })
+}
+
+init()

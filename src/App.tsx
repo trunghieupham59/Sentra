@@ -17,7 +17,7 @@ const FONT_SIZE_MAP = {
 }
 
 function App() {
-  const { activePage, localeAuto, setKeyStatus, setLocaleFromSystem, fontSize } = useAppStore()
+  const { activePage, localeAuto, setKeyStatus, setLocaleFromSystem, fontSize, selectedProvider, selectedModels } = useAppStore()
 
   // Auto-detect system language on startup (only when localeAuto is enabled)
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally run only once on mount
@@ -31,6 +31,14 @@ function App() {
   useEffect(() => {
     document.documentElement.style.fontSize = FONT_SIZE_MAP[fontSize ?? 'medium']
   }, [fontSize])
+
+  // Sync active provider/model to main process so the local server's /api/config
+  // always reflects the user's current selection in the app.
+  useEffect(() => {
+    if (!window.api?.localServer) return
+    const model = selectedModels[selectedProvider] ?? ''
+    window.api.localServer.syncConfig({ provider: selectedProvider, model })
+  }, [selectedProvider, selectedModels])
 
   // On startup, check which API keys exist in keychain
   useEffect(() => {

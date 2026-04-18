@@ -19,6 +19,7 @@ import * as fs from 'node:fs'
 import * as http from 'node:http'
 import * as path from 'node:path'
 import { app } from 'electron'
+import { hasStoredApiKey } from './storage'
 import { lightweightTranslate } from './lightweightTranslate'
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -46,6 +47,16 @@ export type TokenInfo = Omit<TokenEntry, 'token'>
 
 let activeTokens: TokenEntry[] = []
 let server: http.Server | null = null
+
+/**
+ * Active provider/model synced from the renderer (Zustand store).
+ * Updated via IPC `localServer:syncConfig` whenever the user changes provider/model.
+ * Used by /api/config so the extension always mirrors the app's current selection.
+ */
+let cachedConfig: { provider: string; model: string } = {
+  provider: 'gemini',
+  model: 'gemini-2.0-flash',
+}
 
 // ── Persistence ───────────────────────────────────────────────────────────────
 
@@ -134,6 +145,9 @@ function sendJSON (res: http.ServerResponse, statusCode: number, data: unknown):
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-TRE-Token',
+    // Required for Chrome Private Network Access (PNA) — allows extension pages
+    // (chrome-extension://) and local web pages to fetch from 127.0.0.1.
+    'Access-Control-Allow-Private-Network': 'true',
   })
   res.end(JSON.stringify(data))
 }
@@ -169,6 +183,23 @@ export function startLocalServer (ipcMain: Electron.IpcMain): void {
       sendJSON(res, 200, { success: true, version: app.getVersion(), appName: app.getName() })
       return
     }
+
+    // Returns the app's currently active provider/model so the extension
+    // mirrors the user's selection without needing its own provider settings.
+    if (req.method === 'GET' && url === '/api/config') {
+      sendJSON(res, 200, {
+        success: true,
+        provider: cachedConfig.provider,
+        model: cachedConfig.model,
+        availableProviders: {
+          gemini: hasStoredApiKey('gemini'),
+          openai: hasStoredApiKey('openai'),
+          claude: hasStoredApiKey('claude'),
+        },
+      })
+      return
+    }
+
     if (req.method === 'POST' && url === '/api/translate') {
       try {
         const result = await lightweightTranslate(JSON.parse(await readBody(req)))
@@ -189,6 +220,16 @@ export function startLocalServer (ipcMain: Electron.IpcMain): void {
   })
 
   // ── IPC handlers ─────────────────────────────────────────────────────────
+
+  /**
+   * Called by the renderer whenever selectedProvider or selectedModels changes.
+   * Keeps cachedConfig in sync so /api/config reflects the app's current state.
+   */
+  ipcMain.handle('localServer:syncConfig', (_event, { provider, model }: { provider: string; model: string }) => {
+    if (typeof provider === 'string') cachedConfig.provider = provider
+    if (typeof model === 'string') cachedConfig.model = model
+    return { success: true }
+  })
 
   /** Create a new named token — returns token value ONCE */
   ipcMain.handle('localServer:createToken', (_event, { name, ttlDays }: { name: string; ttlDays: number }) => {

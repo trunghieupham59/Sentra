@@ -1,0 +1,8 @@
+/**
+ * External URL constants — centralised so repo renames or domain changes
+ * only need to be updated in one place.
+ */
+
+/** GitHub Releases page — used on the "Download Extension" button. */
+export const GITHUB_RELEASES_URL =
+  'https://github.com/trunghieupham59/T.R.E-Assistant/releases/latest'

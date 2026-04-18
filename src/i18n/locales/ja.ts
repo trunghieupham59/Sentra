@@ -268,7 +268,7 @@ const ja: Translations = {
   settings_la_bookmarklet_copied: 'コピーしました！',
   settings_la_bookmarklet_drag_hint: '← ブックマークバーにドラッグ',
   settings_la_macos_only: '自動注入はmacOSのみ対応',
-  settings_extension_section: 'ブラウザ拡張機能（レガシーアシスタント）',
+  settings_extension_section: 'ブラウザ拡張機能',
   settings_extension_section_desc: 'T.R.E Assistant Chrome拡張機能を接続してブラウザで直接テキストを翻訳します。上記で設定したAPIキーを使用します。',
   settings_extension_token_label: '接続トークン',
   settings_extension_token_desc: 'このトークンをT.R.E Assistant拡張機能のオプションページにコピーしてください。トークンは秘密にしてください。',

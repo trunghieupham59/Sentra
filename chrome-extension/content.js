@@ -63,6 +63,7 @@
   // ── State ─────────────────────────────────────────────────────────────────
 
   let lastSelection = ''
+  let lastSelectionRect = null   // saved rect for tooltip positioning
   let tooltipHideTimer = null
   let savedRange = null
   let currentTranslation = ''
@@ -77,12 +78,10 @@
     return new Promise((resolve, reject) => {
       if (!isContextValid()) { reject(new Error('Extension context invalidated. Please reload the page.')); return }
       try {
-        chrome.storage.local.get(['treToken', 'treTargetLang', 'treProvider', 'treModel'], (data) => {
+        chrome.storage.local.get(['treToken', 'treTargetLang'], (data) => {
           resolve({
             token: data.treToken || '',
             targetLang: data.treTargetLang || 'en',
-            provider: data.treProvider || 'gemini',
-            model: data.treModel || 'gemini-2.0-flash',
           })
         })
       } catch {
@@ -91,7 +90,19 @@
     })
   }
 
+  /** Fetch active provider/model from the native app — always mirrors app's current selection */
+  async function getAppConfig (token) {
+    const resp = await fetch(`http://127.0.0.1:${PORT}/api/config`, {
+      headers: { 'X-TRE-Token': token },
+    })
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+    const data = await resp.json()
+    if (!data.success) throw new Error('Could not fetch app config')
+    return { provider: data.provider, model: data.model }
+  }
+
   async function translateText (text, settings) {
+    const appConfig = await getAppConfig(settings.token)
     const resp = await fetch(`http://127.0.0.1:${PORT}/api/translate`, {
       method: 'POST',
       headers: {
@@ -101,8 +112,8 @@
       body: JSON.stringify({
         text,
         targetLang: settings.targetLang,
-        provider: settings.provider,
-        model: settings.model,
+        provider: appConfig.provider,
+        model: appConfig.model,
       }),
     })
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
@@ -113,6 +124,8 @@
 
   function positionElement (el, rect) {
     const margin = 8
+    // position:fixed → coords are relative to viewport (same as getBoundingClientRect)
+    // Do NOT add window.scrollY
     let top = rect.top - el.offsetHeight - margin
     let left = rect.left + rect.width / 2 - el.offsetWidth / 2
 
@@ -123,7 +136,7 @@
       left = window.innerWidth - el.offsetWidth - margin
     }
 
-    el.style.top = `${top + window.scrollY}px`
+    el.style.top = `${top}px`
     el.style.left = `${left}px`
   }
 
@@ -137,9 +150,11 @@
   }
 
   function showButton (rect) {
+    lastSelectionRect = rect   // save for use in button click handler
     resetBtnIcon()
     btn.style.display = 'flex'
-    btn.style.top = `${rect.bottom + window.scrollY + 6}px`
+    // position:fixed → rect.bottom is already viewport-relative; no scrollY needed
+    btn.style.top = `${rect.bottom + 6}px`
     btn.style.left = `${rect.left + rect.width / 2 - 18}px`
   }
 
@@ -220,7 +235,7 @@
     hideTooltip()
   })
 
-  // ── Selection listener ─────────────────────────────────────────────────────
+  // ── Selection listener — mouse ─────────────────────────────────────────────
 
   document.addEventListener('mouseup', (e) => {
     if (e.target === btn || btn.contains(e.target)) return
@@ -240,6 +255,77 @@
         hideButton()
       }
     }, 10)
+  })
+
+  // ── Selection listener — keyboard (Cmd+A / Ctrl+A / Shift+Arrow etc.) ──────
+
+  function checkKeyboardSelection () {
+    const activeEl = document.activeElement
+    const tag = activeEl?.tagName?.toLowerCase()
+
+    // input/textarea: window.getSelection() doesn't work — use selectionStart/End
+    if ((tag === 'input' || tag === 'textarea') && typeof activeEl.selectionStart === 'number') {
+      const start = activeEl.selectionStart
+      const end = activeEl.selectionEnd
+      if (end > start) {
+        const text = activeEl.value.substring(start, end).trim()
+        if (text.length > 1) {
+          lastSelection = text
+          // Position button near the bottom of the input element
+          const rect = activeEl.getBoundingClientRect()
+          showButton(rect)
+          hideTooltip()
+          return
+        }
+      }
+      hideButton()
+      return
+    }
+
+    // Normal DOM selection (page text, contenteditable, etc.)
+    const sel = window.getSelection()
+    const text = sel ? sel.toString().trim() : ''
+
+    if (text.length > 1) {
+      lastSelection = text
+      let rect = null
+      try {
+        if (sel.rangeCount > 0) rect = sel.getRangeAt(0).getBoundingClientRect()
+      } catch { /* ignore */ }
+
+      // Fallback if rect is empty (e.g., Ctrl+A on whole page)
+      if (!rect || (rect.width === 0 && rect.height === 0)) {
+        rect = { top: 80, bottom: 100, left: window.innerWidth / 2, width: 0 }
+      }
+
+      showButton(rect)
+      hideTooltip()
+    } else {
+      hideButton()
+    }
+  }
+
+  document.addEventListener('keyup', (e) => {
+    const tag = document.activeElement?.tagName?.toLowerCase()
+    const isSelectAll = (e.metaKey || e.ctrlKey) && e.key === 'a'
+    const isShiftSelection = e.shiftKey && (
+      e.key === 'ArrowLeft' || e.key === 'ArrowRight' ||
+      e.key === 'ArrowUp' || e.key === 'ArrowDown' ||
+      e.key === 'Home' || e.key === 'End' ||
+      e.key === 'PageUp' || e.key === 'PageDown'
+    )
+
+    // For input/textarea: only show button on Cmd+A (select-all), not Shift+Arrow
+    // (Shift+Arrow in inputs is normal editing — don't interrupt that)
+    if (tag === 'input' || tag === 'textarea') {
+      if (isSelectAll) setTimeout(checkKeyboardSelection, 50)
+      return
+    }
+
+    // Outside inputs: trigger on Cmd+A or Shift+Arrow-based selections
+    if (isSelectAll || isShiftSelection) {
+      setTimeout(checkKeyboardSelection, 50)
+    }
   })
 
   document.addEventListener('keydown', (e) => {
@@ -282,12 +368,16 @@
         return
       }
 
+      // Determine rect for tooltip positioning:
+      // - For DOM selections (page text): use getSelection range
+      // - For input/textarea (Cmd+A): use lastSelectionRect saved when button was shown
       const sel = window.getSelection()
-      let rect = { top: 100, bottom: 120, left: 100, width: 100 }
+      let rect = lastSelectionRect || { top: 100, bottom: 120, left: 100, width: 100 }
       let range = null
       if (sel && sel.rangeCount > 0) {
         range = sel.getRangeAt(0).cloneRange()
-        rect = range.getBoundingClientRect()
+        const selRect = range.getBoundingClientRect()
+        if (selRect && selRect.width > 0) rect = selRect
       }
 
       const translated = await translateText(text, settings)

@@ -378,6 +378,8 @@ export interface WindowApi {
       success: boolean; token?: string; id?: string; name?: string
       createdAt?: number; expiresAt?: number; error?: string
     }>
+    /** Sync the currently selected provider/model so /api/config reflects the app's state. */
+    syncConfig: (p: { provider: string; model: string }) => Promise<{ success: boolean }>
   }
 }
 

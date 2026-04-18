@@ -7,15 +7,24 @@ let lastTranslated = ''
 
 async function getSettings () {
   return new Promise((resolve) => {
-    chrome.storage.local.get(['treToken', 'treTargetLang', 'treProvider', 'treModel'], (data) => {
+    chrome.storage.local.get(['treToken', 'treTargetLang'], (data) => {
       resolve({
         token: data.treToken || '',
         targetLang: data.treTargetLang || 'en',
-        provider: data.treProvider || 'gemini',
-        model: data.treModel || 'gemini-2.0-flash',
       })
     })
   })
+}
+
+/** Fetch the active provider/model from the native app via /api/config */
+async function getAppConfig (token) {
+  const resp = await fetch(`http://127.0.0.1:${PORT}/api/config`, {
+    headers: { 'X-TRE-Token': token },
+  })
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  const data = await resp.json()
+  if (!data.success) throw new Error('Could not fetch app config')
+  return { provider: data.provider, model: data.model }
 }
 
 function showStatus (msg, type) {
@@ -32,6 +41,38 @@ function hideStatus () {
   $('status-msg').style.display = 'none'
 }
 
+const PROVIDER_LABELS = {
+  gemini: '✨ Gemini',
+  openai: '🤖 OpenAI',
+  claude: '🧠 Claude',
+}
+
+async function loadAiInfoBar (token) {
+  const dot      = $('ai-dot')
+  const infoText = $('ai-info-text')
+
+  dot.className = 'ai-dot loading'
+  infoText.innerHTML = 'Loading…'
+
+  try {
+    const resp = await fetch(`http://127.0.0.1:${PORT}/api/config`, {
+      headers: { 'X-TRE-Token': token },
+    })
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+    const data = await resp.json()
+    if (!data.success) throw new Error('bad')
+
+    const providerLabel = PROVIDER_LABELS[data.provider] || data.provider
+    dot.className = 'ai-dot'
+    infoText.innerHTML =
+      `<span class="ai-pill">${providerLabel}</span>` +
+      `<span class="ai-pill ai-pill-model">${data.model || '—'}</span>`
+  } catch {
+    dot.className = 'ai-dot error'
+    infoText.textContent = 'App not running'
+  }
+}
+
 async function init () {
   const settings = await getSettings()
   const hasToken = !!settings.token
@@ -40,6 +81,9 @@ async function init () {
   $('connected-state').style.display = hasToken ? 'block' : 'none'
 
   if (hasToken) {
+    // Load active provider/model info bar
+    loadAiInfoBar(settings.token)
+
     // Restore saved target lang
     const langSelect = $('target-lang')
     if (settings.targetLang) langSelect.value = settings.targetLang
@@ -71,8 +115,7 @@ $('btn-translate').addEventListener('click', async () => {
   if (!text) return
 
   const settings = await getSettings()
-  const langSelect = $('target-lang')
-  const targetLang = langSelect.value
+  const targetLang = $('target-lang').value
 
   $('btn-translate').disabled = true
   $('result-box').style.display = 'none'
@@ -80,6 +123,9 @@ $('btn-translate').addEventListener('click', async () => {
   showStatus('Translating…', 'loading')
 
   try {
+    // Fetch provider/model from the native app — always in sync with the app's selection
+    const appConfig = await getAppConfig(settings.token)
+
     const resp = await fetch(`http://127.0.0.1:${PORT}/api/translate`, {
       method: 'POST',
       headers: {
@@ -89,8 +135,8 @@ $('btn-translate').addEventListener('click', async () => {
       body: JSON.stringify({
         text,
         targetLang,
-        provider: settings.provider,
-        model: settings.model,
+        provider: appConfig.provider,
+        model: appConfig.model,
       }),
     })
 
@@ -174,7 +220,6 @@ $('btn-replace').addEventListener('click', async () => {
           range.deleteContents()
           const node = document.createTextNode(text)
           range.insertNode(node)
-          // Move cursor after inserted text
           range.setStartAfter(node)
           range.setEndAfter(node)
           sel.removeAllRanges()

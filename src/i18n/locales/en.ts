@@ -268,7 +268,7 @@ const en: Translations = {
   settings_la_bookmarklet_copied: 'Copied!',
   settings_la_bookmarklet_drag_hint: '← Drag to bookmarks bar',
   settings_la_macos_only: 'Auto-inject requires macOS',
-  settings_extension_section: 'Browser Extension (Legacy Assistant)',
+  settings_extension_section: 'Browser Extension',
   settings_extension_section_desc: 'Connect the T.R.E Assistant Chrome Extension to translate text directly in your browser. The extension uses your API keys configured above.',
   settings_extension_token_label: 'Connection Token',
   settings_extension_token_desc: 'Copy this token into the T.R.E Assistant Extension options page. Keep it private.',
