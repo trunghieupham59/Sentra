@@ -25,7 +25,7 @@ jobs:
               shell: bash
               run: |
                   CURRENT_TAG="${GITHUB_REF#refs/tags/}"
-                  PREV_TAG=$(git tag --sort=-version:refname | grep -v "^${CURRENT_TAG}$" | head -n 1)
+                  PREV_TAG=$(git tag --sort=-version:refname | grep -v "^${CURRENT_TAG}$" | head -n 1 || true)
 
                   echo "Current tag: $CURRENT_TAG"
                   echo "Previous tag: $PREV_TAG"
