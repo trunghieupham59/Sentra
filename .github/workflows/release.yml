@@ -104,7 +104,7 @@ jobs:
                     echo ""
                     echo "## 📦 Installation"
                     echo ""
-                    echo "###  macOS"
+                    echo "###  macOS"
                     echo "1. Download the \`.dmg\` file matching your chip:"
                     echo "   - **Apple Silicon (M1/M2/M3):** \`Lotus-*-arm64.dmg\`"
                     echo "   - **Intel Mac:** \`Lotus-*-x64.dmg\`"

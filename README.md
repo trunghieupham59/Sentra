@@ -25,9 +25,9 @@
 
 | Platform | Installer |
 |----------|-----------|
-| 🍎 macOS (Apple Silicon) | [Lotus-1.0.3-arm64.dmg](https://github.com/trunghieupham59/lotus-translate/releases/download/v1.0.3/Lotus-1.0.3-arm64.dmg) |
-| 🍎 macOS (Intel x64) | [Lotus-1.0.3.dmg](https://github.com/trunghieupham59/lotus-translate/releases/download/v1.0.3/Lotus-1.0.3.dmg) |
-| 🪟 Windows (x64) | [Lotus.Setup.1.0.3.exe](https://github.com/trunghieupham59/lotus-translate/releases/download/v1.0.3/Lotus.Setup.1.0.3.exe) |
+|  macOS (Apple Silicon) | [Lotus-1.0.3-arm64.dmg](https://github.com/trunghieupham59/lotus-translate/releases/download/v1.0.3/Lotus-1.0.3-arm64.dmg) |
+|  macOS (Intel x64) | [Lotus-1.0.3.dmg](https://github.com/trunghieupham59/lotus-translate/releases/download/v1.0.3/Lotus-1.0.3.dmg) |
+| ⊞ Windows (x64) | [Lotus.Setup.1.0.3.exe](https://github.com/trunghieupham59/lotus-translate/releases/download/v1.0.3/Lotus.Setup.1.0.3.exe) |
 
 > View all releases: [github.com/trunghieupham59/lotus-translate/releases](https://github.com/trunghieupham59/lotus-translate/releases)
 
