@@ -1,51 +1,93 @@
 /**
  * Lotus Translate — Content Script
  *
- * Injects a small floating "Translate" button whenever the user selects text.
+ * Injects a small floating icon button whenever the user selects text.
  * Clicking the button calls the Lotus local API (localhost:39875) to translate
  * and shows the result in a tooltip above the selection.
  */
 
 ;(() => {
+  // ── Extension context guard ────────────────────────────────────────────────
+  // Content scripts access the real DOM through Chrome's proxy layer.
+  // If the extension context is invalidated, even basic DOM operations throw.
+  // Check synchronously BEFORE doing anything.
+  try {
+    if (!chrome.runtime?.id) return
+  } catch {
+    return
+  }
+
   const PORT = 39875
+  const ICON_URL = chrome.runtime.getURL('icons/icon48.png')
 
   // ── DOM setup ──────────────────────────────────────────────────────────────
 
+  const root = document.body || document.documentElement
+
+  // Build btn (avoid putting chrome-extension:// URL in innerHTML)
   const btn = document.createElement('button')
   btn.id = 'lotus-assistant-btn'
-  btn.innerHTML = `
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M5 8l6 6 6-6"/>
-    </svg>
-    Lotus Translate
-  `
-  document.documentElement.appendChild(btn)
+  btn.title = 'Lotus Translate'
+  const btnImg = document.createElement('img')
+  btnImg.src = ICON_URL
+  btnImg.alt = 'Lotus'
+  btn.appendChild(btnImg)
 
+  // Build tooltip (avoid putting chrome-extension:// URL in innerHTML)
   const tooltip = document.createElement('div')
   tooltip.id = 'lotus-result-tooltip'
   tooltip.innerHTML = `
-    <div class="lotus-tooltip-label">Translation</div>
+    <div class="lotus-tooltip-header">
+      <img class="lotus-tooltip-logo" alt="Lotus" />
+      <span class="lotus-tooltip-label">Translation</span>
+    </div>
     <div class="lotus-tooltip-text"></div>
+    <div class="lotus-tooltip-actions">
+      <button class="lotus-action-btn lotus-copy-btn">📋 Copy</button>
+      <button class="lotus-action-btn lotus-replace-btn">↵ Replace</button>
+    </div>
   `
-  document.documentElement.appendChild(tooltip)
+  // Set logo src separately after innerHTML is parsed (avoids chrome-extension:// in innerHTML)
+  tooltip.querySelector('.lotus-tooltip-logo').src = ICON_URL
+
+  try {
+    root.appendChild(btn)
+    root.appendChild(tooltip)
+  } catch {
+    return // Failed to inject UI elements, bail out
+  }
+
+  const copyBtn = tooltip.querySelector('.lotus-copy-btn')
+  const replaceBtn = tooltip.querySelector('.lotus-replace-btn')
 
   // ── State ─────────────────────────────────────────────────────────────────
 
   let lastSelection = ''
   let tooltipHideTimer = null
+  let savedRange = null
+  let currentTranslation = ''
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
+  function isContextValid () {
+    try { return !!chrome.runtime?.id } catch { return false }
+  }
+
   function getSettings () {
-    return new Promise((resolve) => {
-      chrome.storage.local.get(['lotusToken', 'lotusTargetLang', 'lotusProvider', 'lotusModel'], (data) => {
-        resolve({
-          token: data.lotusToken || '',
-          targetLang: data.lotusTargetLang || 'en',
-          provider: data.lotusProvider || 'gemini',
-          model: data.lotusModel || 'gemini-2.0-flash',
+    return new Promise((resolve, reject) => {
+      if (!isContextValid()) { reject(new Error('Extension context invalidated. Please reload the page.')); return }
+      try {
+        chrome.storage.local.get(['lotusToken', 'lotusTargetLang', 'lotusProvider', 'lotusModel'], (data) => {
+          resolve({
+            token: data.lotusToken || '',
+            targetLang: data.lotusTargetLang || 'en',
+            provider: data.lotusProvider || 'gemini',
+            model: data.lotusModel || 'gemini-2.0-flash',
+          })
         })
-      })
+      } catch {
+        reject(new Error('Extension context invalidated. Please reload the page.'))
+      }
     })
   }
 
@@ -70,7 +112,7 @@
   }
 
   function positionElement (el, rect) {
-    const margin = 6
+    const margin = 8
     let top = rect.top - el.offsetHeight - margin
     let left = rect.left + rect.width / 2 - el.offsetWidth / 2
 
@@ -81,31 +123,39 @@
       left = window.innerWidth - el.offsetWidth - margin
     }
 
-    el.style.top = `${top}px`
+    el.style.top = `${top + window.scrollY}px`
     el.style.left = `${left}px`
   }
 
+  function resetBtnIcon () {
+    btn.classList.remove('lotus-loading')
+    btn.innerHTML = ''
+    const img = document.createElement('img')
+    img.src = ICON_URL
+    img.alt = 'Lotus'
+    btn.appendChild(img)
+  }
+
   function showButton (rect) {
+    resetBtnIcon()
     btn.style.display = 'flex'
-    btn.style.top = `${rect.bottom + 6}px`
-    btn.style.left = `${rect.left + rect.width / 2 - 60}px`
+    btn.style.top = `${rect.bottom + window.scrollY + 6}px`
+    btn.style.left = `${rect.left + rect.width / 2 - 18}px`
   }
 
   function hideButton () {
     btn.style.display = 'none'
-    btn.classList.remove('lotus-loading')
-    btn.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M5 8l6 6 6-6"/>
-      </svg>
-      Lotus Translate
-    `
+    resetBtnIcon()
   }
 
-  function showTooltip (text, rect) {
+  function showTooltip (text, rect, range) {
+    currentTranslation = text
+    savedRange = range || null
+
     const tooltipText = tooltip.querySelector('.lotus-tooltip-text')
     tooltipText.textContent = text
     tooltip.style.display = 'block'
+    copyBtn.textContent = '📋 Copy'
     // Force reflow so offsetWidth is available
     tooltip.getBoundingClientRect()
     positionElement(tooltip, rect)
@@ -121,11 +171,60 @@
     clearTimeout(tooltipHideTimer)
   }
 
+  // ── Tooltip hover: pause auto-hide ─────────────────────────────────────────
+
+  tooltip.addEventListener('mouseenter', () => {
+    clearTimeout(tooltipHideTimer)
+  })
+
+  tooltip.addEventListener('mouseleave', () => {
+    clearTimeout(tooltipHideTimer)
+    tooltipHideTimer = setTimeout(() => {
+      tooltip.style.display = 'none'
+    }, 2000)
+  })
+
+  // ── Copy button ────────────────────────────────────────────────────────────
+
+  copyBtn.addEventListener('click', async (e) => {
+    e.stopPropagation()
+    try {
+      await navigator.clipboard.writeText(currentTranslation)
+      copyBtn.textContent = '✓ Copied!'
+      setTimeout(() => { copyBtn.textContent = '📋 Copy' }, 1500)
+    } catch {
+      copyBtn.textContent = '❌ Failed'
+      setTimeout(() => { copyBtn.textContent = '📋 Copy' }, 1500)
+    }
+    clearTimeout(tooltipHideTimer)
+    tooltipHideTimer = setTimeout(() => {
+      tooltip.style.display = 'none'
+    }, 3000)
+  })
+
+  // ── Replace button ─────────────────────────────────────────────────────────
+
+  replaceBtn.addEventListener('click', (e) => {
+    e.stopPropagation()
+    if (savedRange && currentTranslation) {
+      const sel = window.getSelection()
+      if (sel) {
+        sel.removeAllRanges()
+        sel.addRange(savedRange)
+        const inserted = document.execCommand('insertText', false, currentTranslation)
+        if (!inserted) {
+          navigator.clipboard.writeText(currentTranslation).catch(() => {})
+        }
+      }
+    }
+    hideTooltip()
+  })
+
   // ── Selection listener ─────────────────────────────────────────────────────
 
   document.addEventListener('mouseup', (e) => {
-    // Ignore clicks on our own elements
     if (e.target === btn || btn.contains(e.target)) return
+    if (e.target === tooltip || tooltip.contains(e.target)) return
 
     setTimeout(() => {
       const sel = window.getSelection()
@@ -151,8 +250,12 @@
   })
 
   document.addEventListener('mousedown', (e) => {
-    if (e.target !== btn && !btn.contains(e.target) && e.target !== tooltip && !tooltip.contains(e.target)) {
+    if (
+      e.target !== btn && !btn.contains(e.target) &&
+      e.target !== tooltip && !tooltip.contains(e.target)
+    ) {
       hideButton()
+      hideTooltip()
     }
   })
 
@@ -162,39 +265,42 @@
     const text = lastSelection
     if (!text) return
 
-    const settings = await getSettings()
-    if (!settings.token) {
-      alert('Lotus Extension: Please set your connection token in the extension Options page first.')
-      return
-    }
-
-    // Show loading state
+    // Show loading spinner inside the round button
     btn.classList.add('lotus-loading')
     btn.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:lotus-spin 0.8s linear infinite">
-        <circle cx="12" cy="12" r="10" stroke-opacity="0.25"/>
-        <path d="M12 2a10 10 0 0 1 10 10" />
+      <svg viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5" style="animation:lotus-spin 0.8s linear infinite;width:18px;height:18px;">
+        <circle cx="12" cy="12" r="9" stroke-opacity="0.2"/>
+        <path d="M12 3a9 9 0 0 1 9 9" />
       </svg>
-      Translating…
     `
 
     try {
+      const settings = await getSettings()
+      if (!settings.token) {
+        hideButton()
+        alert('Lotus Extension: Please set your connection token in the extension Options page first.')
+        return
+      }
+
       const sel = window.getSelection()
       let rect = { top: 100, bottom: 120, left: 100, width: 100 }
+      let range = null
       if (sel && sel.rangeCount > 0) {
-        rect = sel.getRangeAt(0).getBoundingClientRect()
+        range = sel.getRangeAt(0).cloneRange()
+        rect = range.getBoundingClientRect()
       }
 
       const translated = await translateText(text, settings)
       hideButton()
-      showTooltip(translated, rect)
+      showTooltip(translated, rect, range)
 
-      // Also copy to clipboard
       try { await navigator.clipboard.writeText(translated) } catch { /* ignore */ }
     } catch (err) {
       hideButton()
       const errMsg = err.message || 'Unknown error'
-      if (errMsg.includes('401') || errMsg.includes('Unauthorized')) {
+      if (errMsg.includes('context invalidated') || errMsg.includes('reload the page')) {
+        alert('Lotus Extension: Extension was updated. Please reload this page (F5) to use it again.')
+      } else if (errMsg.includes('401') || errMsg.includes('Unauthorized')) {
         alert('Lotus Extension: Token is invalid. Please update it in the Options page.')
       } else if (errMsg.includes('fetch') || errMsg.includes('Failed to fetch')) {
         alert('Lotus Extension: Cannot connect to Lotus app. Make sure the Lotus app is running.')
@@ -204,7 +310,7 @@
     }
   })
 
-  // Inject spin keyframe for the loading icon
+  // Inject spin keyframe
   const style = document.createElement('style')
   style.textContent = `@keyframes lotus-spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`
   document.head.appendChild(style)

@@ -1,69 +1,133 @@
-/* Lotus Translate — floating assistant button */
+/* Lotus Translate — floating icon button (circular) */
 
 #lotus-assistant-btn {
   position: fixed;
   z-index: 2147483647;
   display: none;
   align-items: center;
-  gap: 5px;
-  padding: 5px 10px 5px 7px;
-  background: #4f46e5;
-  color: #fff;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: #ffffff;
   border: none;
-  border-radius: 20px;
-  font-size: 12px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-weight: 600;
+  border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 2px 12px rgba(79, 70, 229, 0.45);
-  transition: background 0.15s, transform 0.1s, opacity 0.15s;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18), 0 1px 4px rgba(79, 70, 229, 0.15);
+  transition: box-shadow 0.15s, transform 0.12s;
   user-select: none;
   pointer-events: auto;
-  white-space: nowrap;
 }
 
 #lotus-assistant-btn:hover {
-  background: #4338ca;
-  transform: scale(1.04);
+  box-shadow: 0 4px 18px rgba(79, 70, 229, 0.35), 0 2px 6px rgba(0,0,0,0.12);
+  transform: scale(1.1);
 }
 
 #lotus-assistant-btn.lotus-loading {
-  background: #6d6aff;
+  background: #f5f5ff;
   pointer-events: none;
 }
 
-#lotus-assistant-btn svg {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
+#lotus-assistant-btn img {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: block;
+  pointer-events: none;
+  object-fit: cover;
 }
 
-/* Translate result tooltip */
+/* ── Translate result tooltip (light theme) ───────────────────────────────── */
+
 #lotus-result-tooltip {
   position: fixed;
   z-index: 2147483647;
   display: none;
+  min-width: 240px;
   max-width: 340px;
-  padding: 10px 14px;
-  background: #1e1b4b;
-  color: #e0e7ff;
-  border-radius: 10px;
-  font-size: 13px;
+  background: #ffffff;
+  color: #1e1b4b;
+  border-radius: 14px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  line-height: 1.5;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.35);
-  pointer-events: none;
+  font-size: 13px;
+  line-height: 1.6;
+  box-shadow:
+    0 8px 32px rgba(79, 70, 229, 0.14),
+    0 2px 8px rgba(0, 0, 0, 0.10),
+    0 0 0 1px rgba(79, 70, 229, 0.08);
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+/* Header bar */
+#lotus-result-tooltip .lotus-tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px 8px;
+  background: linear-gradient(135deg, #ede9fe 0%, #e0e7ff 100%);
+  border-bottom: 1px solid #ddd6fe;
+}
+
+#lotus-result-tooltip .lotus-tooltip-logo {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  flex-shrink: 0;
 }
 
 #lotus-result-tooltip .lotus-tooltip-label {
   font-size: 10px;
-  color: #a5b4fc;
-  font-weight: 600;
+  color: #5b21b6;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 4px;
+  letter-spacing: 0.07em;
 }
 
+/* Translation text */
 #lotus-result-tooltip .lotus-tooltip-text {
-  color: #e0e7ff;
+  color: #1e1b4b;
+  padding: 11px 14px 10px;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+/* Action buttons row */
+#lotus-result-tooltip .lotus-tooltip-actions {
+  display: flex;
+  gap: 0;
+  border-top: 1px solid #e9e6fc;
+}
+
+#lotus-result-tooltip .lotus-action-btn {
+  flex: 1;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 0;
+  font-size: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.13s;
+  user-select: none;
+  white-space: nowrap;
+  background: transparent;
+}
+
+#lotus-result-tooltip .lotus-copy-btn {
+  color: #4f46e5;
+  border-right: 1px solid #e9e6fc;
+}
+
+#lotus-result-tooltip .lotus-copy-btn:hover {
+  background: #ede9fe;
+}
+
+#lotus-result-tooltip .lotus-replace-btn {
+  color: #0f766e;
+}
+
+#lotus-result-tooltip .lotus-replace-btn:hover {
+  background: #f0fdf4;
 }
