@@ -245,34 +245,50 @@ jobs:
               run: npx electron-builder --win nsis --x64
               # Note: no --publish here; we upload manually after signing
 
-            - name: Locate unsigned installer
+            - name: Locate unsigned installer & app files
               id: find_installer
               shell: bash
               run: |
-                  FILE=$(ls release/*.exe | head -n 1)
-                  echo "INSTALLER_PATH=$FILE" >> "$GITHUB_OUTPUT"
-                  echo "INSTALLER_NAME=$(basename $FILE)" >> "$GITHUB_OUTPUT"
-                  echo "Found: $FILE"
+                  INSTALLER=$(ls release/*.exe | head -n 1)
+                  echo "INSTALLER_PATH=$INSTALLER" >> "$GITHUB_OUTPUT"
+                  echo "INSTALLER_NAME=$(basename $INSTALLER)" >> "$GITHUB_OUTPUT"
+                  echo "Found installer: $INSTALLER"
 
-            - name: Upload unsigned installer as workflow artifact
+            - name: Package installer + app PE files into ZIP for SignPath
+              shell: bash
+              run: |
+                  mkdir -p signing-input
+                  # Copy NSIS installer
+                  cp release/*.exe signing-input/
+                  # Copy unpacked app EXE and DLL files (deep signing)
+                  if [ -d "release/win-unpacked" ]; then
+                    find release/win-unpacked -maxdepth 1 \( -name "*.exe" -o -name "*.dll" \) \
+                      -exec cp {} signing-input/ \;
+                    echo "Copied PE files from win-unpacked:"
+                    ls signing-input/
+                  fi
+                  cd signing-input && zip -r ../unsigned-bundle.zip .
+                  echo "Bundle size: $(du -sh ../unsigned-bundle.zip | cut -f1)"
+
+            - name: Upload unsigned bundle as workflow artifact
               id: upload_unsigned
               uses: actions/upload-artifact@v4
               with:
-                  name: unsigned-windows-installer
-                  path: ${{ steps.find_installer.outputs.INSTALLER_PATH }}
+                  name: unsigned-windows-bundle
+                  path: unsigned-bundle.zip
                   retention-days: 1
 
             # ── SignPath.io free signing for open source ──────────────────
             # Prerequisites (one-time setup):
             #   1. Register at https://signpath.io → choose "Open Source" free plan
             #   2. Link your GitHub repo in the SignPath project settings
-            #   3. Create a project slug: "tre-assistant"
-            #   4. Create a signing policy slug: "release-signing"
-            #   5. Create artifact config slug: "windows-installer"
+            #   3. Create project slug: "tre-assistant"
+            #   4. Create signing policy slug: "release-signing"
+            #   5. Create artifact config slug: "windows-installer" (use build/signpath-artifact-config.xml)
             #   6. Add SIGNPATH_API_TOKEN & SIGNPATH_ORGANIZATION_ID as repo secrets
             # See: docs/windows-signing-setup.md for detailed instructions
             # ─────────────────────────────────────────────────────────────
-            - name: Sign installer via SignPath.io
+            - name: Sign bundle via SignPath.io
               id: sign
               uses: signpath/github-action-submit-signing-request@v1
               with:
@@ -285,12 +301,22 @@ jobs:
                   wait-for-completion: true
                   output-artifact-directory: "release-signed"
 
-            - name: Upload signed installer to GitHub Release
+            - name: Extract signed installer and upload to GitHub Release
               shell: bash
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   TAG="${GITHUB_REF#refs/tags/}"
-                  SIGNED_FILE=$(ls release-signed/*.exe | head -n 1)
-                  echo "Uploading signed installer: $SIGNED_FILE"
-                  gh release upload "$TAG" "$SIGNED_FILE" --clobber
+                  # Unzip signed bundle and grab the installer
+                  cd release-signed
+                  SIGNED_ZIP=$(ls *.zip | head -n 1)
+                  unzip -o "$SIGNED_ZIP" -d unpacked-signed
+                  SIGNED_EXE=$(ls unpacked-signed/*Setup*.exe unpacked-signed/*setup*.exe 2>/dev/null | head -n 1)
+                  if [ -z "$SIGNED_EXE" ]; then
+                    SIGNED_EXE=$(ls unpacked-signed/*.exe | head -n 1)
+                  fi
+                  INSTALLER_NAME="${{ steps.find_installer.outputs.INSTALLER_NAME }}"
+                  cp "$SIGNED_EXE" "../release-final-${INSTALLER_NAME}"
+                  cd ..
+                  echo "Uploading: release-final-${INSTALLER_NAME}"
+                  gh release upload "$TAG" "release-final-${INSTALLER_NAME}" --clobber

@@ -1,0 +1,74 @@
+name: Build Windows Sample (for SignPath setup)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Chạy workflow này để lấy file mẫu (.exe, .dll) upload lên SignPath
+# dashboard khi cấu hình Artifact Configuration.
+#
+# Cách dùng:
+#   GitHub repo → Actions → "Build Windows Sample" → Run workflow
+#
+# Sau khi chạy xong:
+#   1. Vào Actions run → Artifacts → download "windows-sample-bundle"
+#   2. Upload file zip này lên SignPath → Artifact Configurations → Generate from sample
+# ─────────────────────────────────────────────────────────────────────────────
+on:
+    workflow_dispatch: # Chỉ chạy khi trigger thủ công
+
+jobs:
+    build-sample:
+        runs-on: windows-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: npm
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build app
+              run: npm run build
+
+            - name: Build unsigned Windows installer
+              env:
+                  CSC_IDENTITY_AUTO_DISCOVERY: "false"
+                  WIN_CSC_LINK: ""
+                  WIN_CSC_KEY_PASSWORD: ""
+              run: npx electron-builder --win nsis --x64
+
+            - name: Package sample bundle (installer + EXE + DLL)
+              shell: bash
+              run: |
+                  mkdir -p sample-bundle
+
+                  echo "=== NSIS Installer ==="
+                  cp release/*.exe sample-bundle/
+                  ls -lh release/*.exe
+
+                  echo ""
+                  echo "=== App PE files (win-unpacked) ==="
+                  if [ -d "release/win-unpacked" ]; then
+                    find release/win-unpacked -maxdepth 1 \( -name "*.exe" -o -name "*.dll" \) \
+                      -exec cp {} sample-bundle/ \;
+                    echo "Files copied:"
+                    ls -lh sample-bundle/
+                  fi
+
+                  cd sample-bundle && zip -r ../windows-sample-bundle.zip .
+                  cd ..
+                  echo ""
+                  echo "=== Bundle summary ==="
+                  echo "Total files: $(ls sample-bundle/ | wc -l)"
+                  echo "Bundle size: $(du -sh windows-sample-bundle.zip | cut -f1)"
+
+            - name: Upload sample bundle as artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: windows-sample-bundle
+                  path: windows-sample-bundle.zip
+                  retention-days: 7
