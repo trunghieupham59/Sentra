@@ -139,6 +139,7 @@ jobs:
               id: create_release
               uses: softprops/action-gh-release@v2
               with:
+                  name: "T.R.E Assistant ${{ steps.notes.outputs.CURRENT_TAG }}"
                   body: ${{ steps.notes.outputs.RELEASE_BODY }}
                   draft: false
                   prerelease: ${{ contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-rc') }}
