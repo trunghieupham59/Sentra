@@ -2,28 +2,23 @@
 <!--
   SignPath.io Artifact Configuration for T.R.E Assistant Windows Installer
   =========================================================================
-  Upload this file in your SignPath project under:
-    Project → Artifact Configurations → Create → "Edit XML" tab
-  Set the slug to: "windows-installer"
-
-  This config signs the NSIS installer + all embedded PE files (EXE, DLL)
-  inside a zip package.
+  Paste this XML vào SignPath:
+    Project → Artifact Configurations → [tên config] → Edit → tab "XML editor"
 
   Docs: https://about.signpath.io/documentation/artifact-configuration
 -->
 <artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
   <!--
-    Workflow gửi một file ZIP chứa:
-      - installer NSIS (.exe)
-      - các file PE bên trong app (*.exe, *.dll)
-    SignPath sẽ ký tất cả các PE file tìm thấy trong ZIP.
+    ZIP chứa: installer NSIS (*.exe) và các PE files (*.dll, *.exe) từ win-unpacked
+    Dùng wildcard *.exe và *.dll để match bất kỳ tên file nào
   -->
   <zip-file>
-    <pe-image path-regex="[^/]*\.exe">
-      <authenticode-sign/>
-    </pe-image>
-    <pe-image path-regex="[^/]*\.dll">
-      <authenticode-sign/>
-    </pe-image>
+    <pe-file-set>
+      <include path="*.exe" />
+      <include path="*.dll" min-matches="0" max-matches="unbounded" />
+      <for-each>
+        <authenticode-sign />
+      </for-each>
+    </pe-file-set>
   </zip-file>
 </artifact-configuration>
