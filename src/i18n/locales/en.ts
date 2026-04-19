@@ -239,7 +239,7 @@ const en: Translations = {
   chat_voice_stop: 'Stop recording',
   chat_empty_title: 'Chat with AI',
   chat_empty_desc: 'Ask anything, attach images, or record your voice.',
-  chat_system_prompt: 'System prompt',
+  chat_system_prompt: 'System Prompt',
   chat_system_prompt_placeholder: 'You are a helpful assistant…',
   chat_system_prompt_none: 'None',
   chat_system_prompt_none_desc: 'No system prompt',

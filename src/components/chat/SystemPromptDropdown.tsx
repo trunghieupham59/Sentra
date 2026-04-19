@@ -12,7 +12,9 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   DocumentIcon,
+  PlusIcon,
   RadioCheckedIcon,
+  XIcon,
 } from '../ui/icons'
 
 interface SystemPromptDropdownProps {
@@ -26,6 +28,8 @@ interface SystemPromptDropdownProps {
   onSetChatSystemPrompt: (prompt: string) => void
   /** Called when the user clicks "Settings →" to navigate to settings page */
   onNavigateSettings: () => void
+  /** Called when the user saves a new preset from the inline form */
+  onAddPreset: (preset: Omit<SystemPromptPreset, 'id'>) => string
   /** Current UI translation strings */
   t: Translations
 }
@@ -36,10 +40,15 @@ export function SystemPromptDropdown({
   activePreset,
   onSetChatSystemPrompt,
   onNavigateSettings,
+  onAddPreset,
   t,
 }: SystemPromptDropdownProps) {
   const [showDropdown, setShowDropdown] = useState(false)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newContent, setNewContent] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const nameInputRef = useRef<HTMLInputElement>(null)
 
   // Close when clicking outside
   useEffect(() => {
@@ -47,13 +56,48 @@ export function SystemPromptDropdown({
     const handleOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setShowDropdown(false)
+        setShowAddForm(false)
+        setNewName('')
+        setNewContent('')
       }
     }
     document.addEventListener('mousedown', handleOutside)
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [showDropdown])
 
+  // Focus name input when form opens
+  useEffect(() => {
+    if (showAddForm) {
+      setTimeout(() => nameInputRef.current?.focus(), 50)
+    }
+  }, [showAddForm])
+
   const isActive = Boolean(chatSystemPrompt || activePreset)
+
+  const handleOpenAddForm = () => {
+    setNewName('')
+    setNewContent('')
+    setShowAddForm(true)
+  }
+
+  const handleCancelAdd = () => {
+    setShowAddForm(false)
+    setNewName('')
+    setNewContent('')
+  }
+
+  const handleSavePreset = () => {
+    const name = newName.trim()
+    const content = newContent.trim()
+    if (!name || !content) return
+    onAddPreset({ name, content, isDefault: false })
+    setShowAddForm(false)
+    setNewName('')
+    setNewContent('')
+    // Auto-select the new preset
+    onSetChatSystemPrompt(content)
+    setShowDropdown(false)
+  }
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -150,8 +194,84 @@ export function SystemPromptDropdown({
             )}
           </div>
 
-          {/* Footer: navigate to settings */}
-          <div className="px-3 py-2.5 flex items-center justify-end border-t border-gray-100 dark:border-gray-700">
+          {/* Inline Add Preset Form */}
+          {showAddForm && (
+            <div className="border-t border-gray-100 dark:border-gray-700 p-3 space-y-2">
+              <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                {t.settings_chat_preset_add}
+              </p>
+              <input
+                ref={nameInputRef}
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder={t.settings_chat_preset_name_placeholder}
+                className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600
+                           bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-100
+                           placeholder-gray-400 dark:placeholder-gray-500
+                           focus:outline-none focus:border-indigo-400 dark:focus:border-indigo-500
+                           transition-colors"
+              />
+              <textarea
+                value={newContent}
+                onChange={(e) => setNewContent(e.target.value)}
+                placeholder={t.chat_system_prompt_placeholder}
+                rows={3}
+                className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600
+                           bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-100
+                           placeholder-gray-400 dark:placeholder-gray-500
+                           focus:outline-none focus:border-indigo-400 dark:focus:border-indigo-500
+                           resize-none transition-colors"
+              />
+              <div className="flex items-center gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={handleCancelAdd}
+                  className="text-xs px-2.5 py-1 rounded-lg text-gray-500 dark:text-gray-400
+                             hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                >
+                  {t.settings_chat_preset_cancel}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSavePreset}
+                  disabled={!newName.trim() || !newContent.trim()}
+                  className="text-xs px-2.5 py-1 rounded-lg bg-indigo-500 text-white
+                             hover:bg-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed
+                             transition-colors cursor-pointer"
+                >
+                  {t.settings_chat_preset_save}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="px-3 py-2.5 flex items-center justify-between border-t border-gray-100 dark:border-gray-700">
+            {/* Add Preset button */}
+            {!showAddForm ? (
+              <button
+                type="button"
+                onClick={handleOpenAddForm}
+                className="text-xs text-indigo-500 dark:text-indigo-400 hover:underline cursor-pointer
+                           transition-colors flex items-center gap-1"
+              >
+                <PlusIcon />
+                {t.settings_chat_preset_add}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleCancelAdd}
+                className="text-xs text-gray-400 dark:text-gray-500 hover:underline cursor-pointer
+                           transition-colors flex items-center gap-1"
+              >
+                <XIcon className="w-3 h-3" />
+                {t.settings_chat_preset_cancel}
+              </button>
+            )}
+
+            {/* Navigate to settings */}
             <button
               type="button"
               onClick={() => { setShowDropdown(false); onNavigateSettings() }}

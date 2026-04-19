@@ -42,7 +42,7 @@ export function ChatPage() {
     selectedProvider, selectedModels, keyStatus,
     chatSessions, activeChatSessionId, chatSystemPrompt, systemPromptPresets,
     createChatSession, setActiveChatSession, addChatMessage, updateChatMessage,
-    clearChatSession, setChatSystemPrompt, setActivePage,
+    clearChatSession, setChatSystemPrompt, setActivePage, addSystemPromptPreset,
   } = useAppStore()
   const t = useT()
 
@@ -351,6 +351,7 @@ export function ChatPage() {
             activePreset={activePreset}
             onSetChatSystemPrompt={setChatSystemPrompt}
             onNavigateSettings={() => setActivePage('settings')}
+            onAddPreset={addSystemPromptPreset}
             t={t}
           />
 

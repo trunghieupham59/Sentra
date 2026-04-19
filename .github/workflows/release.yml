@@ -7,6 +7,7 @@ on:
 
 permissions:
     contents: write
+    id-token: write # Required for SignPath
 
 jobs:
     create-release:
@@ -104,7 +105,7 @@ jobs:
                     echo ""
                     echo "## 📦 Installation"
                     echo ""
-                    echo "###  macOS"
+                    echo "###  macOS"
                     echo "1. Download the \`.dmg\` file matching your chip:"
                     echo "   - **Apple Silicon (M1/M2/M3):** \`T.R.E-Assistant-*-arm64.dmg\`"
                     echo "   - **Intel Mac:** \`T.R.E-Assistant-*-x64.dmg\`"
@@ -147,19 +148,20 @@ jobs:
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    build:
+    # ─────────────────────────────────────────────
+    # macOS builds (Apple signing + notarization)
+    # ─────────────────────────────────────────────
+    build-mac:
         needs: create-release
         strategy:
             matrix:
                 include:
-                    - os: macos-latest
+                    - arch: arm64
                       cmd: npx electron-builder --mac --arm64 --publish always
-                    - os: macos-latest
+                    - arch: x64
                       cmd: npx electron-builder --mac --x64 --publish always
-                    - os: windows-latest
-                      cmd: npx electron-builder --win nsis --x64 --publish always
 
-        runs-on: ${{ matrix.os }}
+        runs-on: macos-latest
 
         steps:
             - name: Checkout
@@ -189,7 +191,7 @@ jobs:
             - name: Build
               run: npm run build
 
-            - name: Build and publish
+            - name: Build and publish (macOS)
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   CSC_IDENTITY_AUTO_DISCOVERY: false
@@ -197,3 +199,98 @@ jobs:
                   APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
                   APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
               run: ${{ matrix.cmd }}
+
+    # ─────────────────────────────────────────────
+    # Windows build → SignPath signing (free for OSS)
+    # ─────────────────────────────────────────────
+    build-windows:
+        needs: create-release
+        runs-on: windows-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: npm
+
+            - name: Update version in package.json
+              shell: bash
+              run: |
+                  VERSION="${GITHUB_REF#refs/tags/v}"
+                  CURRENT=$(node -p "require('./package.json').version")
+                  if [ "$CURRENT" != "$VERSION" ]; then
+                    echo "Updating package.json from $CURRENT to $VERSION"
+                    npm version "$VERSION" --no-git-tag-version
+                  else
+                    echo "package.json already at version $VERSION, skipping."
+                  fi
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build
+              run: npm run build
+
+            - name: Build unsigned Windows installer
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  # Disable all local signing — SignPath will sign the artifact
+                  CSC_IDENTITY_AUTO_DISCOVERY: "false"
+                  WIN_CSC_LINK: ""
+                  WIN_CSC_KEY_PASSWORD: ""
+              run: npx electron-builder --win nsis --x64
+              # Note: no --publish here; we upload manually after signing
+
+            - name: Locate unsigned installer
+              id: find_installer
+              shell: bash
+              run: |
+                  FILE=$(ls release/*.exe | head -n 1)
+                  echo "INSTALLER_PATH=$FILE" >> "$GITHUB_OUTPUT"
+                  echo "INSTALLER_NAME=$(basename $FILE)" >> "$GITHUB_OUTPUT"
+                  echo "Found: $FILE"
+
+            - name: Upload unsigned installer as workflow artifact
+              id: upload_unsigned
+              uses: actions/upload-artifact@v4
+              with:
+                  name: unsigned-windows-installer
+                  path: ${{ steps.find_installer.outputs.INSTALLER_PATH }}
+                  retention-days: 1
+
+            # ── SignPath.io free signing for open source ──────────────────
+            # Prerequisites (one-time setup):
+            #   1. Register at https://signpath.io → choose "Open Source" free plan
+            #   2. Link your GitHub repo in the SignPath project settings
+            #   3. Create a project slug: "tre-assistant"
+            #   4. Create a signing policy slug: "release-signing"
+            #   5. Create artifact config slug: "windows-installer"
+            #   6. Add SIGNPATH_API_TOKEN & SIGNPATH_ORGANIZATION_ID as repo secrets
+            # See: docs/windows-signing-setup.md for detailed instructions
+            # ─────────────────────────────────────────────────────────────
+            - name: Sign installer via SignPath.io
+              id: sign
+              uses: signpath/github-action-submit-signing-request@v1
+              with:
+                  api-token: "${{ secrets.SIGNPATH_API_TOKEN }}"
+                  organization-id: "${{ secrets.SIGNPATH_ORGANIZATION_ID }}"
+                  project-slug: "tre-assistant"
+                  signing-policy-slug: "release-signing"
+                  artifact-configuration-slug: "windows-installer"
+                  github-artifact-id: "${{ steps.upload_unsigned.outputs.artifact-id }}"
+                  wait-for-completion: true
+                  output-artifact-directory: "release-signed"
+
+            - name: Upload signed installer to GitHub Release
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  TAG="${GITHUB_REF#refs/tags/}"
+                  SIGNED_FILE=$(ls release-signed/*.exe | head -n 1)
+                  echo "Uploading signed installer: $SIGNED_FILE"
+                  gh release upload "$TAG" "$SIGNED_FILE" --clobber
