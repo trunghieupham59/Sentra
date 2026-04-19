@@ -163,8 +163,7 @@ export function BrowserIntegrationSection() {
       <div className="card divide-y divide-gray-100 dark:divide-gray-700">
 
         <div className="px-4 pt-3 pb-1">
-          {/* TODO: H-8 — move to i18n key (settings_chrome_extension_label) */}
-          <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Chrome Extension</p>
+          <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">{t.settings_chrome_extension_label}</p>
         </div>
 
         {/* Download & Install */}

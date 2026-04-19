@@ -59,6 +59,8 @@ export interface Translations {
   voice_listening: string
   voice_transcribing: string
   voice_whisper_mode: string
+  /** HC-NEW-05: Error message when Speech Recognition API is unavailable (network error) */
+  voice_error_network: string
 
   // Model selector
   model_no_key: string
@@ -84,6 +86,10 @@ export interface Translations {
   settings_key_saved: string
   settings_key_invalid: string
   settings_no_key: string
+  /** HC-NEW-03: Placeholder when user has a key and hasn't started typing a new one */
+  settings_key_placeholder_new: string
+  /** HC-NEW-03: Placeholder when no key exists — template: "Paste your {name} API key…" */
+  settings_key_placeholder_paste: string
   settings_verify_save: string
   settings_verifying: string
   settings_verified: string
@@ -257,6 +263,10 @@ export interface Translations {
   chat_empty_desc: string
   chat_system_prompt: string
   chat_system_prompt_placeholder: string
+  /** HC-NEW-04: Label for the "None" option in SystemPromptDropdown */
+  chat_system_prompt_none: string
+  /** HC-NEW-04: Description for the "None" option in SystemPromptDropdown */
+  chat_system_prompt_none_desc: string
   chat_regenerate: string
 
   // Settings — Global Hotkey
@@ -292,6 +302,8 @@ export interface Translations {
   settings_la_bookmarklet_drag_hint: string
   settings_la_macos_only: string
 
+  /** HC-NEW-06: Label for the Chrome Extension subsection header */
+  settings_chrome_extension_label: string
   // Settings — Chrome Extension
   settings_extension_section: string
   settings_extension_section_desc: string

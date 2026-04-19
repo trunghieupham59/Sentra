@@ -7,6 +7,7 @@ import {
   VERIFY_MODEL_GEMINI,
   VERIFY_MODEL_CLAUDE,
   VERIFY_MODEL_OPENAI,
+  VERIFY_MAX_TOKENS,
   DETECT_LANG_MAX_CHARS,
 } from './ipcConstants'
 
@@ -422,7 +423,7 @@ async function verifyClaudeKey(apiKey: string): Promise<void> {
   const client = new Anthropic({ apiKey })
   const message = await client.messages.create({
     model: VERIFY_MODEL_CLAUDE,  // HC-05
-    max_tokens: 10,
+    max_tokens: VERIFY_MAX_TOKENS,  // HC-NEW-09
     messages: [{ role: 'user', content: 'Say "ok".' }],
   })
   if (!message.content[0]) throw new Error('No response from Claude')
@@ -434,7 +435,7 @@ async function verifyOpenAIKey(apiKey: string): Promise<void> {
   const completion = await client.chat.completions.create({
     model: VERIFY_MODEL_OPENAI,  // HC-05
     messages: [{ role: 'user', content: 'Say "ok".' }],
-    max_completion_tokens: 5,
+    max_completion_tokens: VERIFY_MAX_TOKENS,  // HC-NEW-09
   })
   if (!completion.choices[0]) throw new Error('No response from OpenAI')
 }

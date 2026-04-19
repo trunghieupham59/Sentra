@@ -1,5 +1,6 @@
 import { AppLogoIcon } from '../../components/AppLogo'
 import { useT } from '../../store/useAppStore'
+import { PROVIDERS } from '../../constants/providers'
 
 export function AboutSection() {
   const t = useT()
@@ -21,9 +22,10 @@ export function AboutSection() {
           </div>
           <div className="text-right">
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t.settings_about_supports}</p>
-            <p className="text-xs text-gray-400">Google Gemini</p>
-            <p className="text-xs text-gray-400">Anthropic Claude</p>
-            <p className="text-xs text-gray-400">OpenAI GPT</p>
+            {/* HC-NEW-10: Use PROVIDERS constant instead of hardcoding provider names */}
+            {PROVIDERS.map((p) => (
+              <p key={p.id} className="text-xs text-gray-400">{p.name}</p>
+            ))}
           </div>
         </div>
         <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">

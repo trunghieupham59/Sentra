@@ -3,6 +3,7 @@ import type { ProviderConfig } from '../types'
 import { CheckCircleIcon, CheckIcon, SpinnerIcon, TrashIcon } from './ui/icons'
 import { ProviderIcon, PROVIDER_COLORS } from './ProviderIcon'
 import { useT } from '../store/useAppStore'
+import { tpl } from '../utils/tpl'
 
 interface ApiKeyInputProps {
   provider: ProviderConfig
@@ -154,7 +155,7 @@ export function ApiKeyInput({ provider, onSave, onDelete, hasKey, maskedKey }: A
             }}
             onClick={showMasked ? () => setInputValue('') : undefined}
             onKeyDown={(e) => { if (e.key === 'Enter' && !showMasked) handleVerify() }}
-            placeholder={hasKey ? 'Enter new key to replace…' : `Paste your ${provider.name} API key…`}
+            placeholder={hasKey ? t.settings_key_placeholder_new : tpl(t.settings_key_placeholder_paste, { name: provider.name })}
             className={[
               'w-full px-3 py-2 border rounded-lg text-sm font-mono',
               'focus:outline-none focus:ring-2 focus:ring-blue-500',

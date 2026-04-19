@@ -22,6 +22,11 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 // Set app name
 app.setName('T.R.E Assistant')
 
+// ── Window constants ──────────────────────────────────────────────────────────
+/** HC-NEW-11: Named color constants for window background (avoids magic hex strings) */
+const WIN_BG_DARK  = '#1a1a2e'
+const WIN_BG_LIGHT = '#ffffff'
+
 let mainWindow: BrowserWindow | null = null
 
 function createWindow() {
@@ -33,7 +38,7 @@ function createWindow() {
     title: 'T.R.E Assistant',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 16, y: 14 },
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#1a1a2e' : '#ffffff',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? WIN_BG_DARK : WIN_BG_LIGHT,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -96,6 +101,9 @@ function createWindow() {
 // ── Floating Subtitle Window ──────────────────────────────────────────────────
 let subtitleWindow: BrowserWindow | null = null
 
+/** HC-NEW-08: px gap between subtitle window bottom edge and the screen's taskbar/dock */
+const SUBTITLE_BOTTOM_MARGIN = 40
+
 function createSubtitleWindow() {
   const { workAreaSize } = screen.getPrimaryDisplay()
   const winW = 620
@@ -105,7 +113,7 @@ function createSubtitleWindow() {
     width:  winW,
     height: winH,
     x: Math.round(workAreaSize.width  / 2 - winW / 2),
-    y: Math.round(workAreaSize.height - winH - 40),
+    y: Math.round(workAreaSize.height - winH - SUBTITLE_BOTTOM_MARGIN),
     frame:     false,
     transparent: true,
     alwaysOnTop: true,

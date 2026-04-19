@@ -3,6 +3,7 @@
 // Supports: headings, bold, italic, inline code, lists, tables, code blocks, paragraphs.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { renderInline } from '../utils/markdownInline'
 
 interface Props {
   value: string
@@ -10,30 +11,6 @@ interface Props {
   placeholder?: string
   className?: string
   onBlurAll?: () => void  // called when all lines lose focus
-}
-
-// ─── Inline renderer (bold, italic, code) ─────────────────────────────────────
-
-function renderInline(raw: string): React.ReactNode[] {
-  const result: React.ReactNode[] = []
-  const pattern = /(\*\*(.+?)\*\*)|(\*(.+?)\*)|(_(.+?)_)|(`(.+?)`)/g
-  let last = 0
-  let match: RegExpExecArray | null
-  // biome-ignore lint/suspicious/noAssignInExpressions: intentional
-  while ((match = pattern.exec(raw)) !== null) {
-    if (match.index > last) result.push(raw.slice(last, match.index))
-    if (match[1]) result.push(<strong key={match.index}>{match[2]}</strong>)
-    else if (match[3]) result.push(<em key={match.index}>{match[4]}</em>)
-    else if (match[5]) result.push(<em key={match.index}>{match[6]}</em>)
-    else if (match[7]) result.push(
-      <code key={match.index} className="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-[0.85em] font-mono text-gray-800 dark:text-gray-200">
-        {match[8]}
-      </code>
-    )
-    last = match.index + match[0].length
-  }
-  if (last < raw.length) result.push(raw.slice(last))
-  return result
 }
 
 // ─── Single-line rendered view ─────────────────────────────────────────────────

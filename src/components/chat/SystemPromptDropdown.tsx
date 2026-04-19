@@ -100,8 +100,8 @@ export function SystemPromptDropdown({
                           : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
           >
             <div className="flex-1 min-w-0">
-              <span className="font-medium">None</span>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">No system prompt</p>
+              <span className="font-medium">{t.chat_system_prompt_none}</span>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{t.chat_system_prompt_none_desc}</p>
             </div>
             {!chatSystemPrompt && (
               <RadioCheckedIcon className="w-4 h-4 text-indigo-500 flex-shrink-0" />

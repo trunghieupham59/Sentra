@@ -53,16 +53,19 @@ export function FuriganaText({ text, className }: FuriganaTextProps) {
 
   return (
     <p className={className} style={{ whiteSpace: 'pre-wrap', lineHeight: '2.6' }}>
-      {segments.map((seg) =>
+      {/* Fix HC-NEW: use index-based keys to avoid collision when same base/reading repeats */}
+      {segments.map((seg, idx) =>
         seg.type === 'ruby' ? (
-          <ruby key={`ruby-${seg.base}-${seg.reading}`}>
+          // biome-ignore lint/suspicious/noArrayIndexKey: stable index — segment order is fixed after parsing
+          <ruby key={`seg-${idx}`}>
             {seg.base}
             <rt style={{ fontSize: '0.55em', color: 'inherit', opacity: 0.75 }}>
               {seg.reading}
             </rt>
           </ruby>
         ) : (
-          <span key={`plain-${seg.base}`}>{seg.base}</span>
+          // biome-ignore lint/suspicious/noArrayIndexKey: stable index
+          <span key={`seg-${idx}`}>{seg.base}</span>
         )
       )}
     </p>

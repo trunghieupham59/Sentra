@@ -53,6 +53,14 @@ export const MAX_CHAT_OUTPUT_TOKENS = 4_096
  */
 export const MAX_CHAT_REQUEST_CHARS = 3_000
 
+// ── API key verification token limit ─────────────────────────────────────────
+/**
+ * HC-NEW-09: Max output tokens for API key verification calls.
+ * We only need the model to say "ok" — 10 tokens is more than enough.
+ * Named constant so it matches the verify model constants pattern.
+ */
+export const VERIFY_MAX_TOKENS = 10
+
 // ── API key verification models ───────────────────────────────────────────────
 // HC-05: Lightweight models used only to verify key validity — cheapest/fastest per provider.
 // These are deliberately separate from the translation models in src/constants/providers.ts

@@ -69,3 +69,18 @@ export function SubtitlesIcon({ className = 'w-3.5 h-3.5' }: IconProps) {
     </svg>
   )
 }
+
+/**
+ * Stop square icon — rounded rectangle variant used in VoiceRecorder.
+ * Distinct from StopIcon (path-based) — this uses a rect for a cleaner
+ * "stop recording" appearance at small sizes.
+ *
+ * SPLIT-ICON-02: Extracted from inline SVG in VoiceRecorder.tsx.
+ */
+export function StopSquareIcon({ className = 'w-3.5 h-3.5' }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <rect x="6" y="6" width="12" height="12" rx="2" />
+    </svg>
+  )
+}

@@ -22,7 +22,8 @@ import { COPY_FEEDBACK_DURATION_MS } from '../constants/ui'
 import { useAppStore, useT } from '../store/useAppStore'
 
 // ── Deep link to macOS Screen Recording settings ──────────────────────────────
-const SCREEN_RECORDING_PREFS = 'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'
+// HC-NEW-07: Moved to constants/urls.ts — import from there
+import { MACOS_SCREEN_RECORDING_PREFS } from '../constants/urls'
 
 
 const SUBTITLE_FONT_SIZES = [
@@ -176,11 +177,14 @@ export function LiveTranslatePage() {
         <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2
                         bg-blue-50 dark:bg-blue-950/20 border-b border-blue-100 dark:border-blue-900/40">
           <InfoCircleIcon className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
-          <span
-            className="text-xs text-blue-600 dark:text-blue-400 flex-1"
-            // eslint-disable-next-line react/no-danger
-            dangerouslySetInnerHTML={{ __html: t.live_screen_recording_hint }}
-          />
+          <span className="text-xs text-blue-600 dark:text-blue-400 flex-1">
+            {/* Fix HC-NEW-09: Replace dangerouslySetInnerHTML with safe <strong> tag parser */}
+            {t.live_screen_recording_hint.split(/(<strong>.*?<\/strong>)/g).map((part, i) => {
+              const m = part.match(/^<strong>(.*?)<\/strong>$/)
+              // biome-ignore lint/suspicious/noArrayIndexKey: stable index for locale string segments
+              return m ? <strong key={i}>{m[1]}</strong> : part
+            })}
+          </span>
           <button
             type="button"
             onClick={() => {
@@ -188,9 +192,9 @@ export function LiveTranslatePage() {
               // which calls shell.openExternal — works without needing IPC restart.
               // Falls back to IPC openExternal if available.
               if (typeof window.api?.openExternal === 'function') {
-                window.api.openExternal(SCREEN_RECORDING_PREFS)
+                window.api.openExternal(MACOS_SCREEN_RECORDING_PREFS)
               } else {
-                window.open(SCREEN_RECORDING_PREFS)
+                window.open(MACOS_SCREEN_RECORDING_PREFS)
               }
             }}
             className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium

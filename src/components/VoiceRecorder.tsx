@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { LANG_TO_BCP47, getSupportedAudioMimeType } from '../constants/audio'
-import { MicrophoneIcon, SpinnerIcon } from './ui/icons'
+import { MicrophoneIcon, SpinnerIcon, StopSquareIcon } from './ui/icons'
+import { useT } from '../store/useAppStore'
 
 // ─── Local type definitions for cross-browser Speech Recognition ──────────────
 interface SpeechRecResult {
@@ -72,6 +73,7 @@ export function VoiceRecorder({
   labelTranscribing = 'Transcribing…',
   labelRecording = 'Recording…',
 }: VoiceRecorderProps) {
+  const t = useT()
   const [state, setState] = useState<RecordingState>('idle')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
@@ -351,10 +353,8 @@ export function VoiceRecorder({
           /* Spinner while transcribing */
           <SpinnerIcon className="w-3.5 h-3.5 relative z-10 animate-spin" />
         ) : isRecording ? (
-          /* Stop square — rect-based design kept intentionally (distinct from path-based StopIcon) */
-          <svg className="w-3.5 h-3.5 relative z-10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <rect x="6" y="6" width="12" height="12" rx="2" />
-          </svg>
+          /* Stop square — SPLIT-ICON-02: use StopSquareIcon from icon registry */
+          <StopSquareIcon className="w-3.5 h-3.5 relative z-10" />
         ) : (
           /* Microphone */
           <MicrophoneIcon className="w-4 h-4 relative z-10" />
@@ -376,7 +376,7 @@ export function VoiceRecorder({
       {/* Error tooltip */}
       {state === 'error' && errorMsg && (
         <span className="absolute left-full ml-2 whitespace-nowrap text-xs text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 px-2 py-1 rounded-md z-10">
-          {errorMsg === 'network' ? 'Speech API unavailable' : errorMsg}
+          {errorMsg === 'network' ? t.voice_error_network : errorMsg}
         </span>
       )}
     </div>

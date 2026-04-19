@@ -4,6 +4,7 @@ import { AppLogoIcon } from '../components/AppLogo'
 import { MessageBubble } from '../components/chat/MessageBubble'
 import { SystemPromptDropdown } from '../components/chat/SystemPromptDropdown'
 import { ModelSelector } from '../components/ModelSelector'
+import { ImagePreviewThumbnail } from '../components/ui/ImagePreviewThumbnail'
 import {
   ImageIcon,
   PlusIcon, SendIcon,
@@ -461,27 +462,14 @@ export function ChatPage() {
         )}
 
         {/* Image preview — Gemini-style large thumbnail */}
+        {/* SPLIT-DUP-01: Using shared ImagePreviewThumbnail instead of inline JSX */}
         {attachedImage && (
-          <div className="px-4 pt-4 pb-1 flex items-start">
-            <div className="relative group">
-              <img
-                src={attachedImage.previewUrl}
-                alt={attachedImage.fileName}
-                className="w-32 h-32 object-cover rounded-3xl shadow-sm
-                           border border-gray-200 dark:border-gray-700"
-              />
-              <button
-                type="button"
-                onClick={() => setAttachedImage(null)}
-                title={t.chat_remove_image}
-                className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center
-                           rounded-full bg-gray-700/90 hover:bg-gray-900 text-white cursor-pointer shadow-md
-                           opacity-0 group-hover:opacity-100 transition-opacity duration-150"
-              >
-                <XIcon className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
+          <ImagePreviewThumbnail
+            src={attachedImage.previewUrl}
+            alt={attachedImage.fileName}
+            removeTitle={t.chat_remove_image}
+            onRemove={() => setAttachedImage(null)}
+          />
         )}
 
         {/* Voice overlay */}
