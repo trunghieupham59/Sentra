@@ -61,8 +61,11 @@ jobs:
                   }
 
                   Write-Host ""
-                  Write-Host "=== Creating ZIP ==="
-                  Compress-Archive -Path sample-bundle\* -DestinationPath windows-sample-bundle.zip -Force
+                  Write-Host "=== Creating flat ZIP (files at root, no subdirectory) ==="
+                  # Must cd into the folder so Compress-Archive stores files at ZIP root
+                  Push-Location sample-bundle
+                  Compress-Archive -Path * -DestinationPath ..\windows-sample-bundle.zip -Force
+                  Pop-Location
                   $size = (Get-Item windows-sample-bundle.zip).Length / 1MB
                   $count = (Get-ChildItem sample-bundle).Count
                   Write-Host "Total files: $count"

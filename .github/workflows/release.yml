@@ -266,7 +266,10 @@ jobs:
                     Write-Host "Copied PE files:"
                     Get-ChildItem signing-input | Select-Object Name
                   }
-                  Compress-Archive -Path signing-input\* -DestinationPath unsigned-bundle.zip -Force
+                  # Must cd into the folder so Compress-Archive stores files at ZIP root
+                  Push-Location signing-input
+                  Compress-Archive -Path * -DestinationPath ..\unsigned-bundle.zip -Force
+                  Pop-Location
                   $size = (Get-Item unsigned-bundle.zip).Length / 1MB
                   Write-Host "Bundle size: $([math]::Round($size, 2)) MB"
 
