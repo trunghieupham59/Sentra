@@ -242,8 +242,7 @@ jobs:
                   CSC_IDENTITY_AUTO_DISCOVERY: "false"
                   WIN_CSC_LINK: ""
                   WIN_CSC_KEY_PASSWORD: ""
-              run: npx electron-builder --win nsis --x64
-              # Note: no --publish here; we upload manually after signing
+              run: npx electron-builder --win nsis --x64 --publish never
 
             - name: Locate unsigned installer & app files
               id: find_installer

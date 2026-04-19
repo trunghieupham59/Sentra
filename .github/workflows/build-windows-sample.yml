@@ -36,10 +36,11 @@ jobs:
 
             - name: Build unsigned Windows installer
               env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   CSC_IDENTITY_AUTO_DISCOVERY: "false"
                   WIN_CSC_LINK: ""
                   WIN_CSC_KEY_PASSWORD: ""
-              run: npx electron-builder --win nsis --x64
+              run: npx electron-builder --win nsis --x64 --publish never
 
             - name: Package sample bundle (installer + EXE + DLL)
               shell: bash
