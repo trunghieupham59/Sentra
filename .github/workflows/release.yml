@@ -254,20 +254,21 @@ jobs:
                   echo "Found installer: $INSTALLER"
 
             - name: Package installer + app PE files into ZIP for SignPath
-              shell: bash
+              shell: pwsh
               run: |
-                  mkdir -p signing-input
+                  New-Item -ItemType Directory -Force -Path signing-input | Out-Null
                   # Copy NSIS installer
-                  cp release/*.exe signing-input/
+                  Copy-Item release\*.exe signing-input\
                   # Copy unpacked app EXE and DLL files (deep signing)
-                  if [ -d "release/win-unpacked" ]; then
-                    find release/win-unpacked -maxdepth 1 \( -name "*.exe" -o -name "*.dll" \) \
-                      -exec cp {} signing-input/ \;
-                    echo "Copied PE files from win-unpacked:"
-                    ls signing-input/
-                  fi
-                  cd signing-input && zip -r ../unsigned-bundle.zip .
-                  echo "Bundle size: $(du -sh ../unsigned-bundle.zip | cut -f1)"
+                  if (Test-Path release\win-unpacked) {
+                    Get-ChildItem -Path release\win-unpacked -Filter *.exe | Copy-Item -Destination signing-input\
+                    Get-ChildItem -Path release\win-unpacked -Filter *.dll | Copy-Item -Destination signing-input\
+                    Write-Host "Copied PE files:"
+                    Get-ChildItem signing-input | Select-Object Name
+                  }
+                  Compress-Archive -Path signing-input\* -DestinationPath unsigned-bundle.zip -Force
+                  $size = (Get-Item unsigned-bundle.zip).Length / 1MB
+                  Write-Host "Bundle size: $([math]::Round($size, 2)) MB"
 
             - name: Upload unsigned bundle as workflow artifact
               id: upload_unsigned

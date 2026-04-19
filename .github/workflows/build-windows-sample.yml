@@ -43,29 +43,30 @@ jobs:
               run: npx electron-builder --win nsis --x64 --publish never
 
             - name: Package sample bundle (installer + EXE + DLL)
-              shell: bash
+              shell: pwsh
               run: |
-                  mkdir -p sample-bundle
+                  New-Item -ItemType Directory -Force -Path sample-bundle | Out-Null
 
-                  echo "=== NSIS Installer ==="
-                  cp release/*.exe sample-bundle/
-                  ls -lh release/*.exe
+                  Write-Host "=== NSIS Installer ==="
+                  Copy-Item release\*.exe sample-bundle\
+                  Get-ChildItem release\*.exe | Select-Object Name, Length
 
-                  echo ""
-                  echo "=== App PE files (win-unpacked) ==="
-                  if [ -d "release/win-unpacked" ]; then
-                    find release/win-unpacked -maxdepth 1 \( -name "*.exe" -o -name "*.dll" \) \
-                      -exec cp {} sample-bundle/ \;
-                    echo "Files copied:"
-                    ls -lh sample-bundle/
-                  fi
+                  Write-Host ""
+                  Write-Host "=== App PE files (win-unpacked) ==="
+                  if (Test-Path release\win-unpacked) {
+                    Get-ChildItem -Path release\win-unpacked -Filter *.exe | Copy-Item -Destination sample-bundle\
+                    Get-ChildItem -Path release\win-unpacked -Filter *.dll | Copy-Item -Destination sample-bundle\
+                    Write-Host "Files copied:"
+                    Get-ChildItem sample-bundle | Select-Object Name, Length
+                  }
 
-                  cd sample-bundle && zip -r ../windows-sample-bundle.zip .
-                  cd ..
-                  echo ""
-                  echo "=== Bundle summary ==="
-                  echo "Total files: $(ls sample-bundle/ | wc -l)"
-                  echo "Bundle size: $(du -sh windows-sample-bundle.zip | cut -f1)"
+                  Write-Host ""
+                  Write-Host "=== Creating ZIP ==="
+                  Compress-Archive -Path sample-bundle\* -DestinationPath windows-sample-bundle.zip -Force
+                  $size = (Get-Item windows-sample-bundle.zip).Length / 1MB
+                  $count = (Get-ChildItem sample-bundle).Count
+                  Write-Host "Total files: $count"
+                  Write-Host "Bundle size: $([math]::Round($size, 2)) MB"
 
             - name: Upload sample bundle as artifact
               uses: actions/upload-artifact@v4
