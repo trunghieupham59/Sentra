@@ -29,29 +29,9 @@
 
 ## 📸 Screenshots
 
-<div align="center">
-  <table border="0" cellspacing="0" cellpadding="4">
-    <tr align="center" valign="middle">
-      <td><img src="docs/screenshots/8.png"  height="110" alt="Screenshot 8"></td>
-      <td><img src="docs/screenshots/9.png"  height="160" alt="Screenshot 9"></td>
-      <td><img src="docs/screenshots/10.png" height="210" alt="Screenshot 10"></td>
-      <td><img src="docs/screenshots/1.png"  height="280" alt="Screenshot 1"></td>
-      <td><img src="docs/screenshots/2.png"  height="210" alt="Screenshot 2"></td>
-      <td><img src="docs/screenshots/3.png"  height="160" alt="Screenshot 3"></td>
-      <td><img src="docs/screenshots/4.png"  height="110" alt="Screenshot 4"></td>
-    </tr>
-  </table>
-</div>
-
-<div align="center">
-  <table border="0" cellspacing="0" cellpadding="4">
-    <tr align="center" valign="middle">
-      <td><img src="docs/screenshots/5.png"  height="110" alt="Screenshot 5"></td>
-      <td><img src="docs/screenshots/6.png"  height="160" alt="Screenshot 6"></td>
-      <td><img src="docs/screenshots/7.png"  height="210" alt="Screenshot 7"></td>
-    </tr>
-  </table>
-</div>
+<p align="center">
+  <img src="docs/screenshots/demo.gif" width="800" alt="Viezan Screenshots">
+</p>
 
 ---
 
