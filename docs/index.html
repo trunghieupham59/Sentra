@@ -118,6 +118,58 @@
       transition: color 0.2s;
     }
     .gh-link:hover { color: #f97316; }
+
+    /* ── Lightbox ── */
+    .lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      cursor: zoom-out;
+      backdrop-filter: blur(6px);
+      animation: lbFadeIn 0.2s ease;
+    }
+    .lightbox.open { display: flex; }
+    @keyframes lbFadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    .lightbox img {
+      max-width: 92vw;
+      max-height: 92vh;
+      border-radius: 10px;
+      box-shadow: 0 40px 120px rgba(0,0,0,0.8);
+      animation: lbScaleIn 0.25s cubic-bezier(.25,.46,.45,.94);
+      cursor: default;
+    }
+    @keyframes lbScaleIn {
+      from { transform: scale(0.88); opacity: 0; }
+      to   { transform: scale(1);    opacity: 1; }
+    }
+    .lightbox-close {
+      position: fixed;
+      top: 20px;
+      right: 24px;
+      color: rgba(255,255,255,0.7);
+      font-size: 2rem;
+      cursor: pointer;
+      line-height: 1;
+      transition: color 0.2s, transform 0.2s;
+      z-index: 1001;
+    }
+    .lightbox-close:hover { color: #f97316; transform: scale(1.2); }
+    .lightbox-counter {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.5);
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+    }
   </style>
 </head>
 <body>
@@ -137,6 +189,13 @@
     ★ github.com/trunghieupham59/Viezan
   </a>
 
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox">
+    <span class="lightbox-close" id="lbClose">&times;</span>
+    <img id="lbImg" src="" alt="Full size screenshot">
+    <div class="lightbox-counter" id="lbCounter"></div>
+  </div>
+
   <script>
     const IMAGES = Array.from({length: 10}, (_, i) => `screenshots/${i + 1}.png`);
     const COUNT  = IMAGES.length;
@@ -144,11 +203,37 @@
     const sliderEl = document.getElementById('slider');
     const dotsEl   = document.getElementById('dots');
 
+    // Lightbox
+    const lightbox   = document.getElementById('lightbox');
+    const lbImg      = document.getElementById('lbImg');
+    const lbCounter  = document.getElementById('lbCounter');
+
+    function openLightbox(idx) {
+      lbImg.src = IMAGES[idx];
+      lbCounter.textContent = `${idx + 1} / ${COUNT}`;
+      lightbox.classList.add('open');
+      clearInterval(autoTimer);
+    }
+    function closeLightbox() {
+      lightbox.classList.remove('open');
+      startTimer();
+    }
+
+    document.getElementById('lbClose').addEventListener('click', closeLightbox);
+    lightbox.addEventListener('click', e => { if (e.target === lightbox) { closeLightbox(); } });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeLightbox(); } });
+
     IMAGES.forEach((src, i) => {
       const slide = document.createElement('div');
       slide.className = 'slide';
       slide.innerHTML = `<img src="${src}" alt="Screenshot ${i+1}" loading="lazy">`;
-      slide.addEventListener('click', () => goTo(i));
+      slide.addEventListener('click', () => {
+        if (i === current) {
+          openLightbox(i);
+        } else {
+          resetTimer(); goTo(i);
+        }
+      });
       sliderEl.appendChild(slide);
 
       const dot = document.createElement('div');
@@ -202,6 +287,7 @@
     document.getElementById('next').addEventListener('click', () => { resetTimer(); goTo(current + 1); });
 
     document.addEventListener('keydown', e => {
+      if (lightbox.classList.contains('open')) { return; }
       if (e.key === 'ArrowLeft')  { resetTimer(); goTo(current - 1); }
       if (e.key === 'ArrowRight') { resetTimer(); goTo(current + 1); }
     });
