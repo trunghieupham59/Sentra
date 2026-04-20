@@ -1,10 +1,10 @@
 /**
- * Local HTTP Server — lets the Lotus Chrome Extension communicate with the
- * native Lotus app running on the same machine.
+ * Local HTTP Server — lets the Sentra Chrome Extension communicate with the
+ * native Sentra app running on the same machine.
  *
  * Security model:
  *   • Server only listens on 127.0.0.1 (loopback — not reachable from outside)
- *   • Every request must carry the header  X-Lotus-Token: <secret>
+ *   • Every request must carry the header  X-Sentra-Token: <secret>
  *   • Tokens are 32-byte random hex strings (64 chars), named, with configurable TTL
  *   • Token values are returned ONLY at creation or regeneration — never again
  *   • Multiple tokens can coexist (one per device/browser)

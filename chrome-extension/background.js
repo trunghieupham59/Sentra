@@ -1,8 +1,8 @@
 /**
- * T.R.E Assistant — Background Service Worker (Manifest V3)
+ * Sentra — Background Service Worker (Manifest V3)
  *
  * Handles:
- *  • Context-menu "Translate with T.R.E Assistant" entry on selected text
+ *  • Context-menu "Translate with Sentra" entry on selected text
  *  • Auto re-injection of content script when context is invalidated
  *  • Relaying translate requests from content scripts if needed
  */
@@ -13,7 +13,7 @@ const PORT = 39875
 
 chrome.runtime.onInstalled.addListener(async (details) => {
   // (Re)create context menu — safe to call on every install/update
-  try { chrome.contextMenus.create({ id: 'tre-translate', title: 'Translate with T.R.E Assistant', contexts: ['selection'] }) } catch { /* already exists */ }
+  try { chrome.contextMenus.create({ id: 'tre-translate', title: 'Translate with Sentra', contexts: ['selection'] }) } catch { /* already exists */ }
 
   // Best-effort: try to re-inject into all open tabs on install/update.
   // Note: chrome.tabs.query({}) without url filter works WITHOUT the "tabs" permission.

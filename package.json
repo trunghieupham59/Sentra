@@ -1,7 +1,7 @@
 {
-  "name": "tre-assistant",
+  "name": "sentra",
   "version": "1.0.0",
-  "description": "T.R.E Assistant - Local AI Translation - macOS & Windows",
+  "description": "Sentra - Local AI Translation - macOS & Windows",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "concurrently -k -n \"VITE,ELECTRON\" -c \"cyan,yellow\" \"npm run dev:vite\" \"npm run dev:electron\"",
@@ -29,9 +29,9 @@
     "gemini",
     "claude",
     "gpt",
-    "tre-assistant"
+    "sentra"
   ],
-  "author": "T.R.E Assistant",
+  "author": "Sentra",
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
@@ -68,9 +68,9 @@
     "wait-on": "^8.0.1"
   },
   "build": {
-    "appId": "com.treassistant.app",
-    "productName": "T.R.E Assistant",
-    "artifactName": "T.R.E-Assistant-${version}-${arch}.${ext}",
+    "appId": "com.sentra.app",
+    "productName": "Sentra",
+    "artifactName": "Sentra-${version}-${arch}.${ext}",
     "directories": {
       "output": "release"
     },

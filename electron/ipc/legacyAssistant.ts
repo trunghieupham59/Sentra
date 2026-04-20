@@ -1,5 +1,5 @@
 /**
- * Legacy Assistant — inject a floating Lotus icon into any browser tab
+ * Legacy Assistant — inject a floating Sentra icon into any browser tab
  * WITHOUT requiring a browser extension to be installed.
  *
  * Two modes:
@@ -12,7 +12,7 @@
  *     on demand in any browser on any OS.
  *
  * The injected floating assistant:
- *  • Shows a small Lotus icon in the bottom-right corner
+ *  • Shows a small Sentra icon in the bottom-right corner
  *  • When text is selected, hovering the icon shows a "Translate" button
  *  • Clicking it calls localhost:39875/api/translate (our local server)
  *  • Shows the result in a tooltip; also copies it to clipboard
@@ -107,12 +107,12 @@ b.addEventListener('click',function(){
     body:JSON.stringify({text:txt,targetLang:TL})
   }).then(function(r){return r.json();}).then(function(d){
     if(d.success){
-      show('<span style="opacity:.55;font-size:10px;display:block;margin-bottom:3px">T.R.E TRANSLATION</span>'+d.translatedText,9000);
+      show('<span style="opacity:.55;font-size:10px;display:block;margin-bottom:3px">SENTRA TRANSLATION</span>'+d.translatedText,9000);
       try{navigator.clipboard.writeText(d.translatedText);}catch(e){}
     } else {
       show('⚠ '+(d.error||'Translation failed'),5000);
     }
-  }).catch(function(){show('⚠ Cannot reach T.R.E Assistant app. Make sure it is running.',5000);});
+  }).catch(function(){show('⚠ Cannot reach Sentra app. Make sure it is running.',5000);});
 });
 document.addEventListener('mousedown',function(e){
   if(e.target!==b&&e.target!==t&&!t.contains(e.target))t.style.display='none';
@@ -181,7 +181,7 @@ function tryInject (): void {
 
 // ── Bookmarklet builder ───────────────────────────────────────────────────────
 // The bookmarklet embeds the FULL script inline so it works on any browser / OS
-// without requiring the Lotus app to actively inject it.
+// without requiring the Sentra app to actively inject it.
 
 export function buildBookmarklet (token: string, port: number, targetLang: string): string {
   const script = buildAssistantScript(token, port, targetLang)

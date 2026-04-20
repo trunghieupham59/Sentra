@@ -28,7 +28,7 @@ Dự án sử dụng **[SignPath.io](https://signpath.io)** — dịch vụ ký 
 
 ### Bước 2 — Tạo Organization
 
-1. Tạo organization mới (ví dụ: `tre-assistant` hoặc tên tổ chức của bạn)
+1. Tạo organization mới (ví dụ: `sentra` hoặc tên tổ chức của bạn)
 2. Ghi lại **Organization ID** (hiển thị trong URL: `https://app.signpath.io/web/Organizations/<ORGANIZATION_ID>`)
 3. Lưu Organization ID vào GitHub Secret:
    - GitHub repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
@@ -40,8 +40,8 @@ Dự án sử dụng **[SignPath.io](https://signpath.io)** — dịch vụ ký 
 ### Bước 3 — Tạo Project
 
 1. Trong SignPath Dashboard → **Projects** → **Add project**
-2. **Project name:** `T.R.E Assistant`
-3. **Project slug:** `tre-assistant` ← phải khớp chính xác với workflow
+2. **Project name:** `Sentra`
+3. **Project slug:** `sentra` ← phải khớp chính xác với workflow
 4. Nhấn **Create**
 
 ---
@@ -58,7 +58,7 @@ Chạy workflow helper để build file mẫu:
 
 ### Bước 5 — Cấu hình Artifact Configuration
 
-1. Vào project `tre-assistant` → **Artifact Configurations** → **Add artifact configuration**
+1. Vào project `sentra` → **Artifact Configurations** → **Add artifact configuration**
 2. **Name:** `Windows Installer`
 3. **Slug:** `windows-installer` ← phải khớp chính xác với workflow
 4. Chọn tab **"Edit XML"** và paste nội dung từ `build/signpath-artifact-config.xml`:
@@ -86,7 +86,7 @@ Chạy workflow helper để build file mẫu:
 1. Vào **Certificates** → **Add certificate**
 2. Chọn **"Request from SignPath"** (KHÔNG chọn "Create self-signed")
 3. Điền thông tin:
-   - **Common Name:** `T.R.E Assistant`
+   - **Common Name:** `Sentra`
    - **Organization:** _(tên tổ chức)_
    - **Country:** `VN`
 4. Submit và chờ phê duyệt (thường 1–3 ngày làm việc)
@@ -97,7 +97,7 @@ Chạy workflow helper để build file mẫu:
 
 ### Bước 7 — Tạo Signing Policy
 
-1. Vào project `tre-assistant` → **Signing Policies** → **Add signing policy**
+1. Vào project `sentra` → **Signing Policies** → **Add signing policy**
 2. **Name:** `Release Signing`
 3. **Slug:** `release-signing` ← phải khớp chính xác với workflow
 4. **Certificate:** chọn certificate vừa được approve ở Bước 6
@@ -109,9 +109,9 @@ Chạy workflow helper để build file mẫu:
 
 ### Bước 8 — Kết nối GitHub Repository
 
-1. Vào project `tre-assistant` → **Trusted Build Systems** → **Add trusted build system**
+1. Vào project `sentra` → **Trusted Build Systems** → **Add trusted build system**
 2. Chọn **GitHub Actions**
-3. **Repository:** `trunghieupham59/T.R.E-Assistant`
+3. **Repository:** `trunghieupham59/Sentra`
 4. **Signing policy:** chọn `release-signing`
 5. Nhấn **Save**
 

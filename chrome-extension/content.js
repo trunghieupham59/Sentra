@@ -1,8 +1,8 @@
 /**
- * T.R.E Assistant — Content Script
+ * Sentra — Content Script
  *
  * Injects a small floating icon button whenever the user selects text.
- * Clicking the button calls the T.R.E Assistant local API (localhost:39875) to translate
+ * Clicking the button calls the Sentra local API (localhost:39875) to translate
  * and shows the result in a tooltip above the selection.
  */
 
@@ -24,7 +24,7 @@
   // When the extension is reloaded/updated, background.js re-injects this
   // script into open tabs. Remove any leftover elements from the old instance
   // so we don't end up with duplicate buttons or tooltips.
-  document.getElementById('tre-assistant-btn')?.remove()
+  document.getElementById('sentra-btn')?.remove()
   document.getElementById('tre-result-tooltip')?.remove()
 
   // ── DOM setup ──────────────────────────────────────────────────────────────
@@ -33,11 +33,11 @@
 
   // Build btn (avoid putting chrome-extension:// URL in innerHTML)
   const btn = document.createElement('button')
-  btn.id = 'tre-assistant-btn'
-  btn.title = 'T.R.E Assistant Translate'
+  btn.id = 'sentra-btn'
+  btn.title = 'Sentra Translate'
   const btnImg = document.createElement('img')
   btnImg.src = ICON_URL
-  btnImg.alt = 'T.R.E Assistant'
+  btnImg.alt = 'Sentra'
   btn.appendChild(btnImg)
 
   // Build tooltip (avoid putting chrome-extension:// URL in innerHTML)
@@ -45,8 +45,8 @@
   tooltip.id = 'tre-result-tooltip'
   tooltip.innerHTML = `
     <div class="tre-tooltip-header">
-      <img class="tre-tooltip-logo" alt="T.R.E Assistant" />
-      <span class="tre-tooltip-label">T.R.E Assistant</span>
+      <img class="tre-tooltip-logo" alt="Sentra" />
+      <span class="tre-tooltip-label">Sentra</span>
       <select class="tre-lang-select" title="Target language">
         <option value="en">🇺🇸 EN</option>
         <option value="vi">🇻🇳 VI</option>
@@ -179,7 +179,7 @@
     btn.innerHTML = ''
     const img = document.createElement('img')
     img.src = ICON_URL
-    img.alt = 'T.R.E Assistant'
+    img.alt = 'Sentra'
     btn.appendChild(img)
   }
 
@@ -524,7 +524,7 @@
       const settings = await getSettings()
       if (!settings.token) {
         hideButton()
-        alert('T.R.E Assistant Extension: Please set your connection token in the extension Options page first.')
+        alert('Sentra Extension: Please set your connection token in the extension Options page first.')
         return
       }
 
@@ -549,13 +549,13 @@
       hideButton()
       const errMsg = err.message || 'Unknown error'
       if (errMsg.includes('context invalidated') || errMsg.includes('reload the page')) {
-        alert('T.R.E Assistant Extension: Extension was updated. Please reload this page (F5) to use it again.')
+        alert('Sentra Extension: Extension was updated. Please reload this page (F5) to use it again.')
       } else if (errMsg.includes('401') || errMsg.includes('Unauthorized')) {
-        alert('T.R.E Assistant Extension: Token is invalid. Please update it in the Options page.')
+        alert('Sentra Extension: Token is invalid. Please update it in the Options page.')
       } else if (errMsg.includes('fetch') || errMsg.includes('Failed to fetch')) {
-        alert('T.R.E Assistant Extension: Cannot connect to T.R.E Assistant app. Make sure the T.R.E Assistant app is running.')
+        alert('Sentra Extension: Cannot connect to Sentra app. Make sure the Sentra app is running.')
       } else {
-        alert(`T.R.E Assistant Extension: ${errMsg}`)
+        alert(`Sentra Extension: ${errMsg}`)
       }
     }
   })

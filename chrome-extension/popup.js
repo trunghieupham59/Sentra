@@ -160,7 +160,7 @@ $('btn-translate').addEventListener('click', async () => {
     if (msg.includes('401') || msg.includes('Unauthorized')) {
       showStatus('❌ Invalid token. Update it in Options.', 'error')
     } else if (msg.includes('fetch') || msg.includes('Failed')) {
-      showStatus('❌ Cannot reach T.R.E Assistant app. Is it running?', 'error')
+      showStatus('❌ Cannot reach Sentra app. Is it running?', 'error')
     } else {
       showStatus(`❌ ${msg}`, 'error')
     }

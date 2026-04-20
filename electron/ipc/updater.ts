@@ -9,7 +9,7 @@ import { autoUpdater } from 'electron-updater'
 // call the GitHub Releases API directly: check the latest tag, compare with
 // the running version, and open the browser for the user to download & install.
 const GITHUB_OWNER = 'trunghieupham59'
-const GITHUB_REPO  = 'T.R.E-Assistant'
+const GITHUB_REPO  = 'Sentra'
 
 // ─── Error-detection patterns ──────────────────────────────────────────────
 // Patterns that indicate the update YAML / metadata file is simply absent on
@@ -73,7 +73,7 @@ async function fetchLatestGithubRelease(): Promise<GithubRelease | null> {
 
   const response = await net.fetch(apiUrl, {
     headers: {
-      'User-Agent': `T.R.E-Assistant/${app.getVersion()}`,
+      'User-Agent': `Sentra/${app.getVersion()}`,
       Accept: 'application/vnd.github.v3+json',
     },
   })

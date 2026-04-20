@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "T.R.E Assistant",
+  "name": "Sentra",
   "version": "1.0.0",
-  "description": "Translate selected text on any webpage using your T.R.E Assistant native app and AI keys.",
+  "description": "Translate selected text on any webpage using your Sentra native app and AI keys.",
 
   "permissions": [
     "activeTab",
@@ -32,7 +32,7 @@
 
   "action": {
     "default_popup": "popup.html",
-    "default_title": "T.R.E Assistant Translate",
+    "default_title": "Sentra Translate",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",

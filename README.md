@@ -1,7 +1,7 @@
-# T.R.E Assistant — AI Translation Desktop App
+# Sentra — AI Translation Desktop App
 
 <p align="center">
-  <img src="public/icon.png" width="96" alt="T.R.E Assistant logo">
+  <img src="public/icon.png" width="96" alt="Sentra logo">
 </p>
 
 <p align="center">
@@ -10,8 +10,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/trunghieupham59/T.R.E-Assistant/releases/latest">
-    <img src="https://img.shields.io/github/v/release/trunghieupham59/T.R.E-Assistant?style=flat-square&color=f97316" alt="Latest Release">
+  <a href="https://github.com/trunghieupham59/Sentra/releases/latest">
+    <img src="https://img.shields.io/github/v/release/trunghieupham59/Sentra?style=flat-square&color=f97316" alt="Latest Release">
   </a>
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows-blue?style=flat-square" alt="Platform">
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License">
@@ -25,11 +25,11 @@
 
 | Platform | Installer |
 |----------|-----------|
-|  macOS (Apple Silicon) | [T.R.E-Assistant-1.0.3-arm64.dmg](https://github.com/trunghieupham59/T.R.E-Assistant/releases/download/v1.0.3/T.R.E-Assistant-1.0.3-arm64.dmg) |
-|  macOS (Intel x64) | [T.R.E-Assistant-1.0.3.dmg](https://github.com/trunghieupham59/T.R.E-Assistant/releases/download/v1.0.3/T.R.E-Assistant-1.0.3.dmg) |
-| ⊞ Windows (x64) | [T.R.E-Assistant.Setup.1.0.3.exe](https://github.com/trunghieupham59/T.R.E-Assistant/releases/download/v1.0.3/T.R.E-Assistant.Setup.1.0.3.exe) |
+|  macOS (Apple Silicon) | [Sentra-1.0.3-arm64.dmg](https://github.com/trunghieupham59/Sentra/releases/download/v1.0.3/Sentra-1.0.3-arm64.dmg) |
+|  macOS (Intel x64) | [Sentra-1.0.3.dmg](https://github.com/trunghieupham59/Sentra/releases/download/v1.0.3/Sentra-1.0.3.dmg) |
+| ⊞ Windows (x64) | [Sentra.Setup.1.0.3.exe](https://github.com/trunghieupham59/Sentra/releases/download/v1.0.3/Sentra.Setup.1.0.3.exe) |
 
-> View all releases: [github.com/trunghieupham59/T.R.E-Assistant/releases](https://github.com/trunghieupham59/T.R.E-Assistant/releases)
+> View all releases: [github.com/trunghieupham59/Sentra/releases](https://github.com/trunghieupham59/Sentra/releases)
 
 ---
 
@@ -61,7 +61,7 @@ Download the installer for your platform from the [Download](#-download) section
 
 ### 2. Add your API Key
 
-1. Open **T.R.E Assistant**
+1. Open **Sentra**
 2. Click the **provider icon** in the sidebar (Gemini / Claude / OpenAI)
 3. Paste your API key → click **Save Key**
 
@@ -102,8 +102,8 @@ Get your API keys from the respective dashboards:
 
 ```bash
 # Clone the repository
-git clone https://github.com/trunghieupham59/T.R.E-Assistant.git
-cd T.R.E-Assistant
+git clone https://github.com/trunghieupham59/Sentra.git
+cd Sentra
 
 # Install dependencies
 npm install
@@ -138,7 +138,7 @@ Output files are placed in the `release/` directory.
 ## 📁 Project Structure
 
 ```
-T.R.E-Assistant/
+Sentra/
 ├── electron/                   # Main process (Node.js / Electron)
 │   ├── main.ts                 # App entry point, window management
 │   ├── preload.ts              # Context bridge (IPC bindings)
@@ -201,7 +201,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## ⚠️ Disclaimer
 
-T.R.E Assistant is an independent desktop application and is not affiliated with Google, Anthropic, or OpenAI. You are responsible for your own API usage and any associated costs.
+Sentra is an independent desktop application and is not affiliated with Google, Anthropic, or OpenAI. You are responsible for your own API usage and any associated costs.
 
 ---
 

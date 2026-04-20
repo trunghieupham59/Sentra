@@ -5,7 +5,7 @@
 
 /** GitHub Releases page — used on the "Download Extension" button. */
 export const GITHUB_RELEASES_URL =
-  'https://github.com/trunghieupham59/T.R.E-Assistant/releases/latest'
+  'https://github.com/trunghieupham59/Sentra/releases/latest'
 
 /**
  * macOS System Preferences deep-link to Screen Recording privacy settings.

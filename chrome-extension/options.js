@@ -47,7 +47,7 @@ $('btn-test').addEventListener('click', async () => {
     })
 
     if (resp.status === 401) {
-      showStatus('❌ Token is invalid. Copy it again from the T.R.E Assistant app.', 'error')
+      showStatus('❌ Token is invalid. Copy it again from the Sentra app.', 'error')
       return
     }
     if (!resp.ok) {
@@ -61,17 +61,17 @@ $('btn-test').addEventListener('click', async () => {
       // always have the correct token without requiring a separate "Save" click.
       const targetLang = $('target-lang').value
       chrome.storage.local.set({ treToken: token, treTargetLang: targetLang })
-      showStatus(`✓ Connected to T.R.E Assistant v${data.version || '?'} — Settings saved!`, 'success')
+      showStatus(`✓ Connected to Sentra v${data.version || '?'} — Settings saved!`, 'success')
       // Refresh the active provider/model display
       loadAiConfig(token)
     } else {
-      showStatus('❌ Unexpected response from T.R.E Assistant app.', 'error')
+      showStatus('❌ Unexpected response from Sentra app.', 'error')
     }
   } catch (err) {
     const msg = err?.message || String(err)
     if (msg.includes('fetch') || msg.includes('Failed') || msg.includes('NetworkError')) {
       showStatus(
-        '❌ Cannot reach T.R.E Assistant app on port 39875. ' +
+        '❌ Cannot reach Sentra app on port 39875. ' +
         'Make sure the app is running. If it is, try reloading the extension (chrome://extensions → Reload).',
         'error'
       )

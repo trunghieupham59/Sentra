@@ -62,9 +62,9 @@ jobs:
 
                   {
                     echo "RELEASE_BODY<<ENDOFBODY"
-                    echo "## T.R.E Assistant ${CURRENT_TAG} — Release Notes"
+                    echo "## Sentra ${CURRENT_TAG} — Release Notes"
                     echo ""
-                    echo "> **T.R.E Assistant** is a local AI-powered translation desktop app for macOS and Windows,"
+                    echo "> **Sentra** is a local AI-powered translation desktop app for macOS and Windows,"
                     echo "> supporting models from OpenAI, Anthropic Claude, and Google Gemini."
                     echo ""
                     echo "---"
@@ -109,7 +109,7 @@ jobs:
                     echo "1. Download the \`.dmg\` file matching your chip:"
                     echo "   - **Apple Silicon (M1/M2/M3):** \`T.R.E-Assistant-*-arm64.dmg\`"
                     echo "   - **Intel Mac:** \`T.R.E-Assistant-*-x64.dmg\`"
-                    echo "2. Open the \`.dmg\` and drag **T.R.E Assistant** to your **Applications** folder."
+                    echo "2. Open the \`.dmg\` and drag **Sentra** to your **Applications** folder."
                     echo "3. On first launch, right-click → **Open** to bypass Gatekeeper if needed."
                     echo ""
                     echo "### ⊞ Windows"
@@ -140,7 +140,7 @@ jobs:
               id: create_release
               uses: softprops/action-gh-release@v2
               with:
-                  name: "T.R.E Assistant ${{ steps.notes.outputs.CURRENT_TAG }}"
+                  name: "Sentra ${{ steps.notes.outputs.CURRENT_TAG }}"
                   body: ${{ steps.notes.outputs.RELEASE_BODY }}
                   draft: false
                   prerelease: ${{ contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-rc') }}

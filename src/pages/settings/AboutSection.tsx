@@ -13,7 +13,7 @@ export function AboutSection() {
           <div className="flex items-center gap-3">
             <AppLogoIcon size={44} />
             <div>
-              <p className="font-bold text-gray-900 dark:text-gray-50">T.R.E Assistant</p>
+              <p className="font-bold text-gray-900 dark:text-gray-50">Sentra</p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_about_version}</p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                 {t.settings_about_platform}: {window.api?.platform || 'web'}

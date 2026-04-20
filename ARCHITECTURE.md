@@ -1,4 +1,4 @@
-# Lotus — Architecture Guide
+# Sentra — Architecture Guide
 
 > Target audience: new developers joining the project. Read this file in ~10 minutes and you'll understand how everything connects.
 
@@ -6,7 +6,7 @@
 
 ## 1. Process Model
 
-Lotus is an Electron app — it has **3 independent execution contexts**:
+Sentra is an Electron app — it has **3 independent execution contexts**:
 
 ```
 ┌─────────────────────────────────────────────────┐
