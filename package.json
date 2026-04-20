@@ -145,7 +145,6 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Viezan",
       "menuCategory": "Viezan",
-      "publisherName": "Viezan",
       "displayLanguageSelector": false,
       "deleteAppDataOnUninstall": false
     }
