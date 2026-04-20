@@ -3,7 +3,6 @@ import { FuriganaText } from '../components/FuriganaText'
 import { DragOverlay } from '../components/ui/DragOverlay'
 import { ImageAttachmentPreview } from '../components/translate/ImageAttachmentPreview'
 import { VoiceOverlay } from '../components/translate/VoiceOverlay'
-import { MarkdownEditor } from '../components/MarkdownEditor'
 import { MarkdownText } from '../components/MarkdownText'
 import { SpinnerIcon } from '../components/ui/icons'
 import { TranslateToolbar } from '../components/translate/TranslateToolbar'
@@ -166,16 +165,16 @@ export function TranslatePage() {
             />
           )}
 
-          {/* ── Typora-like markdown editor ── */}
+          {/* ── Plain text source input ── */}
           <div
             ref={sourceScrollRef}
             className="flex-1 overflow-auto p-4 min-h-0"
           >
-            <MarkdownEditor
+            <textarea
               value={sourceText}
-              onChange={handleSourceChange}
+              onChange={(e) => handleSourceChange(e.target.value)}
               placeholder={t.translate_placeholder}
-              className={`min-h-full ${isVoiceInterim ? 'opacity-50 italic' : ''}`}
+              className={`w-full h-full min-h-full bg-transparent outline-none resize-none text-[15px] leading-relaxed text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-600 ${isVoiceInterim ? 'opacity-50 italic' : ''}`}
             />
           </div>
 
