@@ -32,16 +32,16 @@
 <div align="center">
   <table>
     <tr>
-      <td><img src="https://raw.githubusercontent.com/trunghieupham59/viezanagent/main/intro/1.png" width="280" alt="Screenshot 1"></td>
-      <td><img src="https://raw.githubusercontent.com/trunghieupham59/viezanagent/main/intro/2.png" width="280" alt="Screenshot 2"></td>
-      <td><img src="https://raw.githubusercontent.com/trunghieupham59/viezanagent/main/intro/3.png" width="280" alt="Screenshot 3"></td>
-      <td><img src="https://raw.githubusercontent.com/trunghieupham59/viezanagent/main/intro/4.png" width="280" alt="Screenshot 4"></td>
-      <td><img src="https://raw.githubusercontent.com/trunghieupham59/viezanagent/main/intro/5.png" width="280" alt="Screenshot 5"></td>
-      <td><img src="https://raw.githubusercontent.com/trunghieupham59/viezanagent/main/intro/6.png" width="280" alt="Screenshot 6"></td>
-      <td><img src="https://raw.githubusercontent.com/trunghieupham59/viezanagent/main/intro/7.png" width="280" alt="Screenshot 7"></td>
-      <td><img src="https://raw.githubusercontent.com/trunghieupham59/viezanagent/main/intro/8.png" width="280" alt="Screenshot 8"></td>
-      <td><img src="https://raw.githubusercontent.com/trunghieupham59/viezanagent/main/intro/9.png" width="280" alt="Screenshot 9"></td>
-      <td><img src="https://raw.githubusercontent.com/trunghieupham59/viezanagent/main/intro/10.png" width="280" alt="Screenshot 10"></td>
+      <td><img src="docs/screenshots/1.png" width="280" alt="Screenshot 1"></td>
+      <td><img src="docs/screenshots/2.png" width="280" alt="Screenshot 2"></td>
+      <td><img src="docs/screenshots/3.png" width="280" alt="Screenshot 3"></td>
+      <td><img src="docs/screenshots/4.png" width="280" alt="Screenshot 4"></td>
+      <td><img src="docs/screenshots/5.png" width="280" alt="Screenshot 5"></td>
+      <td><img src="docs/screenshots/6.png" width="280" alt="Screenshot 6"></td>
+      <td><img src="docs/screenshots/7.png" width="280" alt="Screenshot 7"></td>
+      <td><img src="docs/screenshots/8.png" width="280" alt="Screenshot 8"></td>
+      <td><img src="docs/screenshots/9.png" width="280" alt="Screenshot 9"></td>
+      <td><img src="docs/screenshots/10.png" width="280" alt="Screenshot 10"></td>
     </tr>
   </table>
 </div>
