@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Viezan — Screenshots</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    h1 {
+      color: #fff;
+      font-size: 1.4rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      margin-bottom: 48px;
+      opacity: 0.85;
+    }
+    h1 span { color: #f97316; }
+
+    .slider-wrap {
+      position: relative;
+      width: 100vw;
+      height: 480px;
+      perspective: 1200px;
+    }
+
+    .slider {
+      position: absolute;
+      inset: 0;
+      transform-style: preserve-3d;
+    }
+
+    .slide {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 520px;
+      height: 340px;
+      margin-top: -170px;
+      margin-left: -260px;
+      border-radius: 14px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.6s cubic-bezier(.25,.46,.45,.94),
+                  opacity  0.6s ease,
+                  filter   0.6s ease,
+                  box-shadow 0.6s ease;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+    }
+
+    .slide img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      pointer-events: none;
+    }
+
+    .dots {
+      display: flex;
+      gap: 10px;
+      margin-top: 48px;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.25);
+      cursor: pointer;
+      transition: background 0.3s, transform 0.3s;
+    }
+    .dot.active {
+      background: #f97316;
+      transform: scale(1.4);
+    }
+
+    .arrow {
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #fff;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.2rem;
+      transition: background 0.2s, transform 0.2s;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+    .arrow:hover { background: rgba(249,115,22,0.3); transform: translateY(-50%) scale(1.1); }
+    .arrow-left  { left:  24px; }
+    .arrow-right { right: 24px; }
+
+    .gh-link {
+      margin-top: 32px;
+      color: rgba(255,255,255,0.45);
+      font-size: 0.8rem;
+      text-decoration: none;
+      letter-spacing: 0.05em;
+      transition: color 0.2s;
+    }
+    .gh-link:hover { color: #f97316; }
+  </style>
+</head>
+<body>
+
+  <h1>Viezan — <span>AI Translation</span> Desktop App</h1>
+
+  <div class="slider-wrap">
+    <div class="slider" id="slider"></div>
+  </div>
+
+  <div class="dots" id="dots"></div>
+
+  <button type="button" class="arrow arrow-left"  id="prev">&#8592;</button>
+  <button type="button" class="arrow arrow-right" id="next">&#8594;</button>
+
+  <a class="gh-link" href="https://github.com/trunghieupham59/Viezan" target="_blank">
+    ★ github.com/trunghieupham59/Viezan
+  </a>
+
+  <script>
+    const IMAGES = Array.from({length: 10}, (_, i) => `screenshots/${i + 1}.png`);
+    const COUNT  = IMAGES.length;
+
+    const sliderEl = document.getElementById('slider');
+    const dotsEl   = document.getElementById('dots');
+
+    IMAGES.forEach((src, i) => {
+      const slide = document.createElement('div');
+      slide.className = 'slide';
+      slide.innerHTML = `<img src="${src}" alt="Screenshot ${i+1}" loading="lazy">`;
+      slide.addEventListener('click', () => goTo(i));
+      sliderEl.appendChild(slide);
+
+      const dot = document.createElement('div');
+      dot.className = 'dot';
+      dot.addEventListener('click', () => goTo(i));
+      dotsEl.appendChild(dot);
+    });
+
+    const slides = sliderEl.querySelectorAll('.slide');
+    const dotEls = dotsEl.querySelectorAll('.dot');
+
+    let current = 0;
+    let autoTimer;
+
+    function layout(active) {
+      slides.forEach((slide, i) => {
+        const offset  = i - active;
+        const wrapped = ((offset + COUNT + Math.round(COUNT/2)) % COUNT) - Math.round(COUNT/2);
+        const absOff  = Math.abs(wrapped);
+        const sign    = wrapped === 0 ? 0 : wrapped / absOff;
+
+        if (absOff > 2) {
+          slide.style.opacity = '0';
+          slide.style.pointerEvents = 'none';
+          return;
+        }
+
+        slide.style.opacity       = absOff === 0 ? '1' : absOff === 1 ? '0.65' : '0.35';
+        slide.style.filter        = `brightness(${absOff === 0 ? 1 : absOff === 1 ? 0.7 : 0.45})`;
+        slide.style.pointerEvents = 'auto';
+        slide.style.zIndex        = String(10 - absOff);
+
+        const tx    = sign * (absOff === 1 ? 420 : 700);
+        const tz    = absOff === 0 ? 0 : absOff === 1 ? -250 : -450;
+        const ry    = sign * (absOff === 1 ? 40 : 50);
+        const scale = absOff === 0 ? 1 : absOff === 1 ? 0.75 : 0.55;
+
+        slide.style.transform =
+          `translateX(${tx}px) translateZ(${tz}px) rotateY(${ry}deg) scale(${scale})`;
+      });
+
+      dotEls.forEach((d, i) => { d.classList.toggle('active', i === active); });
+    }
+
+    function goTo(idx) {
+      current = ((idx % COUNT) + COUNT) % COUNT;
+      layout(current);
+    }
+
+    document.getElementById('prev').addEventListener('click', () => { resetTimer(); goTo(current - 1); });
+    document.getElementById('next').addEventListener('click', () => { resetTimer(); goTo(current + 1); });
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowLeft')  { resetTimer(); goTo(current - 1); }
+      if (e.key === 'ArrowRight') { resetTimer(); goTo(current + 1); }
+    });
+
+    let touchX = 0;
+    document.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; });
+    document.addEventListener('touchend',   e => {
+      const dx = e.changedTouches[0].clientX - touchX;
+      if (Math.abs(dx) > 40) { resetTimer(); goTo(current + (dx < 0 ? 1 : -1)); }
+    });
+
+    function startTimer() { autoTimer = setInterval(() => goTo(current + 1), 3000); }
+    function resetTimer() { clearInterval(autoTimer); startTimer(); }
+
+    layout(0);
+    startTimer();
+  </script>
+</body>
+</html>
