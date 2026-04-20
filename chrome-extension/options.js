@@ -43,11 +43,11 @@ $('btn-test').addEventListener('click', async () => {
 
   try {
     const resp = await fetch(`http://127.0.0.1:${PORT}/api/status`, {
-      headers: { 'X-TRE-Token': token },
+      headers: { 'X-Viezan-Token': token },
     })
 
     if (resp.status === 401) {
-      showStatus('❌ Token is invalid. Copy it again from the Sentra app.', 'error')
+      showStatus('❌ Token is invalid. Copy it again from the Viezan app.', 'error')
       return
     }
     if (!resp.ok) {
@@ -61,17 +61,17 @@ $('btn-test').addEventListener('click', async () => {
       // always have the correct token without requiring a separate "Save" click.
       const targetLang = $('target-lang').value
       chrome.storage.local.set({ treToken: token, treTargetLang: targetLang })
-      showStatus(`✓ Connected to Sentra v${data.version || '?'} — Settings saved!`, 'success')
+      showStatus(`✓ Connected to Viezan v${data.version || '?'} — Settings saved!`, 'success')
       // Refresh the active provider/model display
       loadAiConfig(token)
     } else {
-      showStatus('❌ Unexpected response from Sentra app.', 'error')
+      showStatus('❌ Unexpected response from Viezan app.', 'error')
     }
   } catch (err) {
     const msg = err?.message || String(err)
     if (msg.includes('fetch') || msg.includes('Failed') || msg.includes('NetworkError')) {
       showStatus(
-        '❌ Cannot reach Sentra app on port 39875. ' +
+        '❌ Cannot reach Viezan app on port 39875. ' +
         'Make sure the app is running. If it is, try reloading the extension (chrome://extensions → Reload).',
         'error'
       )
@@ -100,7 +100,7 @@ async function loadAiConfig (token) {
 
   try {
     const resp = await fetch(`http://127.0.0.1:${PORT}/api/config`, {
-      headers: { 'X-TRE-Token': token },
+      headers: { 'X-Viezan-Token': token },
     })
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
     const data = await resp.json()

@@ -1,8 +1,8 @@
 /**
- * Sentra — Content Script
+ * Viezan — Content Script
  *
  * Injects a small floating icon button whenever the user selects text.
- * Clicking the button calls the Sentra local API (localhost:39875) to translate
+ * Clicking the button calls the Viezan local API (localhost:39875) to translate
  * and shows the result in a tooltip above the selection.
  */
 
@@ -24,7 +24,7 @@
   // When the extension is reloaded/updated, background.js re-injects this
   // script into open tabs. Remove any leftover elements from the old instance
   // so we don't end up with duplicate buttons or tooltips.
-  document.getElementById('sentra-btn')?.remove()
+  document.getElementById('Viezan-btn')?.remove()
   document.getElementById('tre-result-tooltip')?.remove()
 
   // ── DOM setup ──────────────────────────────────────────────────────────────
@@ -33,11 +33,11 @@
 
   // Build btn (avoid putting chrome-extension:// URL in innerHTML)
   const btn = document.createElement('button')
-  btn.id = 'sentra-btn'
-  btn.title = 'Sentra Translate'
+  btn.id = 'Viezan-btn'
+  btn.title = 'Viezan Translate'
   const btnImg = document.createElement('img')
   btnImg.src = ICON_URL
-  btnImg.alt = 'Sentra'
+  btnImg.alt = 'Viezan'
   btn.appendChild(btnImg)
 
   // Build tooltip (avoid putting chrome-extension:// URL in innerHTML)
@@ -45,8 +45,8 @@
   tooltip.id = 'tre-result-tooltip'
   tooltip.innerHTML = `
     <div class="tre-tooltip-header">
-      <img class="tre-tooltip-logo" alt="Sentra" />
-      <span class="tre-tooltip-label">Sentra</span>
+      <img class="tre-tooltip-logo" alt="Viezan" />
+      <span class="tre-tooltip-label">Viezan</span>
       <select class="tre-lang-select" title="Target language">
         <option value="en">🇺🇸 EN</option>
         <option value="vi">🇻🇳 VI</option>
@@ -127,7 +127,7 @@
   /** Fetch active provider/model from the native app — always mirrors app's current selection */
   async function getAppConfig (token) {
     const resp = await fetch(`http://127.0.0.1:${PORT}/api/config`, {
-      headers: { 'X-TRE-Token': token },
+      headers: { 'X-Viezan-Token': token },
     })
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
     const data = await resp.json()
@@ -141,7 +141,7 @@
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-TRE-Token': settings.token,
+        'X-Viezan-Token': settings.token,
       },
       body: JSON.stringify({
         text,
@@ -179,7 +179,7 @@
     btn.innerHTML = ''
     const img = document.createElement('img')
     img.src = ICON_URL
-    img.alt = 'Sentra'
+    img.alt = 'Viezan'
     btn.appendChild(img)
   }
 
@@ -524,7 +524,7 @@
       const settings = await getSettings()
       if (!settings.token) {
         hideButton()
-        alert('Sentra Extension: Please set your connection token in the extension Options page first.')
+        alert('Viezan Extension: Please set your connection token in the extension Options page first.')
         return
       }
 
@@ -549,23 +549,23 @@
       hideButton()
       const errMsg = err.message || 'Unknown error'
       if (errMsg.includes('context invalidated') || errMsg.includes('reload the page')) {
-        alert('Sentra Extension: Extension was updated. Please reload this page (F5) to use it again.')
+        alert('Viezan Extension: Extension was updated. Please reload this page (F5) to use it again.')
       } else if (errMsg.includes('401') || errMsg.includes('Unauthorized')) {
-        alert('Sentra Extension: Token is invalid. Please update it in the Options page.')
+        alert('Viezan Extension: Token is invalid. Please update it in the Options page.')
       } else if (errMsg.includes('fetch') || errMsg.includes('Failed to fetch')) {
-        alert('Sentra Extension: Cannot connect to Sentra app. Make sure the Sentra app is running.')
+        alert('Viezan Extension: Cannot connect to Viezan app. Make sure the Viezan app is running.')
       } else {
-        alert(`Sentra Extension: ${errMsg}`)
+        alert(`Viezan Extension: ${errMsg}`)
       }
     }
   })
 
   // ── Ping handler (used by background to check if this script is alive) ────────
-  // background.js sends TRE_PING periodically; if we respond, it knows the context
+  // background.js sends VIEZAN_PING periodically; if we respond, it knows the context
   // is valid and skips re-injection. No response = dead context = re-inject.
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-    if (msg.type === 'TRE_PING') {
+    if (msg.type === 'VIEZAN_PING') {
       sendResponse({ alive: true })
       return true
     }

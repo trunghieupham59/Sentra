@@ -19,7 +19,7 @@ async function getSettings () {
 /** Fetch the active provider/model from the native app via /api/config */
 async function getAppConfig (token) {
   const resp = await fetch(`http://127.0.0.1:${PORT}/api/config`, {
-    headers: { 'X-TRE-Token': token },
+    headers: { 'X-Viezan-Token': token },
   })
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
   const data = await resp.json()
@@ -56,7 +56,7 @@ async function loadAiInfoBar (token) {
 
   try {
     const resp = await fetch(`http://127.0.0.1:${PORT}/api/config`, {
-      headers: { 'X-TRE-Token': token },
+      headers: { 'X-Viezan-Token': token },
     })
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
     const data = await resp.json()
@@ -130,7 +130,7 @@ $('btn-translate').addEventListener('click', async () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-TRE-Token': settings.token,
+        'X-Viezan-Token': settings.token,
       },
       body: JSON.stringify({
         text,
@@ -160,7 +160,7 @@ $('btn-translate').addEventListener('click', async () => {
     if (msg.includes('401') || msg.includes('Unauthorized')) {
       showStatus('❌ Invalid token. Update it in Options.', 'error')
     } else if (msg.includes('fetch') || msg.includes('Failed')) {
-      showStatus('❌ Cannot reach Sentra app. Is it running?', 'error')
+      showStatus('❌ Cannot reach Viezan app. Is it running?', 'error')
     } else {
       showStatus(`❌ ${msg}`, 'error')
     }

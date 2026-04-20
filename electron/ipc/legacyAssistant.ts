@@ -1,5 +1,5 @@
 /**
- * Legacy Assistant — inject a floating Sentra icon into any browser tab
+ * Legacy Assistant — inject a floating Viezan icon into any browser tab
  * WITHOUT requiring a browser extension to be installed.
  *
  * Two modes:
@@ -12,7 +12,7 @@
  *     on demand in any browser on any OS.
  *
  * The injected floating assistant:
- *  • Shows a small Sentra icon in the bottom-right corner
+ *  • Shows a small Viezan icon in the bottom-right corner
  *  • When text is selected, hovering the icon shows a "Translate" button
  *  • Clicking it calls localhost:39875/api/translate (our local server)
  *  • Shows the result in a tooltip; also copies it to clipboard
@@ -79,11 +79,11 @@ const SAFARI_APPS = ['Safari', 'Safari Technology Preview']
 
 function buildAssistantScript (token: string, port: number, targetLang: string): string {
   return `(function(){
-if(window.__treLA)return;window.__treLA=true;
+if(window.__viezanLA)return;window.__viezanLA=true;
 var TK='${token}',PT=${port},TL='${targetLang}';
 // --- button ---
 var b=document.createElement('div');
-b.id='__treLA_btn';
+b.id='__viezanLA_btn';
 b.style.cssText='position:fixed;bottom:20px;right:20px;z-index:2147483647;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#7c3aed);box-shadow:0 3px 14px rgba(79,70,229,.55);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s,opacity .15s;opacity:.85;user-select:none;';
 b.innerHTML='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>';
 b.addEventListener('mouseover',function(){b.style.transform='scale(1.08)';b.style.opacity='1';});
@@ -91,7 +91,7 @@ b.addEventListener('mouseout',function(){b.style.transform='';b.style.opacity='.
 document.body.appendChild(b);
 // --- tooltip ---
 var t=document.createElement('div');
-t.id='__treLA_tip';
+t.id='__viezanLA_tip';
 t.style.cssText='position:fixed;bottom:74px;right:20px;z-index:2147483647;max-width:300px;min-width:160px;background:#1e1b4b;color:#e0e7ff;padding:10px 13px;border-radius:10px;font:13px/1.5 -apple-system,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.4);display:none;word-break:break-word;';
 document.body.appendChild(t);
 var timer;
@@ -103,16 +103,16 @@ b.addEventListener('click',function(){
   show('<span style="opacity:.6;font-size:11px">Translating…</span>',0);
   fetch('http://127.0.0.1:'+PT+'/api/translate',{
     method:'POST',
-    headers:{'Content-Type':'application/json','X-TRE-Token':TK},
+    headers:{'Content-Type':'application/json','X-Viezan-Token':TK},
     body:JSON.stringify({text:txt,targetLang:TL})
   }).then(function(r){return r.json();}).then(function(d){
     if(d.success){
-      show('<span style="opacity:.55;font-size:10px;display:block;margin-bottom:3px">SENTRA TRANSLATION</span>'+d.translatedText,9000);
+      show('<span style="opacity:.55;font-size:10px;display:block;margin-bottom:3px">Viezan TRANSLATION</span>'+d.translatedText,9000);
       try{navigator.clipboard.writeText(d.translatedText);}catch(e){}
     } else {
       show('⚠ '+(d.error||'Translation failed'),5000);
     }
-  }).catch(function(){show('⚠ Cannot reach Sentra app. Make sure it is running.',5000);});
+  }).catch(function(){show('⚠ Cannot reach Viezan app. Make sure it is running.',5000);});
 });
 document.addEventListener('mousedown',function(e){
   if(e.target!==b&&e.target!==t&&!t.contains(e.target))t.style.display='none';
@@ -181,7 +181,7 @@ function tryInject (): void {
 
 // ── Bookmarklet builder ───────────────────────────────────────────────────────
 // The bookmarklet embeds the FULL script inline so it works on any browser / OS
-// without requiring the Sentra app to actively inject it.
+// without requiring the Viezan app to actively inject it.
 
 export function buildBookmarklet (token: string, port: number, targetLang: string): string {
   const script = buildAssistantScript(token, port, targetLang)

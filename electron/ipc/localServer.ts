@@ -1,10 +1,10 @@
 /**
- * Local HTTP Server — lets the Sentra Chrome Extension communicate with the
- * native Sentra app running on the same machine.
+ * Local HTTP Server — lets the Viezan Chrome Extension communicate with the
+ * native Viezan app running on the same machine.
  *
  * Security model:
  *   • Server only listens on 127.0.0.1 (loopback — not reachable from outside)
- *   • Every request must carry the header  X-Sentra-Token: <secret>
+ *   • Every request must carry the header  X-Viezan-Token: <secret>
  *   • Tokens are 32-byte random hex strings (64 chars), named, with configurable TTL
  *   • Token values are returned ONLY at creation or regeneration — never again
  *   • Multiple tokens can coexist (one per device/browser)
@@ -144,7 +144,7 @@ function sendJSON (res: http.ServerResponse, statusCode: number, data: unknown):
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-TRE-Token',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Viezan-Token',
     // Required for Chrome Private Network Access (PNA) — allows extension pages
     // (chrome-extension://) and local web pages to fetch from 127.0.0.1.
     'Access-Control-Allow-Private-Network': 'true',
@@ -168,7 +168,7 @@ export function startLocalServer (ipcMain: Electron.IpcMain): void {
     if (req.method === 'OPTIONS') { sendJSON(res, 200, {}); return }
 
     // Validate token against all active, non-expired tokens
-    const incomingToken = req.headers['x-tre-token']
+    const incomingToken = req.headers['x-viezan-token']
     const now = Date.now()
     purgeExpired()
     const valid = activeTokens.some(t => t.token === incomingToken && t.expiresAt > now)

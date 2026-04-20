@@ -9,7 +9,7 @@ export function AppLogoIcon({ size = 64 }: { size?: number }) {
   return (
     <img
       src={logoSrc}
-      alt="Sentra App Logo Icon"
+      alt="Viezan App Logo Icon"
       width={size}
       height={size}
       style={{ objectFit: 'contain' }}

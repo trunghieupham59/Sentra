@@ -1,4 +1,4 @@
-# Sentra — Architecture Guide
+# Viezan — Architecture Guide
 
 > Target audience: new developers joining the project. Read this file in ~10 minutes and you'll understand how everything connects.
 
@@ -6,7 +6,7 @@
 
 ## 1. Process Model
 
-Sentra is an Electron app — it has **3 independent execution contexts**:
+Viezan is an Electron app — it has **3 independent execution contexts**:
 
 ```
 ┌─────────────────────────────────────────────────┐

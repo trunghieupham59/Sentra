@@ -1,7 +1,7 @@
-# Sentra — AI Translation Desktop App
+# Viezan — AI Translation Desktop App
 
 <p align="center">
-  <img src="public/icon.png" width="96" alt="Sentra logo">
+  <img src="public/icon.png" width="96" alt="Viezan logo">
 </p>
 
 <p align="center">
@@ -10,8 +10,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/trunghieupham59/Sentra/releases/latest">
-    <img src="https://img.shields.io/github/v/release/trunghieupham59/Sentra?style=flat-square&color=f97316" alt="Latest Release">
+  <a href="https://github.com/trunghieupham59/Viezan/releases/latest">
+    <img src="https://img.shields.io/github/v/release/trunghieupham59/Viezan?style=flat-square&color=f97316" alt="Latest Release">
   </a>
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows-blue?style=flat-square" alt="Platform">
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License">
@@ -25,11 +25,11 @@
 
 | Platform | Installer |
 |----------|-----------|
-|  macOS (Apple Silicon) | [Sentra-1.0.3-arm64.dmg](https://github.com/trunghieupham59/Sentra/releases/download/v1.0.3/Sentra-1.0.3-arm64.dmg) |
-|  macOS (Intel x64) | [Sentra-1.0.3.dmg](https://github.com/trunghieupham59/Sentra/releases/download/v1.0.3/Sentra-1.0.3.dmg) |
-| ⊞ Windows (x64) | [Sentra.Setup.1.0.3.exe](https://github.com/trunghieupham59/Sentra/releases/download/v1.0.3/Sentra.Setup.1.0.3.exe) |
+|  macOS (Apple Silicon) | [Viezan-1.0.3-arm64.dmg](https://github.com/trunghieupham59/Viezan/releases/download/v1.0.3/Viezan-1.0.3-arm64.dmg) |
+|  macOS (Intel x64) | [Viezan-1.0.3.dmg](https://github.com/trunghieupham59/Viezan/releases/download/v1.0.3/Viezan-1.0.3.dmg) |
+| ⊞ Windows (x64) | [Viezan.Setup.1.0.3.exe](https://github.com/trunghieupham59/Viezan/releases/download/v1.0.3/Viezan.Setup.1.0.3.exe) |
 
-> View all releases: [github.com/trunghieupham59/Sentra/releases](https://github.com/trunghieupham59/Sentra/releases)
+> View all releases: [github.com/trunghieupham59/Viezan/releases](https://github.com/trunghieupham59/Viezan/releases)
 
 ---
 
@@ -61,7 +61,7 @@ Download the installer for your platform from the [Download](#-download) section
 
 ### 2. Add your API Key
 
-1. Open **Sentra**
+1. Open **Viezan**
 2. Click the **provider icon** in the sidebar (Gemini / Claude / OpenAI)
 3. Paste your API key → click **Save Key**
 
@@ -102,8 +102,8 @@ Get your API keys from the respective dashboards:
 
 ```bash
 # Clone the repository
-git clone https://github.com/trunghieupham59/Sentra.git
-cd Sentra
+git clone https://github.com/trunghieupham59/Viezan.git
+cd Viezan
 
 # Install dependencies
 npm install
@@ -138,7 +138,7 @@ Output files are placed in the `release/` directory.
 ## 📁 Project Structure
 
 ```
-Sentra/
+Viezan/
 ├── electron/                   # Main process (Node.js / Electron)
 │   ├── main.ts                 # App entry point, window management
 │   ├── preload.ts              # Context bridge (IPC bindings)
@@ -201,7 +201,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## ⚠️ Disclaimer
 
-Sentra is an independent desktop application and is not affiliated with Google, Anthropic, or OpenAI. You are responsible for your own API usage and any associated costs.
+Viezan is an independent desktop application and is not affiliated with Google, Anthropic, or OpenAI. You are responsible for your own API usage and any associated costs.
 
 ---
 

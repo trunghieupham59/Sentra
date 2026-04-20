@@ -1,7 +1,7 @@
 {
-  "name": "sentra",
+  "name": "Viezan",
   "version": "1.0.0",
-  "description": "Sentra - Local AI Translation - macOS & Windows",
+  "description": "Viezan - Local AI Translation - macOS & Windows",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "concurrently -k -n \"VITE,ELECTRON\" -c \"cyan,yellow\" \"npm run dev:vite\" \"npm run dev:electron\"",
@@ -29,9 +29,9 @@
     "gemini",
     "claude",
     "gpt",
-    "sentra"
+    "Viezan"
   ],
-  "author": "Sentra",
+  "author": "Viezan",
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
@@ -68,9 +68,9 @@
     "wait-on": "^8.0.1"
   },
   "build": {
-    "appId": "com.sentra.app",
-    "productName": "Sentra",
-    "artifactName": "Sentra-${version}-${arch}.${ext}",
+    "appId": "com.Viezan.app",
+    "productName": "Viezan",
+    "artifactName": "Viezan-${version}-${arch}.${ext}",
     "directories": {
       "output": "release"
     },

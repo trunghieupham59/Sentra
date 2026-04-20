@@ -1,11 +1,11 @@
-# Contributing to Sentra Translate
+# Contributing to Viezan Translate
 
 ## Development Setup
 
 ```bash
 # 1. Fork & clone repository
-git clone https://github.com/trunghieupham59/Sentra-translate.git
-cd Sentra-translate
+git clone https://github.com/trunghieupham59/Viezan-translate.git
+cd Viezan-translate
 
 # 2. Install dependencies
 npm install
@@ -20,7 +20,7 @@ npm run dev
 ## Project Structure
 
 ```
-Sentra/
+Viezan/
 ├── electron/                 # Main process (Node.js / Electron)
 │   ├── main.ts               # App entry point, window management
 │   ├── preload.ts            # Context bridge (IPC bindings)

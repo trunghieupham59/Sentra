@@ -20,7 +20,7 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 
 // Set app name
-app.setName('Sentra')
+app.setName('Viezan')
 
 // ── Window constants ──────────────────────────────────────────────────────────
 /** HC-NEW-11: Named color constants for window background (avoids magic hex strings) */
@@ -35,7 +35,7 @@ function createWindow() {
     height: 700,
     minWidth: 780,
     minHeight: 520,
-    title: 'Sentra',
+    title: 'Viezan',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 16, y: 14 },
     backgroundColor: nativeTheme.shouldUseDarkColors ? WIN_BG_DARK : WIN_BG_LIGHT,
@@ -186,7 +186,7 @@ app.whenReady().then(() => {
   // Global hotkey — translate selected text in any OS application
   initGlobalHotkey(ipcMain, () => mainWindow)
 
-  // Local HTTP server — used by the Sentra Chrome Extension
+  // Local HTTP server — used by the Viezan Chrome Extension
   startLocalServer(ipcMain)
 
   // Legacy Assistant — floating icon injected directly into browsers via osascript

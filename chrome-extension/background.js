@@ -1,8 +1,8 @@
 /**
- * Sentra — Background Service Worker (Manifest V3)
+ * Viezan — Background Service Worker (Manifest V3)
  *
  * Handles:
- *  • Context-menu "Translate with Sentra" entry on selected text
+ *  • Context-menu "Translate with Viezan" entry on selected text
  *  • Auto re-injection of content script when context is invalidated
  *  • Relaying translate requests from content scripts if needed
  */
@@ -13,7 +13,7 @@ const PORT = 39875
 
 chrome.runtime.onInstalled.addListener(async (details) => {
   // (Re)create context menu — safe to call on every install/update
-  try { chrome.contextMenus.create({ id: 'tre-translate', title: 'Translate with Sentra', contexts: ['selection'] }) } catch { /* already exists */ }
+  try { chrome.contextMenus.create({ id: 'tre-translate', title: 'Translate with Viezan', contexts: ['selection'] }) } catch { /* already exists */ }
 
   // Best-effort: try to re-inject into all open tabs on install/update.
   // Note: chrome.tabs.query({}) without url filter works WITHOUT the "tabs" permission.
@@ -73,7 +73,7 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
  */
 async function ensureContentScript (tabId) {
   try {
-    const resp = await chrome.tabs.sendMessage(tabId, { type: 'TRE_PING' })
+    const resp = await chrome.tabs.sendMessage(tabId, { type: 'VIEZAN_PING' })
     if (resp?.alive) return   // confirmed alive — nothing to do
     // Resolved but with falsy/undefined → context may be dead or no handler
     injectContentScript(tabId)
@@ -104,7 +104,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (!text || !tab?.id) return
 
   try {
-    await chrome.tabs.sendMessage(tab.id, { type: 'TRE_TRANSLATE_SELECTION', text })
+    await chrome.tabs.sendMessage(tab.id, { type: 'VIEZAN_TRANSLATE_SELECTION', text })
   } catch {
     // Content script may not be loaded on this page
   }
@@ -113,7 +113,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 // ── Message relay from content script ─────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === 'TRE_TRANSLATE') {
+  if (message.type === 'VIEZAN_TRANSLATE') {
     handleTranslate(message).then(sendResponse).catch((err) => {
       sendResponse({ success: false, error: err.message })
     })
@@ -128,7 +128,7 @@ async function handleTranslate (message) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-TRE-Token': token,
+      'X-Viezan-Token': token,
     },
     body: JSON.stringify({ text, targetLang, provider, model }),
   })

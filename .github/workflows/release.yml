@@ -62,9 +62,9 @@ jobs:
 
                   {
                     echo "RELEASE_BODY<<ENDOFBODY"
-                    echo "## Sentra ${CURRENT_TAG} — Release Notes"
+                    echo "## Viezan ${CURRENT_TAG} — Release Notes"
                     echo ""
-                    echo "> **Sentra** is a local AI-powered translation desktop app for macOS and Windows,"
+                    echo "> **Viezan** is a local AI-powered translation desktop app for macOS and Windows,"
                     echo "> supporting models from OpenAI, Anthropic Claude, and Google Gemini."
                     echo ""
                     echo "---"
@@ -107,13 +107,13 @@ jobs:
                     echo ""
                     echo "###  macOS"
                     echo "1. Download the \`.dmg\` file matching your chip:"
-                    echo "   - **Apple Silicon (M1/M2/M3):** \`Sentra-*-arm64.dmg\`"
-                    echo "   - **Intel Mac:** \`Sentra-*-x64.dmg\`"
-                    echo "2. Open the \`.dmg\` and drag **Sentra** to your **Applications** folder."
+                    echo "   - **Apple Silicon (M1/M2/M3):** \`Viezan-*-arm64.dmg\`"
+                    echo "   - **Intel Mac:** \`Viezan-*-x64.dmg\`"
+                    echo "2. Open the \`.dmg\` and drag **Viezan** to your **Applications** folder."
                     echo "3. On first launch, right-click → **Open** to bypass Gatekeeper if needed."
                     echo ""
                     echo "### ⊞ Windows"
-                    echo "1. Download \`Sentra-*-x64-Setup.exe\`."
+                    echo "1. Download \`Viezan-*-x64-Setup.exe\`."
                     echo "2. Run the installer and follow the setup wizard."
                     echo "3. You can choose a custom installation directory during setup."
                     echo ""
@@ -140,7 +140,7 @@ jobs:
               id: create_release
               uses: softprops/action-gh-release@v2
               with:
-                  name: "Sentra ${{ steps.notes.outputs.CURRENT_TAG }}"
+                  name: "Viezan ${{ steps.notes.outputs.CURRENT_TAG }}"
                   body: ${{ steps.notes.outputs.RELEASE_BODY }}
                   draft: false
                   prerelease: ${{ contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-rc') }}
