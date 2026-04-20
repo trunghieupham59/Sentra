@@ -1,6 +1,6 @@
 {
   "name": "Viezan",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Viezan - Local AI Translation - macOS & Windows",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -116,7 +116,9 @@
       "copyright": "Copyright © 2024-2025 Viezan. All rights reserved.",
       "requestedExecutionLevel": "asInvoker",
       "verifyUpdateCodeSignature": false,
-      "signingHashAlgorithms": ["sha256"],
+      "signingHashAlgorithms": [
+        "sha256"
+      ],
       "target": [
         {
           "target": "nsis",
