@@ -1,6 +1,6 @@
 /* Viezan — floating icon button (circular) */
 
-#tre-assistant-btn {
+#Viezan-btn {
   position: fixed;
   z-index: 2147483647;
   display: none;
@@ -19,17 +19,17 @@
   pointer-events: auto;
 }
 
-#tre-assistant-btn:hover {
+#Viezan-btn:hover {
   box-shadow: 0 4px 18px rgba(79, 70, 229, 0.35), 0 2px 6px rgba(0,0,0,0.12);
   transform: scale(1.1);
 }
 
-#tre-assistant-btn.tre-loading {
+#Viezan-btn.tre-loading {
   background: #f5f5ff;
   pointer-events: none;
 }
 
-#tre-assistant-btn img {
+#Viezan-btn img {
   width: 22px;
   height: 22px;
   border-radius: 6px;
