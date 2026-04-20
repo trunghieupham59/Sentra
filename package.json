@@ -74,6 +74,7 @@
   "build": {
     "appId": "com.Viezan.app",
     "productName": "Viezan",
+    "copyright": "Copyright © 2024-2025 Viezan. All rights reserved.",
     "artifactName": "Viezan-${version}-${arch}.${ext}",
     "directories": {
       "output": "release"
@@ -111,14 +112,9 @@
     "afterSign": "scripts/notarize.mjs",
     "win": {
       "icon": "build/icon.ico",
-      "publisherName": "Viezan",
       "legalTrademarks": "Viezan",
-      "copyright": "Copyright © 2024-2025 Viezan. All rights reserved.",
       "requestedExecutionLevel": "asInvoker",
       "verifyUpdateCodeSignature": false,
-      "signingHashAlgorithms": [
-        "sha256"
-      ],
       "target": [
         {
           "target": "nsis",
@@ -149,6 +145,7 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Viezan",
       "menuCategory": "Viezan",
+      "publisherName": "Viezan",
       "displayLanguageSelector": false,
       "deleteAppDataOnUninstall": false
     }
