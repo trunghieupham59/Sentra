@@ -30,7 +30,13 @@
 ## 📸 Screenshots
 
 <p align="center">
-  <img src="docs/screenshots/demo.gif" width="800" alt="Viezan Screenshots">
+  <a href="https://trunghieupham59.github.io/viezan/" title="🎬 Interactive 3D Slider">
+    <img src="docs/screenshots/demo.gif" width="800" alt="Viezan Screenshots — click to open interactive slider">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://trunghieupham59.github.io/viezan/">🎬 Open Interactive Slider →</a>
 </p>
 
 ---
