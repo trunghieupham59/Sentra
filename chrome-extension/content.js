@@ -20,6 +20,13 @@
   const PORT = 39875
   const ICON_URL = chrome.runtime.getURL('icons/icon48.png')
 
+  // ── Cleanup stale UI from a previous content script instance ──────────────
+  // When the extension is reloaded/updated, background.js re-injects this
+  // script into open tabs. Remove any leftover elements from the old instance
+  // so we don't end up with duplicate buttons or tooltips.
+  document.getElementById('tre-assistant-btn')?.remove()
+  document.getElementById('tre-result-tooltip')?.remove()
+
   // ── DOM setup ──────────────────────────────────────────────────────────────
 
   const root = document.body || document.documentElement
@@ -89,7 +96,10 @@
 
   let lastSelection = ''
   let lastSelectionRect = null   // saved rect for tooltip positioning
-  let savedRange = null
+  let savedRange = null          // for DOM/contenteditable selections
+  let savedInputEl = null        // for textarea/input selections
+  let savedInputStart = 0        // textarea selectionStart
+  let savedInputEnd = 0          // textarea selectionEnd
   let currentTranslation = ''
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -189,7 +199,11 @@
 
   function showTooltip (text, rect, range, targetLang) {
     currentTranslation = text
-    savedRange = range || null
+    // Only update savedRange if a valid range is provided.
+    // Clicking the translate button clears the browser selection, so `range`
+    // from the btn click handler is often null — we must keep the range that
+    // was captured earlier at selection time (mouseup / checkKeyboardSelection).
+    if (range) savedRange = range
 
     // Sync language selector to current target language
     if (targetLang && langSelect.value !== targetLang) {
@@ -265,19 +279,98 @@
 
   // ── Replace button ─────────────────────────────────────────────────────────
 
-  replaceBtn.addEventListener('click', (e) => {
+  replaceBtn.addEventListener('click', async (e) => {
     e.stopPropagation()
-    if (savedRange && currentTranslation) {
-      const sel = window.getSelection()
-      if (sel) {
-        sel.removeAllRanges()
-        sel.addRange(savedRange)
-        const inserted = document.execCommand('insertText', false, currentTranslation)
-        if (!inserted) {
-          navigator.clipboard.writeText(currentTranslation).catch(() => {})
+    if (!currentTranslation) { hideTooltip(); return }
+
+    // ── Case 1: textarea / input ───────────────────────────────────────────
+    if (savedInputEl && typeof savedInputEl.selectionStart === 'number') {
+      const el = savedInputEl
+      el.focus()
+      el.setSelectionRange(savedInputStart, savedInputEnd)
+      // Try native insertText first (preserves undo history)
+      const ok = document.execCommand('insertText', false, currentTranslation)
+      if (!ok) {
+        // Fallback: direct value manipulation
+        const before = el.value.substring(0, savedInputStart)
+        const after  = el.value.substring(savedInputEnd)
+        el.value = before + currentTranslation + after
+        el.setSelectionRange(
+          savedInputStart + currentTranslation.length,
+          savedInputStart + currentTranslation.length
+        )
+        el.dispatchEvent(new Event('input',  { bubbles: true }))
+        el.dispatchEvent(new Event('change', { bubbles: true }))
+      }
+      hideTooltip()
+      return
+    }
+
+    // ── Case 2: contenteditable / DOM selection ────────────────────────────
+    if (savedRange) {
+      // Find the contenteditable element that owns the range
+      let editableEl = null
+      try {
+        const node = savedRange.commonAncestorContainer
+        const el   = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement
+        editableEl = el?.closest('[contenteditable]')
+      } catch { /* ignore */ }
+
+      // ── Strategy 1: sync copy → focus → restore selection → sync paste ────
+      // KEY INSIGHT: navigator.clipboard.writeText() is async — awaiting it loses
+      // the user gesture context, causing execCommand('paste') to be blocked.
+      // Solution: use a hidden textarea + execCommand('copy') (synchronous!) to
+      // write to clipboard, then immediately execCommand('paste') in the same
+      // user gesture microtask. This fires a TRUSTED paste event that block-based
+      // editors (Tiptap, ProseMirror, Notion…) handle via their own paste handlers.
+      let handled = false
+      try {
+        // 1a. Copy translation to clipboard synchronously (no async/await needed)
+        const tmp = document.createElement('textarea')
+        tmp.value = currentTranslation
+        tmp.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0'
+        document.body.appendChild(tmp)
+        tmp.focus()
+        tmp.select()
+        document.execCommand('copy')
+        document.body.removeChild(tmp)
+
+        // 1b. Focus the editor and restore the original multi-block selection
+        if (editableEl) editableEl.focus()
+        const sel = window.getSelection()
+        if (sel) {
+          sel.removeAllRanges()
+          sel.addRange(savedRange)
         }
+
+        // 1c. Paste — fires a trusted paste event read by the editor's paste handler
+        handled = document.execCommand('paste')
+      } catch { /* ignore */ }
+
+      // ── Strategy 2: Synthetic ClipboardEvent (for editors listening to paste) ─
+      if (!handled) {
+        try {
+          if (editableEl) editableEl.focus()
+          const sel = window.getSelection()
+          if (sel) { sel.removeAllRanges(); sel.addRange(savedRange) }
+          const dt = new DataTransfer()
+          dt.setData('text/plain', currentTranslation)
+          const pasteEvt = new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: dt })
+          const target = editableEl || document.activeElement || document.body
+          target.dispatchEvent(pasteEvt)
+          handled = pasteEvt.defaultPrevented
+        } catch { /* ignore */ }
+      }
+
+      // ── Strategy 3: execCommand('insertText') — simple contenteditable ────
+      if (!handled) {
+        if (editableEl) editableEl.focus()
+        const sel = window.getSelection()
+        if (sel) { sel.removeAllRanges(); sel.addRange(savedRange) }
+        document.execCommand('insertText', false, currentTranslation)
       }
     }
+
     hideTooltip()
   })
 
@@ -293,8 +386,10 @@
 
       if (text.length > 1) {
         lastSelection = text
-        const range = sel.getRangeAt(0)
-        const rect = range.getBoundingClientRect()
+        savedInputEl = null  // this is a DOM selection, not textarea
+        // Save range NOW while selection is still alive (before btn click clears it)
+        try { savedRange = sel.getRangeAt(0).cloneRange() } catch { savedRange = null }
+        const rect = savedRange ? savedRange.getBoundingClientRect() : { top: 80, bottom: 100, left: window.innerWidth / 2, width: 0 }
         showButton(rect)
         hideTooltip()
       } else {
@@ -317,6 +412,11 @@
         const text = activeEl.value.substring(start, end).trim()
         if (text.length > 1) {
           lastSelection = text
+          // Save textarea reference + selection bounds for Replace
+          savedInputEl    = activeEl
+          savedInputStart = start
+          savedInputEnd   = end
+          savedRange      = null  // not applicable for textarea
           // Position button near the bottom of the input element
           const rect = activeEl.getBoundingClientRect()
           showButton(rect)
@@ -329,6 +429,7 @@
     }
 
     // Normal DOM selection (page text, contenteditable, etc.)
+    savedInputEl = null  // reset textarea state — this is a DOM selection
     const sel = window.getSelection()
     const text = sel ? sel.toString().trim() : ''
 
@@ -336,7 +437,11 @@
       lastSelection = text
       let rect = null
       try {
-        if (sel.rangeCount > 0) rect = sel.getRangeAt(0).getBoundingClientRect()
+        if (sel.rangeCount > 0) {
+          // Save range NOW while selection is alive (keyboard selection is still active)
+          savedRange = sel.getRangeAt(0).cloneRange()
+          rect = savedRange.getBoundingClientRect()
+        }
       } catch { /* ignore */ }
 
       // Fallback if rect is empty (e.g., Ctrl+A on whole page)
@@ -452,6 +557,17 @@
       } else {
         alert(`T.R.E Assistant Extension: ${errMsg}`)
       }
+    }
+  })
+
+  // ── Ping handler (used by background to check if this script is alive) ────────
+  // background.js sends TRE_PING periodically; if we respond, it knows the context
+  // is valid and skips re-injection. No response = dead context = re-inject.
+
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg.type === 'TRE_PING') {
+      sendResponse({ alive: true })
+      return true
     }
   })
 
