@@ -1,3 +1,3 @@
-[submodule "T.R.E-Agent"]
-	path = T.R.E-Agent
-	url = https://github.com/trunghieupham59/Viezan-agent.git
+[submodule "viezanagent"]
+	path = viezanagent
+	url = https://github.com/trunghieupham59/viezanagent
