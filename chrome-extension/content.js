@@ -39,9 +39,32 @@
   tooltip.innerHTML = `
     <div class="tre-tooltip-header">
       <img class="tre-tooltip-logo" alt="T.R.E Assistant" />
-      <span class="tre-tooltip-label">Translation</span>
+      <span class="tre-tooltip-label">T.R.E Assistant</span>
+      <select class="tre-lang-select" title="Target language">
+        <option value="en">🇺🇸 EN</option>
+        <option value="vi">🇻🇳 VI</option>
+        <option value="ja">🇯🇵 JA</option>
+        <option value="zh">🇨🇳 ZH</option>
+        <option value="ko">🇰🇷 KO</option>
+        <option value="fr">🇫🇷 FR</option>
+        <option value="de">🇩🇪 DE</option>
+        <option value="es">🇪🇸 ES</option>
+        <option value="th">🇹🇭 TH</option>
+        <option value="ru">🇷🇺 RU</option>
+      </select>
+      <button class="tre-close-btn" title="Close">✕</button>
     </div>
-    <div class="tre-tooltip-text"></div>
+    <div class="tre-tooltip-body">
+      <div class="tre-panel tre-source-panel">
+        <div class="tre-panel-label">Original</div>
+        <div class="tre-source-text"></div>
+      </div>
+      <div class="tre-panel-divider"></div>
+      <div class="tre-panel tre-result-panel">
+        <div class="tre-panel-label">Translation</div>
+        <div class="tre-tooltip-text"></div>
+      </div>
+    </div>
     <div class="tre-tooltip-actions">
       <button class="tre-action-btn tre-copy-btn">📋 Copy</button>
       <button class="tre-action-btn tre-replace-btn">↵ Replace</button>
@@ -59,12 +82,13 @@
 
   const copyBtn = tooltip.querySelector('.tre-copy-btn')
   const replaceBtn = tooltip.querySelector('.tre-replace-btn')
+  const langSelect = tooltip.querySelector('.tre-lang-select')
+  const closeBtn = tooltip.querySelector('.tre-close-btn')
 
   // ── State ─────────────────────────────────────────────────────────────────
 
   let lastSelection = ''
   let lastSelectionRect = null   // saved rect for tooltip positioning
-  let tooltipHideTimer = null
   let savedRange = null
   let currentTranslation = ''
 
@@ -163,40 +187,37 @@
     resetBtnIcon()
   }
 
-  function showTooltip (text, rect, range) {
+  function showTooltip (text, rect, range, targetLang) {
     currentTranslation = text
     savedRange = range || null
 
-    const tooltipText = tooltip.querySelector('.tre-tooltip-text')
-    tooltipText.textContent = text
+    // Sync language selector to current target language
+    if (targetLang && langSelect.value !== targetLang) {
+      langSelect.value = targetLang
+    }
+
+    // Left panel: original / source text
+    tooltip.querySelector('.tre-source-text').textContent = lastSelection
+
+    // Right panel: translation result
+    tooltip.querySelector('.tre-tooltip-text').textContent = text
+
     tooltip.style.display = 'block'
     copyBtn.textContent = '📋 Copy'
     // Force reflow so offsetWidth is available
     tooltip.getBoundingClientRect()
     positionElement(tooltip, rect)
-
-    clearTimeout(tooltipHideTimer)
-    tooltipHideTimer = setTimeout(() => {
-      tooltip.style.display = 'none'
-    }, 6000)
   }
 
   function hideTooltip () {
     tooltip.style.display = 'none'
-    clearTimeout(tooltipHideTimer)
   }
 
-  // ── Tooltip hover: pause auto-hide ─────────────────────────────────────────
+  // ── Close button ───────────────────────────────────────────────────────────
 
-  tooltip.addEventListener('mouseenter', () => {
-    clearTimeout(tooltipHideTimer)
-  })
-
-  tooltip.addEventListener('mouseleave', () => {
-    clearTimeout(tooltipHideTimer)
-    tooltipHideTimer = setTimeout(() => {
-      tooltip.style.display = 'none'
-    }, 2000)
+  closeBtn.addEventListener('click', (e) => {
+    e.stopPropagation()
+    hideTooltip()
   })
 
   // ── Copy button ────────────────────────────────────────────────────────────
@@ -211,10 +232,35 @@
       copyBtn.textContent = '❌ Failed'
       setTimeout(() => { copyBtn.textContent = '📋 Copy' }, 1500)
     }
-    clearTimeout(tooltipHideTimer)
-    tooltipHideTimer = setTimeout(() => {
-      tooltip.style.display = 'none'
-    }, 3000)
+  })
+
+  // ── Language selector → re-translate ──────────────────────────────────────
+
+  langSelect.addEventListener('change', async (e) => {
+    e.stopPropagation()
+    const newLang = langSelect.value
+
+    // Persist the new language choice so Options page & future sessions reflect it
+    if (isContextValid()) {
+      try { chrome.storage.local.set({ treTargetLang: newLang }) } catch { /* ignore */ }
+    }
+
+    if (!lastSelection) return
+
+    const tooltipText = tooltip.querySelector('.tre-tooltip-text')
+    tooltipText.textContent = '⏳ Translating…'
+
+    try {
+      const settings = await getSettings()
+      settings.targetLang = newLang          // use the just-selected language
+      const translated = await translateText(lastSelection, settings)
+      currentTranslation = translated
+      tooltipText.textContent = translated
+      copyBtn.textContent = '📋 Copy'
+      try { await navigator.clipboard.writeText(translated) } catch { /* ignore */ }
+    } catch (err) {
+      tooltipText.textContent = '❌ ' + (err.message || 'Translation failed')
+    }
   })
 
   // ── Replace button ─────────────────────────────────────────────────────────
@@ -332,6 +378,15 @@
     if (e.key === 'Escape') {
       hideButton()
       hideTooltip()
+      return
+    }
+
+    // CMD+A (macOS) / CTRL+A (Windows/Linux) — must be caught on keydown because
+    // macOS does NOT fire keyup for CMD+key shortcuts (OS intercepts them).
+    const isSelectAll = (e.metaKey || e.ctrlKey) && (e.key === 'a' || e.key === 'A')
+    if (isSelectAll) {
+      // Wait a tick for the browser to apply the full-page selection
+      setTimeout(checkKeyboardSelection, 100)
     }
   })
 
@@ -382,7 +437,7 @@
 
       const translated = await translateText(text, settings)
       hideButton()
-      showTooltip(translated, rect, range)
+      showTooltip(translated, rect, range, settings.targetLang)
 
       try { await navigator.clipboard.writeText(translated) } catch { /* ignore */ }
     } catch (err) {
