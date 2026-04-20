@@ -31,7 +31,11 @@
     "gpt",
     "Viezan"
   ],
-  "author": "Viezan",
+  "author": {
+    "name": "Viezan",
+    "email": "support@viezan.app",
+    "url": "https://github.com/trunghieupham59/viezan"
+  },
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
@@ -107,6 +111,12 @@
     "afterSign": "scripts/notarize.mjs",
     "win": {
       "icon": "build/icon.ico",
+      "publisherName": "Viezan",
+      "legalTrademarks": "Viezan",
+      "copyright": "Copyright © 2024-2025 Viezan. All rights reserved.",
+      "requestedExecutionLevel": "asInvoker",
+      "verifyUpdateCodeSignature": false,
+      "signingHashAlgorithms": ["sha256"],
       "target": [
         {
           "target": "nsis",
@@ -132,7 +142,13 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico"
+      "uninstallerIcon": "build/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Viezan",
+      "menuCategory": "Viezan",
+      "displayLanguageSelector": false,
+      "deleteAppDataOnUninstall": false
     }
   }
 }

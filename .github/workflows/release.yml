@@ -201,7 +201,15 @@ jobs:
               run: ${{ matrix.cmd }}
 
     # ─────────────────────────────────────────────
-    # Windows build → SignPath signing (free for OSS)
+    # Windows build → SignPath signing (free for OSS, optional)
+    # If SIGNPATH secrets are not configured, unsigned installer is
+    # uploaded directly. Set up SignPath to get a trusted signature:
+    #   1. Register at https://signpath.io → "Open Source" free plan
+    #   2. Link your GitHub repo in SignPath project settings
+    #   3. Create project slug: "tre-assistant"
+    #   4. Create signing policy slug: "release-signing"
+    #   5. Create artifact config slug: "windows-installer"
+    #   6. Add SIGNPATH_API_TOKEN & SIGNPATH_ORGANIZATION_ID as repo secrets
     # ─────────────────────────────────────────────
     build-windows:
         needs: create-release
@@ -238,7 +246,6 @@ jobs:
             - name: Build unsigned Windows installer
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  # Disable all local signing — SignPath will sign the artifact
                   CSC_IDENTITY_AUTO_DISCOVERY: "false"
                   WIN_CSC_LINK: ""
                   WIN_CSC_KEY_PASSWORD: ""
@@ -253,20 +260,34 @@ jobs:
                   echo "INSTALLER_NAME=$(basename $INSTALLER)" >> "$GITHUB_OUTPUT"
                   echo "Found installer: $INSTALLER"
 
+            - name: Check if SignPath secrets are configured
+              id: check_signpath
+              shell: bash
+              run: |
+                  if [ -n "$SIGNPATH_API_TOKEN" ] && [ -n "$SIGNPATH_ORG_ID" ]; then
+                    echo "ENABLED=true" >> "$GITHUB_OUTPUT"
+                    echo "SignPath secrets found — will attempt signing."
+                  else
+                    echo "ENABLED=false" >> "$GITHUB_OUTPUT"
+                    echo "SignPath secrets not configured — will upload unsigned installer."
+                  fi
+              env:
+                  SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+                  SIGNPATH_ORG_ID: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+
+            # ── SignPath signing (only when secrets are configured) ──────
             - name: Package installer + app PE files into ZIP for SignPath
+              if: steps.check_signpath.outputs.ENABLED == 'true'
               shell: pwsh
               run: |
                   New-Item -ItemType Directory -Force -Path signing-input | Out-Null
-                  # Copy NSIS installer
                   Copy-Item release\*.exe signing-input\
-                  # Copy unpacked app EXE and DLL files (deep signing)
                   if (Test-Path release\win-unpacked) {
                     Get-ChildItem -Path release\win-unpacked -Filter *.exe | Copy-Item -Destination signing-input\
                     Get-ChildItem -Path release\win-unpacked -Filter *.dll | Copy-Item -Destination signing-input\
                     Write-Host "Copied PE files:"
                     Get-ChildItem signing-input | Select-Object Name
                   }
-                  # Must cd into the folder so Compress-Archive stores files at ZIP root
                   Push-Location signing-input
                   Compress-Archive -Path * -DestinationPath ..\unsigned-bundle.zip -Force
                   Pop-Location
@@ -275,24 +296,17 @@ jobs:
 
             - name: Upload unsigned bundle as workflow artifact
               id: upload_unsigned
+              if: steps.check_signpath.outputs.ENABLED == 'true'
               uses: actions/upload-artifact@v4
               with:
                   name: unsigned-windows-bundle
                   path: unsigned-bundle.zip
                   retention-days: 1
 
-            # ── SignPath.io free signing for open source ──────────────────
-            # Prerequisites (one-time setup):
-            #   1. Register at https://signpath.io → choose "Open Source" free plan
-            #   2. Link your GitHub repo in the SignPath project settings
-            #   3. Create project slug: "tre-assistant"
-            #   4. Create signing policy slug: "release-signing"
-            #   5. Create artifact config slug: "windows-installer" (use build/signpath-artifact-config.xml)
-            #   6. Add SIGNPATH_API_TOKEN & SIGNPATH_ORGANIZATION_ID as repo secrets
-            # See: docs/windows-signing-setup.md for detailed instructions
-            # ─────────────────────────────────────────────────────────────
             - name: Sign bundle via SignPath.io
               id: sign
+              if: steps.check_signpath.outputs.ENABLED == 'true'
+              continue-on-error: true
               uses: signpath/github-action-submit-signing-request@v1
               with:
                   api-token: "${{ secrets.SIGNPATH_API_TOKEN }}"
@@ -305,12 +319,12 @@ jobs:
                   output-artifact-directory: "release-signed"
 
             - name: Extract signed installer and upload to GitHub Release
+              if: steps.check_signpath.outputs.ENABLED == 'true' && steps.sign.outcome == 'success'
               shell: bash
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   TAG="${GITHUB_REF#refs/tags/}"
-                  # Unzip signed bundle and grab the installer
                   cd release-signed
                   SIGNED_ZIP=$(ls *.zip | head -n 1)
                   unzip -o "$SIGNED_ZIP" -d unpacked-signed
@@ -321,5 +335,18 @@ jobs:
                   INSTALLER_NAME="${{ steps.find_installer.outputs.INSTALLER_NAME }}"
                   cp "$SIGNED_EXE" "../release-final-${INSTALLER_NAME}"
                   cd ..
-                  echo "Uploading: release-final-${INSTALLER_NAME}"
+                  echo "Uploading signed: release-final-${INSTALLER_NAME}"
                   gh release upload "$TAG" "release-final-${INSTALLER_NAME}" --clobber
+
+            # ── Fallback: upload unsigned when SignPath is not configured or failed ──
+            - name: Upload unsigned installer to GitHub Release (fallback)
+              if: steps.check_signpath.outputs.ENABLED == 'false' || steps.sign.outcome == 'failure' || steps.sign.outcome == 'skipped'
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  TAG="${GITHUB_REF#refs/tags/}"
+                  INSTALLER="${{ steps.find_installer.outputs.INSTALLER_PATH }}"
+                  INSTALLER_NAME="${{ steps.find_installer.outputs.INSTALLER_NAME }}"
+                  echo "Uploading unsigned: $INSTALLER_NAME"
+                  gh release upload "$TAG" "$INSTALLER" --clobber
