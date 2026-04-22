@@ -16,6 +16,9 @@ const FONT_SIZE_MAP = {
   large:  '17px',
 }
 
+/** Height (px) of the macOS traffic-light drag region at the top of the window. */
+const MACOS_TITLEBAR_HEIGHT_PX = 40
+
 function App() {
   const { activePage, localeAuto, setKeyStatus, setLocaleFromSystem, fontSize, selectedProvider, selectedModels } = useAppStore()
 
@@ -63,7 +66,7 @@ function App() {
       {/* Full-width macOS traffic light drag region — only on macOS */}
       {isMac && (
         <>
-          <div className="titlebar-drag flex-shrink-0 w-full bg-white dark:bg-gray-900" style={{ height: '40px' }} />
+          <div className="titlebar-drag flex-shrink-0 w-full bg-white dark:bg-gray-900" style={{ height: `${MACOS_TITLEBAR_HEIGHT_PX}px` }} />
           {/* Divider below traffic light buttons */}
           <div className="flex-shrink-0 w-full border-b border-gray-200 dark:border-gray-700" />
         </>

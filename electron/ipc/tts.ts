@@ -23,12 +23,17 @@ import {
   EDGE_TTS_WIN_EPOCH,
   EDGE_TTS_DEFAULT_VOICE,
   EDGE_TTS_DEFAULT_RATE,
+  EDGE_TTS_TIMEOUT_MS,
   ELEVENLABS_API_BASE,
   ELEVENLABS_TTS_MODEL,
   ELEVENLABS_DEFAULT_VOICE_ID,
+  ELEVENLABS_STABILITY,
+  ELEVENLABS_SIMILARITY_BOOST,
+  ELEVENLABS_STYLE,
   GEMINI_API_BASE,
   GEMINI_TTS_MODEL,
   GEMINI_TTS_VOICE_NAME,
+  OPENAI_TTS_MODEL,
 } from './ipcConstants'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -118,7 +123,7 @@ async function ttsWithOpenAI(
   const client = new OpenAI({ apiKey })
 
   const response = await client.audio.speech.create({
-    model: 'tts-1',
+    model: OPENAI_TTS_MODEL,
     voice,
     input: text,
     response_format: 'mp3',
@@ -197,7 +202,7 @@ async function ttsWithEdge(text: string, voice = EDGE_TTS_DEFAULT_VOICE): Promis
     const timeout = setTimeout(() => {
       ws.terminate()
       reject(new Error('Edge TTS: connection timeout'))
-    }, 8_000)
+    }, EDGE_TTS_TIMEOUT_MS)
 
     ws.on('open', () => {
       // 1. Send speech.config
@@ -376,9 +381,9 @@ async function ttsWithElevenLabs(
       text,
       model_id: ELEVENLABS_TTS_MODEL,
       voice_settings: {
-        stability: 0.5,
-        similarity_boost: 0.75,
-        style: 0.0,
+        stability: ELEVENLABS_STABILITY,
+        similarity_boost: ELEVENLABS_SIMILARITY_BOOST,
+        style: ELEVENLABS_STYLE,
         use_speaker_boost: true,
       },
     }),

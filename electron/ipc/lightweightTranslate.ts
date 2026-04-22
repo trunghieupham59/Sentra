@@ -1,4 +1,10 @@
-import { LIGHTWEIGHT_TRANSLATOR_PROMPT, MAX_LIGHTWEIGHT_TRANSLATE_TOKENS } from './ipcConstants'
+import {
+  LIGHTWEIGHT_TRANSLATOR_PROMPT,
+  MAX_LIGHTWEIGHT_TRANSLATE_TOKENS,
+  EXT_DEFAULT_GEMINI_MODEL,
+  EXT_DEFAULT_OPENAI_MODEL,
+  EXT_DEFAULT_CLAUDE_MODEL,
+} from './ipcConstants'
 import { getStoredApiKey } from './storage'
 
 export interface LightweightTranslateParams {
@@ -20,9 +26,11 @@ export async function lightweightTranslate({
 }: LightweightTranslateParams): Promise<{ success: boolean; translatedText?: string; error?: string }> {
   if (!text?.trim()) return { success: false, error: 'Text is empty' }
 
-  const resolvedModel = model ?? (provider === 'gemini' ? 'gemini-2.0-flash'
-    : provider === 'openai' ? 'gpt-4o-mini'
-    : 'claude-3-5-haiku-20241022')
+  const resolvedModel = model ?? (
+    provider === 'gemini' ? EXT_DEFAULT_GEMINI_MODEL
+    : provider === 'openai' ? EXT_DEFAULT_OPENAI_MODEL
+    : EXT_DEFAULT_CLAUDE_MODEL
+  )
 
   const apiKey = await getStoredApiKey(provider)
   if (!apiKey) return { success: false, error: `No API key configured for ${provider}` }

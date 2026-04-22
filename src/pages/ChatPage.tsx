@@ -28,6 +28,24 @@ const CHAT_TEXTAREA_MAX_HEIGHT_PX = 160
 // HC-09: MAX_CHAT_IMAGE_DIMENSION imported from constants/image.ts
 // MAX_CHAT_SESSIONS is enforced in useAppStore.createChatSession — defined there as the single source of truth
 
+/**
+ * DUP-02: Convert a store ChatMessage to the IPC-format expected by chatService.send().
+ * Strips UI-only fields (id, timestamp, isLoading, error, imagePreviewUrl, imageFileName)
+ * that should not be sent to the main process.
+ * Centralised here so handleSend and handleRegenerate share a single implementation.
+ */
+function toIpcMessage(msg: ChatMessage) {
+  return {
+    role: msg.role,
+    content: msg.content.map((c) => ({
+      type: c.type,
+      text: c.text,
+      imageBase64: c.imageBase64,
+      imageMimeType: c.imageMimeType,
+    })),
+  }
+}
+
 // HC-11: Named animation constants for voice bars
 // (dynamic inline styles are necessary for staggered animation — these names add intent)
 const VOICE_BAR_HEIGHT_BASE_PX = 6     // px base height for voice bars
@@ -166,15 +184,7 @@ export function ChatPage() {
       const result = await chatService.send({
         provider: selectedProvider,
         model: selectedModels[selectedProvider],
-        messages: historyMessages.map((m) => ({
-          role: m.role,
-          content: m.content.map((c) => ({
-            type: c.type,
-            text: c.text,
-            imageBase64: c.imageBase64,
-            imageMimeType: c.imageMimeType,
-          })),
-        })),
+        messages: historyMessages.map(toIpcMessage),
         systemPrompt: chatSystemPrompt || undefined,
       })
 
@@ -249,15 +259,7 @@ export function ChatPage() {
       const session = useAppStore.getState().chatSessions.find((s) => s.id === sessionId)
       const messages = (session?.messages ?? [])
         .filter((m) => !m.isLoading && !m.error)
-        .map((m) => ({
-          role: m.role,
-          content: m.content.map((c) => ({
-            type: c.type,
-            text: c.text,
-            imageBase64: c.imageBase64,
-            imageMimeType: c.imageMimeType,
-          })),
-        }))
+        .map(toIpcMessage)
 
       const result = await chatService.send({
         provider: selectedProvider,

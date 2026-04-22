@@ -34,13 +34,13 @@ export function TtsSection() {
         const updated = await window.api.keychain.get('elevenlabs')
         setElKey({ exists: updated.exists ?? false, masked: updated.masked ?? null })
         setElInput('')
-        setElMsg({ text: '✓ ElevenLabs key saved!', ok: true })
+        setElMsg({ text: t.settings_tts_el_saved, ok: true })
         setTimeout(() => setElMsg(null), 4000)
       } else {
-        setElMsg({ text: `✗ ${result.error ?? 'Failed to save'}`, ok: false })
+        setElMsg({ text: `✗ ${result.error ?? t.settings_tts_el_failed}`, ok: false })
       }
     } catch (err) {
-      setElMsg({ text: `✗ ${err instanceof Error ? err.message : 'Error'}`, ok: false })
+      setElMsg({ text: `✗ ${err instanceof Error ? err.message : t.settings_tts_el_failed}`, ok: false })
     } finally {
       setElSaving(false)
     }
@@ -66,13 +66,13 @@ export function TtsSection() {
       {/* TTS priority info */}
       <div className="px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900">
         <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-0.5">
-          {t.settings_tts_section} — Priority
+          {t.settings_tts_section} — {t.settings_tts_priority_label}
         </p>
         <p className="text-xs text-blue-600 dark:text-blue-400 font-mono tracking-wide">
           {t.settings_tts_priority_desc}
         </p>
         <p className="text-[10px] text-blue-500 dark:text-blue-500 mt-1">
-          Edge TTS is free — always available as fallback even without any API key.
+          {t.settings_tts_edge_free_note}
         </p>
       </div>
 
@@ -146,7 +146,7 @@ export function TtsSection() {
                 onChange={showMasked ? undefined : (e) => setElInput(e.target.value)}
                 onClick={showMasked ? () => setElInput('') : undefined}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !showMasked) handleElSave() }}
-                placeholder={elKey.exists ? t.settings_key_placeholder_new : 'Paste your ElevenLabs API key…'}
+                placeholder={elKey.exists ? t.settings_key_placeholder_new : t.settings_tts_el_key_placeholder}
                 className={[
                   'w-full px-3 py-2 border rounded-lg text-sm font-mono',
                   'focus:outline-none focus:ring-2 focus:ring-purple-500',

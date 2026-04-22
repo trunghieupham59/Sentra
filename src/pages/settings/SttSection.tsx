@@ -21,7 +21,7 @@ export function SttSection() {
       {/* Provider info banner */}
       <div className="px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50">
         <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-0.5">
-          Provider
+          {t.settings_stt_provider_label}
         </p>
         <p className="text-xs text-emerald-600 dark:text-emerald-400 font-mono tracking-wide">
           {t.settings_stt_engine_name}

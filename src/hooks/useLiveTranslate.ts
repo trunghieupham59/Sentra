@@ -14,6 +14,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getSupportedAudioMimeType } from '../constants/audio'
+import { LANG_NAMES_FOR_AI } from '../constants/langNames'
 import { useAppStore } from '../store/useAppStore'
 import type { SubtitleSettings } from '../types'
 import { extractCompleteSentences, isHallucination, jaccardSimilarity } from '../utils/live-translate'
@@ -182,15 +183,15 @@ export const DEFAULT_SUBTITLE_SETTINGS = {
   bgOpacity: 84,
 } as const satisfies SubtitleSettings
 
-/** Maps BCP-47 language codes to English language names for AI prompts.
- *  Using full names prevents the model from defaulting to the transcript language. */
-const LANG_NAMES: Record<string, string> = {
-  vi: 'Vietnamese', en: 'English', zh: 'Chinese (Simplified)',
-  'zh-TW': 'Chinese (Traditional)', ja: 'Japanese', ko: 'Korean',
-  fr: 'French', de: 'German', es: 'Spanish', pt: 'Portuguese',
-  ru: 'Russian', ar: 'Arabic', th: 'Thai', id: 'Indonesian',
-  it: 'Italian', nl: 'Dutch', pl: 'Polish', tr: 'Turkish', hi: 'Hindi',
-}
+/**
+ * Maximum characters sent to the AI for summarization / action items / decisions.
+ * Keeps the last N chars of each section (most recent & relevant content).
+ * Avoids token-limit errors on long sessions while giving the model enough context.
+ */
+const MAX_SUMMARIZE_SECTION_CHARS = 10_000
+
+/** How long (ms) a pipeline error toast is shown before auto-dismissing. */
+const PIPELINE_ERROR_DISPLAY_MS = 4_000
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
@@ -385,7 +386,7 @@ export function useLiveTranslate() {
     } catch {
       setPipelineError('STT failed — retrying next chunk')
       if (pipelineErrorTimerRef.current) clearTimeout(pipelineErrorTimerRef.current)
-      pipelineErrorTimerRef.current = setTimeout(() => setPipelineError(null), 4000)
+      pipelineErrorTimerRef.current = setTimeout(() => setPipelineError(null), PIPELINE_ERROR_DISPLAY_MS)
     }
     finally { setIsTranscribing(false) }
 
@@ -932,13 +933,6 @@ export function useLiveTranslate() {
   }, [])
 
   // ── AI Summarize ────────────────────────────────────────────────────────────
-  /**
-   * Maximum characters sent to the AI for summarization.
-   * Keeps the last N chars of each section (most recent & relevant content).
-   * Avoids token-limit errors on long sessions while giving the model enough context.
-   */
-  const MAX_SUMMARIZE_SECTION_CHARS = 10_000
-
   const handleSummarize = useCallback(async () => {
     let raw = fullRawForSummaryRef.current
     let tx  = fullTxForSummaryRef.current
@@ -1096,7 +1090,7 @@ export function useLiveTranslate() {
     setActionItems(null)
 
     const { targetLang, selectedProvider, selectedModels } = paramsRef.current
-    const langName = LANG_NAMES[targetLang] ?? targetLang
+    const langName = LANG_NAMES_FOR_AI[targetLang] ?? targetLang
 
     const MAX_AI_INPUT_CHARS = 10_000
     if (raw.length > MAX_AI_INPUT_CHARS) {
@@ -1157,7 +1151,7 @@ export function useLiveTranslate() {
     setDecisions(null)
 
     const { targetLang, selectedProvider, selectedModels } = paramsRef.current
-    const langName = LANG_NAMES[targetLang] ?? targetLang
+    const langName = LANG_NAMES_FOR_AI[targetLang] ?? targetLang
 
     const MAX_AI_INPUT_CHARS = 10_000
     if (raw.length > MAX_AI_INPUT_CHARS) {

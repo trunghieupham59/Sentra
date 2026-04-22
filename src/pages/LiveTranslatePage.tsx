@@ -25,6 +25,24 @@ import { COPY_FEEDBACK_DURATION_MS } from '../constants/ui'
 import { useAppStore, useT } from '../store/useAppStore'
 import { MACOS_SCREEN_RECORDING_PREFS } from '../constants/urls'
 
+/**
+ * DUP-04: Shared helper for downloading text content as a file.
+ * Both handleExportTxt and handleExportSrt had identical blob-download patterns.
+ * @param content - text content to save
+ * @param baseName - filename without extension (e.g. 'meeting')
+ * @param ext - file extension (e.g. 'txt', 'srt')
+ */
+function downloadTextFile(content: string, baseName: string, ext: string): void {
+  const dateStr = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-')
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${baseName}-${dateStr}.${ext}`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 const SUBTITLE_FONT_SIZES = [
   { size: 14 as const, label: 'S' },
   { size: 18 as const, label: 'M' },
@@ -73,7 +91,6 @@ export function LiveTranslatePage() {
   // ── Export functions ───────────────────────────────────────────────────────
   const handleExportTxt = () => {
     if (!rawTranscript) return
-    const dateStr = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-')
     const lines: string[] = [
       '=== Meeting Transcript ===',
       `Date: ${new Date().toLocaleString()}`,
@@ -87,13 +104,7 @@ export function LiveTranslatePage() {
     if (summary) lines.push('', '--- Summary ---', summary)
     if (actionItems) lines.push('', '--- Action Items ---', actionItems)
     if (decisions) lines.push('', '--- Key Decisions ---', decisions)
-    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `meeting-${dateStr}.txt`
-    a.click()
-    URL.revokeObjectURL(url)
+    downloadTextFile(lines.join('\n'), 'meeting', 'txt')
   }
 
   const handleExportSrt = () => {
@@ -120,14 +131,7 @@ export function LiveTranslatePage() {
         '',
       )
     })
-    const dateStr = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-')
-    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `meeting-${dateStr}.srt`
-    a.click()
-    URL.revokeObjectURL(url)
+    downloadTextFile(lines.join('\n'), 'meeting', 'srt')
   }
 
   const subtitleColors = [

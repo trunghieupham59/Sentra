@@ -124,6 +124,8 @@ export interface Translations {
   settings_furigana_desc: string
   // Settings — Speech-to-Text section
   settings_stt_section: string
+  /** Label for the "Provider" sub-header in STT section */
+  settings_stt_provider_label: string
   settings_stt_provider_desc: string
   settings_stt_engine_name: string
   settings_stt_ready: string
@@ -135,8 +137,18 @@ export interface Translations {
   settings_tts_section: string
   /** Short description of TTS provider priority order */
   settings_tts_priority_desc: string
+  /** Label for the "Priority" sub-header in TTS section */
+  settings_tts_priority_label: string
   settings_tts_elevenlabs_key: string
   settings_tts_elevenlabs_key_desc: string
+  /** Placeholder text for ElevenLabs API key input */
+  settings_tts_el_key_placeholder: string
+  /** Success message after saving ElevenLabs key */
+  settings_tts_el_saved: string
+  /** Fallback error label when ElevenLabs save fails */
+  settings_tts_el_failed: string
+  /** Note about Edge TTS being free */
+  settings_tts_edge_free_note: string
   settings_tts_voice: string
   settings_tts_voice_desc: string
   settings_tts_voice_alloy: string

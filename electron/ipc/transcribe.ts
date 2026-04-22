@@ -1,9 +1,6 @@
 import type { IpcMain } from 'electron'
 import { getStoredApiKey } from './storage'
-
-function getApiKey(provider: string): string | null {
-  return getStoredApiKey(provider)
-}
+import { WHISPER_MODEL } from './ipcConstants'
 
 interface TranscribeParams {
   audioData: ArrayBuffer   // Raw audio bytes from MediaRecorder
@@ -108,7 +105,7 @@ export function registerTranscribeHandlers(ipcMain: IpcMain) {
   ipcMain.handle('audio:transcribe', async (_event, params: TranscribeParams): Promise<TranscribeResult> => {
     const { audioData, mimeType, language } = params
 
-    const apiKey = await getApiKey('openai')
+    const apiKey = await getStoredApiKey('openai')
     if (!apiKey) {
       return {
         success: false,
@@ -143,7 +140,7 @@ export function registerTranscribeHandlers(ipcMain: IpcMain) {
       // biome-ignore lint/suspicious/noExplicitAny: SDK type varies by response_format overload
       const rawResponse = await (client.audio.transcriptions.create({
         file,
-        model: 'whisper-1',
+        model: WHISPER_MODEL,
         language: whisperLang,
         response_format: 'verbose_json',
         // Anti-hallucination prompt: primes the decoder with natural

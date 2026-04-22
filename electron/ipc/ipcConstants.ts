@@ -158,3 +158,36 @@ export const ELEVENLABS_API_BASE = 'https://api.elevenlabs.io'
 export const ELEVENLABS_TTS_MODEL = 'eleven_multilingual_v2'
 /** Default ElevenLabs voice ID — Adam (neutral, works well for all languages). */
 export const ELEVENLABS_DEFAULT_VOICE_ID = 'pNInz6obpgDQGcFmaJgB'
+
+// ── ElevenLabs voice quality settings ────────────────────────────────────────
+/** Stability: balance between consistent delivery (1.0) and expressive variability (0.0). */
+export const ELEVENLABS_STABILITY = 0.5
+/** Similarity boost: how closely the output matches the original voice. Higher = more similar. */
+export const ELEVENLABS_SIMILARITY_BOOST = 0.75
+/** Style exaggeration: 0.0 = off (recommended for most use cases to avoid distortion). */
+export const ELEVENLABS_STYLE = 0.0
+
+// ── OpenAI TTS & STT models ───────────────────────────────────────────────────
+/** OpenAI TTS model — standard quality, low latency. Upgrade to 'tts-1-hd' for higher quality. */
+export const OPENAI_TTS_MODEL = 'tts-1'
+
+/** OpenAI Whisper STT model — supports 99 languages, used for voice input and live transcription. */
+export const WHISPER_MODEL = 'whisper-1'
+
+// ── Lightweight translate default models (used when no model is specified) ────
+/**
+ * Default OpenAI model for lightweight translation (global hotkey, bookmarklet).
+ * NOTE: EXT_DEFAULT_GEMINI_MODEL is already defined above.
+ */
+export const EXT_DEFAULT_OPENAI_MODEL = 'gpt-4o-mini'
+
+/** Default Claude model for lightweight translation. */
+export const EXT_DEFAULT_CLAUDE_MODEL = 'claude-3-5-haiku-20241022'
+
+// ── Edge TTS timeout ──────────────────────────────────────────────────────────
+/**
+ * Safety timeout (ms) for Edge TTS WebSocket connection.
+ * 8 s allows the fallback chain (OpenAI → Gemini → Edge → ElevenLabs) to
+ * kick in quickly without blocking the TTS pipeline for too long.
+ */
+export const EDGE_TTS_TIMEOUT_MS = 8_000
