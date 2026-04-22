@@ -45,80 +45,54 @@ const CONTEXT_SENTENCES    = 2
  * Gate 1 — RMS amplitude threshold (sustained):
  *   Web Audio API getByteTimeDomainData() returns 0-255 centered at 128.
  *   RMS of deviation from 128:
- *     • Pure silence            : ~0-3
- *     • AC hum / room noise     : ~3-6
- *     • Quiet breath / rustling : ~6-10
- *     • Quiet speech            : ~10-20
- *     • Normal speech           : ~20-80
+ *     • Pure silence            : ~0-2
+ *     • AC hum / room noise     : ~2-4
+ *     • Quiet breath / rustling : ~4-8
+ *     • Quiet speech            : ~8-15
+ *     • Normal speech           : ~15-80
  *
- * Gate 2 — sustained speech requirement:
- *   At least MIN_SPEECH_SAMPLES cumulative samples must exceed SPEECH_RMS_THRESHOLD
- *   within a 3-second chunk.  With 80 ms intervals, MIN_SPEECH_SAMPLES=4
- *   ≈ 320 ms of sustained audio — filters transient pops/clicks.
+ * Gate 2 — sustained speech requirement (very short — 1 sample = 80ms minimum).
  *
- * Gate 3 — peak RMS confirmation:
- *   The highest single-sample RMS in the chunk must exceed PEAK_RMS_THRESHOLD.
- *   This rules out AC hum (steady low-amplitude noise) that could accumulate
- *   enough samples to pass Gate 2 while never reaching speech levels.
- *
- * No blob-size fallback: sending silent audio to Whisper always produces
- * hallucinations.  VAD is the primary gate — tune the thresholds instead.
+ * Gate 3 — peak RMS confirmation: even lower to catch system/remote audio.
  */
-const SPEECH_RMS_THRESHOLD = 4    // sustained sensitivity — lowered to catch quieter/distant speech
-const PEAK_RMS_THRESHOLD   = 8    // peak gate: lowered so quiet mics still pass
-const MIN_SPEECH_SAMPLES   = 2    // 2 × 80 ms = 160 ms minimum — faster detection, less dropout
+const SPEECH_RMS_THRESHOLD = 2    // very sensitive — catches system audio and distant/quiet speakers
+const PEAK_RMS_THRESHOLD   = 4    // lowered — system audio often has lower peak amplitude
+const MIN_SPEECH_SAMPLES   = 1    // 1 × 80 ms = 80 ms minimum — reduces dropout significantly
 const VAD_SAMPLE_INTERVAL  = 80   // ms between AnalyserNode samples
 
 /**
  * Upper bound on words Whisper may return for a single CHUNK_DURATION_MS chunk.
- * Human speech tops out at ~5 words/second; 3 s × 5 × 2.5 safety margin = 37.
- * Outputs exceeding this are overwhelmingly drift/hallucination ("output more
- * than the audio contains") and are discarded.
+ * Raised for languages with higher token density (Japanese, Chinese).
  */
-const MAX_WORDS_PER_CHUNK  = 40
+const MAX_WORDS_PER_CHUNK  = 60   // raised — Japanese/Chinese produce more tokens per second
 
 /**
  * Upper bound on word-per-second rate within a chunk.
- * Very fast speech peaks at ~5 words/sec; 7 is a generous safety margin.
- * If Whisper returns more words per second than this, the output almost
- * certainly contains fabricated content not present in the audio.
+ * Raised to accommodate fast speakers and high-token-density languages.
  */
-const MAX_WORDS_PER_SEC    = 10   // raised — Japanese/fast speakers produce more tokens/sec
+const MAX_WORDS_PER_SEC    = 15   // raised — accommodate fast/dense speech
 
 /**
- * Number of consecutive silent chunks (chunks where VAD found no speech)
- * after which the session context is fully reset.
- *
- * At CHUNK_DURATION_MS=3000 ms, 5 chunks ≈ 15 seconds of silence.
- * After a pause this long, the previous transcript is stale context that
- * may cause the decoder to continue a sentence that no longer exists.
- * Resetting prevents "context-conditioned hallucination drift".
+ * Number of consecutive silent chunks before context reset.
+ * Raised to 10 (= 30 s) to reduce over-eager context clearing.
  */
-const SILENCE_RESET_CHUNKS = 5
+const SILENCE_RESET_CHUNKS = 10   // raised — 30 s of silence before context reset
 
 /**
  * Whisper confidence gate thresholds (from verbose_json segment signals).
- *
- *   NO_SPEECH_PROB_MAX   : Whisper's own estimate that no speech is present.
- *                          0.65 means "model is ≥65% sure this is silence".
- *   AVG_LOGPROB_MIN      : Average log-probability of generated tokens.
- *                          Below −1.0 the model is not confident in any token.
- *   COMPRESSION_RATIO_MAX: Ratio of raw bytes to compressed bytes for the text.
- *                          High values indicate repetitive or anomalous output.
+ * Relaxed to reduce false rejections — Whisper's own no_speech_prob is
+ * the most reliable signal; the others are secondary guards.
  */
-const NO_SPEECH_PROB_MAX    = 0.75   // raised — accept chunks unless Whisper is very sure it's silence
-const AVG_LOGPROB_MIN       = -1.4   // lowered — accept lower-confidence transcriptions
-const COMPRESSION_RATIO_MAX = 2.8    // raised — allow slightly more repetitive output
+const NO_SPEECH_PROB_MAX    = 0.90   // only reject if Whisper is ≥90% sure it's silence
+const AVG_LOGPROB_MIN       = -2.0   // accept lower-confidence transcriptions
+const COMPRESSION_RATIO_MAX = 3.5    // allow more repetitive output before discarding
 
 /**
- * Software gain applied to the microphone signal before recording and VAD.
- * 1.0 = unity, 2.0 = double amplitude, 3.0 = triple.
- * A value of 2.5 lifts quiet/distant voices above the VAD threshold without
- * over-saturating close/loud speech (Web Audio clips at ±1.0 post-GainNode,
- * but the RMS gate still acts on the amplified waveform, so VAD becomes
- * proportionally more sensitive).
+ * Software gain applied to the microphone AND system audio signal.
+ * Applied to boost quiet/distant speakers above the VAD threshold.
  */
-const MIC_GAIN = 4.0   // raised — captures quiet/distant speakers; Web Audio clips at ±1.0 so headroom is safe
+const MIC_GAIN        = 4.0   // mic boost — compensates for quiet/distant speakers
+const SYSTEM_AUD_GAIN = 2.0   // system audio boost — remote call audio is often quieter
 
 /**
  * Maximum number of characters to retain in the raw transcript ref for
@@ -160,6 +134,16 @@ export const DEFAULT_SUBTITLE_SETTINGS = {
   fontSize:  18,
   bgOpacity: 84,
 } as const satisfies SubtitleSettings
+
+/** Maps BCP-47 language codes to English language names for AI prompts.
+ *  Using full names prevents the model from defaulting to the transcript language. */
+const LANG_NAMES: Record<string, string> = {
+  vi: 'Vietnamese', en: 'English', zh: 'Chinese (Simplified)',
+  'zh-TW': 'Chinese (Traditional)', ja: 'Japanese', ko: 'Korean',
+  fr: 'French', de: 'German', es: 'Spanish', pt: 'Portuguese',
+  ru: 'Russian', ar: 'Arabic', th: 'Thai', id: 'Indonesian',
+  it: 'Italian', nl: 'Dutch', pl: 'Polish', tr: 'Turkish', hi: 'Hindi',
+}
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
@@ -441,79 +425,85 @@ export function useLiveTranslate() {
     }
     const currentSpeaker = currentSpeakerRef.current
 
-    setIsTranslating(true)
-    try {
-      const contextText = recentSentencesRef.current.join(' ')
-      const sourceText  = contextText
-        ? `[Context — for reference only, already translated. Do NOT retranslate]:\n"${contextText}"\n\n[Translate to ${targetLang}]:\n${complete}`
-        : complete
+    // ── Add segment immediately so it shows in the left panel while translating.
+    // Translation runs in the background — the queue is NOT blocked so the next
+    // audio chunk can be STT'd immediately without waiting for translation.
+    const segId = `seg-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`
+    setSegments(prev => [...prev, {
+      id: segId,
+      rawText: complete,
+      translation: '',   // will be filled in when background translation finishes
+      speaker: currentSpeaker,
+      timestamp: Date.now(),
+    }])
 
-      const batchParams = {
-        provider: selectedProvider,
-        model: selectedModels[selectedProvider],
-        sourceText,
-        sourceLang,
-        targetLang,
-        translationStyle: 'neutral' as const,
-        showFurigana: false,
-      }
-
-      let txResult: { success: boolean; translatedText?: string }
-      let usedStreaming = false
-
-      if (showSubtitlesRef.current) {
-        // Subtitle active → try streaming first; each token is pushed directly
-        // to the subtitle window by the main process in real-time.
-        try {
-          txResult = await window.api.translateStream({
-            provider: selectedProvider,
-            model: selectedModels[selectedProvider],
-            sourceText,
-            sourceLang,
-            targetLang,
-            translationStyle: 'neutral',
-          })
-          usedStreaming = txResult.success
-        } catch {
-          // Streaming unavailable or failed — fall through to batch
-          txResult = { success: false }
-        }
-
-        // Fall back to batch translate if streaming failed
-        if (!txResult.success) {
-          txResult = await window.api.translate(batchParams)
-        }
-      } else {
-        txResult = await window.api.translate(batchParams)
-      }
-
-      if (txResult.success && txResult.translatedText) {
-        const newTx = txResult.translatedText.trim()
-        setTranslation(prev => prev ? `${prev} ${newTx}` : newTx)
-        // Update subtitle via non-streaming fallback path only
-        // (streaming already sent tokens to the subtitle window directly)
-        if (!usedStreaming) setLatestSubtitle(newTx)
-        fullTxForSummaryRef.current = fullTxForSummaryRef.current
-          ? `${fullTxForSummaryRef.current} ${newTx}`
-          : newTx
-        // Push realtime segment with speaker label
-        setSegments(prev => [...prev, {
-          id: `seg-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`,
-          rawText: complete,
-          translation: newTx,
-          speaker: currentSpeaker,
-          timestamp: Date.now(),
-        }])
-      }
-    } catch {
-      setPipelineError('Translation failed — will retry')
-      if (pipelineErrorTimerRef.current) clearTimeout(pipelineErrorTimerRef.current)
-      pipelineErrorTimerRef.current = setTimeout(() => setPipelineError(null), 4000)
-    }
-    finally { setIsTranslating(false) }
-
+    // Update context BEFORE launching background translation so the next sentence
+    // has the correct context even while this sentence is still being translated.
     recentSentencesRef.current.push(complete)
     if (recentSentencesRef.current.length > CONTEXT_SENTENCES) recentSentencesRef.current.shift()
+
+    // ── Fire translation in background (NOT awaited) ───────────────────────────
+    // This allows the STT queue to continue processing the next audio chunk
+    // immediately without waiting for AI translation to complete.
+    const contextText = recentSentencesRef.current.slice(0, -1).join(' ') // context = previous sentences
+    const sourceText  = contextText
+      ? `[Context — for reference only, already translated. Do NOT retranslate]:\n"${contextText}"\n\n[Translate to ${targetLang}]:\n${complete}`
+      : complete
+
+    void (async () => {
+      setIsTranslating(true)
+      try {
+        const batchParams = {
+          provider: selectedProvider,
+          model: selectedModels[selectedProvider],
+          sourceText,
+          sourceLang,
+          targetLang,
+          translationStyle: 'neutral' as const,
+          showFurigana: false,
+        }
+
+        let txResult: { success: boolean; translatedText?: string }
+        let usedStreaming = false
+
+        if (showSubtitlesRef.current) {
+          try {
+            txResult = await window.api.translateStream({
+              provider: selectedProvider,
+              model: selectedModels[selectedProvider],
+              sourceText,
+              sourceLang,
+              targetLang,
+              translationStyle: 'neutral',
+            })
+            usedStreaming = txResult.success
+          } catch {
+            txResult = { success: false }
+          }
+          if (!txResult.success) {
+            txResult = await window.api.translate(batchParams)
+          }
+        } else {
+          txResult = await window.api.translate(batchParams)
+        }
+
+        if (txResult.success && txResult.translatedText) {
+          const newTx = txResult.translatedText.trim()
+          setTranslation(prev => prev ? `${prev} ${newTx}` : newTx)
+          if (!usedStreaming) setLatestSubtitle(newTx)
+          fullTxForSummaryRef.current = fullTxForSummaryRef.current
+            ? `${fullTxForSummaryRef.current} ${newTx}`
+            : newTx
+          setSegments(prev => prev.map(seg =>
+            seg.id === segId ? { ...seg, translation: newTx } : seg
+          ))
+        }
+      } catch {
+        // Translation failed silently — segment stays with empty translation
+      } finally {
+        setIsTranslating(false)
+      }
+    })()
   }, [])
 
   // ── Recorder cycling with VAD ─────────────────────────────────────────────────
@@ -656,10 +646,13 @@ export function useLiveTranslate() {
         const dest = audioCtx.createMediaStreamDestination()
 
         if (sysAudioTracks.length > 0) {
+          // Apply software gain to system audio — remote call audio is quieter than mic
+          const sysGain = audioCtx.createGain()
+          sysGain.gain.value = SYSTEM_AUD_GAIN
           const sysSource = audioCtx.createMediaStreamSource(new MediaStream(sysAudioTracks))
-          sysSource.connect(dest)
-          sysSource.connect(analyser)
-          for (const track of sysAudioTracks) dest.stream.addTrack(track)
+          sysSource.connect(sysGain)
+          sysGain.connect(analyser)   // VAD reads boosted signal
+          sysGain.connect(dest)       // Whisper receives boosted signal
         } else {
           setMicError('System audio not available — please check "Share audio" in the screen sharing dialog, then try again.')
           audioCtx.close()
@@ -966,6 +959,7 @@ export function useLiveTranslate() {
     setActionItems(null)
 
     const { targetLang, selectedProvider, selectedModels } = paramsRef.current
+    const langName = LANG_NAMES[targetLang] ?? targetLang
 
     const MAX_AI_INPUT_CHARS = 10_000
     if (raw.length > MAX_AI_INPUT_CHARS) {
@@ -977,19 +971,19 @@ export function useLiveTranslate() {
         provider: selectedProvider,
         model: selectedModels[selectedProvider],
         bypassLengthCheck: true,
-        systemPrompt: `You are a meeting assistant. Extract action items from meeting transcripts clearly. Output in ${targetLang}.`,
+        systemPrompt: `You are a meeting assistant. Extract action items from meeting transcripts. IMPORTANT: Always respond in ${langName}, regardless of the transcript language.`,
         messages: [{
           role: 'user',
           content: [{
             type: 'text',
             text: [
               `Extract all action items from the following meeting transcript.`,
+              `IMPORTANT: Write your response in ${langName} only. Do NOT use the language of the transcript.`,
               'Rules:',
               '- List each action item as a numbered point',
               '- Include: responsible person (if mentioned), task description, deadline (if mentioned)',
               '- If no action items are found, say so clearly',
               '- Be concise and direct',
-              `- Output in ${targetLang}`,
               '',
               '[Transcript]:',
               raw,
@@ -1026,6 +1020,7 @@ export function useLiveTranslate() {
     setDecisions(null)
 
     const { targetLang, selectedProvider, selectedModels } = paramsRef.current
+    const langName = LANG_NAMES[targetLang] ?? targetLang
 
     const MAX_AI_INPUT_CHARS = 10_000
     if (raw.length > MAX_AI_INPUT_CHARS) {
@@ -1037,19 +1032,19 @@ export function useLiveTranslate() {
         provider: selectedProvider,
         model: selectedModels[selectedProvider],
         bypassLengthCheck: true,
-        systemPrompt: `You are a meeting assistant. Extract key decisions made during meetings. Output in ${targetLang}.`,
+        systemPrompt: `You are a meeting assistant. Extract key decisions made during meetings. IMPORTANT: Always respond in ${langName}, regardless of the transcript language.`,
         messages: [{
           role: 'user',
           content: [{
             type: 'text',
             text: [
               `Extract all key decisions made in the following meeting transcript.`,
+              `IMPORTANT: Write your response in ${langName} only. Do NOT use the language of the transcript.`,
               'Rules:',
               '- List each decision as a numbered point',
               '- Include context for each decision (why it was made, if mentioned)',
               '- If no clear decisions are found, say so clearly',
               '- Be concise and direct',
-              `- Output in ${targetLang}`,
               '',
               '[Transcript]:',
               raw,

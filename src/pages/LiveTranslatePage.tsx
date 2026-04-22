@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { LanguageSelector } from '../components/LanguageSelector'
 import { MarkdownText } from '../components/MarkdownText'
 import { ModelSelector } from '../components/ModelSelector'
@@ -47,7 +47,6 @@ export function LiveTranslatePage() {
     showSubtitles, setShowSubtitles, latestSubtitle,
     showSubtitleConfig, setShowSubtitleConfig, subtitleSettings, setSubtitleSettings,
     showSummaryBtn, summary, isSummarizing,
-    speakerAnalysis, isAnalyzingSpeakers, handleAnalyzeSpeakers,
     actionItems, isExtractingActionItems, decisions, isExtractingDecisions,
     speakerNameMap, sessionStartTime,
     segments, pendingText,
@@ -142,7 +141,6 @@ export function LiveTranslatePage() {
 
   // Whether the post-meeting panel should show
   const showPostPanel = showSummaryBtn || !!summary || isSummarizing
-    || !!speakerAnalysis || isAnalyzingSpeakers
     || !!actionItems || isExtractingActionItems
     || !!decisions || isExtractingDecisions
 
@@ -212,8 +210,10 @@ export function LiveTranslatePage() {
               isActive ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
             ].join(' ')}
           >
-            <MicrophoneIcon className="w-3 h-3" />
-            <MonitorIcon className="w-3 h-3 -ml-0.5" />
+            <span className="relative inline-flex items-center w-4 h-3 flex-shrink-0">
+              <MicrophoneIcon className="w-2.5 h-2.5 absolute left-0" />
+              <MonitorIcon className="w-2.5 h-2.5 absolute right-0" />
+            </span>
             {t.live_audio_mode_both}
           </button>
         </div>
@@ -282,32 +282,6 @@ export function LiveTranslatePage() {
 
       {micError && <Notice variant="error">{micError}</Notice>}
 
-      {/* Active recording status bar */}
-      {isActive && (
-        <div className="flex-shrink-0 flex items-center gap-2 px-4 py-1.5
-                        bg-red-50 dark:bg-red-950/20 border-b border-red-100 dark:border-red-900/40">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
-          </span>
-          <span className="text-xs font-medium text-red-600 dark:text-red-400 animate-pulse">
-            {t.live_status_listening}
-          </span>
-          {isTranscribing && (
-            <span className="text-xs text-gray-400 flex items-center gap-1 ml-2">
-              <SpinnerIcon className="w-3 h-3 animate-spin" />
-              {t.live_status_stt}
-            </span>
-          )}
-          {isTranslating && !isTranscribing && (
-            <span className="text-xs text-blue-400 flex items-center gap-1 ml-2">
-              <SpinnerIcon className="w-3 h-3 animate-spin" />
-              {t.live_status_translating}
-            </span>
-          )}
-          <span className="ml-auto text-xs text-red-300 dark:text-red-700">{t.live_chunk_hint}</span>
-        </div>
-      )}
 
       {/* Two-panel area: Original | Translation */}
       <div className="flex flex-1 min-h-0 divide-x divide-gray-100 dark:divide-gray-800">
@@ -382,13 +356,33 @@ export function LiveTranslatePage() {
               </button>
             )}
           </div>
-          <div className="flex-1 overflow-y-auto p-4">
-            {translation ? (
-              <p className="text-sm font-medium text-blue-700 dark:text-blue-300 leading-relaxed whitespace-pre-wrap">
-                {translation}
-                {isTranslating && (
-                  <SpinnerIcon className="inline w-3 h-3 animate-spin ml-1 text-blue-300 dark:text-blue-700 align-middle" />
+          <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
+            {segments.length > 0 ? (
+              <>
+                {segments.map((seg) => (
+                  <TranslationRow
+                    key={seg.id}
+                    speaker={seg.speaker}
+                    text={seg.translation}
+                    speakerNameMap={speakerNameMap}
+                  />
+                ))}
+                {isActive && isTranslating && (
+                  <div className="flex items-center gap-2 pl-1">
+                    <SpinnerIcon className="w-3 h-3 animate-spin text-blue-400" />
+                    <span className="text-xs text-blue-400 italic">{t.live_status_translating}</span>
+                  </div>
                 )}
+                {isActive && !isTranslating && (
+                  <div className="flex items-center gap-2 pl-1">
+                    <span className="inline-block w-0.5 h-4 bg-blue-300 dark:bg-blue-700 animate-pulse" />
+                  </div>
+                )}
+              </>
+            ) : translation ? (
+              // Fallback for restored sessions without segment data
+              <p className="text-sm font-medium text-blue-700 dark:text-blue-300 leading-relaxed whitespace-pre-wrap p-1">
+                {translation}
               </p>
             ) : (
               <EmptyPanel icon="translate">{t.live_empty_desc}</EmptyPanel>
@@ -402,31 +396,6 @@ export function LiveTranslatePage() {
       {showPostPanel && (
         <div className="flex-shrink-0 border-t-2 border-purple-100 dark:border-purple-900/40
                         bg-purple-50/50 dark:bg-purple-950/10">
-
-          {/* Speaker analysis panel */}
-          {(speakerAnalysis || isAnalyzingSpeakers) && (
-            <div className="mx-4 mt-3 rounded-xl border border-blue-100 dark:border-blue-900/40
-                            bg-blue-50/50 dark:bg-blue-950/10 overflow-hidden">
-              <div className="flex items-center justify-between px-3 py-2 border-b border-blue-100 dark:border-blue-900/40">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400">
-                  {t.live_speakers_title}
-                </p>
-                {speakerAnalysis && !isAnalyzingSpeakers && (
-                  <p className="text-[9px] text-blue-400 dark:text-blue-600">{t.live_speakers_rename_hint}</p>
-                )}
-              </div>
-              <div className="px-3 py-2 max-h-40 overflow-y-auto">
-                {isAnalyzingSpeakers ? (
-                  <div className="flex items-center gap-2 text-xs text-blue-400 py-1">
-                    <SpinnerIcon className="w-3.5 h-3.5 animate-spin" />
-                    {t.live_analyzing_speakers}
-                  </div>
-                ) : speakerAnalysis ? (
-                  <SpeakerAnalysisText text={speakerAnalysis} />
-                ) : null}
-              </div>
-            </div>
-          )}
 
           {/* Tab bar + action buttons */}
           <div className="flex items-center gap-2 px-4 py-2.5 flex-wrap">
@@ -450,26 +419,6 @@ export function LiveTranslatePage() {
                 </button>
               ))}
             </div>
-
-            {/* Speaker analysis button */}
-            {!isAnalyzingSpeakers && (
-              <button
-                type="button" onClick={handleAnalyzeSpeakers}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold
-                           bg-blue-100 text-blue-700 hover:bg-blue-200
-                           dark:bg-blue-950/50 dark:text-blue-400 dark:hover:bg-blue-900/50
-                           cursor-pointer transition-all duration-200 flex-shrink-0"
-              >
-                <MicrophoneIcon className="w-3.5 h-3.5" />
-                {speakerAnalysis ? t.live_analyze_speakers_again : t.live_analyze_speakers}
-              </button>
-            )}
-            {isAnalyzingSpeakers && (
-              <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-blue-500 dark:text-blue-400">
-                <SpinnerIcon className="w-3.5 h-3.5 animate-spin" />
-                {t.live_analyzing_speakers}
-              </span>
-            )}
 
             {/* Copy result */}
             {postTab === 'summary' && summary && !isSummarizing && (
@@ -774,6 +723,34 @@ const SPEAKER_COLORS = [
   'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300',
 ]
 
+// ── Typewriter hook — reveals text word-by-word when text first becomes non-empty ─
+// Dependency on [text] means:
+//   - On mount with text='': skips (empty), returns ''
+//   - When text changes from '' → actual translation: starts animation
+//   - For SegmentRow where text is non-empty on mount: runs immediately
+function useTypewriter(text: string, msPerWord = 45) {
+  const [displayed, setDisplayed] = useState('')
+  // biome-ignore lint/correctness/useExhaustiveDependencies: msPerWord is a constant at call-site and intentionally excluded
+  useEffect(() => {
+    if (!text) { setDisplayed(''); return }
+    const words = text.split(' ')
+    let i = 0
+    setDisplayed(words[0] ?? '')
+    if (words.length <= 1) { setDisplayed(text); return }
+    const timer = setInterval(() => {
+      i++
+      if (i < words.length) {
+        setDisplayed(words.slice(0, i + 1).join(' '))
+      } else {
+        setDisplayed(text)
+        clearInterval(timer)
+      }
+    }, msPerWord)
+    return () => clearInterval(timer)
+  }, [text]) // re-run when text changes (e.g. '' → actual translation)
+  return displayed
+}
+
 /** One realtime segment row with a colored, click-to-rename speaker badge. */
 function SegmentRow({
   speaker, text, speakerNameMap, onRename,
@@ -789,6 +766,9 @@ function SegmentRow({
 
   const [isRenaming, setIsRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState(displayName)
+
+  // Typewriter effect — reveals text word by word when segment first appears
+  const displayedText = useTypewriter(text)
 
   const handleRenameSubmit = () => {
     if (renameValue.trim()) onRename(speaker, renameValue.trim())
@@ -825,7 +805,42 @@ function SegmentRow({
           <PencilIcon className="w-2.5 h-2.5 opacity-0 group-hover:opacity-60 transition-opacity" />
         </button>
       )}
-      <span className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{text}</span>
+      <span className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+        {displayedText}
+        {displayedText !== text && (
+          <span className="inline-block ml-0.5 w-0.5 h-3.5 bg-gray-400 dark:bg-gray-500 animate-pulse align-middle" />
+        )}
+      </span>
+    </div>
+  )
+}
+
+/** Translation row — same speaker badge as SegmentRow with typewriter animation. */
+function TranslationRow({
+  speaker, text, speakerNameMap,
+}: {
+  speaker: string
+  text: string
+  speakerNameMap: Record<string, string>
+}) {
+  const displayName = speakerNameMap[speaker] || speaker
+  const colorIdx = (Number(speaker.replace(/\D/g, '')) - 1) % SPEAKER_COLORS.length
+  const colorClass = SPEAKER_COLORS[Math.max(0, colorIdx)]
+
+  // Typewriter with slight delay so translation appears after transcript
+  const displayedText = useTypewriter(text, 55)
+
+  return (
+    <div className="flex items-start gap-2">
+      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 mt-0.5 ${colorClass}`}>
+        {displayName}
+      </span>
+      <span className="text-sm font-medium text-blue-700 dark:text-blue-300 leading-relaxed">
+        {displayedText}
+        {displayedText !== text && (
+          <span className="inline-block ml-0.5 w-0.5 h-3.5 bg-blue-400 dark:bg-blue-600 animate-pulse align-middle" />
+        )}
+      </span>
     </div>
   )
 }
