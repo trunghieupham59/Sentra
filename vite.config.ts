@@ -24,10 +24,20 @@ export default defineConfig({
       'Cross-Origin-Embedder-Policy': 'require-corp',
     },
   },
-  // Prevent Vite from pre-bundling packages that ship WASM/ONNX/AudioWorklet
-  // assets — they must be served as-is from the public/ directory.
+  // Both @ricky0123/vad-web and onnxruntime-web are CJS-only packages.
+  // @ricky0123/vad-web uses require('onnxruntime-web/wasm') internally.
+  // If onnxruntime-web is excluded while vad-web is included, esbuild marks
+  // onnxruntime-web as an external `require()` — but `require` does not exist
+  // in the browser's ESM environment → runtime crash.
+  //
+  // Letting esbuild pre-bundle BOTH together resolves this:
+  //   • esbuild converts CJS → ESM for both packages in one pass
+  //   • Named exports (MicVAD, etc.) are properly exposed
+  //   • onnxruntime-web's WASM files are NOT embedded — they are fetched at
+  //     runtime from public/vad/ via the onnxWASMBasePath option passed to
+  //     MicVAD.new() in useLiveTranslate.ts → no path breakage from bundling.
   optimizeDeps: {
-    exclude: ['@ricky0123/vad-web', 'onnxruntime-web'],
+    include: ['@ricky0123/vad-web', 'onnxruntime-web'],
   },
   // Tell Vite to treat .onnx and .wasm files as static assets so they are
   // copied verbatim into dist/ and not transformed by any plugin.
