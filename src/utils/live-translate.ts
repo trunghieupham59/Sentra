@@ -7,77 +7,35 @@
 
 // ── Whisper hallucination filter ──────────────────────────────────────────────
 /**
- * Whisper hallucinates stock phrases from its training data (YouTube/podcast
- * transcripts) when given silent or near-silent audio.  This filter rejects
- * those known patterns as a second line of defence after VAD.
+ * Structural-only hallucination patterns.
  *
- * Covers: English, Japanese, Korean, Vietnamese common hallucination phrases,
- * as well as structural indicators (bracketed sounds, lone punctuation, repetitions).
+ * DESIGN PRINCIPLE:
+ *   Content-based pattern matching (blocking specific phrases) is inherently
+ *   unreliable because any phrase — "Thanks for your time", "Cảm ơn",
+ *   "チャンネル登録" — can be genuine speech in the right context.  Blocking
+ *   it silently drops real words from the transcript.
+ *
+ *   The ONLY reliable content-agnostic hallucination signals are:
+ *     1. Whisper's own verbose_json metrics — no_speech_prob, avg_logprob,
+ *        compression_ratio (handled upstream in processChunk).
+ *     2. Structural anomalies that are IMPOSSIBLE in real speech:
+ *        lone punctuation and Whisper's bracketed annotation labels.
+ *     3. Character/n-gram repetition loops (checks 3 & 4 in isHallucination).
+ *
+ *   Everything else should be left to the VAD + Whisper confidence pipeline.
  */
 const HALLUCINATION_PATTERNS: RegExp[] = [
-  // ── English ──────────────────────────────────────────────────────────────
-  /thank(s)? (you )?for watching/i,
-  /thank(s)? for (your|the)/i,
-  /please (like|subscribe|share|follow)/i,
-  /don'?t forget to (like|subscribe|hit|click)/i,
-  /subtitles? by/i,
-  /transcribed by/i,
-  /auto-?generated (caption|subtitle)/i,
-  /^[\s.…,\-–—]+$/,                    // lone punctuation / whitespace
+  // ── Lone punctuation / whitespace ────────────────────────────────────────
+  // A transcription consisting only of punctuation or whitespace is never
+  // real speech.  Whisper emits these on near-silent audio.
+  /^[\s.…,\-–—!?]+$/,
 
-  // ── Bracketed / parenthesized sound effects ───────────────────────────────
-  /^\s*[\[(（【].*[\]）】]\s*$/,          // e.g. [Music], (拍手), 【BGM】
-  /\(music\)/i,
-  /\[music\]/i,
-  /\[applause\]/i,
-  /\[laughter\]/i,
-  /\[silence\]/i,
-  /\[noise\]/i,
-  /\[inaudible\]/i,
-  /\[crosstalk\]/i,
-
-  // ── Japanese ─────────────────────────────────────────────────────────────
-  /ご視聴ありがとうございました/,
-  /ご視聴ありがとう/,
-  /チャンネル登録/,
-  /高評価.*お願い/,
-  /字幕.*提供/,
-  /字幕.*作成/,
-  /^ありがとうございます[。！]*$/,       // standalone "thank you" (no content)
-  /^ありがとう[。！]*$/,
-  /^どうもありがとう[。！]*$/,
-  /^\(拍手\)$/,
-  /^\[拍手\]$/,
-  /^\(笑\)$/,
-  /^\[笑\]$/,
-  /^\(音楽\)$/,
-  /^\[音楽\]$/,
-
-  // ── Korean ───────────────────────────────────────────────────────────────
-  /시청해\s*주셔서\s*감사합니다/,
-  /시청해\s*주신\s*여러분/,
-  /구독.*좋아요/,
-  /좋아요.*구독/,
-  /^감사합니다[.]?$/,                   // standalone "thank you"
-  /자막.*제공/,
-  /자막.*제작/,
-
-  // ── Vietnamese ───────────────────────────────────────────────────────────
-  /cảm\s*ơn\s*(các\s*bạn|bạn|quý\s*vị).*xem/i,   // "cảm ơn các bạn đã xem"
-  /cảm\s*ơn.*theo\s*dõi/i,
-  /đăng\s*ký\s*(kênh|channel)/i,
-  /nhấn\s*(like|nút|chuông)/i,
-  /bấm\s*(like|đăng\s*ký|theo\s*dõi)/i,
-  /like\s*(và|&)\s*đăng\s*ký/i,
-  /subscribe.*channel/i,
-  /phụ\s*đề.*cung\s*cấp/i,
-  /phụ\s*đề.*bởi/i,
-  /^xin\s*chào[.!]*$/i,                           // standalone "hello" with nothing else
-  /^cảm\s*ơn[.!]*$/i,                             // standalone "thank you"
-  /^vâng[,.]?\s*$/i,                              // lone filler "vâng"
-  /^ừ[,.]?\s*$/i,                                 // lone filler "ừ"
-  /^\(tiếng\s*(nhạc|vỗ\s*tay|cười)\)$/i,          // bracketed sound effects in Vietnamese
-  /^\[tiếng\s*(nhạc|vỗ\s*tay|cười)\]$/i,
+  // ── Whisper bracketed annotation labels ──────────────────────────────────
+  // When Whisper encounters non-speech audio (music, applause, silence) it
+  // outputs labels like [Music], (拍手), 【BGM】.  These are structural
+  // annotations, not transcribed speech — safe to discard.
+  // Matches any utterance that is ENTIRELY enclosed in brackets/parentheses.
+  /^\s*[\[(（【].*[\]）】]\s*$/,
 ]
 
 /**

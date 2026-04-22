@@ -269,6 +269,8 @@ export interface WindowApi {
     audioData: ArrayBuffer
     mimeType: string
     language?: string
+    /** Last transcript text, forwarded to Whisper as prompt context. */
+    previousText?: string
   }) => Promise<TranscribeResult>
   speakText: (params: {
     text: string

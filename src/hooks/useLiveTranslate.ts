@@ -17,6 +17,8 @@ import { getSupportedAudioMimeType } from '../constants/audio'
 import { LANG_NAMES_FOR_AI } from '../constants/langNames'
 import { useAppStore } from '../store/useAppStore'
 import type { SubtitleSettings } from '../types'
+import { MicVAD } from '@ricky0123/vad-web'
+import { float32ToWav } from '../utils/wav-encoder'
 import { extractCompleteSentences, isHallucination, jaccardSimilarity, splitSentences } from '../utils/live-translate'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -24,11 +26,11 @@ import { extractCompleteSentences, isHallucination, jaccardSimilarity, splitSent
 /**
  * Maximum recording window per chunk.
  *
- * Reduced from 3000 ms to 1500 ms.  Combined with VAD early-stop (below),
- * typical chunks now complete in 600-1200 ms, halving first-word latency.
- * Whisper handles ≥1 s chunks reliably; 1.5 s is a safe floor.
+ * 2000 ms gives Whisper enough audio context to decode words accurately.
+ * Combined with VAD early-stop (below), typical chunks finish in 800-1600 ms.
+ * Whisper performs better with slightly longer chunks — 2 s is a safe floor.
  */
-const CHUNK_DURATION_MS    = 1500
+const CHUNK_DURATION_MS    = 2000
 
 /**
  * STT chunks accumulate into a pending buffer until a sentence boundary is
@@ -52,41 +54,85 @@ const MAX_PENDING_CHUNKS   = 2
 const CONTEXT_SENTENCES    = 2
 
 /**
- * Voice Activity Detection (VAD) — three-gate system:
+ * VAD policy parameters — adapted per source type and online quality metrics.
+ * All RMS thresholds are calibrated for the POST-gain signal.
  *
- * Gate 1 — RMS amplitude threshold (sustained):
- *   Web Audio API getByteTimeDomainData() returns 0-255 centered at 128.
- *   RMS of deviation from 128:
- *     • Pure silence            : ~0-2
- *     • AC hum / room noise     : ~2-4
- *     • Quiet breath / rustling : ~4-8
- *     • Quiet speech            : ~8-15
- *     • Normal speech           : ~15-80
+ * ── Audio signal levels AFTER software gain ──────────────────────────────
+ *   MIC_GAIN = 4×:
+ *     • Pure silence / AC hum  : ~0–16   → rejected by policy.speechRmsThreshold
+ *     • Quiet speech           : ~32–60  → accepted
+ *     • Normal speech          : ~60–127 → clearly accepted
+ *   SYSTEM_AUD_GAIN = 2×:
+ *     • Background noise       : ~0–8    → rejected
+ *     • Media/music content    : ~8–30   → policy uses higher thresholds to filter
+ *     • Speech in call         : ~20–60  → accepted
  *
- * Gate 2 — sustained speech requirement (very short — 1 sample = 80ms minimum).
+ * ── State machine ──────────────────────────────────────────────────────────
+ *   SILENCE ──(minSpeechSamples consecutive speech frames)──▶ SPEECH
+ *   SPEECH  ──(hangoverSamples  consecutive silent  frames)──▶ SILENCE [early stop]
  *
- * Gate 3 — peak RMS confirmation: even lower to catch system/remote audio.
+ *   Both counters are RESET on the opposite event (consecutive, not cumulative).
  */
-const SPEECH_RMS_THRESHOLD = 2    // very sensitive — catches system audio and distant/quiet speakers
-const PEAK_RMS_THRESHOLD   = 4    // lowered — system audio often has lower peak amplitude
-const MIN_SPEECH_SAMPLES   = 1    // 1 × 80 ms = 80 ms minimum — reduces dropout significantly
-const VAD_SAMPLE_INTERVAL  = 80   // ms between AnalyserNode samples
+interface VadParams {
+  speechRmsThreshold: number   // RMS floor — below this → silence frame
+  peakRmsThreshold:   number   // peak RMS that must fire at least once → rules out constant hum
+  minSpeechSamples:   number   // consecutive speech frames → start trigger
+  hangoverSamples:    number   // consecutive silent frames → end trigger (hangover)
+}
 
 /**
- * VAD early-stop — cut the recording chunk short as soon as the speaker pauses.
+ * Source-aware initial VAD policy (Phase 1 of the policy engine).
  *
- * MIN_CHUNK_RECORD_MS: must record at least this long before an early stop is
- *   allowed, so very brief noise spikes don't prematurely end the chunk.
+ * Each audio mode has a different software gain and expected content type:
  *
- * VAD_EARLY_STOP_SILENCE_SAMPLES: consecutive VAD samples below threshold
- *   required to trigger early stop.  6 × 80 ms = 480 ms of post-speech silence.
- *
- * Effect: instead of always waiting the full CHUNK_DURATION_MS (1500 ms),
- * a typical 1-2 word utterance is captured and sent in ~600-900 ms total,
- * cutting perceived first-word latency roughly in half.
+ *   mic    — 4× gain, real-time conversation → sensitive, low latency optimized.
+ *   system — 2× gain, media/video content → more conservative; music/SFX can
+ *            trigger VAD so we require more consecutive speech frames and a
+ *            longer hangover to avoid spurious segments.
+ *   both   — mixed gain/content → intermediate policy.
  */
-const MIN_CHUNK_RECORD_MS              = 500   // ms — minimum recording before early stop
-const VAD_EARLY_STOP_SILENCE_SAMPLES   = 6     // 6 × 80 ms = 480 ms post-speech silence
+function getInitialVadPolicy(mode: 'mic' | 'system' | 'both'): VadParams {
+  switch (mode) {
+    case 'system':
+      // 2× gain; media audio often has music/SFX → require 3 consecutive
+      // speech frames (240 ms) and 480 ms hangover to reduce false triggers.
+      return { speechRmsThreshold: 10, peakRmsThreshold: 18, minSpeechSamples: 3, hangoverSamples: 6 }
+    case 'both':
+      // Mixed source → intermediate policy.
+      return { speechRmsThreshold: 9, peakRmsThreshold: 16, minSpeechSamples: 2, hangoverSamples: 5 }
+    default: // mic
+      // 4× gain, live conversation → 160 ms start trigger, 400 ms hangover.
+      return { speechRmsThreshold: 8, peakRmsThreshold: 15, minSpeechSamples: 2, hangoverSamples: 5 }
+  }
+}
+
+/**
+ * Online VAD quality monitoring (Phase 2 — adaptive parameters).
+ *
+ * After each recorded chunk we measure the VAD flip rate — the number of
+ * SPEECH ↔ SILENCE state transitions within that chunk.
+ *
+ * High flip rate signals instability (music, noise bursts, clipping) → we
+ *   increase the hangover by 1 sample (up to VAD_MAX_HANGOVER_SAMPLES) so the
+ *   state machine becomes less sensitive until conditions improve.
+ *
+ * Low flip rate after a period of instability signals the audio has settled
+ *   back to normal → we relax the hangover by 1 sample toward the source default.
+ *
+ * This avoids the need to hard-code thresholds for every possible environment:
+ * the policy self-tunes during the session.
+ */
+const VAD_SAMPLE_INTERVAL      = 80   // ms per frame
+const VAD_MAX_HANGOVER_SAMPLES  = 8    // cap at 8 × 80 ms = 640 ms
+const VAD_FLIP_RATE_HIGH        = 10   // flips per chunk above this → increase hangover
+const VAD_FLIP_RATE_LOW         = 3    // flips per chunk below this → relax hangover
+
+/**
+ * Minimum recording time before an early stop is allowed.
+ * Prevents a single noise spike at the start of a chunk from immediately
+ * ending the recording before any real speech has been captured.
+ */
+const MIN_CHUNK_RECORD_MS = 300   // ms
 
 /**
  * Upper bound on words Whisper may return for a single CHUNK_DURATION_MS chunk.
@@ -193,6 +239,21 @@ const MAX_SUMMARIZE_SECTION_CHARS = 10_000
 /** How long (ms) a pipeline error toast is shown before auto-dismissing. */
 const PIPELINE_ERROR_DISPLAY_MS = 4_000
 
+/**
+ * Adaptive VAD — upgrades automatically from energy-based → Silero (ML) VAD
+ * when noise metrics indicate the mic environment is too loud for reliable detection.
+ *
+ * One-way upgrade (energy → Silero, never back) to prevent oscillation.
+ * Only applies to mic mode — system/both audio must use the energy-based path.
+ *
+ * A "noise discard" = chunk where Whisper returned:
+ *   • Empty / hallucinated text  (isHallucination = true), OR
+ *   • High no-speech probability (noSpeechProb > NO_SPEECH_PROB_MAX)
+ */
+const ADAPTIVE_VAD_MIN_CHUNKS        = 6     // min speech chunks before evaluating
+const ADAPTIVE_VAD_DISCARD_THRESHOLD = 0.40  // 40 % noise-discard rate → upgrade
+const ADAPTIVE_VAD_EVAL_WINDOW       = 12    // rolling 12-chunk window
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useLiveTranslate() {
@@ -217,6 +278,8 @@ export function useLiveTranslate() {
   const [isTranslating,  setIsTranslating]  = useState(false)
   const [micError,       setMicError]       = useState<string | null>(null)
   const [pipelineError,  setPipelineError]  = useState<string | null>(null)
+  /** 'energy' (default) or 'silero' (auto-upgraded when noisy). Exposed for UI indicator. */
+  const [vadMode,        setVadMode]        = useState<'energy' | 'silero'>('energy')
 
   // ── Subtitle overlay state ─────────────────────────────────────────────────
   const [showSubtitles,      setShowSubtitles]      = useState(false)
@@ -294,10 +357,35 @@ export function useLiveTranslate() {
   const hasSpeechRef       = useRef(false)
   const speechCountRef     = useRef(0)
   const vadTimerRef        = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // ── Silero VAD (mic mode) ─────────────────────────────────────────────────
+  // micVadRef       — active MicVAD instance; null when using system/both mode.
+  // lastSpeechEndTimeRef — wall-clock timestamp of the last onSpeechEnd event;
+  //   used to compute inter-utterance silence for speaker diarization without
+  //   a polling timer.
+  // biome-ignore lint/suspicious/noExplicitAny: MicVAD type is not re-exported by the library
+  const micVadRef            = useRef<any>(null)
+  const lastSpeechEndTimeRef = useRef<number>(0)
+
+  // ── Adaptive VAD quality monitor ──────────────────────────────────────────
+  const vadModeStateRef    = useRef<'energy' | 'silero'>('energy')
+  const adaptiveChunksRef  = useRef(0)
+  const adaptiveDiscardRef = useRef(0)
+  // biome-ignore lint/suspicious/noExplicitAny: upgrade fn has complex closure dependencies
+  const upgradeVADRef      = useRef<(() => Promise<void>) | null>(null)
+
   // Counts consecutive chunks where VAD detected no speech.
   // When it hits SILENCE_RESET_CHUNKS, the decoder context is wiped so stale
   // transcript from before a long pause cannot bias the next decode cycle.
   const silentChunkCountRef = useRef(0)
+
+  // ── VAD policy engine ──────────────────────────────────────────────────────
+  // vadPolicyRef: active VAD parameters, adapted online after each chunk.
+  //   Initialised from getInitialVadPolicy(audioMode) on session start.
+  // vadModeRef:   stores the current audio mode so the policy can reset to
+  //   its source-appropriate default when relaxing after a stable period.
+  const vadPolicyRef = useRef<VadParams>(getInitialVadPolicy('mic'))
+  const vadModeRef   = useRef<'mic' | 'system' | 'both'>('mic')
 
   // Timer ref for auto-clearing pipelineError — avoids stale closures in processChunk
   const pipelineErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -381,6 +469,9 @@ export function useLiveTranslate() {
   const processChunk = useCallback(async (blob: Blob, mimeType: string) => {
     if (blob.size < 1000) return
 
+    // ── Adaptive VAD: count chunk in rolling evaluation window ────────────
+    adaptiveChunksRef.current += 1
+
     const { sourceLang, targetLang, selectedProvider, selectedModels } = paramsRef.current
 
     // ── STT call — keep reference to full result for confidence gate ──────
@@ -389,9 +480,14 @@ export function useLiveTranslate() {
     try {
       const buf = await blob.arrayBuffer()
       stt = await window.api.transcribeAudio({
-        audioData: buf,
+        audioData:    buf,
         mimeType,
-        language: sourceLang === 'auto' ? undefined : sourceLang,
+        language:     sourceLang === 'auto' ? undefined : sourceLang,
+        // Pass the last successfully transcribed text as Whisper's prompt
+        // context.  Whisper treats it as "speech already in progress",
+        // maintaining terminology consistency across chunks and preventing
+        // the decoder from drifting to a YouTube-caption style opening.
+        previousText: lastChunkTextRef.current || undefined,
       })
     } catch {
       setPipelineError('STT failed — retrying next chunk')
@@ -401,7 +497,22 @@ export function useLiveTranslate() {
     finally { setIsTranscribing(false) }
 
     const newText = stt?.success && stt.text?.trim() ? stt.text.trim() : ''
-    if (!newText || isHallucination(newText)) return
+    if (!newText || isHallucination(newText)) {
+      // ── Adaptive VAD: noise-discard (empty / hallucinated output) ────────
+      adaptiveDiscardRef.current += 1
+      if (vadModeStateRef.current === 'energy') {
+        if (adaptiveChunksRef.current >= ADAPTIVE_VAD_MIN_CHUNKS &&
+            adaptiveDiscardRef.current / adaptiveChunksRef.current > ADAPTIVE_VAD_DISCARD_THRESHOLD) {
+          void upgradeVADRef.current?.()
+          adaptiveChunksRef.current  = 0
+          adaptiveDiscardRef.current = 0
+        } else if (adaptiveChunksRef.current >= ADAPTIVE_VAD_EVAL_WINDOW) {
+          adaptiveChunksRef.current  = 0
+          adaptiveDiscardRef.current = 0
+        }
+      }
+      return
+    }
 
     // ── Whisper confidence gate (verbose_json segment signals) ────────────
     // These are Whisper's own internal estimates returned via verbose_json.
@@ -411,7 +522,22 @@ export function useLiveTranslate() {
     //  noSpeechProb    > NO_SPEECH_PROB_MAX    → model is ≥65% sure no speech
     //  avgLogprob      < AVG_LOGPROB_MIN       → model is not confident in tokens
     //  compressionRatio > COMPRESSION_RATIO_MAX → output is anomalously repetitive
-    if (typeof stt?.noSpeechProb === 'number'    && stt.noSpeechProb    > NO_SPEECH_PROB_MAX)    return
+    if (typeof stt?.noSpeechProb === 'number' && stt.noSpeechProb > NO_SPEECH_PROB_MAX) {
+      // ── Adaptive VAD: Whisper says no speech detected ────────────────────
+      adaptiveDiscardRef.current += 1
+      if (vadModeStateRef.current === 'energy') {
+        if (adaptiveChunksRef.current >= ADAPTIVE_VAD_MIN_CHUNKS &&
+            adaptiveDiscardRef.current / adaptiveChunksRef.current > ADAPTIVE_VAD_DISCARD_THRESHOLD) {
+          void upgradeVADRef.current?.()
+          adaptiveChunksRef.current  = 0
+          adaptiveDiscardRef.current = 0
+        } else if (adaptiveChunksRef.current >= ADAPTIVE_VAD_EVAL_WINDOW) {
+          adaptiveChunksRef.current  = 0
+          adaptiveDiscardRef.current = 0
+        }
+      }
+      return
+    }
     if (typeof stt?.avgLogprob === 'number'      && stt.avgLogprob      < AVG_LOGPROB_MIN)       return
     if (typeof stt?.compressionRatio === 'number' && stt.compressionRatio > COMPRESSION_RATIO_MAX) return
 
@@ -696,14 +822,33 @@ export function useLiveTranslate() {
 
     hasSpeechRef.current   = false
     speechCountRef.current = 0
-    // Peak RMS tracker for Gate 3 — reset each chunk
+
+    // ── Capture active policy for this chunk ─────────────────────────────────
+    // Read once at chunk start so the policy is stable for the entire chunk
+    // even if adaptation fires mid-chunk in a future concurrent scenario.
+    const policy = vadPolicyRef.current
+
+    // Peak RMS tracker — tracks the highest RMS seen in this chunk.
+    // Required to fire at least once above policy.peakRmsThreshold before speech
+    // is confirmed, ruling out constant-level AC hum.
     let chunkPeakRms = 0
-    // ── VAD early-stop counters ───────────────────────────────────────────────
-    // After speech is confirmed, count consecutive silent VAD samples.
-    // When the count reaches VAD_EARLY_STOP_SILENCE_SAMPLES AND we have been
-    // recording at least MIN_CHUNK_RECORD_MS, stop the chunk early so Whisper
-    // receives the audio sooner instead of always waiting for CHUNK_DURATION_MS.
-    let postSpeechSilenceSamples = 0
+
+    // ── VAD state machine (WebRTC-style hysteresis) ──────────────────────────
+    //
+    //   consecutiveSpeechSamples — RESETS to 0 on any silence frame.
+    //     Only N consecutive speech frames transition SILENCE → SPEECH.
+    //
+    //   postSpeechSilenceSamples — RESETS to 0 on any speech frame.
+    //     Only M consecutive silence frames after confirmed speech trigger
+    //     the hangover early-stop.
+    //
+    //   vadFlipCount — counts total SPEECH ↔ SILENCE state transitions.
+    //     Passed to the online quality monitor in recorder.onstop to
+    //     detect instability (high flip rate = noisy/music environment).
+    let consecutiveSpeechSamples = 0   // consecutive speech frames (start trigger)
+    let postSpeechSilenceSamples = 0   // consecutive silence frames after speech (hangover)
+    let vadFlipCount = 0               // state transitions this chunk (for adaptation)
+    let prevWasSpeech = false          // last frame's speech/silence classification
     const recordStartTime = Date.now()
     if (vadTimerRef.current) clearInterval(vadTimerRef.current)
     vadTimerRef.current = setInterval(() => {
@@ -713,25 +858,41 @@ export function useLiveTranslate() {
       analyser.getByteTimeDomainData(data)
       const rms = Math.sqrt(data.reduce((sum, v) => sum + (v - 128) ** 2, 0) / data.length)
       if (rms > chunkPeakRms) chunkPeakRms = rms
-      if (rms > SPEECH_RMS_THRESHOLD) {
-        speechCountRef.current += 1
-        postSpeechSilenceSamples = 0  // speech detected — reset silence streak
-        // Gate 2 + Gate 3: must have enough sustained samples AND at least one
-        // sample above the peak threshold to confirm real speech (not AC hum).
-        if (speechCountRef.current >= MIN_SPEECH_SAMPLES && chunkPeakRms >= PEAK_RMS_THRESHOLD) {
+
+      const isSpeechFrame = rms > policy.speechRmsThreshold
+      // Count every SPEECH ↔ SILENCE transition for the quality monitor
+      if (isSpeechFrame !== prevWasSpeech) { vadFlipCount++; prevWasSpeech = isSpeechFrame }
+
+      if (isSpeechFrame) {
+        // ── Speech frame ────────────────────────────────────────────────────
+        consecutiveSpeechSamples += 1
+        speechCountRef.current   += 1   // cumulative speech activity
+        postSpeechSilenceSamples  = 0   // reset hangover counter
+
+        // Start trigger: N consecutive frames above threshold AND peak confirms
+        // genuine speech (not constant-level hum).
+        if (
+          !hasSpeechRef.current &&
+          consecutiveSpeechSamples >= policy.minSpeechSamples &&
+          chunkPeakRms >= policy.peakRmsThreshold
+        ) {
           hasSpeechRef.current = true
         }
-      } else if (hasSpeechRef.current) {
-        // Post-speech silence: increment streak toward early-stop threshold
-        postSpeechSilenceSamples += 1
-        if (
-          postSpeechSilenceSamples >= VAD_EARLY_STOP_SILENCE_SAMPLES &&
-          Date.now() - recordStartTime >= MIN_CHUNK_RECORD_MS &&
-          recorder.state === 'recording'
-        ) {
-          // Sustained silence after confirmed speech → stop recording now so
-          // the chunk reaches Whisper as quickly as possible.
-          recorder.stop()
+      } else {
+        // ── Silence frame ───────────────────────────────────────────────────
+        consecutiveSpeechSamples = 0   // RESET — start trigger requires consecutive frames
+
+        if (hasSpeechRef.current) {
+          // Hangover: count consecutive silence frames after confirmed speech
+          postSpeechSilenceSamples += 1
+          if (
+            postSpeechSilenceSamples >= policy.hangoverSamples &&
+            Date.now() - recordStartTime >= MIN_CHUNK_RECORD_MS &&
+            recorder.state === 'recording'
+          ) {
+            // Sustained post-speech silence → send chunk to Whisper now
+            recorder.stop()
+          }
         }
       }
     }, VAD_SAMPLE_INTERVAL)
@@ -744,6 +905,32 @@ export function useLiveTranslate() {
       const hadSpeech = hasSpeechRef.current
       const recMime   = recorder.mimeType || mimeType || 'audio/webm'
       const blob      = new Blob(audioChunksRef.current, { type: recMime })
+
+      // ── Online VAD quality monitoring & policy adaptation ─────────────────
+      // Measure stability via flip rate (SPEECH↔SILENCE transitions per chunk).
+      //
+      // High flip rate → unstable VAD (music, noise bursts, clipping):
+      //   Increase hangover by 1 sample (capped at VAD_MAX_HANGOVER_SAMPLES) so
+      //   the state machine becomes less reactive until conditions improve.
+      //
+      // Low flip rate after instability → audio is stable again:
+      //   Relax hangover by 1 sample toward the source-appropriate default.
+      //
+      // Only the hangover is adapted here; speechRmsThreshold and peakRmsThreshold
+      // stay at the source policy default — adapting them online risks masking
+      // legitimate quiet speech.
+      const defaultHangover = getInitialVadPolicy(vadModeRef.current).hangoverSamples
+      if (vadFlipCount > VAD_FLIP_RATE_HIGH) {
+        vadPolicyRef.current = {
+          ...vadPolicyRef.current,
+          hangoverSamples: Math.min(vadPolicyRef.current.hangoverSamples + 1, VAD_MAX_HANGOVER_SAMPLES),
+        }
+      } else if (vadFlipCount < VAD_FLIP_RATE_LOW && vadPolicyRef.current.hangoverSamples > defaultHangover) {
+        vadPolicyRef.current = {
+          ...vadPolicyRef.current,
+          hangoverSamples: Math.max(vadPolicyRef.current.hangoverSamples - 1, defaultHangover),
+        }
+      }
 
       if (hadSpeech) {
         // Capture silence count before reset — used by processChunk for speaker detection
@@ -773,7 +960,8 @@ export function useLiveTranslate() {
         }
       }
 
-      if (activeRef.current) startChunk()
+      // Guard: do NOT restart energy VAD if we upgraded to Silero mid-chunk.
+      if (activeRef.current && vadModeStateRef.current === 'energy') startChunk()
     }
 
     recorder.start()
@@ -794,6 +982,11 @@ export function useLiveTranslate() {
     lastChunkTextRef.current     = ''
 
     setMicError(null)
+    setVadMode('energy')
+    vadModeStateRef.current    = 'energy'
+    adaptiveChunksRef.current  = 0
+    adaptiveDiscardRef.current = 0
+    upgradeVADRef.current      = null
     setShowSummaryBtn(false)
     setSummary(null)
     setSpeakerAnalysis(null)
@@ -845,9 +1038,17 @@ export function useLiveTranslate() {
           const sysGain = audioCtx.createGain()
           sysGain.gain.value = SYSTEM_AUD_GAIN
           const sysSource = audioCtx.createMediaStreamSource(new MediaStream(sysAudioTracks))
-          sysSource.connect(sysGain)
-          sysGain.connect(analyser)   // VAD reads boosted signal
-          sysGain.connect(dest)       // Whisper receives boosted signal
+          // ── High-pass filter: cut low-frequency noise ───────────────────
+          // Removes AC hum, fan rumble, and wind noise below 80 Hz.
+          // These low-frequency components raise the RMS without contributing
+          // speech information, causing false-positive VAD frames.
+          const highPass = audioCtx.createBiquadFilter()
+          highPass.type = 'highpass'
+          highPass.frequency.value = 80
+          sysSource.connect(highPass)
+          highPass.connect(sysGain)
+          sysGain.connect(analyser)   // VAD reads filtered + boosted signal
+          sysGain.connect(dest)       // Whisper receives filtered + boosted signal
         } else {
           setMicError('System audio not available — please check "Share audio" in the screen sharing dialog, then try again.')
           audioCtx.close()
@@ -866,44 +1067,111 @@ export function useLiveTranslate() {
 
         captureStream = dest.stream
       } else {
-        // Mic-only mode:
-        // • Request autoGainControl so the OS/browser tries to boost quiet mics.
-        // • Then apply an additional software GainNode (MIC_GAIN) so the signal
-        //   is amplified before both VAD analysis and Whisper recording.
-        // • The boosted stream (from MediaStreamDestination) replaces the raw
-        //   mic stream so Whisper receives the louder, clearer audio.
+        // ── Mic-only mode: Adaptive VAD ───────────────────────────────────────
+        //
+        // Stage 1 (default) — Energy-based VAD (WebRTC-style RMS detector)
+        //   • Zero startup latency, works well in quiet environments
+        // Stage 2 (auto-upgrade) — Silero ML VAD
+        //   • Triggered when noise-discard rate > ADAPTIVE_VAD_DISCARD_THRESHOLD
+        //   • One-way (energy → Silero, never back); reuses the existing mic stream
         const rawMicStream = await navigator.mediaDevices.getUserMedia({
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
-            autoGainControl: true,   // hardware/OS-level boost
+            autoGainControl:  true,
+            sampleRate:       { ideal: 16_000 },
+            channelCount:     { exact: 1 },
           },
           video: false,
         })
-
         const rawSource = audioCtx.createMediaStreamSource(rawMicStream)
-
-        // Software gain boost
-        const gainNode = audioCtx.createGain()
+        const gainNode  = audioCtx.createGain()
         gainNode.gain.value = MIC_GAIN
-
-        // Route: rawSource → gain → analyser (for VAD)
         rawSource.connect(gainNode)
         gainNode.connect(analyser)
-
-        // Route: gain → destination stream (for MediaRecorder / Whisper)
         const micDest = audioCtx.createMediaStreamDestination()
         gainNode.connect(micDest)
-
-        // Keep raw tracks in our stream ref so they are stopped on handleStop
         for (const track of rawMicStream.getTracks()) micDest.stream.addTrack(track)
-
         captureStream = micDest.stream
+
+        // ── Adaptive VAD upgrade function (called by processChunk) ─────────
+        upgradeVADRef.current = async () => {
+          if (vadModeStateRef.current === 'silero') return
+          vadModeStateRef.current = 'silero'
+          if (mountedRef.current) setVadMode('silero')
+          // Stop energy VAD; onstop guard prevents startChunk() from restarting
+          if (vadTimerRef.current) { clearInterval(vadTimerRef.current); vadTimerRef.current = null }
+          if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
+          // Reuse existing stream — avoids a second getUserMedia permission prompt
+          const existingStream = streamRef.current
+          try {
+            const micVad = await MicVAD.new({
+              baseAssetPath:    './vad/',
+              onnxWASMBasePath: './vad/',
+              model: 'v5',
+              getStream: async () => existingStream
+                ?? navigator.mediaDevices.getUserMedia({
+                    audio: { echoCancellation: true, noiseSuppression: true,
+                             autoGainControl: true, sampleRate: { ideal: 16_000 },
+                             channelCount: { exact: 1 } },
+                    video: false,
+                  }),
+              positiveSpeechThreshold: 0.50,
+              negativeSpeechThreshold: 0.35,
+              minSpeechMs:    384,
+              preSpeechPadMs: 960,
+              redemptionMs:   600,
+              onSpeechStart: () => { if (!activeRef.current) return; hasSpeechRef.current = true },
+              onSpeechEnd: (samples: Float32Array) => {
+                if (!activeRef.current) return
+                hasSpeechRef.current = false
+                const now = Date.now()
+                if (lastSpeechEndTimeRef.current > 0) {
+                  const gapMs     = now - lastSpeechEndTimeRef.current
+                  const gapChunks = Math.floor(gapMs / CHUNK_DURATION_MS)
+                  silenceBeforeChunkRef.current = gapChunks
+                  if (gapChunks >= SILENCE_RESET_CHUNKS) {
+                    silentChunkCountRef.current  = 0
+                    lastChunkTextRef.current     = ''
+                    pendingBufferRef.current     = ''
+                    pendingChunkCountRef.current = 0
+                    recentSentencesRef.current   = []
+                  }
+                }
+                lastSpeechEndTimeRef.current = now
+                silentChunkCountRef.current  = 0
+                const blob = float32ToWav(samples, 16_000)
+                const queuedAt = Date.now()
+                queueRef.current = queueRef.current.then(async () => {
+                  if (Date.now() - queuedAt > CHUNK_MAX_QUEUE_AGE_MS) return
+                  await processChunk(blob, 'audio/wav')
+                })
+              },
+              onVADMisfire: () => { silentChunkCountRef.current += 1 },
+            })
+            micVad.start()
+            micVadRef.current = micVad
+          } catch (upgradeErr) {
+            console.error('[adaptive-vad] Silero upgrade failed — reverting:', upgradeErr)
+            vadModeStateRef.current = 'energy'
+            if (mountedRef.current) setVadMode('energy')
+            if (activeRef.current) startChunk()
+          }
+        }
       }
 
+      // ── Shared setup: all audio modes (system / both / mic-energy) ───────
       streamRef.current    = captureStream
       audioCtxRef.current  = audioCtx
       analyserRef.current  = analyser
+
+      // Set the source-appropriate policy before starting the first chunk so
+      // every chunk uses the correct thresholds from the very beginning.
+      // vadModeRef is kept in sync so the adaptation logic can relax the hangover
+      // back to the source default after a period of stability.
+      vadModeRef.current   = audioMode
+      vadPolicyRef.current = getInitialVadPolicy(audioMode)
+
       activeRef.current    = true
       setIsActive(true)
       startChunk()
@@ -926,6 +1194,18 @@ export function useLiveTranslate() {
     setIsTranslating(false)
 
     if (vadTimerRef.current) { clearInterval(vadTimerRef.current); vadTimerRef.current = null }
+
+    // ── Silero VAD cleanup (mic mode) ───────────────────────────────────────
+    // destroy() stops the AudioWorklet and releases the internal MediaStream.
+    // Must be called BEFORE stopping streamRef tracks to avoid double-stop errors.
+    if (micVadRef.current) {
+      try { micVadRef.current.destroy() } catch {}
+      micVadRef.current = null
+    }
+    lastSpeechEndTimeRef.current = 0
+    upgradeVADRef.current        = null
+    adaptiveChunksRef.current    = 0
+    adaptiveDiscardRef.current   = 0
 
     if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
     if (streamRef.current) {
@@ -1385,5 +1665,7 @@ export function useLiveTranslate() {
     isMac,
     hasOpenAIKey,
     hasAnyKey,
+    // Adaptive VAD mode — 'energy' (default) or 'silero' (auto-upgraded when noisy)
+    vadMode,
   }
 }

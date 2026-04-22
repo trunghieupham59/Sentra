@@ -3,9 +3,22 @@ import { getStoredApiKey } from './storage'
 import { WHISPER_MODEL } from './ipcConstants'
 
 interface TranscribeParams {
-  audioData: ArrayBuffer   // Raw audio bytes from MediaRecorder
-  mimeType: string         // e.g. 'audio/webm;codecs=opus'
+  audioData: ArrayBuffer   // Raw audio bytes from MediaRecorder or WAV encoder
+  mimeType: string         // e.g. 'audio/webm;codecs=opus' | 'audio/wav'
   language?: string        // BCP-47 code or 'auto'
+  /**
+   * The last successfully transcribed text, passed as Whisper's `prompt`
+   * parameter (in addition to the language-specific opener).
+   *
+   * Whisper treats the prompt as "speech already in progress", which:
+   *   1. Keeps terminology consistent across chunks (names, domain terms).
+   *   2. Prevents the decoder from resetting to a YouTube-caption style
+   *      opening at the start of each new chunk.
+   *
+   * Capped at 200 characters in buildWhisperPrompt to stay within Whisper's
+   * 224-token prompt budget.
+   */
+  previousText?: string
 }
 
 interface TranscribeResult {
@@ -46,41 +59,54 @@ interface VerboseResponse {
 }
 
 /**
- * Build an anti-hallucination prompt for Whisper.
+ * Build an anti-hallucination + context prompt for Whisper.
  *
- * Whisper's `prompt` parameter biases the decoder toward a certain style or
- * vocabulary.  Key effects used here:
+ * Whisper's `prompt` parameter biases the decoder in two complementary ways:
  *
- *  1. The prompt starts mid-sentence (no channel-intro phrasing) — this
- *     discourages the model from generating YouTube-style openings such as
- *     "Thanks for watching!" or "[Music]" that come from its training data.
+ *  1. Language-specific opener (unchanged from before):
+ *     Starts mid-sentence so the decoder stays out of YouTube-caption mode
+ *     and avoids hallucinated intro phrases ("Thanks for watching!").
  *
- *  2. The prompt ends without terminal punctuation so the decoder treats the
- *     audio as a continuation of natural speech rather than a fresh start.
+ *  2. Previous transcript context (NEW):
+ *     Appending the last ~200 chars of the preceding transcript tells Whisper
+ *     that audio is already in progress.  This dramatically improves:
+ *       • Terminology consistency across chunks (names, technical terms)
+ *       • Boundary recovery — the model won't restart from scratch at the
+ *         beginning of each short audio segment
  *
- *  3. For Vietnamese we include common tonal words so the tokenizer is primed
- *     for diacritics rather than romanised guesses.
- *
- * Reference: https://platform.openai.com/docs/guides/speech-to-text/prompting
+ * The combined prompt must stay within Whisper's 224-token prompt budget
+ * (~900 chars total).  We cap `previousText` at 200 chars to be safe.
  */
-function buildWhisperPrompt(language: string | undefined): string {
-  switch (language) {
-    case 'vi':
-      // Prime with natural Vietnamese conversational openers — no channel-like
-      // phrases.  The trailing comma signals "speech in progress".
-      return 'Xin chào, hôm nay chúng ta sẽ nói về'
-    case 'ja':
-      return 'はい、えーと、今日は'
-    case 'ko':
-      return '안녕하세요, 오늘은'
-    case 'zh':
-      return '好的，今天我们来讨论'
-    default:
-      // Generic English / unknown: start mid-conversation to avoid intro drift.
-      // The "Um," opener is a known trick to prevent Whisper from hallucinating
-      // "Thank you for watching" and similar patterns.
-      return 'Um, so,'
+function buildWhisperPrompt(language: string | undefined, previousText?: string): string {
+  const opener = (() => {
+    switch (language) {
+      case 'vi':
+        // Prime with natural Vietnamese conversational openers — no channel-like
+        // phrases.  The trailing comma signals "speech in progress".
+        return 'Xin chào, hôm nay chúng ta sẽ nói về'
+      case 'ja':
+        return 'はい、えーと、今日は'
+      case 'ko':
+        return '안녕하세요, 오늘은'
+      case 'zh':
+        return '好的，今天我们来讨论'
+      default:
+        // Generic English / unknown: start mid-conversation to avoid intro drift.
+        // The "Um," opener is a known trick to prevent Whisper from hallucinating
+        // "Thank you for watching" and similar patterns.
+        return 'Um, so,'
+    }
+  })()
+
+  if (previousText) {
+    // Append the last 200 chars of the previous transcript.
+    // Whisper interprets this as "the speaker was already saying this" —
+    // keeping the token distribution consistent with real speech continuation.
+    const ctx = previousText.trim().slice(-200)
+    return `${opener} ${ctx}`
   }
+
+  return opener
 }
 
 /**
@@ -151,9 +177,14 @@ export function registerTranscribeHandlers(ipcMain: IpcMain) {
         model: WHISPER_MODEL,
         language: whisperLang,
         response_format: 'verbose_json',
-        // Anti-hallucination prompt: primes the decoder with natural
-        // mid-conversation text to stay out of YouTube-caption mode.
-        prompt: buildWhisperPrompt(whisperLang),
+        // temperature: 0 → deterministic decoding, fewest hallucinations.
+        // Whisper's default (0) is effectively greedy; explicitly setting it
+        // disables the temperature-fallback retry which sometimes produces
+        // more creative (incorrect) outputs on ambiguous audio.
+        temperature: 0,
+        // Anti-hallucination prompt + previous-transcript context.
+        // See buildWhisperPrompt for rationale.
+        prompt: buildWhisperPrompt(whisperLang, params.previousText),
       }) as unknown) as VerboseResponse
 
       const text = rawResponse.text?.trim() ?? ''

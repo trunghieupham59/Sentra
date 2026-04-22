@@ -9,6 +9,11 @@ export const audioSection = {
     audioData: ArrayBuffer
     mimeType: string
     language?: string
+    /**
+     * Last successfully transcribed text, forwarded to Whisper as prompt context.
+     * Keeps terminology consistent across chunks and prevents YouTube-caption drift.
+     */
+    previousText?: string
   }) => ipcRenderer.invoke('audio:transcribe', params),
 
   // AI Text-to-Speech — priority: OpenAI → Gemini → Edge TTS (free) → ElevenLabs
