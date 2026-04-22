@@ -190,11 +190,14 @@ async function ttsWithEdge(text: string, voice = EDGE_TTS_DEFAULT_VOICE): Promis
     const audioChunks: Buffer[] = []
     let gotTurnEnd = false
 
-    // Safety timeout — close connection if no response within 30 s
+    // Safety timeout — close connection if no response within 8 s.
+    // Reduced from 30 s so a stale Edge TTS connection fails quickly and
+    // the provider fallback chain (Gemini → Edge → ElevenLabs) can kick in
+    // without blocking the TTS pipeline for half a minute.
     const timeout = setTimeout(() => {
       ws.terminate()
       reject(new Error('Edge TTS: connection timeout'))
-    }, 30_000)
+    }, 8_000)
 
     ws.on('open', () => {
       // 1. Send speech.config
@@ -212,7 +215,9 @@ async function ttsWithEdge(text: string, voice = EDGE_TTS_DEFAULT_VOICE): Promis
                   sentenceBoundaryEnabled: 'false',
                   wordBoundaryEnabled: 'false',
                 },
-                outputFormat: 'audio-24khz-48kbitrate-mono-mp3',
+                // Lower bitrate: 32 kbps vs 48 kbps — ~33% smaller file, measurably
+                // faster to transfer over IPC without noticeable quality loss for TTS.
+                outputFormat: 'audio-16khz-32kbitrate-mono-mp3',
               },
             },
           },

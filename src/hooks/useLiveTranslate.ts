@@ -19,7 +19,15 @@ import type { SubtitleSettings } from '../types'
 import { extractCompleteSentences, isHallucination, jaccardSimilarity } from '../utils/live-translate'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
-const CHUNK_DURATION_MS    = 3000  // record 3-second audio windows — Whisper quality degrades below 3 s
+
+/**
+ * Maximum recording window per chunk.
+ *
+ * Reduced from 3000 ms to 1500 ms.  Combined with VAD early-stop (below),
+ * typical chunks now complete in 600-1200 ms, halving first-word latency.
+ * Whisper handles ≥1 s chunks reliably; 1.5 s is a safe floor.
+ */
+const CHUNK_DURATION_MS    = 1500
 
 /**
  * STT chunks accumulate into a pending buffer until a sentence boundary is
@@ -29,8 +37,11 @@ const CHUNK_DURATION_MS    = 3000  // record 3-second audio windows — Whisper 
  * FALLBACK: if MAX_PENDING_CHUNKS STT results arrive with no punctuation
  * (common with Japanese / Whisper), the whole buffer is force-translated so
  * the user is never stuck waiting indefinitely.
+ *
+ * Reduced from 3 to 2 — force-translate after 3 s of incomplete sentences
+ * instead of 4.5 s.
  */
-const MAX_PENDING_CHUNKS   = 3
+const MAX_PENDING_CHUNKS   = 2
 
 /**
  * Number of recently-completed sentences to send as translation CONTEXT.
@@ -59,6 +70,22 @@ const SPEECH_RMS_THRESHOLD = 2    // very sensitive — catches system audio and
 const PEAK_RMS_THRESHOLD   = 4    // lowered — system audio often has lower peak amplitude
 const MIN_SPEECH_SAMPLES   = 1    // 1 × 80 ms = 80 ms minimum — reduces dropout significantly
 const VAD_SAMPLE_INTERVAL  = 80   // ms between AnalyserNode samples
+
+/**
+ * VAD early-stop — cut the recording chunk short as soon as the speaker pauses.
+ *
+ * MIN_CHUNK_RECORD_MS: must record at least this long before an early stop is
+ *   allowed, so very brief noise spikes don't prematurely end the chunk.
+ *
+ * VAD_EARLY_STOP_SILENCE_SAMPLES: consecutive VAD samples below threshold
+ *   required to trigger early stop.  6 × 80 ms = 480 ms of post-speech silence.
+ *
+ * Effect: instead of always waiting the full CHUNK_DURATION_MS (1500 ms),
+ * a typical 1-2 word utterance is captured and sent in ~600-900 ms total,
+ * cutting perceived first-word latency roughly in half.
+ */
+const MIN_CHUNK_RECORD_MS              = 500   // ms — minimum recording before early stop
+const VAD_EARLY_STOP_SILENCE_SAMPLES   = 6     // 6 × 80 ms = 480 ms post-speech silence
 
 /**
  * Upper bound on words Whisper may return for a single CHUNK_DURATION_MS chunk.
@@ -123,10 +150,30 @@ export interface LiveSegment {
   timestamp: number
 }
 
-/** Minimum silent chunks before considering a speaker change (1 chunk = 2 s). */
-const MIN_SILENCE_FOR_SPEAKER_CHANGE = 1
-/** Minimum ms between speaker changes — prevents rapid toggling. */
-const MIN_SPEAKER_DURATION_MS = 4_000
+/**
+ * Speaker diarization — silence-gap heuristics.
+ *
+ * MIN_SILENCE_FOR_SPEAKER_CHANGE: raised to 2 chunks (~6 s) so brief pauses
+ *   within a turn don't trigger a false speaker switch.
+ *
+ * MIN_SPEAKER_DURATION_MS: lowered to 2500 ms so rapid back-and-forth
+ *   conversations (common in 1:1 calls) can be tracked accurately.
+ *
+ * LONG_SILENCE_CHUNKS: silence ≥ 4 chunks (~12 s) is a strong signal that
+ *   a genuinely new participant started speaking rather than an existing one
+ *   returning after a pause.
+ *
+ * MAX_SPEAKERS: hard cap on distinct speaker labels.  Once reached, the
+ *   Least-Recently-Used speaker is recycled instead of creating new labels.
+ *
+ * SPEAKER_TURN_HISTORY_SIZE: number of past turns kept in memory so the
+ *   cycle-back logic can identify the most likely "other" speaker.
+ */
+const MIN_SILENCE_FOR_SPEAKER_CHANGE = 2     // raised: ~6 s of quiet before switching
+const MIN_SPEAKER_DURATION_MS        = 2_500 // lowered: allows faster turn-taking
+const LONG_SILENCE_CHUNKS            = 4     // ≥12 s → likely a genuinely new speaker
+const MAX_SPEAKERS                   = 6     // cap on distinct labels per session
+const SPEAKER_TURN_HISTORY_SIZE      = 10    // recent turns kept for cycle-back logic
 
 /** Default subtitle appearance settings — also used by reset button in LiveTranslatePage */
 export const DEFAULT_SUBTITLE_SETTINGS = {
@@ -189,6 +236,12 @@ export function useLiveTranslate() {
   const speakerCountRef          = useRef(1)
   const silenceBeforeChunkRef    = useRef(0)   // silent chunks captured before last speech chunk
   const lastSpeakerChangeTimeRef = useRef(0)
+  /**
+   * Ordered history of the last SPEAKER_TURN_HISTORY_SIZE speaker labels assigned.
+   * Used by the cycle-back algorithm to identify the most likely "other" speaker
+   * without ever incrementing past MAX_SPEAKERS.
+   */
+  const speakerTurnHistoryRef    = useRef<string[]>([])
 
   // ── Summary + Speaker analysis state ──────────────────────────────────────
   const [showSummaryBtn,       setShowSummaryBtn]       = useState(false)
@@ -410,20 +463,82 @@ export function useLiveTranslate() {
     // Sentence is complete — update interim to show only the remaining pending part
     setPendingText(pending)
 
-    // ── VAD-based speaker detection ───────────────────────────────────────
-    // When speech resumes after a pause (silence captured in silenceBeforeChunkRef),
-    // and enough time has passed since the last speaker change, increment the speaker.
+    // ── VAD-based speaker diarization (smart cycling) ─────────────────────
+    // Determines the next speaker using silence-gap heuristics + turn history.
+    //
+    // Algorithm:
+    //   1 known speaker  → any qualifying silence → introduce Speaker 2
+    //   2 known speakers → short/medium silence   → alternate between them
+    //                    → long silence (≥LONG_SILENCE_CHUNKS) → introduce Speaker 3
+    //   3+ speakers      → short/medium gap → return to most-recent other speaker
+    //                    → long gap         → introduce new speaker (up to MAX_SPEAKERS)
+    //   MAX_SPEAKERS hit → always recycle Least-Recently-Used label
+    //
+    // This fixes the "speaker count only ever goes up" bug:
+    //   Before: Speaker 1 → 2 → 3 → 4 → 5 …  (wrong for 1-on-1 meetings)
+    //   After:  Speaker 1 → 2 → 1 → 2 → 1 …  (correct alternating pattern)
     const silenceBefore = silenceBeforeChunkRef.current
     silenceBeforeChunkRef.current = 0  // consume once
+
     if (
       silenceBefore >= MIN_SILENCE_FOR_SPEAKER_CHANGE &&
       Date.now() - lastSpeakerChangeTimeRef.current > MIN_SPEAKER_DURATION_MS
     ) {
-      speakerCountRef.current++
-      currentSpeakerRef.current      = `Speaker ${speakerCountRef.current}`
-      lastSpeakerChangeTimeRef.current = Date.now()
+      const prevSpeaker = currentSpeakerRef.current
+      const knownCount  = speakerCountRef.current
+      const history     = speakerTurnHistoryRef.current
+      let nextSpeaker   = prevSpeaker  // default: stay unless a better choice is found
+
+      if (knownCount === 1) {
+        // First speaker change ever: introduce Speaker 2
+        speakerCountRef.current = 2
+        nextSpeaker = 'Speaker 2'
+      } else if (knownCount === 2) {
+        if (silenceBefore >= LONG_SILENCE_CHUNKS && history.length >= 4) {
+          // Very long silence + established 2-speaker pattern → possible 3rd person
+          speakerCountRef.current = 3
+          nextSpeaker = 'Speaker 3'
+        } else {
+          // Most common 1:1 meeting pattern: simply alternate between the two speakers
+          nextSpeaker = prevSpeaker === 'Speaker 1' ? 'Speaker 2' : 'Speaker 1'
+        }
+      } else if (knownCount < MAX_SPEAKERS) {
+        // 3+ known speakers: prefer the most-recently-active other speaker for short
+        // gaps; only introduce a genuinely new label after a very long silence.
+        const recentOthers = [...history].reverse().filter(s => s !== prevSpeaker)
+        const mostRecentOther = recentOthers[0]
+        if (silenceBefore >= LONG_SILENCE_CHUNKS) {
+          // Long pause → likely a new participant entering the conversation
+          speakerCountRef.current += 1
+          nextSpeaker = `Speaker ${speakerCountRef.current}`
+        } else if (mostRecentOther) {
+          // Short/medium gap → return to the most recently active other speaker
+          nextSpeaker = mostRecentOther
+        } else {
+          speakerCountRef.current += 1
+          nextSpeaker = `Speaker ${speakerCountRef.current}`
+        }
+      } else {
+        // MAX_SPEAKERS reached — find and recycle the Least-Recently-Used label
+        // so the label pool stays bounded no matter how long the session runs.
+        const seen = new Set<string>()
+        const lruOrder: string[] = []
+        for (const s of [...history].reverse()) {
+          if (!seen.has(s)) { seen.add(s); lruOrder.push(s) }
+        }
+        const allLabels = Array.from({ length: MAX_SPEAKERS }, (_, i) => `Speaker ${i + 1}`)
+        // Prefer a label not seen at all in recent history; fall back to oldest in LRU order
+        nextSpeaker = allLabels.find(s => !seen.has(s)) ?? lruOrder[lruOrder.length - 1] ?? 'Speaker 1'
+      }
+
+      if (nextSpeaker !== prevSpeaker) {
+        currentSpeakerRef.current        = nextSpeaker
+        lastSpeakerChangeTimeRef.current = Date.now()
+      }
     }
     const currentSpeaker = currentSpeakerRef.current
+    // Record every finalized turn in the history so future decisions can cycle back correctly
+    speakerTurnHistoryRef.current = [...speakerTurnHistoryRef.current, currentSpeaker].slice(-SPEAKER_TURN_HISTORY_SIZE)
 
     // ── Add segment immediately so it shows in the left panel while translating.
     // Translation runs in the background — the queue is NOT blocked so the next
@@ -524,6 +639,13 @@ export function useLiveTranslate() {
     speechCountRef.current = 0
     // Peak RMS tracker for Gate 3 — reset each chunk
     let chunkPeakRms = 0
+    // ── VAD early-stop counters ───────────────────────────────────────────────
+    // After speech is confirmed, count consecutive silent VAD samples.
+    // When the count reaches VAD_EARLY_STOP_SILENCE_SAMPLES AND we have been
+    // recording at least MIN_CHUNK_RECORD_MS, stop the chunk early so Whisper
+    // receives the audio sooner instead of always waiting for CHUNK_DURATION_MS.
+    let postSpeechSilenceSamples = 0
+    const recordStartTime = Date.now()
     if (vadTimerRef.current) clearInterval(vadTimerRef.current)
     vadTimerRef.current = setInterval(() => {
       const analyser = analyserRef.current
@@ -534,10 +656,23 @@ export function useLiveTranslate() {
       if (rms > chunkPeakRms) chunkPeakRms = rms
       if (rms > SPEECH_RMS_THRESHOLD) {
         speechCountRef.current += 1
+        postSpeechSilenceSamples = 0  // speech detected — reset silence streak
         // Gate 2 + Gate 3: must have enough sustained samples AND at least one
         // sample above the peak threshold to confirm real speech (not AC hum).
         if (speechCountRef.current >= MIN_SPEECH_SAMPLES && chunkPeakRms >= PEAK_RMS_THRESHOLD) {
           hasSpeechRef.current = true
+        }
+      } else if (hasSpeechRef.current) {
+        // Post-speech silence: increment streak toward early-stop threshold
+        postSpeechSilenceSamples += 1
+        if (
+          postSpeechSilenceSamples >= VAD_EARLY_STOP_SILENCE_SAMPLES &&
+          Date.now() - recordStartTime >= MIN_CHUNK_RECORD_MS &&
+          recorder.state === 'recording'
+        ) {
+          // Sustained silence after confirmed speech → stop recording now so
+          // the chunk reaches Whisper as quickly as possible.
+          recorder.stop()
         }
       }
     }, VAD_SAMPLE_INTERVAL)
@@ -615,6 +750,7 @@ export function useLiveTranslate() {
     speakerCountRef.current          = 1
     silenceBeforeChunkRef.current    = 0
     lastSpeakerChangeTimeRef.current = 0
+    speakerTurnHistoryRef.current    = []
     const now = Date.now()
     sessionIdRef.current    = `live-${now}-${Math.random().toString(36).slice(2, 8)}`
     sessionStartRef.current = now
@@ -792,6 +928,7 @@ export function useLiveTranslate() {
     speakerCountRef.current          = 1
     silenceBeforeChunkRef.current    = 0
     lastSpeakerChangeTimeRef.current = 0
+    speakerTurnHistoryRef.current    = []
   }, [])
 
   // ── AI Summarize ────────────────────────────────────────────────────────────

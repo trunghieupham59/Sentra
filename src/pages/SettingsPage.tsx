@@ -4,6 +4,7 @@ import { ApiKeysSection } from './settings/ApiKeysSection'
 import { BrowserIntegrationSection } from './settings/BrowserIntegrationSection'
 import { ChatPresetsSection } from './settings/ChatPresetsSection'
 import { PreferencesSection } from './settings/PreferencesSection'
+import { SttSection } from './settings/SttSection'
 import { TtsSection } from './settings/TtsSection'
 import { UpdaterSection } from './settings/UpdaterSection'
 
@@ -22,6 +23,7 @@ export function SettingsPage() {
 
         <ApiKeysSection />
         <PreferencesSection />
+        <SttSection />
         <TtsSection />
         <BrowserIntegrationSection />
         <ChatPresetsSection />

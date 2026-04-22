@@ -122,6 +122,16 @@ export interface Translations {
   settings_font_size_large: string
   settings_furigana: string
   settings_furigana_desc: string
+  // Settings — Speech-to-Text section
+  settings_stt_section: string
+  settings_stt_provider_desc: string
+  settings_stt_engine_name: string
+  settings_stt_ready: string
+  settings_stt_needs_key: string
+  settings_stt_usage: string
+  settings_stt_feature_voice: string
+  settings_stt_feature_live: string
+
   settings_tts_section: string
   /** Short description of TTS provider priority order */
   settings_tts_priority_desc: string
