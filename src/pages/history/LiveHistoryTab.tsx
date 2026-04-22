@@ -4,7 +4,9 @@ import { tpl } from '../../utils/tpl'
 import { MarkdownText } from '../../components/MarkdownText'
 import { ChevronDownIcon, MicrophoneIcon } from '../../components/ui/icons'
 import { HistoryDeleteButton } from '../../components/ui/HistoryDeleteButton'
-import { formatTime, HistoryClearHeader, HistoryEmptyState, langLabel, ProviderBadge } from './historyUtils'
+import { formatTime, langLabel, ProviderBadge } from './historyUtils'
+import { HistoryClearHeader } from '../../components/ui/HistoryClearHeader'
+import { HistoryEmptyState } from '../../components/ui/HistoryEmptyState'
 
 /** Số ký tự preview hiển thị trong danh sách live session history */
 const LIVE_HISTORY_PREVIEW_CHARS = 120

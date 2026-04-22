@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { LanguageSelector } from '../components/LanguageSelector'
 import { MarkdownText } from '../components/MarkdownText'
 import { ModelSelector } from '../components/ModelSelector'
@@ -13,13 +13,14 @@ import {
   LightbulbIcon,
   MicrophoneIcon,
   MonitorIcon,
-  PencilIcon,
   SpinnerIcon,
   StopIcon,
   SubtitlesIcon,
   TrashIcon,
   TranslateIcon,
 } from '../components/ui/icons'
+import { SegmentRow } from '../components/live/SegmentRow'
+import { TranslationRow } from '../components/live/TranslationRow'
 import { useLiveTranslate, DEFAULT_SUBTITLE_SETTINGS } from '../hooks/useLiveTranslate'
 import { COPY_FEEDBACK_DURATION_MS } from '../constants/ui'
 import { useAppStore, useT } from '../store/useAppStore'
@@ -714,171 +715,6 @@ function Notice({ children, variant = 'warning' }: { children: React.ReactNode; 
     <div className={`flex-shrink-0 flex items-start gap-2 mx-4 mt-3 p-3 rounded-lg border text-sm ${cls}`}>
       <AlertTriangleIcon className="w-4 h-4 flex-shrink-0 mt-0.5" />
       <span>{children}</span>
-    </div>
-  )
-}
-
-const SPEAKER_COLORS = [
-  'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-  'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
-  'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
-  'bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300',
-  'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
-  'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300',
-]
-
-// ── Typewriter hook — reveals text word-by-word when text first becomes non-empty ─
-// Dependency on [text] means:
-//   - On mount with text='': skips (empty), returns ''
-//   - When text changes from '' → actual translation: starts animation
-//   - For SegmentRow where text is non-empty on mount: runs immediately
-function useTypewriter(text: string, msPerWord = 45) {
-  const [displayed, setDisplayed] = useState('')
-  // biome-ignore lint/correctness/useExhaustiveDependencies: msPerWord is a constant at call-site and intentionally excluded
-  useEffect(() => {
-    if (!text) { setDisplayed(''); return }
-    const words = text.split(' ')
-    let i = 0
-    setDisplayed(words[0] ?? '')
-    if (words.length <= 1) { setDisplayed(text); return }
-    const timer = setInterval(() => {
-      i++
-      if (i < words.length) {
-        setDisplayed(words.slice(0, i + 1).join(' '))
-      } else {
-        setDisplayed(text)
-        clearInterval(timer)
-      }
-    }, msPerWord)
-    return () => clearInterval(timer)
-  }, [text]) // re-run when text changes (e.g. '' → actual translation)
-  return displayed
-}
-
-/** One realtime segment row with a colored, click-to-rename speaker badge. */
-function SegmentRow({
-  speaker, text, speakerNameMap, onRename,
-}: {
-  speaker: string
-  text: string
-  speakerNameMap: Record<string, string>
-  onRename: (original: string, newName: string) => void
-}) {
-  const displayName = speakerNameMap[speaker] || speaker
-  const colorIdx = (Number(speaker.replace(/\D/g, '')) - 1) % SPEAKER_COLORS.length
-  const colorClass = SPEAKER_COLORS[Math.max(0, colorIdx)]
-
-  const [isRenaming, setIsRenaming] = useState(false)
-  const [renameValue, setRenameValue] = useState(displayName)
-
-  // Typewriter effect — reveals text word by word when segment first appears
-  const displayedText = useTypewriter(text)
-
-  const handleRenameSubmit = () => {
-    if (renameValue.trim()) onRename(speaker, renameValue.trim())
-    setIsRenaming(false)
-  }
-
-  return (
-    <div className="flex items-start gap-2">
-      {isRenaming ? (
-        <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
-          <input
-            // biome-ignore lint/a11y/noAutofocus: intentional for rename UX
-            autoFocus
-            value={renameValue}
-            onChange={e => setRenameValue(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter') handleRenameSubmit()
-              if (e.key === 'Escape') setIsRenaming(false)
-            }}
-            onBlur={handleRenameSubmit}
-            className="w-20 px-1.5 py-0.5 text-[10px] rounded-full border border-blue-300 dark:border-blue-700
-                       bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300
-                       focus:outline-none focus:border-blue-500"
-          />
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => { setRenameValue(displayName); setIsRenaming(true) }}
-          title="Click to rename speaker"
-          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 mt-0.5 cursor-pointer hover:opacity-80 group ${colorClass}`}
-        >
-          {displayName}
-          <PencilIcon className="w-2.5 h-2.5 opacity-0 group-hover:opacity-60 transition-opacity" />
-        </button>
-      )}
-      <span className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-        {displayedText}
-        {displayedText !== text && (
-          <span className="inline-block ml-0.5 w-0.5 h-3.5 bg-gray-400 dark:bg-gray-500 animate-pulse align-middle" />
-        )}
-      </span>
-    </div>
-  )
-}
-
-/** Translation row — same speaker badge as SegmentRow with typewriter animation. */
-function TranslationRow({
-  speaker, text, speakerNameMap,
-}: {
-  speaker: string
-  text: string
-  speakerNameMap: Record<string, string>
-}) {
-  const displayName = speakerNameMap[speaker] || speaker
-  const colorIdx = (Number(speaker.replace(/\D/g, '')) - 1) % SPEAKER_COLORS.length
-  const colorClass = SPEAKER_COLORS[Math.max(0, colorIdx)]
-
-  // Typewriter with slight delay so translation appears after transcript
-  const displayedText = useTypewriter(text, 55)
-
-  return (
-    <div className="flex items-start gap-2">
-      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 mt-0.5 ${colorClass}`}>
-        {displayName}
-      </span>
-      <span className="text-sm font-medium text-blue-700 dark:text-blue-300 leading-relaxed">
-        {displayedText}
-        {displayedText !== text && (
-          <span className="inline-block ml-0.5 w-0.5 h-3.5 bg-blue-400 dark:bg-blue-600 animate-pulse align-middle" />
-        )}
-      </span>
-    </div>
-  )
-}
-
-function SpeakerAnalysisText({ text }: { text: string }) {
-  const lines = text.split('\n').filter(Boolean)
-  const speakerColorMap = new Map<string, string>()
-
-  return (
-    <div className="space-y-1.5 text-xs">
-      {lines.map((line, i) => {
-        const match = line.match(/^\[([^\]]+)\]:\s*(.*)/)
-        if (match) {
-          const label = match[1]
-          const content = match[2]
-          if (!speakerColorMap.has(label)) {
-            speakerColorMap.set(label, SPEAKER_COLORS[speakerColorMap.size % SPEAKER_COLORS.length])
-          }
-          const colorClass = speakerColorMap.get(label) ?? SPEAKER_COLORS[0]
-          return (
-            // biome-ignore lint/suspicious/noArrayIndexKey: stable index for conversation lines
-            <div key={i} className="flex items-start gap-2">
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 ${colorClass}`}>
-                {label}
-              </span>
-              <span className="text-gray-700 dark:text-gray-300 leading-relaxed pt-0.5">{content}</span>
-            </div>
-          )
-        }
-        return (
-          // biome-ignore lint/suspicious/noArrayIndexKey: stable index for conversation lines
-          <p key={i} className="text-gray-600 dark:text-gray-400 leading-relaxed">{line}</p>
-        )
-      })}
     </div>
   )
 }

@@ -71,11 +71,11 @@ export function SttSection() {
         <div className="px-4 py-3 flex flex-wrap gap-1.5">
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium
                            bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-            🎤 {t.settings_stt_feature_voice}
+            <MicrophoneIcon className="w-3 h-3" /> {t.settings_stt_feature_voice}
           </span>
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium
                            bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-            🎙 {t.settings_stt_feature_live}
+            <MicrophoneIcon className="w-3 h-3" /> {t.settings_stt_feature_live}
           </span>
         </div>
 

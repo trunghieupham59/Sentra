@@ -13,7 +13,7 @@
  * TranslatePage owns only scroll-sync refs/effect and pure JSX render.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { ImageAttachment } from '../components/ImageTranslator'
+import type { ImageAttachment } from '../components/translate/ImageTranslator'
 import { MAX_TRANSLATE_IMAGE_DIMENSION } from '../constants/image'
 import { DETECT_LANG_MAX_CHARS } from '../constants/providers'
 import { COPY_FEEDBACK_DURATION_MS, IMAGE_AUTO_TRANSLATE_DELAY_MS } from '../constants/ui'

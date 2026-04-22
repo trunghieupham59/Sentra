@@ -4,7 +4,9 @@ import { tpl } from '../../utils/tpl'
 import type { HistoryItem } from '../../types'
 import { ChevronDownIcon, ClockIcon, ReuseIcon } from '../../components/ui/icons'
 import { HistoryDeleteButton } from '../../components/ui/HistoryDeleteButton'
-import { formatTime, HistoryClearHeader, HistoryEmptyState, langLabel, ProviderBadge } from './historyUtils'
+import { formatTime, langLabel, ProviderBadge } from './historyUtils'
+import { HistoryClearHeader } from '../../components/ui/HistoryClearHeader'
+import { HistoryEmptyState } from '../../components/ui/HistoryEmptyState'
 
 export function TranslationHistoryTab() {
   const { history, deleteHistoryItem, clearHistory, setActivePage, setSourceText, setTranslatedText, setSourceLang, setTargetLang } = useAppStore()

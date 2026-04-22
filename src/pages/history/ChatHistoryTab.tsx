@@ -3,7 +3,8 @@ import { useAppStore, useT } from '../../store/useAppStore'
 import type { ChatSession } from '../../types'
 import { ChatBubbleIcon, ChevronDownIcon } from '../../components/ui/icons'
 import { HistoryDeleteButton } from '../../components/ui/HistoryDeleteButton'
-import { formatTime, HistoryEmptyState, ProviderBadge } from './historyUtils'
+import { formatTime, ProviderBadge } from './historyUtils'
+import { HistoryEmptyState } from '../../components/ui/HistoryEmptyState'
 
 export function ChatHistoryTab() {
   const { chatSessions, deleteChatSession, setActiveChatSession, setActivePage } = useAppStore()

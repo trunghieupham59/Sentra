@@ -6,7 +6,7 @@
  * SPLIT-DUP-01: Now delegates to the shared ImagePreviewThumbnail component
  * instead of duplicating the JSX inline.
  */
-import type { ImageAttachment } from '../ImageTranslator'
+import type { ImageAttachment } from './ImageTranslator'
 import { ImagePreviewThumbnail } from '../ui/ImagePreviewThumbnail'
 
 interface ImageAttachmentPreviewProps {
