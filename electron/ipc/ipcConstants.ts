@@ -134,3 +134,27 @@ export const LIGHTWEIGHT_TRANSLATOR_PROMPT =
 
 /** Tên preset voice dùng cho Gemini TTS. Xem: https://ai.google.dev/gemini-api/docs/speech */
 export const GEMINI_TTS_VOICE_NAME = 'Aoede'
+
+// ── Edge TTS (Microsoft Neural TTS — free, no API key needed) ────────────────
+/** WebSocket endpoint for Microsoft Edge TTS (via browser speech service). */
+export const EDGE_TTS_WS_URL = 'wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1'
+/** Trusted client token required by Edge TTS DRM — public, used by open-source clients. */
+export const EDGE_TTS_TRUSTED_TOKEN = '6A5AA1D4EAFF4E9FB37E23D68491D6F4'
+/** Chromium version string used in Edge TTS DRM and User-Agent header. */
+export const EDGE_TTS_CHROMIUM_FULL = '143.0.3650.75'
+/** Chromium major version used in User-Agent header. */
+export const EDGE_TTS_CHROMIUM_MAJOR = '143'
+/** Windows epoch offset (seconds between Unix epoch and Windows file time epoch). */
+export const EDGE_TTS_WIN_EPOCH = 11644473600
+/** Default Edge TTS voice — Vietnamese female, natural quality. */
+export const EDGE_TTS_DEFAULT_VOICE = 'vi-VN-HoaiMyNeural'
+/** Default speaking rate for Edge TTS — +20% faster than neutral. */
+export const EDGE_TTS_DEFAULT_RATE = '+20%'
+
+// ── ElevenLabs TTS ────────────────────────────────────────────────────────────
+/** ElevenLabs REST API base URL. */
+export const ELEVENLABS_API_BASE = 'https://api.elevenlabs.io'
+/** ElevenLabs model — multilingual v2 for best cross-language quality. */
+export const ELEVENLABS_TTS_MODEL = 'eleven_multilingual_v2'
+/** Default ElevenLabs voice ID — Adam (neutral, works well for all languages). */
+export const ELEVENLABS_DEFAULT_VOICE_ID = 'pNInz6obpgDQGcFmaJgB'

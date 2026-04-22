@@ -92,9 +92,9 @@ export interface TtsResult {
   success: boolean
   /** base64-encoded audio (avoids IPC ArrayBuffer serialization issues) */
   audioBase64?: string
-  /** MIME type of the audio: 'audio/mpeg' (OpenAI) or 'audio/wav' (Gemini) */
+  /** MIME type of the audio: 'audio/mpeg' (OpenAI / Edge / ElevenLabs) or 'audio/wav' (Gemini) */
   mimeType?: string
-  /** Which provider produced the audio: 'openai' | 'gemini' */
+  /** Which provider produced the audio: 'openai' | 'gemini' | 'edge' | 'elevenlabs' */
   provider?: string
   error?: string
   errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | string
@@ -197,7 +197,23 @@ export interface LiveSession {
   rawTranscript: string
   translation: string
   summary?: string
+  /** Speaker-labeled transcript produced by AI diarization analysis */
+  speakerAnalysis?: string
+  /** Action items extracted from the meeting by AI */
+  actionItems?: string
+  /** Key decisions extracted from the meeting by AI */
+  decisions?: string
   wordCount: number
+  /** Timestamped segments for SRT/TXT export and history playback */
+  segments?: Array<{
+    id: string
+    rawText: string
+    translation: string
+    speaker: string
+    timestamp: number
+  }>
+  /** User-assigned speaker display names, e.g. { 'Speaker 1': 'Alice' } */
+  speakerNameMap?: Record<string, string>
 }
 
 // ─── History ──────────────────────────────────────────────────────────────────
@@ -285,6 +301,8 @@ export interface WindowApi {
       }>
     }>
     systemPrompt?: string
+    /** Bypass the 3k char limit — only set true for AI Summarize on long transcripts */
+    bypassLengthCheck?: boolean
   }) => Promise<ChatResult>
   checkScreenPermission: () => Promise<string>
   openExternal: (url: string) => Promise<void>

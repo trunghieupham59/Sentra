@@ -55,7 +55,7 @@ contextBridge.exposeInMainWorld('api', {
     language?: string
   }) => ipcRenderer.invoke('audio:transcribe', params),
 
-  // AI Text-to-Speech — tries OpenAI TTS first, then Gemini TTS, falls back to NO_API_KEY
+  // AI Text-to-Speech — priority: OpenAI → Gemini → Edge TTS (free) → ElevenLabs
   speakText: (params: {
     text: string
     voice?: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
@@ -104,6 +104,8 @@ contextBridge.exposeInMainWorld('api', {
       }>
     }>
     systemPrompt?: string
+    /** Bypass the 3k char limit — only set true for AI Summarize on long transcripts */
+    bypassLengthCheck?: boolean
   }) => ipcRenderer.invoke('chat:send', params),
 
   // Check macOS Screen Recording permission status

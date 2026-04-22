@@ -10,14 +10,14 @@ import { formatTime, HistoryClearHeader, HistoryEmptyState, langLabel, ProviderB
 const LIVE_HISTORY_PREVIEW_CHARS = 120
 
 export function LiveHistoryTab() {
-  const { liveSessions, deleteLiveSession, clearLiveSessions, setActivePage } = useAppStore()
+  const { liveSessions, deleteLiveSession, clearLiveSessions, setActivePage, setViewingLiveSession } = useAppStore()
   const t = useT()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [confirmClear, setConfirmClear] = useState(false)
 
-  // Note: Live page does not support "replay" mode — clicking opens a new recording session.
-  // The session content is visible in the expanded card above (rawTranscript + translation).
-  const handleOpenLive = () => {
+  // Open the live page and restore the selected session's content for viewing.
+  const handleOpenLive = (sessionId: string) => {
+    setViewingLiveSession(sessionId)
     setActivePage('live')
   }
 
@@ -129,11 +129,39 @@ export function LiveHistoryTab() {
                         </div>
                       )}
 
+                      {/* Action Items (if any) */}
+                      {session.actionItems && (
+                        <div className="rounded-lg border border-amber-100 dark:border-amber-900/40
+                                        bg-amber-50/50 dark:bg-amber-950/10 px-3 py-2 text-xs">
+                          <p className="text-[10px] font-semibold uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-1.5">
+                            {t.live_action_items}
+                          </p>
+                          <MarkdownText
+                            text={session.actionItems}
+                            className="text-amber-800 dark:text-amber-200"
+                          />
+                        </div>
+                      )}
+
+                      {/* Decisions (if any) */}
+                      {session.decisions && (
+                        <div className="rounded-lg border border-green-100 dark:border-green-900/40
+                                        bg-green-50/50 dark:bg-green-950/10 px-3 py-2 text-xs">
+                          <p className="text-[10px] font-semibold uppercase tracking-widest text-green-600 dark:text-green-400 mb-1.5">
+                            {t.live_decisions}
+                          </p>
+                          <MarkdownText
+                            text={session.decisions}
+                            className="text-green-800 dark:text-green-200"
+                          />
+                        </div>
+                      )}
+
                       {/* Actions */}
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => handleOpenLive()}
+                          onClick={() => handleOpenLive(session.id)}
                           className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg
                                      bg-purple-50 text-purple-600 hover:bg-purple-100
                                      dark:bg-purple-950 dark:text-purple-400 dark:hover:bg-purple-900

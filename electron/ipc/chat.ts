@@ -32,6 +32,11 @@ interface ChatParams {
   model: string
   messages: ChatMessage[]
   systemPrompt?: string
+  /**
+   * When true, bypasses the MAX_CHAT_REQUEST_CHARS length guard.
+   * Only used for AI Summarize (live-translate) which needs to send longer transcripts.
+   */
+  bypassLengthCheck?: boolean
 }
 
 // HC-08: MAX_CHAT_REQUEST_CHARS now imported from ipcConstants — stays in sync with
@@ -337,24 +342,25 @@ const CHAT_PROVIDERS: Record<string, ChatFn> = {
  */
 export function registerChatHandlers(ipcMain: IpcMain) {
   ipcMain.handle('chat:send', async (_event, params: ChatParams) => {
-    const { provider, model, messages, systemPrompt } = params
+    const { provider, model, messages, systemPrompt, bypassLengthCheck } = params
 
     if (!messages || messages.length === 0) {
       return { success: false, error: 'No messages provided' }
     }
 
     // Validate the last user message doesn't exceed the character limit.
-    // This enforces the same limit as MAX_CHAT_INPUT_CHARS in the renderer,
-    // preventing bypass via direct IPC calls.
-    const lastMsg = messages[messages.length - 1]
-    if (lastMsg.role === 'user') {
-      const lastMsgTextChars = lastMsg.content.reduce(
-        (sum, c) => sum + (c.text?.length ?? 0), 0
-      )
-      if (lastMsgTextChars > MAX_CHAT_REQUEST_CHARS) {  // HC-08
-        return {
-          success: false,
-          error: `Message too long (${lastMsgTextChars} chars). Maximum is ${MAX_CHAT_REQUEST_CHARS} characters.`,
+    // bypassLengthCheck=true skips this gate for AI Summarize which sends full transcripts.
+    if (!bypassLengthCheck) {
+      const lastMsg = messages[messages.length - 1]
+      if (lastMsg.role === 'user') {
+        const lastMsgTextChars = lastMsg.content.reduce(
+          (sum, c) => sum + (c.text?.length ?? 0), 0
+        )
+        if (lastMsgTextChars > MAX_CHAT_REQUEST_CHARS) {  // HC-08
+          return {
+            success: false,
+            error: `Message too long (${lastMsgTextChars} chars). Maximum is ${MAX_CHAT_REQUEST_CHARS} characters.`,
+          }
         }
       }
     }

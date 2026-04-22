@@ -17,6 +17,8 @@ export interface HistorySlice {
   // State
   history: HistoryItem[]
   liveSessions: LiveSession[]
+  /** ID of the live session currently being viewed (null = not viewing any) */
+  viewingLiveSessionId: string | null
 
   // History actions
   addHistory: (item: HistoryItem) => void
@@ -28,12 +30,14 @@ export interface HistorySlice {
   updateLiveSession: (id: string, updates: Partial<LiveSession>) => void
   deleteLiveSession: (id: string) => void
   clearLiveSessions: () => void
+  setViewingLiveSession: (id: string | null) => void
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: StateCreator full-state generic omitted to avoid circular deps — full AppState is assembled in useAppStore.ts
 export const createHistorySlice: StateCreator<any, [], [], HistorySlice> = (set) => ({
   history: [],
   liveSessions: [],
+  viewingLiveSessionId: null,
 
   addHistory: (item) =>
     set((state: HistorySlice) => ({
@@ -63,4 +67,6 @@ export const createHistorySlice: StateCreator<any, [], [], HistorySlice> = (set)
     })),
 
   clearLiveSessions: () => set({ liveSessions: [] }),
+
+  setViewingLiveSession: (id) => set({ viewingLiveSessionId: id }),
 })

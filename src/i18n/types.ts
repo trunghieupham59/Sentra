@@ -123,6 +123,10 @@ export interface Translations {
   settings_furigana: string
   settings_furigana_desc: string
   settings_tts_section: string
+  /** Short description of TTS provider priority order */
+  settings_tts_priority_desc: string
+  settings_tts_elevenlabs_key: string
+  settings_tts_elevenlabs_key_desc: string
   settings_tts_voice: string
   settings_tts_voice_desc: string
   settings_tts_voice_alloy: string
@@ -219,11 +223,19 @@ export interface Translations {
   live_summarize_again: string
   live_summarizing: string
   live_summary_title: string
+  // Live — speaker analysis
+  live_analyze_speakers: string
+  live_analyze_speakers_again: string
+  live_analyzing_speakers: string
+  live_speakers_title: string
+  live_speakers_rename_hint: string
   // Live — audio mode toggle
   live_audio_mode_mic: string
   live_audio_mode_mic_title: string
   live_audio_mode_system: string
   live_audio_mode_system_title: string
+  live_audio_mode_both: string
+  live_audio_mode_both_title: string
   // Live — screen recording permission hint
   live_screen_recording_hint: string
   live_open_system_settings: string
@@ -244,6 +256,28 @@ export interface Translations {
   live_subtitle_color_green: string
   live_subtitle_color_orange: string
   live_subtitle_color_pink: string
+  // Live — post-meeting analysis tabs
+  live_post_tab_summary: string
+  live_post_tab_actions: string
+  live_post_tab_decisions: string
+  // Live — action items
+  live_action_items: string
+  live_action_items_extract: string
+  live_action_items_extract_again: string
+  live_extracting_action_items: string
+  // Live — decisions
+  live_decisions: string
+  live_decisions_extract: string
+  live_decisions_extract_again: string
+  live_extracting_decisions: string
+  // Live — export
+  live_export: string
+  live_export_txt: string
+  live_export_srt: string
+  // Live — speaker rename
+  live_speaker_rename_placeholder: string
+  live_speaker_rename_save: string
+  live_speaker_rename_cancel: string
 
   // Chat page
   chat_placeholder: string

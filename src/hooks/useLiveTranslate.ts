@@ -19,7 +19,7 @@ import type { SubtitleSettings } from '../types'
 import { extractCompleteSentences, isHallucination, jaccardSimilarity } from '../utils/live-translate'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
-const CHUNK_DURATION_MS    = 3000  // record 3-second audio windows
+const CHUNK_DURATION_MS    = 3000  // record 3-second audio windows — Whisper quality degrades below 3 s
 
 /**
  * STT chunks accumulate into a pending buffer until a sentence boundary is
@@ -64,9 +64,9 @@ const CONTEXT_SENTENCES    = 2
  * No blob-size fallback: sending silent audio to Whisper always produces
  * hallucinations.  VAD is the primary gate — tune the thresholds instead.
  */
-const SPEECH_RMS_THRESHOLD = 6    // sustained sensitivity — slightly above room hum
-const PEAK_RMS_THRESHOLD   = 14   // peak gate: at least one sample must reach this
-const MIN_SPEECH_SAMPLES   = 4    // 4 × 80 ms = 320 ms sustained speech minimum
+const SPEECH_RMS_THRESHOLD = 4    // sustained sensitivity — lowered to catch quieter/distant speech
+const PEAK_RMS_THRESHOLD   = 8    // peak gate: lowered so quiet mics still pass
+const MIN_SPEECH_SAMPLES   = 2    // 2 × 80 ms = 160 ms minimum — faster detection, less dropout
 const VAD_SAMPLE_INTERVAL  = 80   // ms between AnalyserNode samples
 
 /**
@@ -83,7 +83,7 @@ const MAX_WORDS_PER_CHUNK  = 40
  * If Whisper returns more words per second than this, the output almost
  * certainly contains fabricated content not present in the audio.
  */
-const MAX_WORDS_PER_SEC    = 7
+const MAX_WORDS_PER_SEC    = 10   // raised — Japanese/fast speakers produce more tokens/sec
 
 /**
  * Number of consecutive silent chunks (chunks where VAD found no speech)
@@ -106,9 +106,9 @@ const SILENCE_RESET_CHUNKS = 5
  *   COMPRESSION_RATIO_MAX: Ratio of raw bytes to compressed bytes for the text.
  *                          High values indicate repetitive or anomalous output.
  */
-const NO_SPEECH_PROB_MAX    = 0.65
-const AVG_LOGPROB_MIN       = -1.0
-const COMPRESSION_RATIO_MAX = 2.4
+const NO_SPEECH_PROB_MAX    = 0.75   // raised — accept chunks unless Whisper is very sure it's silence
+const AVG_LOGPROB_MIN       = -1.4   // lowered — accept lower-confidence transcriptions
+const COMPRESSION_RATIO_MAX = 2.8    // raised — allow slightly more repetitive output
 
 /**
  * Software gain applied to the microphone signal before recording and VAD.
@@ -118,7 +118,7 @@ const COMPRESSION_RATIO_MAX = 2.4
  * but the RMS gate still acts on the amplified waveform, so VAD becomes
  * proportionally more sensitive).
  */
-const MIC_GAIN = 2.5
+const MIC_GAIN = 4.0   // raised — captures quiet/distant speakers; Web Audio clips at ±1.0 so headroom is safe
 
 /**
  * Maximum number of characters to retain in the raw transcript ref for
@@ -136,6 +136,24 @@ const MAX_RAW_TRANSCRIPT_CHARS = 50_000
 const CHUNK_MAX_QUEUE_AGE_MS = 10_000 // 10 s
 
 
+/**
+ * A single translated segment with speaker label.
+ * Segments are built in real-time as speech is transcribed + translated.
+ * Speaker labels are inferred from silence pauses between speakers (VAD-based diarization).
+ */
+export interface LiveSegment {
+  id: string
+  rawText: string
+  translation: string
+  speaker: string    // e.g. 'Speaker 1', 'Speaker 2'
+  timestamp: number
+}
+
+/** Minimum silent chunks before considering a speaker change (1 chunk = 2 s). */
+const MIN_SILENCE_FOR_SPEAKER_CHANGE = 1
+/** Minimum ms between speaker changes — prevents rapid toggling. */
+const MIN_SPEAKER_DURATION_MS = 4_000
+
 /** Default subtitle appearance settings — also used by reset button in LiveTranslatePage */
 export const DEFAULT_SUBTITLE_SETTINGS = {
   textColor: '#ffffff',
@@ -149,11 +167,13 @@ export function useLiveTranslate() {
   const {
     sourceLang, targetLang, selectedProvider, selectedModels, keyStatus,
     addLiveSession, updateLiveSession,
+    viewingLiveSessionId, liveSessions, setViewingLiveSession,
   } = useAppStore()
 
   // 'mic'    = microphone only (getUserMedia)
-  // 'system' = system audio (getDisplayMedia) + microphone — mixed
-  const [audioMode,      setAudioMode]      = useState<'mic' | 'system'>('mic')
+  // 'system' = system audio only (getDisplayMedia), no microphone
+  // 'both'   = system audio (getDisplayMedia) + microphone — mixed
+  const [audioMode,      setAudioMode]      = useState<'mic' | 'system' | 'both'>('mic')
 
   // macOS Screen Recording permission: null = not checked yet
   const [screenPermission, setScreenPermission] = useState<string | null>(null)
@@ -175,10 +195,34 @@ export function useLiveTranslate() {
   const showSubtitlesRef = useRef(false)
   useEffect(() => { showSubtitlesRef.current = showSubtitles }, [showSubtitles])
 
-  // ── Summary state ──────────────────────────────────────────────────────────
-  const [showSummaryBtn,  setShowSummaryBtn]  = useState(false)
-  const [summary,         setSummary]         = useState<string | null>(null)
-  const [isSummarizing,   setIsSummarizing]   = useState(false)
+  // ── Realtime segments (speaker-labeled transcript) ─────────────────────────
+  const [segments,    setSegments]    = useState<LiveSegment[]>([])
+  // Interim text: accumulated but not yet sentence-complete (shown in gray)
+  const [pendingText, setPendingText] = useState('')
+
+  // Speaker tracking refs — stable refs readable in processChunk useCallback
+  const currentSpeakerRef        = useRef('Speaker 1')
+  const speakerCountRef          = useRef(1)
+  const silenceBeforeChunkRef    = useRef(0)   // silent chunks captured before last speech chunk
+  const lastSpeakerChangeTimeRef = useRef(0)
+
+  // ── Summary + Speaker analysis state ──────────────────────────────────────
+  const [showSummaryBtn,       setShowSummaryBtn]       = useState(false)
+  const [summary,              setSummary]              = useState<string | null>(null)
+  const [isSummarizing,        setIsSummarizing]        = useState(false)
+  const [speakerAnalysis,      setSpeakerAnalysis]      = useState<string | null>(null)
+  const [isAnalyzingSpeakers,  setIsAnalyzingSpeakers]  = useState(false)
+
+  // ── Action Items + Decisions state ────────────────────────────────────────
+  const [actionItems,             setActionItems]             = useState<string | null>(null)
+  const [decisions,               setDecisions]               = useState<string | null>(null)
+  const [isExtractingActionItems, setIsExtractingActionItems] = useState(false)
+  const [isExtractingDecisions,   setIsExtractingDecisions]   = useState(false)
+
+  // ── Speaker name map + session start time ─────────────────────────────────
+  /** Maps original speaker labels (e.g. 'Speaker 1') to user-assigned names */
+  const [speakerNameMap,   setSpeakerNameMap]   = useState<Record<string, string>>({})
+  const [sessionStartTime, setSessionStartTime] = useState<number>(0)
 
   // Stable ref so audio callbacks always read fresh params
   const paramsRef = useRef({ sourceLang, targetLang, selectedProvider, selectedModels })
@@ -216,6 +260,9 @@ export function useLiveTranslate() {
   const txEndRef         = useRef<HTMLDivElement>(null)
   const sessionIdRef     = useRef<string | null>(null)
   const sessionStartRef  = useRef<number>(0)
+  // Mirror refs for segments + speakerNameMap — readable from stable useCallbacks
+  const segmentsRef       = useRef<LiveSegment[]>([])
+  const speakerNameMapRef = useRef<Record<string, string>>({})
 
   const hasOpenAIKey = keyStatus.openai
   const hasAnyKey    = Object.values(keyStatus).some(Boolean)
@@ -232,24 +279,55 @@ export function useLiveTranslate() {
     }
   }, [isMac])
 
-  // Check permission when switching to system mode, and re-check when window regains focus
+  // Check permission when switching to system / both mode, and re-check when window regains focus
   useEffect(() => {
-    if (audioMode === 'system') {
+    if (audioMode === 'system' || audioMode === 'both') {
       checkScreenPermission()
     }
   }, [audioMode, checkScreenPermission])
 
   useEffect(() => {
-    if (audioMode !== 'system' || !isMac) return
+    if ((audioMode !== 'system' && audioMode !== 'both') || !isMac) return
     const onFocus = () => checkScreenPermission()
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
   }, [audioMode, isMac, checkScreenPermission])
 
+  // Keep mirror refs in sync for stable useCallback access
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ref assignment never needs to retrigger
+  useEffect(() => { segmentsRef.current = segments }, [segments])
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ref assignment never needs to retrigger
+  useEffect(() => { speakerNameMapRef.current = speakerNameMap }, [speakerNameMap])
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: rawTranscript.length is the intentional trigger
   useEffect(() => { rawEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [rawTranscript.length])
   // biome-ignore lint/correctness/useExhaustiveDependencies: translation.length is the intentional trigger
   useEffect(() => { txEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [translation.length])
+
+  // ── Restore historical session when navigating from history ───────────────
+  // When the user clicks "Xem" on a live history item, viewingLiveSessionId is
+  // set in the store before navigating here.  This effect detects that change,
+  // finds the matching session, and pre-populates the UI state so the user can
+  // read the transcript, translation, and summary without starting a new recording.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: liveSessions intentionally omitted — only re-run when the target session ID changes
+  useEffect(() => {
+    if (!viewingLiveSessionId) return
+    const session = liveSessions.find((s) => s.id === viewingLiveSessionId)
+    if (!session) return
+
+    setRawTranscript(session.rawTranscript)
+    setTranslation(session.translation)
+    setSummary(session.summary ?? null)
+    setSpeakerAnalysis(session.speakerAnalysis ?? null)
+    setActionItems(session.actionItems ?? null)
+    setDecisions(session.decisions ?? null)
+    setSpeakerNameMap(session.speakerNameMap ?? {})
+    if (session.segments?.length) setSegments(session.segments)
+    setShowSummaryBtn(!!session.rawTranscript)
+    fullRawForSummaryRef.current = session.rawTranscript
+    fullTxForSummaryRef.current  = session.translation
+    sessionIdRef.current         = session.id
+  }, [viewingLiveSessionId])
 
   // ── Core pipeline ───────────────────────────────────────────────────────────
   const processChunk = useCallback(async (blob: Blob, mimeType: string) => {
@@ -307,11 +385,17 @@ export function useLiveTranslate() {
       normNew === normLast ||
       normLast.includes(normNew) ||
       normNew.includes(normLast) ||
-      jaccardSimilarity(normNew, normLast) > 0.82
+      jaccardSimilarity(normNew, normLast) > 0.92   // raised — less aggressive dedup, fewer dropped chunks
     )) return
     lastChunkTextRef.current = newText
 
     const newBuffer = pendingBufferRef.current ? `${pendingBufferRef.current} ${newText}` : newText
+
+    // ── Show interim (gray) text immediately after each STT chunk ─────────
+    // This updates the UI before sentence extraction, making the transcript
+    // feel "live" — text appears in gray as Whisper returns each chunk,
+    // then turns solid white/dark once the sentence is finalized & translated.
+    setPendingText(newBuffer)
 
     // Append new text and trim to MAX_RAW_TRANSCRIPT_CHARS to prevent unbounded growth
     // for very long sessions (hours). The last N chars are kept — sufficient for summarization.
@@ -338,6 +422,24 @@ export function useLiveTranslate() {
 
     pendingBufferRef.current = pending
     if (!complete) return
+
+    // Sentence is complete — update interim to show only the remaining pending part
+    setPendingText(pending)
+
+    // ── VAD-based speaker detection ───────────────────────────────────────
+    // When speech resumes after a pause (silence captured in silenceBeforeChunkRef),
+    // and enough time has passed since the last speaker change, increment the speaker.
+    const silenceBefore = silenceBeforeChunkRef.current
+    silenceBeforeChunkRef.current = 0  // consume once
+    if (
+      silenceBefore >= MIN_SILENCE_FOR_SPEAKER_CHANGE &&
+      Date.now() - lastSpeakerChangeTimeRef.current > MIN_SPEAKER_DURATION_MS
+    ) {
+      speakerCountRef.current++
+      currentSpeakerRef.current      = `Speaker ${speakerCountRef.current}`
+      lastSpeakerChangeTimeRef.current = Date.now()
+    }
+    const currentSpeaker = currentSpeakerRef.current
 
     setIsTranslating(true)
     try {
@@ -394,6 +496,14 @@ export function useLiveTranslate() {
         fullTxForSummaryRef.current = fullTxForSummaryRef.current
           ? `${fullTxForSummaryRef.current} ${newTx}`
           : newTx
+        // Push realtime segment with speaker label
+        setSegments(prev => [...prev, {
+          id: `seg-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`,
+          rawText: complete,
+          translation: newTx,
+          speaker: currentSpeaker,
+          timestamp: Date.now(),
+        }])
       }
     } catch {
       setPipelineError('Translation failed — will retry')
@@ -452,6 +562,10 @@ export function useLiveTranslate() {
       const blob      = new Blob(audioChunksRef.current, { type: recMime })
 
       if (hadSpeech) {
+        // Capture silence count before reset — used by processChunk for speaker detection
+        if (silentChunkCountRef.current > 0) {
+          silenceBeforeChunkRef.current = silentChunkCountRef.current
+        }
         // Speech detected — reset silence counter and queue the chunk.
         // Capture the enqueue timestamp so stale chunks can be discarded if the
         // queue falls behind — prevents latency stacking during slow API responses.
@@ -484,11 +598,37 @@ export function useLiveTranslate() {
 
   // ── Session start / stop ────────────────────────────────────────────────────
   const handleStart = useCallback(async () => {
+    // Clear any historical session being viewed — start fresh
+    setViewingLiveSession(null)
+    setRawTranscript('')
+    setTranslation('')
+    pendingBufferRef.current     = ''
+    pendingChunkCountRef.current = 0
+    recentSentencesRef.current   = []
+    fullRawForSummaryRef.current = ''
+    fullTxForSummaryRef.current  = ''
+    lastChunkTextRef.current     = ''
+
     setMicError(null)
     setShowSummaryBtn(false)
     setSummary(null)
-    sessionIdRef.current = `live-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-    sessionStartRef.current = Date.now()
+    setSpeakerAnalysis(null)
+    setIsAnalyzingSpeakers(false)
+    setActionItems(null)
+    setDecisions(null)
+    setIsExtractingActionItems(false)
+    setIsExtractingDecisions(false)
+    setSpeakerNameMap({})
+    setSegments([])
+    setPendingText('')
+    currentSpeakerRef.current        = 'Speaker 1'
+    speakerCountRef.current          = 1
+    silenceBeforeChunkRef.current    = 0
+    lastSpeakerChangeTimeRef.current = 0
+    const now = Date.now()
+    sessionIdRef.current    = `live-${now}-${Math.random().toString(36).slice(2, 8)}`
+    sessionStartRef.current = now
+    setSessionStartTime(now)
 
     try {
       const audioCtx = new AudioContext()
@@ -497,7 +637,7 @@ export function useLiveTranslate() {
 
       let captureStream: MediaStream
 
-      if (audioMode === 'system') {
+      if (audioMode === 'system' || audioMode === 'both') {
         // Request screen share + system audio via getDisplayMedia.
         // On macOS the user MUST check "Share audio" in the screen picker.
         // Note: Electron's setDisplayMediaRequestHandler overrides the source,
@@ -513,12 +653,6 @@ export function useLiveTranslate() {
 
         const sysAudioTracks = displayStream.getAudioTracks()
 
-        // Also capture mic so both sides of a conversation are heard
-        let micStream: MediaStream | null = null
-        try {
-          micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-        } catch { /* mic optional */ }
-
         const dest = audioCtx.createMediaStreamDestination()
 
         if (sysAudioTracks.length > 0) {
@@ -532,10 +666,14 @@ export function useLiveTranslate() {
           return
         }
 
-        if (micStream) {
-          const micSource = audioCtx.createMediaStreamSource(micStream)
-          micSource.connect(dest)
-          for (const track of micStream.getTracks()) dest.stream.addTrack(track)
+        // 'both' mode: also mix in microphone so both speakers are captured
+        if (audioMode === 'both') {
+          try {
+            const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+            const micSource = audioCtx.createMediaStreamSource(micStream)
+            micSource.connect(dest)
+            for (const track of micStream.getTracks()) dest.stream.addTrack(track)
+          } catch { /* mic optional in both mode */ }
         }
 
         captureStream = dest.stream
@@ -591,7 +729,7 @@ export function useLiveTranslate() {
         setMicError(msg)
       }
     }
-  }, [startChunk, audioMode])
+  }, [startChunk, audioMode, setViewingLiveSession])
 
   const handleStop = useCallback(() => {
     activeRef.current = false
@@ -628,6 +766,10 @@ export function useLiveTranslate() {
           rawTranscript: raw,
           translation: fullTxForSummaryRef.current.trim(),
           wordCount: wc,
+          segments: segmentsRef.current,
+          speakerNameMap: Object.keys(speakerNameMapRef.current).length > 0
+            ? speakerNameMapRef.current
+            : undefined,
         })
       }
     }
@@ -644,12 +786,32 @@ export function useLiveTranslate() {
     setTranslation('')
     setSummary(null)
     setShowSummaryBtn(false)
+    setSpeakerAnalysis(null)
+    setIsAnalyzingSpeakers(false)
+    setActionItems(null)
+    setDecisions(null)
+    setIsExtractingActionItems(false)
+    setIsExtractingDecisions(false)
+    setSpeakerNameMap({})
+    setSegments([])
+    setPendingText('')
+    currentSpeakerRef.current        = 'Speaker 1'
+    speakerCountRef.current          = 1
+    silenceBeforeChunkRef.current    = 0
+    lastSpeakerChangeTimeRef.current = 0
   }, [])
 
   // ── AI Summarize ────────────────────────────────────────────────────────────
+  /**
+   * Maximum characters sent to the AI for summarization.
+   * Keeps the last N chars of each section (most recent & relevant content).
+   * Avoids token-limit errors on long sessions while giving the model enough context.
+   */
+  const MAX_SUMMARIZE_SECTION_CHARS = 10_000
+
   const handleSummarize = useCallback(async () => {
-    const raw = fullRawForSummaryRef.current
-    const tx  = fullTxForSummaryRef.current
+    let raw = fullRawForSummaryRef.current
+    let tx  = fullTxForSummaryRef.current
     if (!raw) return
 
     setIsSummarizing(true)
@@ -657,10 +819,25 @@ export function useLiveTranslate() {
 
     const { targetLang, selectedProvider, selectedModels } = paramsRef.current
 
+    // Truncate each section to the last N chars so the AI receives the most recent,
+    // relevant content without exceeding model context / cost limits.
+    const wasTruncated = raw.length > MAX_SUMMARIZE_SECTION_CHARS || tx.length > MAX_SUMMARIZE_SECTION_CHARS
+    if (raw.length > MAX_SUMMARIZE_SECTION_CHARS) {
+      raw = `[…truncated for length]\n${raw.slice(-MAX_SUMMARIZE_SECTION_CHARS)}`
+    }
+    if (tx.length > MAX_SUMMARIZE_SECTION_CHARS) {
+      tx = `[…truncated for length]\n${tx.slice(-MAX_SUMMARIZE_SECTION_CHARS)}`
+    }
+    if (wasTruncated) {
+      console.log('[summarize] Input truncated to last', MAX_SUMMARIZE_SECTION_CHARS, 'chars per section')
+    }
+
     try {
       const result = await window.api.chat({
         provider: selectedProvider,
         model: selectedModels[selectedProvider],
+        // Bypass the chat UI 3k-char limit — summarize needs to send full transcripts.
+        bypassLengthCheck: true,
         systemPrompt: `You are a professional meeting summarizer. Write clear, concise summaries in ${targetLang} using bullet points.`,
         messages: [{
           role: 'user',
@@ -686,10 +863,226 @@ export function useLiveTranslate() {
         if (sessionIdRef.current) {
           updateLiveSession(sessionIdRef.current, { summary: result.reply })
         }
+      } else {
+        // Surface backend errors instead of silently failing
+        const errMsg = result.error ?? 'Summarization failed. Please try again.'
+        console.error('[summarize] Backend error:', errMsg)
+        setSummary(`❌ ${errMsg}`)
       }
-    } catch { /* ignore */ }
-    finally { setIsSummarizing(false) }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('[summarize] Exception:', msg)
+      setSummary(`❌ ${msg}`)
+    } finally {
+      setIsSummarizing(false)
+    }
   }, [updateLiveSession])
+
+  // ── AI Speaker Analysis ─────────────────────────────────────────────────────
+  /**
+   * Post-session speaker diarization via LLM.
+   * Sends the transcript to the AI which labels each speaking turn as
+   * [Speaker 1], [Speaker 2], etc. based on conversation patterns.
+   * Follows the approach recommended in docs/tts.md: LLM-based analysis
+   * is practical for turn-taking meetings (people speaking in turns).
+   */
+  const handleAnalyzeSpeakers = useCallback(async () => {
+    let raw = fullRawForSummaryRef.current
+    if (!raw) return
+
+    setIsAnalyzingSpeakers(true)
+    setSpeakerAnalysis(null)
+
+    const { targetLang, selectedProvider, selectedModels } = paramsRef.current
+
+    // Truncate to prevent token limit errors
+    const MAX_SPEAKER_INPUT_CHARS = 8_000
+    if (raw.length > MAX_SPEAKER_INPUT_CHARS) {
+      raw = `[…truncated for length]\n${raw.slice(-MAX_SPEAKER_INPUT_CHARS)}`
+    }
+
+    try {
+      const result = await window.api.chat({
+        provider: selectedProvider,
+        model: selectedModels[selectedProvider],
+        bypassLengthCheck: true,
+        systemPrompt: [
+          'You are a meeting transcript analyst specializing in speaker diarization.',
+          'Analyze conversation patterns to identify distinct speakers.',
+          'Label each speaking turn clearly as [Speaker 1], [Speaker 2], etc.',
+          `Output language: ${targetLang}`,
+        ].join(' '),
+        messages: [{
+          role: 'user',
+          content: [{
+            type: 'text',
+            text: [
+              'Analyze the following meeting transcript and label each distinct speaker.',
+              '',
+              'Rules:',
+              '- Identify speaker changes based on: conversation turn-taking, topic shifts, question/answer patterns',
+              '- Use labels: [Speaker 1], [Speaker 2], [Speaker 3], etc.',
+              '- Keep the original text intact, only add speaker labels',
+              '- If the entire transcript is one person, label everything as [Speaker 1]',
+              '',
+              'Format exactly as:',
+              '[Speaker 1]: <their text>',
+              '[Speaker 2]: <their text>',
+              '[Speaker 1]: <their text>',
+              '...',
+              '',
+              '[Transcript]:',
+              raw,
+            ].join('\n'),
+          }],
+        }],
+      })
+
+      if (result.success && result.reply) {
+        setSpeakerAnalysis(result.reply)
+        if (sessionIdRef.current) {
+          updateLiveSession(sessionIdRef.current, { speakerAnalysis: result.reply })
+        }
+      } else {
+        const errMsg = result.error ?? 'Speaker analysis failed. Please try again.'
+        console.error('[speaker-analysis] Backend error:', errMsg)
+        setSpeakerAnalysis(`❌ ${errMsg}`)
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('[speaker-analysis] Exception:', msg)
+      setSpeakerAnalysis(`❌ ${msg}`)
+    } finally {
+      setIsAnalyzingSpeakers(false)
+    }
+  }, [updateLiveSession])
+
+  // ── AI Action Items extraction ──────────────────────────────────────────────
+  const handleExtractActionItems = useCallback(async () => {
+    let raw = fullRawForSummaryRef.current
+    if (!raw) return
+
+    setIsExtractingActionItems(true)
+    setActionItems(null)
+
+    const { targetLang, selectedProvider, selectedModels } = paramsRef.current
+
+    const MAX_AI_INPUT_CHARS = 10_000
+    if (raw.length > MAX_AI_INPUT_CHARS) {
+      raw = `[…truncated]\n${raw.slice(-MAX_AI_INPUT_CHARS)}`
+    }
+
+    try {
+      const result = await window.api.chat({
+        provider: selectedProvider,
+        model: selectedModels[selectedProvider],
+        bypassLengthCheck: true,
+        systemPrompt: `You are a meeting assistant. Extract action items from meeting transcripts clearly. Output in ${targetLang}.`,
+        messages: [{
+          role: 'user',
+          content: [{
+            type: 'text',
+            text: [
+              `Extract all action items from the following meeting transcript.`,
+              'Rules:',
+              '- List each action item as a numbered point',
+              '- Include: responsible person (if mentioned), task description, deadline (if mentioned)',
+              '- If no action items are found, say so clearly',
+              '- Be concise and direct',
+              `- Output in ${targetLang}`,
+              '',
+              '[Transcript]:',
+              raw,
+            ].join('\n'),
+          }],
+        }],
+      })
+
+      if (result.success && result.reply) {
+        setActionItems(result.reply)
+        if (sessionIdRef.current) {
+          updateLiveSession(sessionIdRef.current, { actionItems: result.reply })
+        }
+      } else {
+        const errMsg = result.error ?? 'Failed to extract action items.'
+        console.error('[action-items] Backend error:', errMsg)
+        setActionItems(`❌ ${errMsg}`)
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('[action-items] Exception:', msg)
+      setActionItems(`❌ ${msg}`)
+    } finally {
+      setIsExtractingActionItems(false)
+    }
+  }, [updateLiveSession])
+
+  // ── AI Decisions extraction ─────────────────────────────────────────────────
+  const handleExtractDecisions = useCallback(async () => {
+    let raw = fullRawForSummaryRef.current
+    if (!raw) return
+
+    setIsExtractingDecisions(true)
+    setDecisions(null)
+
+    const { targetLang, selectedProvider, selectedModels } = paramsRef.current
+
+    const MAX_AI_INPUT_CHARS = 10_000
+    if (raw.length > MAX_AI_INPUT_CHARS) {
+      raw = `[…truncated]\n${raw.slice(-MAX_AI_INPUT_CHARS)}`
+    }
+
+    try {
+      const result = await window.api.chat({
+        provider: selectedProvider,
+        model: selectedModels[selectedProvider],
+        bypassLengthCheck: true,
+        systemPrompt: `You are a meeting assistant. Extract key decisions made during meetings. Output in ${targetLang}.`,
+        messages: [{
+          role: 'user',
+          content: [{
+            type: 'text',
+            text: [
+              `Extract all key decisions made in the following meeting transcript.`,
+              'Rules:',
+              '- List each decision as a numbered point',
+              '- Include context for each decision (why it was made, if mentioned)',
+              '- If no clear decisions are found, say so clearly',
+              '- Be concise and direct',
+              `- Output in ${targetLang}`,
+              '',
+              '[Transcript]:',
+              raw,
+            ].join('\n'),
+          }],
+        }],
+      })
+
+      if (result.success && result.reply) {
+        setDecisions(result.reply)
+        if (sessionIdRef.current) {
+          updateLiveSession(sessionIdRef.current, { decisions: result.reply })
+        }
+      } else {
+        const errMsg = result.error ?? 'Failed to extract decisions.'
+        console.error('[decisions] Backend error:', errMsg)
+        setDecisions(`❌ ${errMsg}`)
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('[decisions] Exception:', msg)
+      setDecisions(`❌ ${msg}`)
+    } finally {
+      setIsExtractingDecisions(false)
+    }
+  }, [updateLiveSession])
+
+  // ── Speaker rename ─────────────────────────────────────────────────────────
+  /** Maps a speaker's original label to a user-assigned display name. */
+  const handleRenameSpeaker = useCallback((originalLabel: string, newName: string) => {
+    if (!newName.trim()) return
+    setSpeakerNameMap(prev => ({ ...prev, [originalLabel]: newName.trim() }))
+  }, [])
 
   // ── Subtitle IPC integration ───────────────────────────────────────────────
   // Register onClosed listener once so the button syncs when user clicks ✕ in the OS window
@@ -764,15 +1157,33 @@ export function useLiveTranslate() {
     setShowSubtitleConfig,
     subtitleSettings,
     setSubtitleSettings,
+    // Realtime segments + interim text
+    segments,
+    pendingText,
     // Summary state
     showSummaryBtn,
     summary,
     isSummarizing,
+    // Speaker analysis state
+    speakerAnalysis,
+    isAnalyzingSpeakers,
+    // Action items + decisions
+    actionItems,
+    isExtractingActionItems,
+    decisions,
+    isExtractingDecisions,
+    // Speaker name map + session start time
+    speakerNameMap,
+    sessionStartTime,
     // Handlers
     handleStart,
     handleStop,
     handleClear,
     handleSummarize,
+    handleAnalyzeSpeakers,
+    handleExtractActionItems,
+    handleExtractDecisions,
+    handleRenameSpeaker,
     // DOM refs
     rawEndRef,
     txEndRef,
