@@ -1,7 +1,7 @@
 import { useState } from 'react'
+import { PlusIcon } from '../../components/ui/icons'
 import { PresetActions } from '../../components/ui/PresetActions'
 import { SettingsFormActions } from '../../components/ui/SettingsFormActions'
-import { PlusIcon } from '../../components/ui/icons'
 import { useAppStore, useT } from '../../store/useAppStore'
 import type { SystemPromptPreset } from '../../types'
 

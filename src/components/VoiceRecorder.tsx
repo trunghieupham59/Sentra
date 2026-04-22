@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { LANG_TO_BCP47, getSupportedAudioMimeType } from '../constants/audio'
-import { MicrophoneIcon, SpinnerIcon, StopSquareIcon } from './ui/icons'
+import { getSupportedAudioMimeType, LANG_TO_BCP47 } from '../constants/audio'
 import { useT } from '../store/useAppStore'
+import { MicrophoneIcon, SpinnerIcon, StopSquareIcon } from './ui/icons'
 
 // ─── Local type definitions for cross-browser Speech Recognition ──────────────
 interface SpeechRecResult {

@@ -1,24 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { DragOverlay } from '../components/ui/DragOverlay'
 import { AppLogoIcon } from '../components/AppLogo'
 import { MessageBubble } from '../components/chat/MessageBubble'
 import { SystemPromptDropdown } from '../components/chat/SystemPromptDropdown'
 import { ModelSelector } from '../components/ModelSelector'
+import { DragOverlay } from '../components/ui/DragOverlay'
 import { ImagePreviewThumbnail } from '../components/ui/ImagePreviewThumbnail'
 import {
   ImageIcon,
   PlusIcon, SendIcon,
   SpinnerIcon, TrashIcon, XIcon,
 } from '../components/ui/icons'
-import { chatService } from '../services/chatService'
 import { VoiceRecorder } from '../components/VoiceRecorder'
-import { MAX_CHAT_INPUT_CHARS } from '../constants/providers'
 import { MAX_CHAT_IMAGE_DIMENSION } from '../constants/image'
 import { COPY_FEEDBACK_DURATION_MS } from '../constants/ui'
-import { resizeImageFile, extractImageFromClipboard } from '../utils/imageUtils'
 import { useVoiceInput } from '../hooks/useVoiceInput'
+import { chatService } from '../services/chatService'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { ChatMessage, ChatMessageContent } from '../types'
+import { extractImageFromClipboard, resizeImageFile } from '../utils/imageUtils'
 
 /** Max height (px) của textarea input — giới hạn scroll khi text dài */
 const CHAT_TEXTAREA_MAX_HEIGHT_PX = 160
@@ -81,7 +80,7 @@ export function ChatPage() {
   const {
     isVoiceActive,
     isVoiceInterim,
-    voicePrefixRef,
+    voicePrefixRef: _voicePrefixRef,
     handleVoiceRecordingChange,
     handleVoiceTranscript,
     resetVoicePrefix,
@@ -324,7 +323,6 @@ export function ChatPage() {
   const messages = activeSession?.messages ?? []
 
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: drop zone for image upload
     <div
       role="application"
       aria-label="Chat drop zone"

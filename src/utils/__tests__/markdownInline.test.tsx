@@ -11,8 +11,8 @@
  *   7. Multiple consecutive marks
  *   8. Edge cases: empty string, unclosed markers, nested-like patterns
  */
-import React from 'react'
-import { describe, it, expect } from 'vitest'
+import type React from 'react'
+import { describe, expect, it } from 'vitest'
 import { renderInline } from '../markdownInline'
 
 // ── Helper: extract element type and text from a ReactNode ────────────────────

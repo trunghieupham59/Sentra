@@ -1,8 +1,8 @@
+import type { TranslationStyle } from '../../types'
 import { ModelSelector } from '../ModelSelector'
 import { AutoTranslateToggle } from '../ui/AutoTranslateToggle'
-import { PhoneticToggle } from '../ui/PhoneticToggle'
 import { ChevronDownIcon } from '../ui/icons'
-import type { TranslationStyle } from '../../types'
+import { PhoneticToggle } from '../ui/PhoneticToggle'
 
 interface TranslateToolbarProps {
   translationStyle: TranslationStyle

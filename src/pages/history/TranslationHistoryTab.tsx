@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { useAppStore, useT } from '../../store/useAppStore'
-import { tpl } from '../../utils/tpl'
-import type { HistoryItem } from '../../types'
-import { ChevronDownIcon, ClockIcon, ReuseIcon } from '../../components/ui/icons'
-import { HistoryDeleteButton } from '../../components/ui/HistoryDeleteButton'
-import { formatTime, langLabel, ProviderBadge } from './historyUtils'
 import { HistoryClearHeader } from '../../components/ui/HistoryClearHeader'
+import { HistoryDeleteButton } from '../../components/ui/HistoryDeleteButton'
 import { HistoryEmptyState } from '../../components/ui/HistoryEmptyState'
+import { ChevronDownIcon, ClockIcon, ReuseIcon } from '../../components/ui/icons'
+import { useAppStore, useT } from '../../store/useAppStore'
+import type { HistoryItem } from '../../types'
+import { tpl } from '../../utils/tpl'
+import { formatTime, langLabel, ProviderBadge } from './historyUtils'
 
 export function TranslationHistoryTab() {
   const { history, deleteHistoryItem, clearHistory, setActivePage, setSourceText, setTranslatedText, setSourceLang, setTargetLang } = useAppStore()

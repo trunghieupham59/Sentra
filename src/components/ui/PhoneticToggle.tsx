@@ -2,8 +2,9 @@
  * PhoneticToggle — pill-style toggle button for enabling / disabling
  * phonetic reading (furigana / romanisation) on the translation result.
  */
-import { MiniToggleTrack } from './MiniToggleTrack'
+
 import { SpinnerIcon } from './icons'
+import { MiniToggleTrack } from './MiniToggleTrack'
 
 interface PhoneticToggleProps {
   showFurigana: boolean

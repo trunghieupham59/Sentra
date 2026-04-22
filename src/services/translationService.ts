@@ -9,8 +9,7 @@
  *   import { translationService } from '../services/translationService'
  *   const result = await translationService.translate({ ... })
  */
-import type { TranslateParams, ImageTranslateResult, TranslateResult } from '../types'
-import type { TranslationStyle } from '../types'
+import type { ImageTranslateResult, TranslateParams, TranslateResult, TranslationStyle } from '../types'
 
 export interface TranslateImageParams {
   provider: string

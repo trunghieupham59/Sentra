@@ -1,9 +1,9 @@
 export type { AppLocale, Translations } from './types'
 
-import type { AppLocale, Translations } from './types'
 import en from './locales/en'
-import vi from './locales/vi'
 import ja from './locales/ja'
+import vi from './locales/vi'
+import type { AppLocale, Translations } from './types'
 
 export const TRANSLATIONS: Record<AppLocale, Translations> = { en, vi, ja }
 

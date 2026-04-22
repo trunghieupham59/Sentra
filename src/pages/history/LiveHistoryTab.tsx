@@ -1,12 +1,12 @@
 import { useState } from 'react'
+import { MarkdownText } from '../../components/MarkdownText'
+import { HistoryClearHeader } from '../../components/ui/HistoryClearHeader'
+import { HistoryDeleteButton } from '../../components/ui/HistoryDeleteButton'
+import { HistoryEmptyState } from '../../components/ui/HistoryEmptyState'
+import { ChevronDownIcon, MicrophoneIcon } from '../../components/ui/icons'
 import { useAppStore, useT } from '../../store/useAppStore'
 import { tpl } from '../../utils/tpl'
-import { MarkdownText } from '../../components/MarkdownText'
-import { ChevronDownIcon, MicrophoneIcon } from '../../components/ui/icons'
-import { HistoryDeleteButton } from '../../components/ui/HistoryDeleteButton'
 import { formatTime, langLabel, ProviderBadge } from './historyUtils'
-import { HistoryClearHeader } from '../../components/ui/HistoryClearHeader'
-import { HistoryEmptyState } from '../../components/ui/HistoryEmptyState'
 
 /** Số ký tự preview hiển thị trong danh sách live session history */
 const LIVE_HISTORY_PREVIEW_CHARS = 120

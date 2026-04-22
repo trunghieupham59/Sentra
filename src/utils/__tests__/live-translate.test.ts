@@ -6,11 +6,11 @@
  *   2. jaccardSimilarity — Word-bag Jaccard similarity
  *   3. extractCompleteSentences — Sentence boundary splitter
  */
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
+  extractCompleteSentences,
   isHallucination,
   jaccardSimilarity,
-  extractCompleteSentences,
 } from '../live-translate'
 
 // ─────────────────────────────────────────────────────────────────────────────

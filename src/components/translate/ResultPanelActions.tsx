@@ -1,8 +1,8 @@
 import { CopyButton } from '../ui/CopyButton'
 import { DownloadImageButton } from '../ui/DownloadImageButton'
 import { RewriteButton } from '../ui/RewriteButton'
-import { SpeakButton } from '../ui/SpeakButton'
 import type { SpeakPanel } from '../ui/SpeakButton'
+import { SpeakButton } from '../ui/SpeakButton'
 
 interface ResultPanelActionsProps {
   translatedText: string

@@ -16,7 +16,7 @@
  *   labelStop={t.translate_speak_stop}
  * />
  */
-import { SpinnerIcon, StopIcon, SpeakerIcon } from './icons'
+import { SpeakerIcon, SpinnerIcon, StopIcon } from './icons'
 
 export type SpeakPanel = 'source' | 'translated'
 

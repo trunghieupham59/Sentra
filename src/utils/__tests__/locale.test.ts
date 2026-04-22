@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { detectSystemLocale, SUPPORTED_LOCALES } from '../locale'
 
 describe('SUPPORTED_LOCALES', () => {

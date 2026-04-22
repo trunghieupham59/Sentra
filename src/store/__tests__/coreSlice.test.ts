@@ -9,8 +9,9 @@
  *   - clearTranslation
  *   - Error state
  */
-import { describe, it, expect, beforeEach } from 'vitest'
+
 import { act } from '@testing-library/react'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { useAppStore } from '../useAppStore'
 
 // Reset core state before each test to prevent cross-test leakage

@@ -1,9 +1,9 @@
-import { ReactNode } from 'react'
+import type { ReactNode } from 'react'
+import { PROVIDERS } from '../constants/providers'
 import { useAppStore, useT } from '../store/useAppStore'
+import type { Provider } from '../types'
 import { AppLogoIcon } from './AppLogo'
 import { ChatBubbleIcon, ClockIcon, GearIcon, MicrophoneIcon, TranslateIcon } from './ui/icons'
-import { PROVIDERS } from '../constants/providers'
-import { Provider } from '../types'
 
 interface SidebarItemProps {
   icon: ReactNode

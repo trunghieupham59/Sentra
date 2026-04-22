@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useAppStore, useT } from '../store/useAppStore'
-import { TranslationHistoryTab } from './history/TranslationHistoryTab'
 import { ChatHistoryTab } from './history/ChatHistoryTab'
 import { LiveHistoryTab } from './history/LiveHistoryTab'
+import { TranslationHistoryTab } from './history/TranslationHistoryTab'
 
 // ─── Main HistoryPage ──────────────────────────────────────────────────────────
 export function HistoryPage() {

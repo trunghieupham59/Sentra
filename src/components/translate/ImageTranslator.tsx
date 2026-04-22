@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertTriangleIcon, ImageIcon, SpinnerIcon, UploadIcon, XIcon } from '../ui/icons'
-import { useT } from '../../store/useAppStore'
 import { MAX_TRANSLATE_IMAGE_DIMENSION } from '../../constants/image'
+import { useT } from '../../store/useAppStore'
 import { resizeImageFile } from '../../utils/imageUtils'
+import { AlertTriangleIcon, ImageIcon, SpinnerIcon, UploadIcon, XIcon } from '../ui/icons'
 
 // DUP-05: processImageFile replaced by shared resizeImageFile from imageUtils.ts
 // HC-09: MAX_TRANSLATE_IMAGE_DIMENSION imported from constants/image.ts

@@ -12,14 +12,14 @@
  * The page component owns only UI-copy state (`copiedRaw`, `copiedTx`,
  * `copiedSummary`) and pure render logic.
  */
+import { MicVAD } from '@ricky0123/vad-web'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getSupportedAudioMimeType } from '../constants/audio'
 import { LANG_NAMES_FOR_AI } from '../constants/langNames'
 import { useAppStore } from '../store/useAppStore'
 import type { SubtitleSettings } from '../types'
-import { MicVAD } from '@ricky0123/vad-web'
-import { float32ToWav } from '../utils/wav-encoder'
 import { extractCompleteSentences, isHallucination, jaccardSimilarity, splitSentences } from '../utils/live-translate'
+import { float32ToWav } from '../utils/wav-encoder'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -371,7 +371,6 @@ export function useLiveTranslate() {
   const vadModeStateRef    = useRef<'energy' | 'silero'>('energy')
   const adaptiveChunksRef  = useRef(0)
   const adaptiveDiscardRef = useRef(0)
-  // biome-ignore lint/suspicious/noExplicitAny: upgrade fn has complex closure dependencies
   const upgradeVADRef      = useRef<(() => Promise<void>) | null>(null)
 
   // Counts consecutive chunks where VAD detected no speech.
@@ -430,9 +429,7 @@ export function useLiveTranslate() {
   }, [audioMode, isMac, checkScreenPermission])
 
   // Keep mirror refs in sync for stable useCallback access
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ref assignment never needs to retrigger
   useEffect(() => { segmentsRef.current = segments }, [segments])
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ref assignment never needs to retrigger
   useEffect(() => { speakerNameMapRef.current = speakerNameMap }, [speakerNameMap])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: rawTranscript.length is the intentional trigger
@@ -588,9 +585,9 @@ export function useLiveTranslate() {
     //
     // This replaces the earlier approach of matching Japanese-only morphemes
     // (よ/ね/ます/etc.) which was language-specific and therefore not optimal.
-    // biome-ignore lint/suspicious/noExplicitAny: segmentTexts comes from IPC (untyped preload)
-    const whisperParts: string[] = (stt as any)?.segmentTexts?.length > 1
-      ? ((stt as any).segmentTexts as string[]).map((s: string) => s.trim()).filter(Boolean)
+    const sttExt = stt as { segmentTexts?: string[] }
+    const whisperParts: string[] = (sttExt?.segmentTexts?.length ?? 0) > 1
+      ? (sttExt.segmentTexts ?? []).map((s: string) => s.trim()).filter(Boolean)
       : [newText]
 
     // Collect all complete sentences found across the Whisper parts in this chunk
@@ -1185,7 +1182,7 @@ export function useLiveTranslate() {
         setMicError(msg)
       }
     }
-  }, [startChunk, audioMode, setViewingLiveSession])
+  }, [startChunk, audioMode, setViewingLiveSession, processChunk])
 
   const handleStop = useCallback(() => {
     activeRef.current = false
@@ -1565,7 +1562,6 @@ export function useLiveTranslate() {
   }, [showSubtitles])
 
   // Push latest translation text to the subtitle window whenever it changes
-  // biome-ignore lint/correctness/useExhaustiveDependencies: latestSubtitle + isTranslating are the intentional triggers
   useEffect(() => {
     if (showSubtitles) {
       window.api.subtitle.update(latestSubtitle, isTranslating)
@@ -1573,7 +1569,6 @@ export function useLiveTranslate() {
   }, [latestSubtitle, isTranslating, showSubtitles])
 
   // Apply appearance settings to the subtitle window whenever they change
-  // biome-ignore lint/correctness/useExhaustiveDependencies: subtitleSettings is the intentional trigger
   useEffect(() => {
     if (showSubtitles) {
       window.api.subtitle.setStyle(subtitleSettings)

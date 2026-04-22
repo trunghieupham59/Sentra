@@ -1,5 +1,5 @@
-import { tpl } from '../../utils/tpl'
 import { PROVIDERS } from '../../constants/providers'
+import { tpl } from '../../utils/tpl'
 
 export function formatTime(ts: number, t: { time_just_now: string; time_m_ago: string; time_h_ago: string; time_d_ago: string }): string {
   const d = new Date(ts)

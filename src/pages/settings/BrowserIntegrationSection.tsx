@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { InlineErrorBanner } from '../../components/ui/InlineErrorBanner'
-import { SettingsFormActions } from '../../components/ui/SettingsFormActions'
-import { TokenTtlPicker } from '../../components/ui/TokenTtlPicker'
 import {
   GitHubIcon, KeyIcon,
   PlusIcon, RefreshIcon, SpinnerIcon, TrashIcon, XIcon,
 } from '../../components/ui/icons'
+import { SettingsFormActions } from '../../components/ui/SettingsFormActions'
+import { TokenTtlPicker } from '../../components/ui/TokenTtlPicker'
 import { GITHUB_RELEASES_URL } from '../../constants/urls'
 import { useAppStore, useT } from '../../store/useAppStore'
 import { formatDate, tpl } from '../../utils/tpl'
@@ -88,7 +88,6 @@ export function BrowserIntegrationSection() {
     } finally {
       setExtTokensLoading(false)
     }
-  // biome-ignore lint/correctness/useExhaustiveDependencies: t keeps error messages in sync with locale
   }, [t])
 
   useEffect(() => { loadTokenList() }, [loadTokenList])

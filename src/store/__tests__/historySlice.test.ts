@@ -3,8 +3,9 @@
  *
  * Tests cover all history and live-session actions.
  */
-import { describe, it, expect, beforeEach } from 'vitest'
+
 import { act } from '@testing-library/react'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { useAppStore } from '../useAppStore'
 
 // Reset history state before each test
@@ -37,12 +38,14 @@ function makeHistoryItem(id: string, overrides = {}) {
 function makeLiveSession(id: string, overrides = {}) {
   return {
     id,
-    startedAt: Date.now(),
-    endedAt: Date.now(),
+    createdAt: Date.now(),
     sourceLang: 'en',
     targetLang: 'vi',
+    provider: 'gemini',
+    model: 'gemini-2.0-flash',
     rawTranscript: 'Hello world',
-    translatedTranscript: 'Xin chào thế giới',
+    translation: 'Xin chào thế giới',
+    wordCount: 2,
     ...overrides,
   }
 }

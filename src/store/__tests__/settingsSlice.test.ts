@@ -3,8 +3,9 @@
  *
  * Tests cover all settings actions independently via the real Zustand store.
  */
-import { describe, it, expect, beforeEach } from 'vitest'
+
 import { act } from '@testing-library/react'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { useAppStore } from '../useAppStore'
 
 // Reset settings slice state before each test
@@ -187,13 +188,13 @@ describe('setKeyStatus', () => {
 
 describe('setDynamicModels', () => {
   it('sets dynamic models for a provider', () => {
-    const models = [{ id: 'gpt-4o', name: 'GPT-4o' }]
+    const models = [{ id: 'gpt-4o', name: 'GPT-4o', description: '' }]
     act(() => useAppStore.getState().setDynamicModels('openai', models))
     expect(useAppStore.getState().dynamicModels.openai).toEqual(models)
   })
 
   it('updating one provider does not affect others', () => {
-    const geminiModels = [{ id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' }]
+    const geminiModels = [{ id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: '' }]
     act(() => useAppStore.getState().setDynamicModels('gemini', geminiModels))
     expect(useAppStore.getState().dynamicModels.openai).toEqual([]) // untouched
     expect(useAppStore.getState().dynamicModels.gemini).toEqual(geminiModels)

@@ -96,8 +96,7 @@ export async function resizeImageFile(
   const canvas = document.createElement('canvas')
   canvas.width = width
   canvas.height = height
-  // Non-null assertion: getContext('2d') always succeeds on a freshly created canvas
-  const ctx = canvas.getContext('2d')!
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
   ctx.drawImage(img, 0, 0, width, height)
 
   // PNG stays PNG (lossless), everything else becomes JPEG

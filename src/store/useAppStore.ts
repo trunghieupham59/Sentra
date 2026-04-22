@@ -9,10 +9,10 @@
  *   - chatSlice      — chat sessions + system prompt presets
  */
 import { create } from 'zustand'
-import { persist, createJSONStorage } from 'zustand/middleware'
+import { createJSONStorage, persist } from 'zustand/middleware'
 import { TRANSLATIONS, type Translations } from '../i18n'
-import { createCoreSlice, type CoreSlice } from './slices/coreSlice'
-import { createChatSlice, type ChatSlice } from './slices/chatSlice'
+import { type ChatSlice, createChatSlice } from './slices/chatSlice'
+import { type CoreSlice, createCoreSlice } from './slices/coreSlice'
 import { createHistorySlice, type HistorySlice } from './slices/historySlice'
 import { createSettingsSlice, type SettingsSlice } from './slices/settingsSlice'
 

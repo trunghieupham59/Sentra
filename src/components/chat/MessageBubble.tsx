@@ -1,7 +1,7 @@
+import type { ChatMessage } from '../../types'
 import { AppLogoIcon } from '../AppLogo'
 import { MarkdownText } from '../MarkdownText'
 import { ClipboardIcon, RefreshIcon, UserIcon } from '../ui/icons'
-import type { ChatMessage } from '../../types'
 
 // HC-11: Named constant for loading dot animation stagger
 const DOT_ANIM_DELAY_STEP_S = 0.15  // s between each loading dot's bounce start

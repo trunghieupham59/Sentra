@@ -12,12 +12,13 @@
  *   auth       — lock, eye, eye-off
  *   files      — document, clipboard
  */
-export type { IconProps } from './types'
+
 
 export * from './actions'
-export * from './navigation'
-export * from './media'
-export * from './status'
 export * from './auth'
 export * from './files'
+export * from './media'
+export * from './navigation'
 export * from './providers'
+export * from './status'
+export type { IconProps } from './types'

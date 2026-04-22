@@ -1,12 +1,12 @@
-import { VoiceRecorder } from '../VoiceRecorder'
+import { DEFAULT_TTS_FALLBACK_LANG, MAX_INPUT_CHARS } from '../../constants/providers'
 import { ClearButton } from '../ui/ClearButton'
 import { ImageTranslateButton } from '../ui/ImageTranslateButton'
-import { RewriteButton } from '../ui/RewriteButton'
-import { SpeakButton } from '../ui/SpeakButton'
-import type { SpeakPanel } from '../ui/SpeakButton'
-import { TranslateButton } from '../ui/TranslateButton'
 import { AlertTriangleIcon } from '../ui/icons'
-import { MAX_INPUT_CHARS, DEFAULT_TTS_FALLBACK_LANG } from '../../constants/providers'
+import { RewriteButton } from '../ui/RewriteButton'
+import type { SpeakPanel } from '../ui/SpeakButton'
+import { SpeakButton } from '../ui/SpeakButton'
+import { TranslateButton } from '../ui/TranslateButton'
+import { VoiceRecorder } from '../VoiceRecorder'
 
 interface SourcePanelActionsProps {
   // Mode
@@ -50,15 +50,15 @@ interface SourcePanelActionsProps {
 }
 
 export function SourcePanelActions({
-  autoTranslate, isTranslating, isVoiceActive, isVoiceInterim,
-  isRewriting, sourceText, sourceLang, charCount, hasImage, useWhisper,
-  speakingPanel, speakLoading,
+  autoTranslate, isTranslating, isVoiceActive, isVoiceInterim: _isVoiceInterim,
+  isRewriting: _isRewriting, sourceText, sourceLang, charCount, hasImage, useWhisper,
+  speakingPanel: _speakingPanel, speakLoading: _speakLoading,
   onTranslate, onVoiceTranscript, onVoiceRecordingChange, onImageButtonClick,
-  onSpeak, onRewrite, onClear,
+  onSpeak: _onSpeak, onRewrite: _onRewrite, onClear: _onClear,
   labelTranslate, labelTranslating, labelVoiceRecord, labelVoiceStop,
   labelVoiceTranscribing, labelVoiceRecording, labelImageTranslate,
-  labelCharLimit, labelChars, labelSpeak, labelSpeakStop,
-  labelRewrite, labelRewriting, labelClear,
+  labelCharLimit, labelChars, labelSpeak: _labelSpeak, labelSpeakStop: _labelSpeakStop,
+  labelRewrite: _labelRewrite, labelRewriting: _labelRewriting, labelClear: _labelClear,
 }: SourcePanelActionsProps) {
   return (
     <div className="flex items-center gap-2">

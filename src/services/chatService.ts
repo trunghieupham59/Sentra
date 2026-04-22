@@ -13,7 +13,7 @@
 // It has extra renderer-only fields (imagePreviewUrl, imageFileName) compared to the
 // main-process version in electron/ipc/chat.ts, but the IPC layer ignores unknown fields,
 // so using the richer type here is safe.
-import type { ChatResult, ChatMessageContent } from '../types'
+import type { ChatMessageContent, ChatResult } from '../types'
 
 // Re-export for any consumers that import ChatMessageContent from chatService
 export type { ChatMessageContent }

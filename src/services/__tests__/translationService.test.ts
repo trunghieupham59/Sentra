@@ -5,7 +5,7 @@
  * Tests verify that each method delegates to the correct window.api function
  * with the correct parameters, and passes results through unchanged.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { translationService } from '../translationService'
 
 // ── Mock window.api ───────────────────────────────────────────────────────────

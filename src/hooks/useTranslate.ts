@@ -322,7 +322,6 @@ export function useTranslate() {
     } finally {
       if (translateGenerationRef.current === generation) setIsTranslating(false)
     }
-  // biome-ignore lint/correctness/useExhaustiveDependencies: detectLanguageInBackground has stable empty-dep memoisation — safe to omit
   }, [imageAttachment, sourceText, sourceLang, targetLang, selectedProvider, selectedModels,
        isTranslating, hasKey, translationStyle, setIsTranslating, setTranslateError,
        setTranslatedText, setPhoneticText, addHistory, t, detectLanguageInBackground])

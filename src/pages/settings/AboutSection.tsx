@@ -1,6 +1,6 @@
 import { AppLogoIcon } from '../../components/AppLogo'
-import { useT } from '../../store/useAppStore'
 import { PROVIDERS } from '../../constants/providers'
+import { useT } from '../../store/useAppStore'
 
 export function AboutSection() {
   const t = useT()

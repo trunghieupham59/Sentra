@@ -1,8 +1,7 @@
-import { render, screen, fireEvent } from '@testing-library/react'
-import { act } from '@testing-library/react'
-import { describe, it, expect, beforeEach } from 'vitest'
-import { TranslatePage } from '../TranslatePage'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { useAppStore } from '../../store/useAppStore'
+import { TranslatePage } from '../TranslatePage'
 
 // Reset store before each test
 beforeEach(() => {

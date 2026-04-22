@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { HotkeyRecordButton } from '../../components/ui/HotkeyRecordButton'
-import { ToggleSwitch } from '../../components/ui/ToggleSwitch'
 import { SpinnerIcon, XIcon } from '../../components/ui/icons'
+import { ToggleSwitch } from '../../components/ui/ToggleSwitch'
 import { useAppStore, useT } from '../../store/useAppStore'
 
 const DEFAULT_HOTKEY = 'Alt+Shift+T'

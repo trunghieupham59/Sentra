@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import type { ProviderConfig } from '../types'
-import { CheckCircleIcon, CheckIcon, SpinnerIcon, TrashIcon } from './ui/icons'
-import { ProviderIcon, PROVIDER_COLORS } from './ProviderIcon'
 import { useT } from '../store/useAppStore'
+import type { ProviderConfig } from '../types'
 import { tpl } from '../utils/tpl'
+import { PROVIDER_COLORS, ProviderIcon } from './ProviderIcon'
+import { CheckCircleIcon, CheckIcon, SpinnerIcon, TrashIcon } from './ui/icons'
 
 interface ApiKeyInputProps {
   provider: ProviderConfig

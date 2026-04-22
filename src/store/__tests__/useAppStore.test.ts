@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest'
 import { act } from '@testing-library/react'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { useAppStore } from '../useAppStore'
 
 // Reset relevant store slices before each test
@@ -144,7 +144,7 @@ describe('Chat Sessions', () => {
   })
 
   it('creates a new chat session and sets it as active', () => {
-    let id: string
+    let id = ''
     act(() => {
       id = useAppStore.getState().createChatSession('gemini', 'gemini-2.0-flash')
     })
@@ -153,11 +153,11 @@ describe('Chat Sessions', () => {
     expect(chatSessions[0].provider).toBe('gemini')
     expect(chatSessions[0].model).toBe('gemini-2.0-flash')
     expect(chatSessions[0].messages).toHaveLength(0)
-    expect(activeChatSessionId).toBe(id!)
+    expect(activeChatSessionId).toBe(id)
   })
 
   it('adds a message to a session', () => {
-    let sessionId: string
+    let sessionId = ''
     act(() => {
       sessionId = useAppStore.getState().createChatSession('openai', 'gpt-4o')
       useAppStore.getState().addChatMessage(sessionId, {
@@ -167,13 +167,13 @@ describe('Chat Sessions', () => {
         timestamp: Date.now(),
       })
     })
-    const session = useAppStore.getState().chatSessions.find(s => s.id === sessionId!)
+    const session = useAppStore.getState().chatSessions.find(s => s.id === sessionId)
     expect(session?.messages).toHaveLength(1)
     expect(session?.messages[0].content[0].text).toBe('Hello AI')
   })
 
   it('updates a message', () => {
-    let sessionId: string
+    let sessionId = ''
     act(() => {
       sessionId = useAppStore.getState().createChatSession('claude', 'claude-3-5-haiku-20241022')
       useAppStore.getState().addChatMessage(sessionId, {
@@ -187,13 +187,13 @@ describe('Chat Sessions', () => {
         isLoading: false,
       })
     })
-    const session = useAppStore.getState().chatSessions.find(s => s.id === sessionId!)
+    const session = useAppStore.getState().chatSessions.find(s => s.id === sessionId)
     expect(session?.messages[0].content[0].text).toBe('Hi there!')
     expect(session?.messages[0].isLoading).toBe(false)
   })
 
   it('deletes a chat session and clears activeChatSessionId', () => {
-    let sessionId: string
+    let sessionId = ''
     act(() => {
       sessionId = useAppStore.getState().createChatSession('gemini', 'gemini-2.0-flash')
       useAppStore.getState().deleteChatSession(sessionId)
@@ -203,7 +203,7 @@ describe('Chat Sessions', () => {
   })
 
   it('clears all messages in a session', () => {
-    let sessionId: string
+    let sessionId = ''
     act(() => {
       sessionId = useAppStore.getState().createChatSession('openai', 'gpt-4o')
       useAppStore.getState().addChatMessage(sessionId, {
@@ -213,7 +213,7 @@ describe('Chat Sessions', () => {
       })
       useAppStore.getState().clearChatSession(sessionId)
     })
-    const session = useAppStore.getState().chatSessions.find(s => s.id === sessionId!)
+    const session = useAppStore.getState().chatSessions.find(s => s.id === sessionId)
     expect(session?.messages).toHaveLength(0)
   })
 })

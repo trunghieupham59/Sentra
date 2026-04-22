@@ -7,7 +7,7 @@
  * resizeImageFile is NOT tested here because it depends on the browser's
  * Canvas API which is not available in the jsdom test environment.
  */
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { extractImageFromClipboard } from '../imageUtils'
 
 // ── Helper: build a minimal DataTransfer mock ─────────────────────────────────

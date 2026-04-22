@@ -1,13 +1,13 @@
 import { useEffect } from 'react'
 import { PROVIDERS } from '../constants/providers'
-import { ChevronDownIcon, RefreshIcon, SpinnerIcon } from './ui/icons'
-import { ProviderIcon, PROVIDER_COLORS } from './ProviderIcon'
-import { Provider } from '../types'
 import { useAppStore, useT } from '../store/useAppStore'
+import type { Provider } from '../types'
+import { PROVIDER_COLORS, ProviderIcon } from './ProviderIcon'
+import { ChevronDownIcon, RefreshIcon, SpinnerIcon } from './ui/icons'
 
 // Truncate model name if too long
 const truncateModelName = (name: string, maxLen = 18): string =>
-  name.length > maxLen ? name.slice(0, maxLen) + '…' : name
+  name.length > maxLen ? `${name.slice(0, maxLen)}…` : name
 
 export function ModelSelector() {
   const {

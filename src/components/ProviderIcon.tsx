@@ -1,5 +1,5 @@
-import { Provider } from '../types'
-import { GeminiProviderIcon, ClaudeProviderIcon, OpenAIProviderIcon } from './ui/icons'
+import type { Provider } from '../types'
+import { ClaudeProviderIcon, GeminiProviderIcon, OpenAIProviderIcon } from './ui/icons'
 
 // SPLIT-ICON-01: SVG icon definitions moved to src/components/ui/icons/providers.tsx
 // ProviderIcon.tsx now only holds the wrapper component and PROVIDER_COLORS map.

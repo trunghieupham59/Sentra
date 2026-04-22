@@ -1,10 +1,10 @@
 import { useState } from 'react'
+import { HistoryDeleteButton } from '../../components/ui/HistoryDeleteButton'
+import { HistoryEmptyState } from '../../components/ui/HistoryEmptyState'
+import { ChatBubbleIcon, ChevronDownIcon } from '../../components/ui/icons'
 import { useAppStore, useT } from '../../store/useAppStore'
 import type { ChatSession } from '../../types'
-import { ChatBubbleIcon, ChevronDownIcon } from '../../components/ui/icons'
-import { HistoryDeleteButton } from '../../components/ui/HistoryDeleteButton'
 import { formatTime, ProviderBadge } from './historyUtils'
-import { HistoryEmptyState } from '../../components/ui/HistoryEmptyState'
 
 export function ChatHistoryTab() {
   const { chatSessions, deleteChatSession, setActiveChatSession, setActivePage } = useAppStore()

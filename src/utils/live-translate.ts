@@ -35,7 +35,7 @@ const HALLUCINATION_PATTERNS: RegExp[] = [
   // outputs labels like [Music], (拍手), 【BGM】.  These are structural
   // annotations, not transcribed speech — safe to discard.
   // Matches any utterance that is ENTIRELY enclosed in brackets/parentheses.
-  /^\s*[\[(（【].*[\]）】]\s*$/,
+  /^\s*[[(（【].*[\]）】]\s*$/,
 ]
 
 /**

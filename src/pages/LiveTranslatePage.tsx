@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { LanguageSelector } from '../components/LanguageSelector'
+import { SegmentRow } from '../components/live/SegmentRow'
+import { TranslationRow } from '../components/live/TranslationRow'
 import { MarkdownText } from '../components/MarkdownText'
 import { ModelSelector } from '../components/ModelSelector'
 import {
@@ -16,15 +18,13 @@ import {
   SpinnerIcon,
   StopIcon,
   SubtitlesIcon,
-  TrashIcon,
   TranslateIcon,
+  TrashIcon,
 } from '../components/ui/icons'
-import { SegmentRow } from '../components/live/SegmentRow'
-import { TranslationRow } from '../components/live/TranslationRow'
-import { useLiveTranslate, DEFAULT_SUBTITLE_SETTINGS } from '../hooks/useLiveTranslate'
 import { COPY_FEEDBACK_DURATION_MS } from '../constants/ui'
-import { useAppStore, useT } from '../store/useAppStore'
 import { MACOS_SCREEN_RECORDING_PREFS } from '../constants/urls'
+import { DEFAULT_SUBTITLE_SETTINGS, useLiveTranslate } from '../hooks/useLiveTranslate'
+import { useAppStore, useT } from '../store/useAppStore'
 
 /**
  * DUP-04: Shared helper for downloading text content as a file.
@@ -61,9 +61,9 @@ export function LiveTranslatePage() {
 
   const {
     audioMode, setAudioMode, screenPermission,
-    isActive, rawTranscript, translation, isTranscribing, isTranslating, micError,
+    isActive, rawTranscript, translation, isTranslating, micError,
     pipelineError,
-    showSubtitles, setShowSubtitles, latestSubtitle,
+    showSubtitles, setShowSubtitles,
     showSubtitleConfig, setShowSubtitleConfig, subtitleSettings, setSubtitleSettings,
     showSummaryBtn, summary, isSummarizing,
     actionItems, isExtractingActionItems, decisions, isExtractingDecisions,

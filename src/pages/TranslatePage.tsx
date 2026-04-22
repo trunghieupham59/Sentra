@@ -1,19 +1,19 @@
-import { useEffect, useRef, type MutableRefObject } from 'react'
+import { type MutableRefObject, useEffect, useRef } from 'react'
 import { FuriganaText } from '../components/FuriganaText'
-import { DragOverlay } from '../components/ui/DragOverlay'
-import { ImageAttachmentPreview } from '../components/translate/ImageAttachmentPreview'
-import { VoiceOverlay } from '../components/translate/VoiceOverlay'
 import { MarkdownText } from '../components/MarkdownText'
-import { SpinnerIcon } from '../components/ui/icons'
-import { TranslateToolbar } from '../components/translate/TranslateToolbar'
-import { TranslateLanguageBar } from '../components/translate/TranslateLanguageBar'
-import { TranslateError } from '../components/translate/TranslateError'
-import { SourcePanelActions, SourcePanelActionsRight } from '../components/translate/SourcePanelActions'
-import { ResultPanelActions } from '../components/translate/ResultPanelActions'
+import { ImageAttachmentPreview } from '../components/translate/ImageAttachmentPreview'
 import { ImageSwitchToast } from '../components/translate/ImageSwitchToast'
+import { ResultPanelActions } from '../components/translate/ResultPanelActions'
+import { SourcePanelActions, SourcePanelActionsRight } from '../components/translate/SourcePanelActions'
+import { TranslateError } from '../components/translate/TranslateError'
+import { TranslateLanguageBar } from '../components/translate/TranslateLanguageBar'
+import { TranslateToolbar } from '../components/translate/TranslateToolbar'
+import { VoiceOverlay } from '../components/translate/VoiceOverlay'
+import { DragOverlay } from '../components/ui/DragOverlay'
+import { SpinnerIcon } from '../components/ui/icons'
 import { ACCEPTED_IMAGE_MIME_TYPES } from '../constants/image'
-import { useT } from '../store/useAppStore'
 import { IMAGE_TRANSLATED_SENTINEL, useTranslate } from '../hooks/useTranslate'
+import { useT } from '../store/useAppStore'
 
 export function TranslatePage() {
   const t = useT()
@@ -133,7 +133,6 @@ export function TranslatePage() {
       {/* Text panels */}
       <div className="flex flex-1 min-h-0 divide-x divide-gray-200 dark:divide-gray-800">
         {/* Source panel — also acts as an image drop zone */}
-        {/* biome-ignore lint/a11y/noStaticElementInteractions: drop zone requires drag event handlers on the panel container */}
         <section
           aria-label={t.image_translate_title}
           className={`flex-1 basis-0 flex flex-col min-w-0 relative transition-colors duration-150

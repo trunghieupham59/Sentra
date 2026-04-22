@@ -5,8 +5,8 @@
  *   1. tpl()        — template string placeholder replacement
  *   2. formatDate() — locale-aware date formatting
  */
-import { describe, it, expect } from 'vitest'
-import { tpl, formatDate } from '../tpl'
+import { describe, expect, it } from 'vitest'
+import { formatDate, tpl } from '../tpl'
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('tpl', () => {
