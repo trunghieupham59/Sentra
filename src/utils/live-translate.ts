@@ -164,3 +164,48 @@ export function extractCompleteSentences(text: string): { complete: string; pend
     pending:  text.slice(split).trim(),
   }
 }
+
+/**
+ * Split a block of (possibly multi-sentence) text into individual sentences.
+ *
+ * Splits on universal hard punctuation boundaries: `.  !  ?  。  ！  ？  ‼  ⁉  …`
+ *
+ * Language-agnostic by design — no language-specific pattern matching.
+ * When Whisper omits punctuation between sentences, the caller should rely on
+ * `stt.segmentTexts` (Whisper's own internal segmentation, which covers all
+ * languages) rather than regex heuristics here.
+ *
+ * e.g. `A。B。` → [`A。`, `B。`]
+ *      `A! B? C.` → [`A!`, `B?`, `C.`]
+ *      `no punctuation here` → [`no punctuation here`]  (returned as-is)
+ */
+export function splitSentences(text: string): string[] {
+  const t = text.trim()
+  if (!t) return []
+
+  const hardRe = /[.!?]+(?=\s|$)|[。！？‼⁉…]+/g
+  const hardBounds: number[] = []
+  let m: RegExpExecArray | null
+  // biome-ignore lint/suspicious/noAssignInExpressions: standard pattern for iterating matchAll
+  while ((m = hardRe.exec(t)) !== null) {
+    hardBounds.push(m.index + m[0].length)
+  }
+
+  return hardBounds.length > 0 ? _sliceAtBounds(t, hardBounds) : [t]
+}
+
+/** Internal helper: slice `text` at each position in `bounds` (sorted ascending). */
+function _sliceAtBounds(text: string, bounds: number[]): string[] {
+  const results: string[] = []
+  let last = 0
+  for (const pos of bounds) {
+    const chunk = text.slice(last, pos).trim()
+    if (chunk) results.push(chunk)
+    // Advance past the split point, skipping any leading whitespace
+    last = pos
+    while (last < text.length && /\s/.test(text[last])) last++
+  }
+  const tail = text.slice(last).trim()
+  if (tail) results.push(tail)
+  return results.filter(Boolean)
+}

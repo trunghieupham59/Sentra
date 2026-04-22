@@ -4,6 +4,8 @@ import type { TextBlockParam, ImageBlockParam } from '@anthropic-ai/sdk/resource
 import type { ChatCompletionMessageParam, ChatCompletionContentPartText, ChatCompletionContentPartImage } from 'openai/resources/chat/completions'
 import { getStoredApiKey } from './storage'
 import { classifyProviderError, noApiKeyResponse } from './errorUtils'
+import { unknownProviderError } from './providers/types'
+import { withRetry } from './retry'
 import { MAX_CHAT_OUTPUT_TOKENS, MAX_CHAT_REQUEST_CHARS } from './ipcConstants'
 
 // DUP-02: Removed local `getApiKey` wrapper — call getStoredApiKey directly.
@@ -372,10 +374,13 @@ export function registerChatHandlers(ipcMain: IpcMain) {
     try {
       let reply = ''
 
-      // DUP-06: registry lookup replaces switch/case
+      // DUP-06: registry lookup replaces switch/case — unknownProviderError() provides a typed
+      // response with a helpful hint listing supported providers.
       const chatFn = CHAT_PROVIDERS[provider]
-      if (!chatFn) return { success: false, error: `Unknown provider: ${provider}` }
-      reply = await chatFn(apiKey, model, messages, systemPrompt)
+      if (!chatFn) return unknownProviderError(provider)
+      // withRetry wraps the chat call with exponential backoff for transient network errors.
+      // Hard failures (auth, rate limit) are not retried — they propagate immediately.
+      reply = await withRetry(() => chatFn(apiKey, model, messages, systemPrompt))
 
       return { success: true, reply }
     } catch (error: unknown) {

@@ -1,6 +1,8 @@
 import { IpcMain } from 'electron'
 import { getStoredApiKey } from './storage'
 import { classifyProviderError, noApiKeyResponse } from './errorUtils'
+import { unknownProviderError, isValidProvider } from './providers/types'
+import { withRetry } from './retry'
 import {
   MAX_OUTPUT_TOKENS_CLAUDE,
   MAX_OUTPUT_TOKENS_OPENAI,
@@ -9,6 +11,10 @@ import {
   VERIFY_MODEL_OPENAI,
   VERIFY_MAX_TOKENS,
   DETECT_LANG_MAX_CHARS,
+  TRANSLATE_CHUNK_CHAR_LIMIT,
+  TRANSLATE_CHUNK_TIMEOUT_MS,
+  TRANSLATE_CHUNK_CONCURRENCY,
+  TRANSLATE_CONTEXT_TAIL_CHARS,
 } from './ipcConstants'
 
 // DUP-02: Removed local `getApiKey` wrapper — call getStoredApiKey directly.
@@ -131,17 +137,12 @@ ${text}`
 }
 
 // ── Chunked translation helpers ───────────────────────────────────────────────
+// Chunk parameters are imported from ipcConstants.ts (HC-09 through HC-12)
+// so they can be tuned in one place without touching translate.ts.
 
-/**
- * Maximum characters per chunk sent to the AI.
- * ~12 000 chars ≈ 3 000 tokens — safely fits in context window even for smaller
- * models (8K ctx) after accounting for system prompt (~500 tok) + output (~3 000 tok).
- * For modern large-context models this just means fewer, larger chunks.
- */
-const CHUNK_CHAR_LIMIT = 12_000
-
-/** How many chars of the previous source chunk to include as overlap context */
-const CONTEXT_TAIL_CHARS = 400
+// Convenience aliases — keep the local code readable while referencing the canonical values.
+const CHUNK_CHAR_LIMIT    = TRANSLATE_CHUNK_CHAR_LIMIT
+const CONTEXT_TAIL_CHARS  = TRANSLATE_CONTEXT_TAIL_CHARS
 
 /**
  * Split `text` into chunks ≤ `maxChars`, preferring natural break points:
@@ -193,11 +194,9 @@ function splitIntoChunks(text: string, maxChars = CHUNK_CHAR_LIMIT): string[] {
   return chunks.filter(c => c.trim().length > 0)
 }
 
-/** Timeout (ms) per individual chunk request — prevents a single AI call from hanging forever */
-const CHUNK_TIMEOUT_MS = 90_000  // 90 s
-
-/** Max concurrent chunk requests — limits parallel API calls to avoid rate-limit errors */
-const CHUNK_CONCURRENCY = 5
+// Convenience aliases for chunk parameters (canonical values in ipcConstants.ts, HC-10/HC-11)
+const CHUNK_TIMEOUT_MS  = TRANSLATE_CHUNK_TIMEOUT_MS
+const CHUNK_CONCURRENCY = TRANSLATE_CHUNK_CONCURRENCY
 
 /**
  * Wraps a promise with a hard timeout.
@@ -440,14 +439,6 @@ async function verifyOpenAIKey(apiKey: string): Promise<void> {
   if (!completion.choices[0]) throw new Error('No response from OpenAI')
 }
 
-// ── Streaming translation — yields tokens via callback ────────────────────────
-/**
- * Calls the AI provider with streaming enabled and invokes `onToken` for every
- * generated token.  Returns the full accumulated text when done.
- *
- * Note: showFurigana / phoneticOnly are deliberately excluded from the live
- * streaming path to keep latency minimal.
- */
 // ── Provider registries — DUP-04 / DUP-06 ─────────────────────────────────────
 // Typed function registries replace the switch/case dispatch blocks and make the
 // provider contract explicit via TypeScript types. Per-provider implementations are
@@ -542,8 +533,101 @@ function normalizeDetectedLang(raw: string): string | null {
   return null
 }
 
+// ── Streaming helpers — one per provider ─────────────────────────────────────
+/**
+ * Per-provider streaming function type.
+ * Accepts a pre-built prompt, calls the SDK streaming API, invokes `onToken`
+ * for each generated token, and returns the full accumulated text.
+ */
+type StreamFn = (
+  apiKey: string,
+  model: string,
+  prompt: string,
+  onToken: (token: string) => void,
+) => Promise<string>
+
+async function streamWithOpenAI(
+  apiKey: string, model: string, prompt: string,
+  onToken: (token: string) => void,
+): Promise<string> {
+  const OpenAI = (await import('openai')).default
+  const client = new OpenAI({ apiKey })
+  let fullText = ''
+  const stream = await client.chat.completions.create({
+    model,
+    messages: [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user',   content: prompt },
+    ],
+    stream: true,
+    max_completion_tokens: MAX_OUTPUT_TOKENS_OPENAI,  // HC-01
+  })
+  for await (const chunk of stream) {
+    const token = chunk.choices[0]?.delta?.content ?? ''
+    if (token) { fullText += token; onToken(token) }
+  }
+  return fullText
+}
+
+async function streamWithGemini(
+  apiKey: string, model: string, prompt: string,
+  onToken: (token: string) => void,
+): Promise<string> {
+  const { GoogleGenerativeAI } = await import('@google/generative-ai')
+  const genAI = new GoogleGenerativeAI(apiKey)
+  const genModel = genAI.getGenerativeModel({ model, systemInstruction: SYSTEM_PROMPT })
+  let fullText = ''
+  const result = await genModel.generateContentStream(prompt)
+  for await (const chunk of result.stream) {
+    const token = chunk.text()
+    if (token) { fullText += token; onToken(token) }
+  }
+  return fullText
+}
+
+async function streamWithClaude(
+  apiKey: string, model: string, prompt: string,
+  onToken: (token: string) => void,
+): Promise<string> {
+  const Anthropic = (await import('@anthropic-ai/sdk')).default
+  const client = new Anthropic({ apiKey })
+  let fullText = ''
+  const stream = client.messages.stream({
+    model,
+    max_tokens: MAX_OUTPUT_TOKENS_CLAUDE,  // HC-01
+    system: SYSTEM_PROMPT,
+    messages: [{ role: 'user', content: prompt }],
+  })
+  for await (const event of stream) {
+    if (
+      event.type === 'content_block_delta' &&
+      event.delta.type === 'text_delta'
+    ) {
+      const token = event.delta.text
+      if (token) { fullText += token; onToken(token) }
+    }
+  }
+  return fullText
+}
+
+// Registry eliminates the if/else dispatch block in streamTranslation
+// (same pattern as TRANSLATE_PROVIDERS / REWRITE_PROVIDERS / DETECT_PROVIDERS above).
+// Per-provider implementations remain separate because each SDK has a different streaming API.
+const STREAM_PROVIDERS: Record<string, StreamFn> = {
+  openai: streamWithOpenAI,
+  gemini: streamWithGemini,
+  claude: streamWithClaude,
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Call the AI provider with streaming enabled and invoke `onToken` for every
+ * generated token.  Returns the full accumulated text when done.
+ *
+ * Note: showFurigana / phoneticOnly are deliberately excluded from the live
+ * streaming path to keep latency minimal.
+ */
 export async function streamTranslation(
   provider: string,
   apiKey: string,
@@ -555,61 +639,16 @@ export async function streamTranslation(
   onToken: (token: string) => void
 ): Promise<string> {
   const prompt = buildPrompt(sourceText, sourceLang, targetLang, false, style, false)
-  let fullText = ''
 
-  if (provider === 'openai') {
-    const OpenAI = (await import('openai')).default
-    const client = new OpenAI({ apiKey })
-    const stream = await client.chat.completions.create({
-      model,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user',   content: prompt },
-      ],
-      stream: true,
-      max_completion_tokens: MAX_OUTPUT_TOKENS_OPENAI,  // HC-01
-    })
-    for await (const chunk of stream) {
-      const token = chunk.choices[0]?.delta?.content ?? ''
-      if (token) { fullText += token; onToken(token) }
-    }
-
-  } else if (provider === 'gemini') {
-    const { GoogleGenerativeAI } = await import('@google/generative-ai')
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const genModel = genAI.getGenerativeModel({ model, systemInstruction: SYSTEM_PROMPT })
-    const result = await genModel.generateContentStream(prompt)
-    for await (const chunk of result.stream) {
-      const token = chunk.text()
-      if (token) { fullText += token; onToken(token) }
-    }
-
-  } else if (provider === 'claude') {
-    const Anthropic = (await import('@anthropic-ai/sdk')).default
-    const client = new Anthropic({ apiKey })
-    const stream = client.messages.stream({
-      model,
-      max_tokens: MAX_OUTPUT_TOKENS_CLAUDE,  // HC-01
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: prompt }],
-    })
-    for await (const event of stream) {
-      if (
-        event.type === 'content_block_delta' &&
-        event.delta.type === 'text_delta'
-      ) {
-        const token = event.delta.text
-        if (token) { fullText += token; onToken(token) }
-      }
-    }
-
-  } else {
+  const streamFn = STREAM_PROVIDERS[provider]
+  if (!streamFn) {
     // Unknown provider — fall back to batch translate and emit all at once
-    fullText = await translateWithOpenAI(apiKey, model, sourceText, sourceLang, targetLang, false, style, false)
+    const fullText = await translateWithOpenAI(apiKey, model, sourceText, sourceLang, targetLang, false, style, false)
     onToken(fullText)
+    return fullText
   }
 
-  return fullText
+  return streamFn(apiKey, model, prompt, onToken)
 }
 
 /**
@@ -635,6 +674,9 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
     if (!apiKey?.trim()) {
       return { success: false, error: 'API key is empty' }
     }
+    // Validate provider identity before attempting any SDK call —
+    // prevents unrecognized provider strings from reaching the switch.
+    if (!isValidProvider(provider)) return unknownProviderError(provider)
     try {
       switch (provider) {
         case 'gemini':
@@ -647,7 +689,7 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
           await verifyOpenAIKey(apiKey)
           break
         default:
-          return { success: false, error: `Unknown provider: ${provider}` }
+          return unknownProviderError(provider)
       }
       return { success: true }
     } catch (error: unknown) {
@@ -672,6 +714,9 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
     if (!sourceText.trim()) {
       return { success: false, error: 'Source text is empty' }
     }
+    if (!model?.trim()) {
+      return { success: false, error: 'Model is required' }
+    }
 
     // DUP-02: call getStoredApiKey directly (no local wrapper)
     // DUP-03: use noApiKeyResponse() helper
@@ -684,16 +729,21 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
       // phoneticOnly (furigana pass) operates on already-translated short text — skip chunking
       const needsChunking = !phoneticOnly && sourceText.length > CHUNK_CHAR_LIMIT
 
-      // DUP-06: registry lookup replaces switch/case
+      // DUP-06: registry lookup replaces switch/case — unknownProviderError() provides a typed
+      // response with a helpful hint listing supported providers.
       const translateFn = TRANSLATE_PROVIDERS[provider]
-      if (!translateFn) return { success: false, error: `Unknown provider: ${provider}` }
+      if (!translateFn) return unknownProviderError(provider)
 
+      // withRetry wraps single-chunk calls with exponential backoff for transient network errors.
+      // Chunked translation has its own per-chunk timeout (CHUNK_TIMEOUT_MS) so retry isn't applied there.
       translatedText = needsChunking
         ? await translateChunked(
             (text) => translateFn(apiKey, model, text, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', false),
             sourceText,
           )
-        : await translateFn(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', !!phoneticOnly)
+        : await withRetry(() =>
+            translateFn(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', !!phoneticOnly)
+          )
 
       return { success: true, translatedText }
     } catch (error: unknown) {
@@ -712,6 +762,9 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
     if (!text.trim()) {
       return { success: false, error: 'Text is empty' }
     }
+    if (!model?.trim()) {
+      return { success: false, error: 'Model is required' }
+    }
 
     // DUP-02 + DUP-03
     const apiKey = getStoredApiKey(provider)
@@ -723,7 +776,7 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
 
       // DUP-06: registry lookup replaces switch/case
       const rewriteFn = REWRITE_PROVIDERS[provider]
-      if (!rewriteFn) return { success: false, error: `Unknown provider: ${provider}` }
+      if (!rewriteFn) return unknownProviderError(provider)
 
       rewrittenText = needsChunking
         ? await translateChunked((t) => rewriteFn(apiKey, model, t, lang, translationStyle), text)
@@ -755,7 +808,7 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
     try {
       // DUP: use per-provider detect function via DETECT_PROVIDERS registry
       const detectFn = DETECT_PROVIDERS[provider]
-      if (!detectFn) return { success: false, error: `Unknown provider: ${provider}` }
+      if (!detectFn) return unknownProviderError(provider)
 
       let raw = ''
       try {

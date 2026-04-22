@@ -19,6 +19,13 @@ interface TranscribeResult {
   noSpeechProb?: number
   avgLogprob?: number
   compressionRatio?: number
+  /**
+   * Individual segment texts from Whisper's verbose_json response.
+   * Only present when Whisper split the audio into 2+ natural segments.
+   * Used by the renderer for language-agnostic sentence boundary detection —
+   * Whisper's own segmentation handles all languages without per-language heuristics.
+   */
+  segmentTexts?: string[]
 }
 
 /**
@@ -27,6 +34,7 @@ interface TranscribeResult {
  * define a minimal interface to avoid import-path brittleness.
  */
 interface VerboseSegment {
+  text:              string   // transcribed text for this segment
   avg_logprob:       number
   compression_ratio: number
   no_speech_prob:    number
@@ -158,12 +166,21 @@ export function registerTranscribeHandlers(ipcMain: IpcMain) {
       const segments = rawResponse.segments ?? []
       const { noSpeechProb, avgLogprob, compressionRatio } = aggregateSegments(segments)
 
+      // Extract individual segment texts for language-agnostic sentence splitting.
+      // Only include when there are 2+ segments — the renderer uses these to process
+      // each Whisper-detected speech unit independently, without any language-specific
+      // pattern matching.
+      const segmentTexts = segments
+        .map(s => s.text?.trim())
+        .filter(Boolean) as string[]
+
       return {
         success: true,
         text,
         noSpeechProb,
         avgLogprob,
         compressionRatio,
+        ...(segmentTexts.length > 1 ? { segmentTexts } : {}),
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)

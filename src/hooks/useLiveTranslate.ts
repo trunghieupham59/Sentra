@@ -12,12 +12,12 @@
  * The page component owns only UI-copy state (`copiedRaw`, `copiedTx`,
  * `copiedSummary`) and pure render logic.
  */
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getSupportedAudioMimeType } from '../constants/audio'
 import { LANG_NAMES_FOR_AI } from '../constants/langNames'
 import { useAppStore } from '../store/useAppStore'
 import type { SubtitleSettings } from '../types'
-import { extractCompleteSentences, isHallucination, jaccardSimilarity } from '../utils/live-translate'
+import { extractCompleteSentences, isHallucination, jaccardSimilarity, splitSentences } from '../utils/live-translate'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -281,6 +281,14 @@ export function useLiveTranslate() {
   const activeRef      = useRef(false)
   const queueRef       = useRef<Promise<void>>(Promise.resolve())
 
+  /**
+   * mountedRef — set to false on component unmount.
+   * Guards all async setState calls in processChunk and background translation
+   * to prevent "setState on unmounted component" errors and memory leaks
+   * when a live session is stopped while translation/STT calls are in-flight.
+   */
+  const mountedRef = useRef(true)
+
   const audioCtxRef        = useRef<AudioContext | null>(null)
   const analyserRef        = useRef<AnalyserNode | null>(null)
   const hasSpeechRef       = useRef(false)
@@ -303,7 +311,9 @@ export function useLiveTranslate() {
   const speakerNameMapRef = useRef<Record<string, string>>({})
 
   const hasOpenAIKey = keyStatus.openai
-  const hasAnyKey    = Object.values(keyStatus).some(Boolean)
+  // useMemo avoids Object.values(...).some() running on every render —
+  // keyStatus only changes when the user saves/deletes an API key in Settings.
+  const hasAnyKey    = useMemo(() => Object.values(keyStatus).some(Boolean), [keyStatus])
   const isMac        = window.api.platform === 'darwin'
 
   // ── Check Screen Recording permission ────────────────────────────────────────
@@ -427,14 +437,6 @@ export function useLiveTranslate() {
     )) return
     lastChunkTextRef.current = newText
 
-    const newBuffer = pendingBufferRef.current ? `${pendingBufferRef.current} ${newText}` : newText
-
-    // ── Show interim (gray) text immediately after each STT chunk ─────────
-    // This updates the UI before sentence extraction, making the transcript
-    // feel "live" — text appears in gray as Whisper returns each chunk,
-    // then turns solid white/dark once the sentence is finalized & translated.
-    setPendingText(newBuffer)
-
     // Append new text and trim to MAX_RAW_TRANSCRIPT_CHARS to prevent unbounded growth
     // for very long sessions (hours). The last N chars are kept — sufficient for summarization.
     const updatedRaw = fullRawForSummaryRef.current
@@ -445,27 +447,72 @@ export function useLiveTranslate() {
       : updatedRaw
     setRawTranscript(fullRawForSummaryRef.current)
 
-    let { complete, pending } = extractCompleteSentences(newBuffer)
+    // ── Language-agnostic sentence boundary detection ─────────────────────────
+    // Whisper's verbose_json response includes per-segment texts that reflect the
+    // model's own internal sentence/phrase segmentation — valid for ALL languages
+    // without any language-specific heuristics.
+    //
+    // Strategy:
+    //   • When Whisper returns 2+ segments, process each segment independently
+    //     through the pending buffer.  A segment that ends at a natural boundary
+    //     (with punctuation) will immediately complete, while a mid-sentence
+    //     segment accumulates as usual.
+    //   • When only one segment is returned (or segmentTexts is absent), fall back
+    //     to the previous single-text accumulation behaviour.
+    //
+    // This replaces the earlier approach of matching Japanese-only morphemes
+    // (よ/ね/ます/etc.) which was language-specific and therefore not optimal.
+    // biome-ignore lint/suspicious/noExplicitAny: segmentTexts comes from IPC (untyped preload)
+    const whisperParts: string[] = (stt as any)?.segmentTexts?.length > 1
+      ? ((stt as any).segmentTexts as string[]).map((s: string) => s.trim()).filter(Boolean)
+      : [newText]
 
-    if (!complete) {
+    // Collect all complete sentences found across the Whisper parts in this chunk
+    const completedSentences: string[] = []
+
+    for (const part of whisperParts) {
+      const newBuffer = pendingBufferRef.current
+        ? `${pendingBufferRef.current} ${part}`
+        : part
+
+      // Show growing interim text so the transcript feels live as each part arrives
+      setPendingText(newBuffer)
+
+      const { complete: partComplete, pending: partPending } = extractCompleteSentences(newBuffer)
+
+      if (!partComplete) {
+        // No sentence boundary yet — accumulate and move to next part
+        pendingBufferRef.current = newBuffer
+        continue
+      }
+
+      // Sentence boundary found — capture complete text, update buffer to remainder
+      pendingBufferRef.current = partPending
+      setPendingText(partPending)
+      completedSentences.push(...splitSentences(partComplete))
+    }
+
+    // Handle no-complete-sentence case: increment pending counter, possibly force-flush
+    if (completedSentences.length === 0) {
       pendingChunkCountRef.current += 1
       if (pendingChunkCountRef.current >= MAX_PENDING_CHUNKS) {
-        complete = newBuffer
-        pending  = ''
-        pendingChunkCountRef.current = 0
+        // Force-flush: emit the entire accumulated buffer as a translation unit
+        const forceText = pendingBufferRef.current
+        if (forceText) {
+          pendingBufferRef.current = ''
+          pendingChunkCountRef.current = 0
+          setPendingText('')
+          completedSentences.push(...splitSentences(forceText))
+        }
       }
+      if (completedSentences.length === 0) return
     } else {
       pendingChunkCountRef.current = 0
     }
 
-    pendingBufferRef.current = pending
-    if (!complete) return
-
-    // Sentence is complete — update interim to show only the remaining pending part
-    setPendingText(pending)
-
     // ── VAD-based speaker diarization (smart cycling) ─────────────────────
-    // Determines the next speaker using silence-gap heuristics + turn history.
+    // Runs once per chunk — the same speaker label is assigned to all sentences
+    // completed within this audio window.
     //
     // Algorithm:
     //   1 known speaker  → any qualifying silence → introduce Speaker 2
@@ -541,85 +588,96 @@ export function useLiveTranslate() {
     // Record every finalized turn in the history so future decisions can cycle back correctly
     speakerTurnHistoryRef.current = [...speakerTurnHistoryRef.current, currentSpeaker].slice(-SPEAKER_TURN_HISTORY_SIZE)
 
-    // ── Add segment immediately so it shows in the left panel while translating.
-    // Translation runs in the background — the queue is NOT blocked so the next
-    // audio chunk can be STT'd immediately without waiting for translation.
-    const segId = `seg-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`
-    setSegments(prev => [...prev, {
-      id: segId,
-      rawText: complete,
-      translation: '',   // will be filled in when background translation finishes
-      speaker: currentSpeaker,
-      timestamp: Date.now(),
-    }])
+    // ── Create one segment per completed sentence ─────────────────────────────
+    // Each sentence from completedSentences gets its own row, segment ID, and
+    // background translation — no more merged multi-sentence rows.
+    for (const sentenceText of completedSentences) {
+      // Add segment immediately so it shows in the left panel while translating.
+      // Translation runs in the background — the queue is NOT blocked so the next
+      // audio chunk can be STT'd immediately without waiting for translation.
+      const segId = `seg-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`
+      setSegments(prev => [...prev, {
+        id: segId,
+        rawText: sentenceText,
+        translation: '',   // will be filled in when background translation finishes
+        speaker: currentSpeaker,
+        timestamp: Date.now(),
+      }])
 
-    // Update context BEFORE launching background translation so the next sentence
-    // has the correct context even while this sentence is still being translated.
-    recentSentencesRef.current.push(complete)
-    if (recentSentencesRef.current.length > CONTEXT_SENTENCES) recentSentencesRef.current.shift()
+      // Update context BEFORE launching background translation so the next sentence
+      // has the correct context even while this sentence is still being translated.
+      recentSentencesRef.current.push(sentenceText)
+      if (recentSentencesRef.current.length > CONTEXT_SENTENCES) recentSentencesRef.current.shift()
 
-    // ── Fire translation in background (NOT awaited) ───────────────────────────
-    // This allows the STT queue to continue processing the next audio chunk
-    // immediately without waiting for AI translation to complete.
-    const contextText = recentSentencesRef.current.slice(0, -1).join(' ') // context = previous sentences
-    const sourceText  = contextText
-      ? `[Context — for reference only, already translated. Do NOT retranslate]:\n"${contextText}"\n\n[Translate to ${targetLang}]:\n${complete}`
-      : complete
+      // Fire translation in background (NOT awaited) — allows the STT queue to
+      // continue processing the next audio chunk immediately.
+      // Capture per-sentence values in IIFE params to avoid closure-over-loop bugs.
+      const contextText = recentSentencesRef.current.slice(0, -1).join(' ') // context = previous sentences
+      const sourceText  = contextText
+        ? `[Context — for reference only, already translated. Do NOT retranslate]:\n"${contextText}"\n\n[Translate to ${targetLang}]:\n${sentenceText}`
+        : sentenceText
 
-    void (async () => {
-      setIsTranslating(true)
-      try {
-        const batchParams = {
-          provider: selectedProvider,
-          model: selectedModels[selectedProvider],
-          sourceText,
-          sourceLang,
-          targetLang,
-          translationStyle: 'neutral' as const,
-          showFurigana: false,
-        }
-
-        let txResult: { success: boolean; translatedText?: string }
-        let usedStreaming = false
-
-        if (showSubtitlesRef.current) {
-          try {
-            txResult = await window.api.translateStream({
-              provider: selectedProvider,
-              model: selectedModels[selectedProvider],
-              sourceText,
-              sourceLang,
-              targetLang,
-              translationStyle: 'neutral',
-            })
-            usedStreaming = txResult.success
-          } catch {
-            txResult = { success: false }
+      void (async (capturedSegId: string, capturedSourceText: string) => {
+        // Guard: skip all setState calls if component was unmounted while this
+        // background translation was queued (e.g. user navigated away quickly).
+        if (!mountedRef.current) return
+        setIsTranslating(true)
+        try {
+          const batchParams = {
+            provider: selectedProvider,
+            model: selectedModels[selectedProvider],
+            sourceText: capturedSourceText,
+            sourceLang,
+            targetLang,
+            translationStyle: 'neutral' as const,
+            showFurigana: false,
           }
-          if (!txResult.success) {
+
+          let txResult: { success: boolean; translatedText?: string }
+          let usedStreaming = false
+
+          if (showSubtitlesRef.current) {
+            try {
+              txResult = await window.api.translateStream({
+                provider: selectedProvider,
+                model: selectedModels[selectedProvider],
+                sourceText: capturedSourceText,
+                sourceLang,
+                targetLang,
+                translationStyle: 'neutral',
+              })
+              usedStreaming = txResult.success
+            } catch {
+              txResult = { success: false }
+            }
+            if (!txResult.success) {
+              txResult = await window.api.translate(batchParams)
+            }
+          } else {
             txResult = await window.api.translate(batchParams)
           }
-        } else {
-          txResult = await window.api.translate(batchParams)
-        }
 
-        if (txResult.success && txResult.translatedText) {
-          const newTx = txResult.translatedText.trim()
-          setTranslation(prev => prev ? `${prev} ${newTx}` : newTx)
-          if (!usedStreaming) setLatestSubtitle(newTx)
-          fullTxForSummaryRef.current = fullTxForSummaryRef.current
-            ? `${fullTxForSummaryRef.current} ${newTx}`
-            : newTx
-          setSegments(prev => prev.map(seg =>
-            seg.id === segId ? { ...seg, translation: newTx } : seg
-          ))
+          // Re-check mounted after the awaited API calls (can take 1-3 seconds)
+          if (!mountedRef.current) return
+          if (txResult.success && txResult.translatedText) {
+            const newTx = txResult.translatedText.trim()
+            setTranslation(prev => prev ? `${prev} ${newTx}` : newTx)
+            if (!usedStreaming) setLatestSubtitle(newTx)
+            fullTxForSummaryRef.current = fullTxForSummaryRef.current
+              ? `${fullTxForSummaryRef.current} ${newTx}`
+              : newTx
+            setSegments(prev => prev.map(seg =>
+              seg.id === capturedSegId ? { ...seg, translation: newTx } : seg
+            ))
+          }
+        } catch {
+          // Translation failed silently — segment stays with empty translation
+        } finally {
+          // Guard the finally block: mountedRef may have flipped during the API call
+          if (mountedRef.current) setIsTranslating(false)
         }
-      } catch {
-        // Translation failed silently — segment stays with empty translation
-      } finally {
-        setIsTranslating(false)
-      }
-    })()
+      })(segId, sourceText)
+    }
   }, [])
 
   // ── Recorder cycling with VAD ─────────────────────────────────────────────────
@@ -1242,9 +1300,13 @@ export function useLiveTranslate() {
     }
   }, [subtitleSettings, showSubtitles])
 
-  // Cleanup on unmount — also close the subtitle window if it was open
+  // Cleanup on unmount — stop audio pipeline, mark component as unmounted, close subtitle window.
+  // mountedRef.current = false prevents in-flight async callbacks (STT, translation) from
+  // calling setState after the component has been removed from the tree.
   useEffect(() => {
+    mountedRef.current = true  // reset to true on mount (handles StrictMode double-invoke)
     return () => {
+      mountedRef.current = false  // ← guards processChunk + background translation setState calls
       activeRef.current = false
       if (vadTimerRef.current) clearInterval(vadTimerRef.current)
       if (pipelineErrorTimerRef.current) clearTimeout(pipelineErrorTimerRef.current)
@@ -1258,9 +1320,14 @@ export function useLiveTranslate() {
   }, [])
 
   // ── Computed ──────────────────────────────────────────────────────────────
-  const wordCount = rawTranscript
-    ? rawTranscript.replace(/· · ·/g, '').split(/\s+/).filter(Boolean).length
-    : 0
+  // useMemo: rawTranscript can be large (50k chars) — only recount words when the
+  // transcript actually changes, not on every render triggered by audio/translation state.
+  const wordCount = useMemo(
+    () => rawTranscript
+      ? rawTranscript.replace(/· · ·/g, '').split(/\s+/).filter(Boolean).length
+      : 0,
+    [rawTranscript]
+  )
 
   return {
     // Audio mode

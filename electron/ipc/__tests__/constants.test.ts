@@ -3,6 +3,10 @@ import { describe, it, expect } from 'vitest'
 import {
   MAX_CHAT_REQUEST_CHARS,
   DETECT_LANG_MAX_CHARS as MAIN_DETECT_LANG_MAX_CHARS,
+  TRANSLATE_CHUNK_CHAR_LIMIT,
+  TRANSLATE_CHUNK_TIMEOUT_MS,
+  TRANSLATE_CHUNK_CONCURRENCY,
+  TRANSLATE_CONTEXT_TAIL_CHARS,
 } from '../ipcConstants'
 
 // Không thể import từ src/ (khác tsconfig), hardcode expected values.
@@ -16,5 +20,37 @@ describe('Cross-boundary constant sync', () => {
   })
   it('DETECT_LANG_MAX_CHARS (main) === DETECT_LANG_MAX_CHARS (renderer)', () => {
     expect(MAIN_DETECT_LANG_MAX_CHARS).toBe(EXPECTED_DETECT_LANG_MAX_CHARS)
+  })
+})
+
+describe('Chunk translation parameters (HC-09 to HC-12)', () => {
+  it('TRANSLATE_CHUNK_CHAR_LIMIT is 12000 chars (~3000 tokens)', () => {
+    expect(TRANSLATE_CHUNK_CHAR_LIMIT).toBe(12_000)
+  })
+
+  it('TRANSLATE_CHUNK_TIMEOUT_MS is 90 seconds', () => {
+    expect(TRANSLATE_CHUNK_TIMEOUT_MS).toBe(90_000)
+  })
+
+  it('TRANSLATE_CHUNK_CONCURRENCY is 5 (balances throughput vs rate limit)', () => {
+    expect(TRANSLATE_CHUNK_CONCURRENCY).toBe(5)
+  })
+
+  it('TRANSLATE_CONTEXT_TAIL_CHARS is 400 chars of overlap context', () => {
+    expect(TRANSLATE_CONTEXT_TAIL_CHARS).toBe(400)
+  })
+
+  it('TRANSLATE_CHUNK_CHAR_LIMIT is positive', () => {
+    expect(TRANSLATE_CHUNK_CHAR_LIMIT).toBeGreaterThan(0)
+  })
+
+  it('TRANSLATE_CHUNK_TIMEOUT_MS is reasonable (between 10s and 5 min)', () => {
+    expect(TRANSLATE_CHUNK_TIMEOUT_MS).toBeGreaterThanOrEqual(10_000)
+    expect(TRANSLATE_CHUNK_TIMEOUT_MS).toBeLessThanOrEqual(300_000)
+  })
+
+  it('TRANSLATE_CHUNK_CONCURRENCY is between 1 and 20', () => {
+    expect(TRANSLATE_CHUNK_CONCURRENCY).toBeGreaterThanOrEqual(1)
+    expect(TRANSLATE_CHUNK_CONCURRENCY).toBeLessThanOrEqual(20)
   })
 })

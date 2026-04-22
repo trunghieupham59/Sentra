@@ -191,3 +191,36 @@ export const EXT_DEFAULT_CLAUDE_MODEL = 'claude-3-5-haiku-20241022'
  * kick in quickly without blocking the TTS pipeline for too long.
  */
 export const EDGE_TTS_TIMEOUT_MS = 8_000
+
+// ── Chunked translation parameters ────────────────────────────────────────────
+/**
+ * HC-09: Maximum characters per chunk sent to the AI.
+ *
+ * ~12 000 chars ≈ 3 000 tokens — safely fits in context window even for smaller
+ * models (8K ctx) after accounting for system prompt (~500 tok) + output (~3 000 tok).
+ * For modern large-context models this just means fewer, larger chunks.
+ *
+ * Referenced by translate.ts chunking logic. Change here to affect all chunked operations.
+ */
+export const TRANSLATE_CHUNK_CHAR_LIMIT = 12_000
+
+/**
+ * HC-10: Timeout (ms) per individual chunk request.
+ * 90 s is generous enough for large, complex translation chunks on slower models.
+ * Prevents a single stalled chunk from blocking the entire translateChunked pipeline.
+ */
+export const TRANSLATE_CHUNK_TIMEOUT_MS = 90_000
+
+/**
+ * HC-11: Max concurrent chunk requests.
+ * Limits parallel API calls per translateChunked call to avoid rate-limit errors.
+ * 5 concurrent chunks = good throughput without hammering provider rate limits.
+ */
+export const TRANSLATE_CHUNK_CONCURRENCY = 5
+
+/**
+ * HC-12: Characters of previous source chunk to include as overlap context.
+ * Gives the model enough prior text to maintain consistent terminology and style
+ * across chunk boundaries without sending the full prior chunk (saves tokens).
+ */
+export const TRANSLATE_CONTEXT_TAIL_CHARS = 400
