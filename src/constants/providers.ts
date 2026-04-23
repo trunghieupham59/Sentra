@@ -2,19 +2,17 @@ import type { Language, Provider, ProviderConfig } from '../types'
 
 export const PROVIDERS: ProviderConfig[] = [
   {
-    id: 'gemini',
-    name: 'Google Gemini',
-    color: '#4285F4',
-    emoji: '🟡',
-    keyPrefix: 'AIza',
-    docsUrl: 'https://aistudio.google.com/apikey',
+    id: 'openai',
+    name: 'OpenAI GPT',
+    color: '#10A37F',
+    emoji: '🟢',
+    keyPrefix: 'sk-',
+    docsUrl: 'https://platform.openai.com/api-keys',
     models: [
-      // ★ When adding a new Gemini model, mark the fastest/best translation model as tag:'recommended'
-      { id: 'gemini-2.5-flash-preview-04-17', name: 'Gemini 2.5 Flash', description: 'Newest & fastest', tag: 'recommended' },
-      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Fast & capable', tag: 'balanced' },
-      { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash-Lite', description: 'Ultra fast & light', tag: 'balanced' },
-      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: 'Fast & efficient', tag: 'balanced' },
-      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: 'Most capable', tag: 'powerful' },
+      // ★ When adding a new OpenAI model, mark the fastest/best translation model as tag:'recommended'
+      { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Fast & efficient', tag: 'recommended' },
+      { id: 'gpt-4o', name: 'GPT-4o', description: 'Most capable', tag: 'balanced' },
+      { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Economy', tag: 'powerful' },
     ],
   },
   {
@@ -32,17 +30,19 @@ export const PROVIDERS: ProviderConfig[] = [
     ],
   },
   {
-    id: 'openai',
-    name: 'OpenAI GPT',
-    color: '#10A37F',
-    emoji: '🟢',
-    keyPrefix: 'sk-',
-    docsUrl: 'https://platform.openai.com/api-keys',
+    id: 'gemini',
+    name: 'Google Gemini',
+    color: '#4285F4',
+    emoji: '🟡',
+    keyPrefix: 'AIza',
+    docsUrl: 'https://aistudio.google.com/apikey',
     models: [
-      // ★ When adding a new OpenAI model, mark the fastest/best translation model as tag:'recommended'
-      { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Fast & efficient', tag: 'recommended' },
-      { id: 'gpt-4o', name: 'GPT-4o', description: 'Most capable', tag: 'balanced' },
-      { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Economy', tag: 'powerful' },
+      // ★ When adding a new Gemini model, mark the fastest/best translation model as tag:'recommended'
+      { id: 'gemini-2.5-flash-preview-04-17', name: 'Gemini 2.5 Flash', description: 'Newest & fastest', tag: 'recommended' },
+      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Fast & capable', tag: 'balanced' },
+      { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash-Lite', description: 'Ultra fast & light', tag: 'balanced' },
+      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: 'Fast & efficient', tag: 'balanced' },
+      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: 'Most capable', tag: 'powerful' },
     ],
   },
 ]
@@ -118,7 +118,7 @@ export const DETECT_LANG_MAX_CHARS = 500
 export const DEFAULT_TTS_FALLBACK_LANG = 'en'
 
 export const DEFAULT_SETTINGS = {
-  defaultProvider: 'gemini' as const,
+  defaultProvider: 'openai' as const,
   defaultSourceLang: 'auto',
   defaultTargetLang: 'vi',
   /** Auto-resolved from PROVIDERS using tag:'recommended' — update tags to change defaults */
