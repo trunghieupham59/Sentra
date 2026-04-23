@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Viezan Subtitles</title>
   <style>
+    *, *::before, *::after { box-sizing: border-box; }
     html, body {
       margin: 0; padding: 0;
       background: transparent;
@@ -12,137 +13,595 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
       user-select: none;
       width: 100%; height: 100%;
+      display: flex; flex-direction: column;
     }
     .wrapper {
+      display: flex; flex-direction: column;
+      height: 100%;
       border-radius: 14px;
       overflow: hidden;
       box-shadow: 0 8px 40px rgba(0,0,0,0.65);
     }
-    /* ── Handle bar (draggable) ── */
+
+    /* ── Handle bar ────────────────────────────────────────────────────────── */
     .handle {
-      display: flex;
-      align-items: center;
+      flex-shrink: 0;
+      display: flex; align-items: center;
       justify-content: space-between;
-      padding: 5px 12px;
-      background: rgba(0,0,0,0.80);
+      padding: 5px 10px; height: 34px;
+      background: rgba(0,0,0,0.88);
       -webkit-app-region: drag;
-      cursor: grab;
     }
-    .handle:active { cursor: grabbing; }
-    .grip  { color: rgba(255,255,255,0.28); font-size: 15px; line-height: 1; letter-spacing: 1px; }
-    .label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 2.5px; color: rgba(255,255,255,0.28); }
-    .close {
+    .grip  { color: rgba(255,255,255,0.25); font-size: 14px; letter-spacing: 1px; }
+    .label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 2.5px; color: rgba(255,255,255,0.25); }
+    .close-btn {
       -webkit-app-region: no-drag;
       background: none; border: none;
-      color: rgba(255,255,255,0.32); cursor: pointer;
-      font-size: 13px; width: 20px; height: 20px;
+      color: rgba(255,255,255,0.30); cursor: pointer;
+      font-size: 12px; width: 20px; height: 20px;
       display: flex; align-items: center; justify-content: center;
       border-radius: 4px; padding: 0;
       transition: color 0.15s, background 0.15s;
     }
-    .close:hover { color: #fff; background: rgba(255,255,255,0.12); }
+    .close-btn:hover { color: #fff; background: rgba(255,255,255,0.12); }
 
-    /* ── Content area ── */
-    .body {
-      padding: 10px 20px 13px;
-      min-height: 44px;
-      display: flex; align-items: center; justify-content: center;
+    /* ── Status badge (in handle bar) ──────────────────────────────────────── */
+    .status-badge {
       -webkit-app-region: no-drag;
+      display: flex; align-items: center; gap: 4px;
+      font-size: 9px; font-weight: 600;
+      letter-spacing: 0.5px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      transition: color 0.3s, background 0.3s, border-color 0.3s;
+    }
+    .status-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    /* Stopped */
+    .status-badge.stopped { color: rgba(255,255,255,0.28); background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.07); }
+    .status-badge.stopped .status-dot { background: rgba(255,255,255,0.25); }
+    /* Listening */
+    .status-badge.listening { color: #68d391; background: rgba(72,187,120,0.12); border-color: rgba(72,187,120,0.25); }
+    .status-badge.listening .status-dot { background: #68d391; animation: pulse-green 1.5s ease-in-out infinite; }
+    /* Transcribing */
+    .status-badge.transcribing { color: #90cdf4; background: rgba(99,179,237,0.12); border-color: rgba(99,179,237,0.25); }
+    .status-badge.transcribing .status-dot { background: #90cdf4; animation: pulse-blue 0.8s ease-in-out infinite; }
+    /* Translating */
+    .status-badge.translating { color: #f6e05e; background: rgba(246,224,94,0.12); border-color: rgba(246,224,94,0.25); }
+    .status-badge.translating .status-dot { background: #f6e05e; animation: pulse-yellow 0.6s ease-in-out infinite; }
+
+    @keyframes pulse-green  { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.4; transform:scale(0.7); } }
+    @keyframes pulse-blue   { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+    @keyframes pulse-yellow { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+    /* ── Controls row 1 ─────────────────────────────────────────────────────── */
+    .controls {
+      flex-shrink: 0;
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 10px; height: 40px;
+      background: rgba(0,0,0,0.82);
+      border-top: 1px solid rgba(255,255,255,0.07);
+      -webkit-app-region: no-drag;
+      position: relative;
+    }
+
+    /* ── Controls row 2 ─────────────────────────────────────────────────────── */
+    .controls2 {
+      flex-shrink: 0;
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 10px; height: 36px;
+      background: rgba(0,0,0,0.80);
+      border-top: 1px solid rgba(255,255,255,0.05);
+      -webkit-app-region: no-drag;
+    }
+
+    /* ── Provider dropdown ───────────────────────────────────────────────────── */
+    .provider-dropdown { position: relative; flex-shrink: 0; }
+    .provider-btn {
+      display: flex; align-items: center; gap: 5px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 5px; color: rgba(255,255,255,0.80);
+      font-size: 11px; padding: 3px 7px 3px 5px; height: 28px;
+      cursor: pointer; white-space: nowrap;
+      transition: background 0.15s;
+    }
+    .provider-btn:hover { background: rgba(255,255,255,0.13); }
+    .provider-btn .caret { color: rgba(255,255,255,0.40); font-size: 9px; margin-left: 1px; }
+    .provider-menu {
+      display: none; position: absolute;
+      top: calc(100% + 4px); left: 0;
+      background: #1e1e2e;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 7px; padding: 4px;
+      min-width: 130px; z-index: 100;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    .provider-menu.open { display: block; }
+    .provider-option {
+      display: flex; align-items: center; gap: 7px;
+      width: 100%; background: none; border: none;
+      color: rgba(255,255,255,0.80); font-size: 11px;
+      padding: 5px 8px; border-radius: 5px;
+      cursor: pointer; text-align: left;
+      transition: background 0.12s;
+    }
+    .provider-option:hover { background: rgba(255,255,255,0.10); }
+    .provider-option.active { background: rgba(255,255,255,0.08); color: #fff; }
+
+    /* ── Selectors ───────────────────────────────────────────────────────────── */
+    .sel {
+      flex: 1; min-width: 0;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 5px; color: rgba(255,255,255,0.80);
+      font-size: 11px; padding: 3px 5px;
+      height: 28px; cursor: pointer; outline: none;
+    }
+    .sel:hover { background: rgba(255,255,255,0.13); }
+    .sel option { background: #1a1a2e; color: #fff; }
+
+    /* ── Start/Stop ──────────────────────────────────────────────────────────── */
+    .start-btn {
+      flex-shrink: 0;
+      background: rgba(72,187,120,0.18);
+      border: 1px solid rgba(72,187,120,0.35);
+      border-radius: 5px; color: #68d391;
+      font-size: 11px; font-weight: 600;
+      padding: 3px 10px; height: 28px;
+      cursor: pointer; white-space: nowrap;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .start-btn:hover { background: rgba(72,187,120,0.28); }
+    .start-btn.active { background: rgba(252,129,74,0.18); border-color: rgba(252,129,74,0.35); color: #fc8d5a; }
+    .start-btn.active:hover { background: rgba(252,129,74,0.28); }
+
+    /* ── Audio mode buttons (SVG icons) ──────────────────────────────────────── */
+    .audio-group { display: flex; gap: 3px; flex-shrink: 0; }
+    .audio-btn {
+      display: flex; align-items: center; gap: 4px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 4px; color: rgba(255,255,255,0.50);
+      font-size: 10px; padding: 2px 7px; height: 24px;
+      cursor: pointer; white-space: nowrap;
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+    }
+    .audio-btn svg { flex-shrink: 0; }
+    .audio-btn:hover { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.80); }
+    .audio-btn.active {
+      background: rgba(99,179,237,0.20);
+      border-color: rgba(99,179,237,0.40);
+      color: #90cdf4;
+    }
+    .ctrl-label { font-size: 9px; color: rgba(255,255,255,0.30); white-space: nowrap; flex-shrink: 0; }
+
+    /* ── Language selector ───────────────────────────────────────────────────── */
+    .lang-sel {
+      flex: 1; min-width: 0;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 4px; color: rgba(255,255,255,0.75);
+      font-size: 10px; padding: 2px 5px;
+      height: 24px; cursor: pointer; outline: none;
+    }
+    .lang-sel:hover { background: rgba(255,255,255,0.12); }
+    .lang-sel option { background: #1a1a2e; color: #fff; }
+
+    /* ── Content area ────────────────────────────────────────────────────────── */
+    .body {
+      flex: 1;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 8px 18px 10px;
+      min-height: 0; overflow-y: auto;
       background: rgba(0,0,0,0.84);
       transition: background 0.2s;
+      -webkit-app-region: no-drag;
     }
-    .text {
-      color: #fff;
-      font-size: 18px; font-weight: 600;
+    .source-wrap { width: 100%; text-align: center; min-height: 0; }
+    .source-text {
+      display: none;
+      color: rgba(255,255,255,0.38); font-size: 12px;
+      font-style: italic; line-height: 1.4; word-break: break-word;
+      margin-bottom: 5px;
+    }
+    .tx-text {
+      display: none; width: 100%;
+      color: #fff; font-size: 18px; font-weight: 600;
       text-align: center; line-height: 1.45;
       text-shadow: 0 2px 8px rgba(0,0,0,0.95);
       word-break: break-word;
-      display: none;
       transition: color 0.2s, font-size 0.15s;
     }
-    .placeholder { color: rgba(255,255,255,0.22); font-size: 13px; font-style: italic; text-align: center; }
-
-    /* Blinking I-beam cursor — shown while streaming */
+    .placeholder { color: rgba(255,255,255,0.20); font-size: 13px; font-style: italic; text-align: center; }
     .cursor {
-      display: inline-block;
-      width: 2px; height: 1.1em;
-      background: currentColor;
-      margin-left: 1px;
-      vertical-align: text-bottom;
-      border-radius: 1px;
+      display: inline-block; width: 2px; height: 1.1em;
+      background: currentColor; margin-left: 1px;
+      vertical-align: text-bottom; border-radius: 1px;
       animation: blink 0.55s step-end infinite;
     }
-    @keyframes blink { 0%,100% { opacity: 0.8; } 50% { opacity: 0; } }
+    @keyframes blink { 0%,100% { opacity:0.8; } 50% { opacity:0; } }
+
+    /* ── Style bar ───────────────────────────────────────────────────────────── */
+    .style-bar {
+      flex-shrink: 0;
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 10px; height: 36px;
+      background: rgba(0,0,0,0.82);
+      border-top: 1px solid rgba(255,255,255,0.07);
+      -webkit-app-region: no-drag;
+    }
+    .style-label { font-size: 10px; color: rgba(255,255,255,0.35); white-space: nowrap; }
+    input[type="color"] {
+      -webkit-appearance: none; width: 20px; height: 20px;
+      border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;
+      padding: 0; cursor: pointer; background: none; flex-shrink: 0;
+    }
+    input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+    input[type="color"]::-webkit-color-swatch { border: none; border-radius: 2px; }
+    .slider-group { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; }
+    input[type="range"] {
+      -webkit-appearance: none; flex: 1; min-width: 0; height: 3px;
+      background: rgba(255,255,255,0.15); border-radius: 2px;
+      outline: none; cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%;
+      background: rgba(255,255,255,0.70); cursor: pointer;
+    }
+    input[type="range"]:hover::-webkit-slider-thumb { background: #fff; }
   </style>
 </head>
 <body>
   <div class="wrapper">
+
+    <!-- ── Handle bar ─────────────────────────────────────────────────────── -->
     <div class="handle">
       <span class="grip">⠿⠿</span>
       <span class="label">Subtitles · Viezan</span>
-      <button type="button" class="close" id="closeBtn" title="Đóng subtitles">✕</button>
+      <!-- Status badge -->
+      <div class="status-badge stopped" id="statusBadge">
+        <span class="status-dot"></span>
+        <span id="statusText">Đã dừng</span>
+      </div>
+      <button type="button" class="close-btn" id="closeBtn" title="Đóng subtitles">✕</button>
     </div>
+
+    <!-- ── Controls row 1: Provider / Model / Start-Stop ──────────────────── -->
+    <div class="controls">
+      <!-- Custom provider dropdown with real SVG icons -->
+      <div class="provider-dropdown" id="providerDropdown">
+        <button type="button" class="provider-btn" id="providerBtn">
+          <svg id="providerIcon" width="14" height="14" viewBox="0 0 24 24" fill="none"></svg>
+          <span id="providerName">Gemini</span>
+          <span class="caret">▾</span>
+        </button>
+        <div class="provider-menu" id="providerMenu">
+          <button type="button" class="provider-option" data-id="gemini">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2C12.3 5.5 13.8 8.8 16 10.5C13.8 12.2 12.3 15.5 12 19C11.7 15.5 10.2 12.2 8 10.5C10.2 8.8 11.7 5.5 12 2Z" fill="#1A73E8"/>
+              <path d="M2 10.5C5.5 10.8 8.8 10.2 10.5 8C12.2 10.2 15.5 10.8 19 10.5C15.5 10.2 12.2 11.8 10.5 14C8.8 11.8 5.5 10.2 2 10.5Z" fill="#1A73E8" opacity="0.5"/>
+              <path d="M2 12.5C5.5 12.2 8.8 12.8 10.5 15C12.2 12.8 15.5 12.2 19 12.5C15.5 12.8 12.2 11.2 10.5 9C8.8 11.2 5.5 12.8 2 12.5Z" fill="#1A73E8" opacity="0.3"/>
+            </svg>
+            Gemini
+          </button>
+          <button type="button" class="provider-option" data-id="claude">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M13.5 3.5L20.5 20.5H16.8L15.2 16.5H8.8L7.2 20.5H3.5L10.5 3.5H13.5Z" fill="#D97706" opacity="0.12"/>
+              <path d="M12 5.5L18.2 20.5H15.5L14.2 17H9.8L8.5 20.5H5.8L12 5.5ZM12 9.5L10.7 13H13.3L12 9.5Z" fill="#D97706"/>
+            </svg>
+            Claude
+          </button>
+          <button type="button" class="provider-option" data-id="openai">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2.5C9.8 2.5 7.8 3.4 6.4 4.9C5.1 4.6 3.7 5 2.7 6C1.3 7.4 1.1 9.5 2 11.1C1.7 12.4 2.1 13.8 3 14.8C4.4 16.2 6.5 16.4 8.1 15.5C9.4 16.5 11 17 12.6 16.8L12 2.5Z" fill="#10A37F" opacity="0.2"/>
+              <path d="M20.3 9.5C21.4 11.3 21.3 13.6 20 15.2C20.2 16.5 19.8 17.8 18.9 18.8C17.5 20.2 15.4 20.4 13.8 19.5C12.5 20.2 11 20.3 9.6 19.9L12 12L20.3 9.5Z" fill="#10A37F" opacity="0.2"/>
+              <path d="M12 7L15.46 9V13L12 15L8.54 13V9L12 7Z" fill="#10A37F"/>
+              <path d="M12 3.5V7M12 15V18.5M8.54 9L5.5 7.25M15.46 13L18.5 14.75M8.54 13L5.5 14.75M15.46 9L18.5 7.25" stroke="#10A37F" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            OpenAI
+          </button>
+        </div>
+      </div>
+      <select id="modelSel" class="sel" title="Chọn Model"></select>
+      <button type="button" id="startStopBtn" class="start-btn">▶ Bắt đầu</button>
+    </div>
+
+    <!-- ── Controls row 2: Audio Mode / Target Language ───────────────────── -->
+    <div class="controls2">
+      <span class="ctrl-label">Nguồn</span>
+      <div class="audio-group">
+        <!-- MicrophoneIcon SVG from media.tsx -->
+        <button type="button" class="audio-btn active" data-mode="mic" title="Microphone">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23" stroke-linecap="round"/>
+            <line x1="8" y1="23" x2="16" y2="23" stroke-linecap="round"/>
+          </svg>
+          Mic
+        </button>
+        <!-- MonitorIcon SVG from media.tsx -->
+        <button type="button" class="audio-btn" data-mode="system" title="System Audio">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2"/>
+            <path stroke-linecap="round" d="M8 21h8M12 17v4"/>
+          </svg>
+          Sys
+        </button>
+        <!-- MicrophoneIcon + MonitorIcon combined -->
+        <button type="button" class="audio-btn" data-mode="both" title="Mic + System">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23" stroke-linecap="round"/>
+            <line x1="8" y1="23" x2="16" y2="23" stroke-linecap="round"/>
+          </svg>
+          <span style="opacity:0.5;font-size:8px">+</span>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2"/>
+            <path stroke-linecap="round" d="M8 21h8M12 17v4"/>
+          </svg>
+        </button>
+      </div>
+      <span class="ctrl-label">Dịch sang</span>
+      <select id="langSel" class="lang-sel" title="Ngôn ngữ đích"></select>
+    </div>
+
+    <!-- ── Content area ───────────────────────────────────────────────────── -->
     <div class="body" id="body">
+      <div class="source-wrap">
+        <span class="source-text" id="src"></span>
+      </div>
       <span class="placeholder" id="ph">Chờ bản dịch…</span>
-      <span class="text" id="txt"></span>
+      <span class="tx-text" id="txt"></span>
     </div>
+
+    <!-- ── Style bar ──────────────────────────────────────────────────────── -->
+    <div class="style-bar">
+      <span class="style-label">Màu</span>
+      <input type="color" id="colorPicker" value="#ffffff" title="Màu chữ">
+      <div class="slider-group">
+        <span class="style-label">Mờ</span>
+        <input type="range" id="opacitySlider" min="0" max="100" value="84" title="Độ trong mờ nền">
+      </div>
+      <div class="slider-group">
+        <span class="style-label">Aa</span>
+        <input type="range" id="fontSizeSlider" min="12" max="40" value="18" title="Cỡ chữ">
+      </div>
+    </div>
+
   </div>
+
   <script>
-    const closeBtn = document.getElementById('closeBtn')
-    const ph       = document.getElementById('ph')
-    const txt      = document.getElementById('txt')
-    const body     = document.getElementById('body')
+    // ── Provider SVG icons ────────────────────────────────────────────────────
+    const PROVIDER_ICONS = {
+      gemini: `<path d="M12 2C12.3 5.5 13.8 8.8 16 10.5C13.8 12.2 12.3 15.5 12 19C11.7 15.5 10.2 12.2 8 10.5C10.2 8.8 11.7 5.5 12 2Z" fill="#1A73E8"/><path d="M2 10.5C5.5 10.8 8.8 10.2 10.5 8C12.2 10.2 15.5 10.8 19 10.5C15.5 10.2 12.2 11.8 10.5 14C8.8 11.8 5.5 10.2 2 10.5Z" fill="#1A73E8" opacity="0.5"/><path d="M2 12.5C5.5 12.2 8.8 12.8 10.5 15C12.2 12.8 15.5 12.2 19 12.5C15.5 12.8 12.2 11.2 10.5 9C8.8 11.2 5.5 12.8 2 12.5Z" fill="#1A73E8" opacity="0.3"/>`,
+      claude: `<path d="M13.5 3.5L20.5 20.5H16.8L15.2 16.5H8.8L7.2 20.5H3.5L10.5 3.5H13.5Z" fill="#D97706" opacity="0.12"/><path d="M12 5.5L18.2 20.5H15.5L14.2 17H9.8L8.5 20.5H5.8L12 5.5ZM12 9.5L10.7 13H13.3L12 9.5Z" fill="#D97706"/>`,
+      openai: `<path fill-rule="evenodd" clip-rule="evenodd" d="M12 2.5C9.8 2.5 7.8 3.4 6.4 4.9C5.1 4.6 3.7 5 2.7 6C1.3 7.4 1.1 9.5 2 11.1C1.7 12.4 2.1 13.8 3 14.8C4.4 16.2 6.5 16.4 8.1 15.5C9.4 16.5 11 17 12.6 16.8L12 2.5Z" fill="#10A37F" opacity="0.2"/><path d="M20.3 9.5C21.4 11.3 21.3 13.6 20 15.2C20.2 16.5 19.8 17.8 18.9 18.8C17.5 20.2 15.4 20.4 13.8 19.5C12.5 20.2 11 20.3 9.6 19.9L12 12L20.3 9.5Z" fill="#10A37F" opacity="0.2"/><path d="M12 7L15.46 9V13L12 15L8.54 13V9L12 7Z" fill="#10A37F"/><path d="M12 3.5V7M12 15V18.5M8.54 9L5.5 7.25M15.46 13L18.5 14.75M8.54 13L5.5 14.75M15.46 9L18.5 7.25" stroke="#10A37F" stroke-width="1.5" stroke-linecap="round"/>`,
+    }
+    const PROVIDER_NAMES = { gemini: 'Gemini', claude: 'Claude', openai: 'OpenAI' }
 
-    closeBtn.onclick = () => window.subtitleAPI.close()
-
-    // ── Shared state ──────────────────────────────────────────────────────────
-    let streamText = ''   // accumulated streaming text for this sentence
-
-    function showText(content, withCursor) {
-      txt.style.display = 'block'
-      ph.style.display  = 'none'
-      txt.innerHTML = escHtml(content) + (withCursor ? '<span class="cursor"></span>' : '')
+    // Fallback model lists
+    const FALLBACK_MODELS = {
+      gemini: [
+        { id: 'gemini-2.5-flash-preview-04-17', name: '2.5 Flash' },
+        { id: 'gemini-2.0-flash', name: '2.0 Flash' },
+        { id: 'gemini-2.0-flash-lite', name: '2.0 Flash-Lite' },
+        { id: 'gemini-1.5-flash', name: '1.5 Flash' },
+        { id: 'gemini-1.5-pro', name: '1.5 Pro' },
+      ],
+      claude: [
+        { id: 'claude-3-5-haiku-20241022', name: '3.5 Haiku' },
+        { id: 'claude-3-5-sonnet-20241022', name: '3.5 Sonnet' },
+        { id: 'claude-3-7-sonnet-20250219', name: '3.7 Sonnet' },
+      ],
+      openai: [
+        { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
+        { id: 'gpt-4o', name: 'GPT-4o' },
+        { id: 'gpt-3.5-turbo', name: 'GPT-3.5' },
+      ],
     }
 
-    function escHtml(s) {
-      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    }
+    // Target languages
+    const TARGET_LANGUAGES = [
+      { code: 'vi',    name: 'Tiếng Việt' },
+      { code: 'en',    name: 'English' },
+      { code: 'zh',    name: '中文 (简体)' },
+      { code: 'zh-TW', name: '繁體中文' },
+      { code: 'ja',    name: '日本語' },
+      { code: 'ko',    name: '한국어' },
+      { code: 'fr',    name: 'Français' },
+      { code: 'de',    name: 'Deutsch' },
+      { code: 'es',    name: 'Español' },
+      { code: 'pt',    name: 'Português' },
+      { code: 'ru',    name: 'Русский' },
+      { code: 'ar',    name: 'العربية' },
+      { code: 'th',    name: 'ภาษาไทย' },
+      { code: 'id',    name: 'Bahasa Indonesia' },
+      { code: 'it',    name: 'Italiano' },
+      { code: 'nl',    name: 'Nederlands' },
+      { code: 'pl',    name: 'Polski' },
+      { code: 'tr',    name: 'Türkçe' },
+      { code: 'hi',    name: 'हिंदी' },
+    ]
 
-    // ── Streaming path (primary) ───────────────────────────────────────────────
-    window.subtitleAPI.onStreamStart(() => {
-      streamText = ''
-      txt.style.display = 'block'
-      ph.style.display  = 'none'
-      txt.innerHTML = '<span class="cursor"></span>'  // show cursor immediately
+    // ── DOM refs ──────────────────────────────────────────────────────────────
+    const closeBtn      = document.getElementById('closeBtn')
+    const providerBtn   = document.getElementById('providerBtn')
+    const providerIcon  = document.getElementById('providerIcon')
+    const providerName  = document.getElementById('providerName')
+    const providerMenu  = document.getElementById('providerMenu')
+    const modelSel      = document.getElementById('modelSel')
+    const startStopBtn  = document.getElementById('startStopBtn')
+    const langSel       = document.getElementById('langSel')
+    const statusBadge   = document.getElementById('statusBadge')
+    const statusText    = document.getElementById('statusText')
+    const src           = document.getElementById('src')
+    const ph            = document.getElementById('ph')
+    const txt           = document.getElementById('txt')
+    const body          = document.getElementById('body')
+    const colorPicker   = document.getElementById('colorPicker')
+    const opacitySlider = document.getElementById('opacitySlider')
+    const fontSizeSlider= document.getElementById('fontSizeSlider')
+    const audioBtns     = document.querySelectorAll('.audio-btn')
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    let currentProvider  = 'gemini'
+    let isSessionActive  = false
+    let streamText       = ''
+
+    // ── Populate language dropdown ─────────────────────────────────────────────
+    TARGET_LANGUAGES.forEach(l => {
+      const opt = document.createElement('option')
+      opt.value = l.code; opt.textContent = l.name
+      langSel.appendChild(opt)
     })
+    langSel.value = 'vi'
 
-    window.subtitleAPI.onStreamToken((token) => {
-      streamText += token
-      showText(streamText, true)  // append token + cursor
-    })
-
-    window.subtitleAPI.onStreamEnd(() => {
-      showText(streamText, false)  // final text, no cursor
-    })
-
-    // ── Non-streaming fallback (when subtitle is opened mid-session) ──────────
-    window.subtitleAPI.onText(({ text, isTranslating }) => {
-      if (text) {
-        streamText = text
-        showText(text, isTranslating)
+    // ── Status badge ──────────────────────────────────────────────────────────
+    function updateStatus(isActive, isTranscribing, isTranslating) {
+      statusBadge.className = 'status-badge'
+      if (!isActive) {
+        statusBadge.classList.add('stopped')
+        statusText.textContent = 'Đã dừng'
+      } else if (isTranslating) {
+        statusBadge.classList.add('translating')
+        statusText.textContent = 'Đang dịch…'
+      } else if (isTranscribing) {
+        statusBadge.classList.add('transcribing')
+        statusText.textContent = 'Nhận diện…'
       } else {
-        txt.style.display = 'none'
-        txt.innerHTML     = ''
-        ph.style.display  = 'block'
-        ph.textContent    = isTranslating ? 'Đang dịch…' : 'Chờ bản dịch…'
+        statusBadge.classList.add('listening')
+        statusText.textContent = 'Đang nghe'
+      }
+    }
+
+    // ── Provider helpers ───────────────────────────────────────────────────────
+    function setProviderUI(id) {
+      currentProvider = id
+      providerIcon.innerHTML = PROVIDER_ICONS[id] ?? ''
+      providerName.textContent = PROVIDER_NAMES[id] ?? id
+      document.querySelectorAll('.provider-option').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.id === id)
+      })
+    }
+    function populateModels(models, selectedId) {
+      const list = models && models.length > 0 ? models : (FALLBACK_MODELS[currentProvider] ?? [])
+      modelSel.innerHTML = ''
+      list.forEach(m => {
+        const opt = document.createElement('option')
+        opt.value = m.id; opt.textContent = m.name ?? m.id
+        modelSel.appendChild(opt)
+      })
+      if (selectedId) {
+        modelSel.value = selectedId
+        if (!modelSel.value && list.length > 0) modelSel.value = list[0].id
+      }
+    }
+
+    setProviderUI('gemini')
+    populateModels(null, null)
+
+    // ── Provider dropdown ──────────────────────────────────────────────────────
+    providerBtn.onclick = (e) => { e.stopPropagation(); providerMenu.classList.toggle('open') }
+    document.addEventListener('click', () => providerMenu.classList.remove('open'))
+    providerMenu.addEventListener('click', e => e.stopPropagation())
+    document.querySelectorAll('.provider-option').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.dataset.id
+        setProviderUI(id); populateModels(null, null)
+        providerMenu.classList.remove('open')
+        window.subtitleAPI.emitSetProvider(id)
+        if (modelSel.value) window.subtitleAPI.emitSetModel(modelSel.value)
       }
     })
 
-    // ── Style changes ─────────────────────────────────────────────────────────
-    window.subtitleAPI.onStyle(({ textColor, fontSize, bgOpacity }) => {
-      txt.style.color    = textColor
+    modelSel.onchange = () => window.subtitleAPI.emitSetModel(modelSel.value)
+
+    // ── Audio mode ─────────────────────────────────────────────────────────────
+    function setAudioModeUI(mode) {
+      audioBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.mode === mode))
+    }
+    audioBtns.forEach(btn => {
+      btn.onclick = () => { setAudioModeUI(btn.dataset.mode); window.subtitleAPI.emitSetAudioMode(btn.dataset.mode) }
+    })
+
+    langSel.onchange = () => window.subtitleAPI.emitSetTargetLang(langSel.value)
+
+    // ── Start / Stop ───────────────────────────────────────────────────────────
+    startStopBtn.onclick = () => {
+      if (isSessionActive) window.subtitleAPI.emitStop()
+      else window.subtitleAPI.emitStart()
+    }
+    function updateStartStopBtn() {
+      startStopBtn.textContent = isSessionActive ? '⏹ Dừng' : '▶ Bắt đầu'
+      startStopBtn.classList.toggle('active', isSessionActive)
+    }
+
+    closeBtn.onclick = () => window.subtitleAPI.close()
+
+    // ── Text helpers ───────────────────────────────────────────────────────────
+    function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+    function showText(content, withCursor) {
+      txt.style.display = 'block'; ph.style.display = 'none'
+      txt.innerHTML = escHtml(content) + (withCursor ? '<span class="cursor"></span>' : '')
+    }
+    function showSourceText(text) { src.textContent = text||''; src.style.display = text ? 'block' : 'none' }
+
+    // ── Style helpers ──────────────────────────────────────────────────────────
+    function applyStyle({ textColor, fontSize, bgOpacity }) {
+      txt.style.color = textColor
       txt.style.fontSize = fontSize + 'px'
-      body.style.background = `rgba(0,0,0,${(bgOpacity / 100).toFixed(2)})`
+      body.style.background = `rgba(0,0,0,${(bgOpacity/100).toFixed(2)})`
+      colorPicker.value = textColor; fontSizeSlider.value = fontSize; opacitySlider.value = bgOpacity
+    }
+    let styleTimer = null
+    function emitStyle() {
+      clearTimeout(styleTimer)
+      styleTimer = setTimeout(() => {
+        const s = { textColor: colorPicker.value, fontSize: Number(fontSizeSlider.value), bgOpacity: Number(opacitySlider.value) }
+        applyStyle(s); window.subtitleAPI.emitStyleUpdate(s)
+      }, 80)
+    }
+    colorPicker.oninput = opacitySlider.oninput = fontSizeSlider.oninput = emitStyle
+
+    // ── IPC listeners ──────────────────────────────────────────────────────────
+
+    window.subtitleAPI.onState(({ selectedProvider, selectedModel, isActive, isTranscribing, isTranslating, availableModels, audioMode, targetLang }) => {
+      if (selectedProvider !== currentProvider) setProviderUI(selectedProvider)
+      populateModels(availableModels, selectedModel)
+      setAudioModeUI(audioMode || 'mic')
+      if (targetLang && langSel.value !== targetLang) langSel.value = targetLang
+      isSessionActive = isActive
+      updateStartStopBtn()
+      updateStatus(isActive, isTranscribing, isTranslating)
+    })
+
+    window.subtitleAPI.onSourceText((text) => showSourceText(text))
+    window.subtitleAPI.onStyle((style) => applyStyle(style))
+
+    // Streaming
+    window.subtitleAPI.onStreamStart(() => {
+      streamText = ''; txt.style.display = 'block'; ph.style.display = 'none'
+      txt.innerHTML = '<span class="cursor"></span>'
+    })
+    window.subtitleAPI.onStreamToken((token) => { streamText += token; showText(streamText, true) })
+    window.subtitleAPI.onStreamEnd(() => showText(streamText, false))
+
+    // Non-streaming fallback
+    window.subtitleAPI.onText(({ text, isTranslating }) => {
+      if (text) { streamText = text; showText(text, isTranslating) }
+      else {
+        txt.style.display = 'none'; txt.innerHTML = ''
+        ph.style.display = 'block'
+        ph.textContent = isTranslating ? 'Đang dịch…' : 'Chờ bản dịch…'
+      }
     })
   </script>
 </body>

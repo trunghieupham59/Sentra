@@ -35,11 +35,64 @@ export function registerSubtitleHandlers(
     const win = getSubtitleWindow()
     if (win && !win.isDestroyed()) {
       win.webContents.send('subtitle:style', style)
-      // Resize window height to comfortably fit text at the chosen font size
-      const winH = Math.max(90, Math.round(style.fontSize * 3.8 + 48))
-      const [w] = win.getSize()
-      win.setSize(w, winH)
     }
+  })
+
+  // ── Source text (raw STT text shown above translation) ─────────────────────
+  ipc.handle('subtitle:setSourceText', (_event, text: string) => {
+    const win = getSubtitleWindow()
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('subtitle:sourceText', text)
+    }
+  })
+
+  // ── State sync from main renderer → subtitle ─────────────────────────────
+  ipc.handle('subtitle:setState', (_event, state: {
+    selectedProvider: string
+    selectedModel: string
+    isActive: boolean
+    isTranscribing: boolean
+    isTranslating: boolean
+    availableModels: { id: string; name: string }[]
+    audioMode: string
+    targetLang: string
+  }) => {
+    const win = getSubtitleWindow()
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('subtitle:state', state)
+    }
+  })
+
+  // ── Actions FROM subtitle window → forward to main renderer ────────────────
+  // These are fired by subtitle.html via ipcRenderer.send (fire-and-forget).
+  // The main process forwards them to the main window so the React app can react.
+
+  ipc.on('subtitle:action:start', () => {
+    getMainWindow()?.webContents.send('subtitle:action:start')
+  })
+
+  ipc.on('subtitle:action:stop', () => {
+    getMainWindow()?.webContents.send('subtitle:action:stop')
+  })
+
+  ipc.on('subtitle:action:setProvider', (_event, provider: string) => {
+    getMainWindow()?.webContents.send('subtitle:action:setProvider', provider)
+  })
+
+  ipc.on('subtitle:action:setModel', (_event, model: string) => {
+    getMainWindow()?.webContents.send('subtitle:action:setModel', model)
+  })
+
+  ipc.on('subtitle:action:setAudioMode', (_event, mode: string) => {
+    getMainWindow()?.webContents.send('subtitle:action:setAudioMode', mode)
+  })
+
+  ipc.on('subtitle:action:setTargetLang', (_event, lang: string) => {
+    getMainWindow()?.webContents.send('subtitle:action:setTargetLang', lang)
+  })
+
+  ipc.on('subtitle:action:updateStyle', (_event, style: { textColor: string; fontSize: number; bgOpacity: number }) => {
+    getMainWindow()?.webContents.send('subtitle:action:updateStyle', style)
   })
 
   // Fired when the ✕ button inside subtitle.html is clicked

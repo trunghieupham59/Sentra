@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getSupportedAudioMimeType } from '../constants/audio'
 import { LANG_NAMES_FOR_AI } from '../constants/langNames'
 import { useAppStore } from '../store/useAppStore'
-import type { SubtitleSettings } from '../types'
+import type { Provider, SubtitleSettings } from '../types'
 import { extractCompleteSentences, isHallucination, jaccardSimilarity, splitSentences } from '../utils/live-translate'
 import { float32ToWav } from '../utils/wav-encoder'
 
@@ -261,6 +261,7 @@ export function useLiveTranslate() {
     sourceLang, targetLang, selectedProvider, selectedModels, keyStatus,
     addLiveSession, updateLiveSession,
     viewingLiveSessionId, liveSessions, setViewingLiveSession,
+    setSelectedProvider, setSelectedModel, setTargetLang,
   } = useAppStore()
 
   // 'mic'    = microphone only (getUserMedia)
@@ -740,6 +741,11 @@ export function useLiveTranslate() {
         ? `[Context — for reference only, already translated. Do NOT retranslate]:\n"${contextText}"\n\n[Translate to ${targetLang}]:\n${sentenceText}`
         : sentenceText
 
+      // Push the raw sentence to subtitle window so it can show the source text above translation
+      if (showSubtitlesRef.current) {
+        void window.api.subtitle.setSourceText(sentenceText)
+      }
+
       void (async (capturedSegId: string, capturedSourceText: string) => {
         // Guard: skip all setState calls if component was unmounted while this
         // background translation was queued (e.g. user navigated away quickly).
@@ -785,7 +791,7 @@ export function useLiveTranslate() {
           if (txResult.success && txResult.translatedText) {
             const newTx = txResult.translatedText.trim()
             setTranslation(prev => prev ? `${prev} ${newTx}` : newTx)
-            if (!usedStreaming) setLatestSubtitle(newTx)
+              setLatestSubtitle(newTx)
             fullTxForSummaryRef.current = fullTxForSummaryRef.current
               ? `${fullTxForSummaryRef.current} ${newTx}`
               : newTx
@@ -1574,6 +1580,78 @@ export function useLiveTranslate() {
       window.api.subtitle.setStyle(subtitleSettings)
     }
   }, [subtitleSettings, showSubtitles])
+
+  // ── Subtitle state push ────────────────────────────────────────────────────
+  // cachedSubtitleModelsRef: avoids re-fetching models on every isTranscribing/isTranslating
+  // toggle (which happens very frequently). Models are only re-fetched when provider/model
+  // selection changes — which is infrequent.
+  const cachedSubtitleModelsRef = useRef<{ id: string; name: string }[]>([])
+
+  // Push full state (including model list from API) when stable fields change.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: selectedModels reference changes with provider — intentional full sync
+  useEffect(() => {
+    if (!showSubtitles) return
+    const provider  = selectedProvider
+    const model     = selectedModels[provider] ?? ''
+    const mode = audioMode
+    const lang = targetLang
+    window.api.fetchModels(provider)
+      .then((result) => {
+        const availableModels = (result?.models ?? []) as { id: string; name: string }[]
+        cachedSubtitleModelsRef.current = availableModels
+        void window.api.subtitle.pushState({ selectedProvider: provider, selectedModel: model, isActive, isTranscribing, isTranslating, availableModels, audioMode: mode, targetLang: lang })
+      })
+      .catch(() => {
+        void window.api.subtitle.pushState({ selectedProvider: provider, selectedModel: model, isActive, isTranscribing, isTranslating, availableModels: cachedSubtitleModelsRef.current, audioMode: mode, targetLang: lang })
+      })
+  }, [showSubtitles, selectedProvider, selectedModels, audioMode, targetLang])
+
+  // Push lightweight status updates without re-fetching models.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable fields read directly, only status changes trigger this
+  useEffect(() => {
+    if (!showSubtitles) return
+    void window.api.subtitle.pushState({
+      selectedProvider,
+      selectedModel: selectedModels[selectedProvider] ?? '',
+      isActive,
+      isTranscribing,
+      isTranslating,
+      availableModels: cachedSubtitleModelsRef.current,
+      audioMode,
+      targetLang,
+    })
+  }, [showSubtitles, isActive, isTranscribing, isTranslating])
+
+  // Listen for actions sent FROM the subtitle window (start/stop, provider/model/style changes)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: selectedProvider needed for setSelectedModel scope
+  useEffect(() => {
+    const cleanupStart    = window.api.subtitle.onStart(() => { if (!activeRef.current) void handleStart() })
+    const cleanupStop     = window.api.subtitle.onStop(() => { if (activeRef.current) handleStop() })
+    const cleanupProvider = window.api.subtitle.onSetProvider((provider) => {
+      setSelectedProvider(provider as Provider)
+    })
+    const cleanupModel    = window.api.subtitle.onSetModel((model) => {
+      setSelectedModel(selectedProvider as Provider, model)
+    })
+    const cleanupAudioMode = window.api.subtitle.onSetAudioMode((mode) => {
+      setAudioMode(mode as 'mic' | 'system' | 'both')
+    })
+    const cleanupTargetLang = window.api.subtitle.onSetTargetLang((lang) => {
+      setTargetLang(lang)
+    })
+    const cleanupStyle    = window.api.subtitle.onStyleUpdate((style) => {
+      setSubtitleSettings(style)
+    })
+    return () => {
+      cleanupStart()
+      cleanupStop()
+      cleanupProvider()
+      cleanupModel()
+      cleanupAudioMode()
+      cleanupTargetLang()
+      cleanupStyle()
+    }
+  }, [handleStart, handleStop, setSelectedProvider, setSelectedModel, selectedProvider, setTargetLang])
 
   // Cleanup on unmount — stop audio pipeline, mark component as unmounted, close subtitle window.
   // mountedRef.current = false prevents in-flight async callbacks (STT, translation) from

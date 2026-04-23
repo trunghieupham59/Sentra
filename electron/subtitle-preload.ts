@@ -26,6 +26,44 @@ contextBridge.exposeInMainWorld('subtitleAPI', {
     ipcRenderer.on('subtitle:stream:end', () => callback())
   },
 
+  // ── Source text (raw STT text, shown above translation) ───────────────────
+  /** Fired when a new raw/source text segment arrives */
+  onSourceText: (callback: (text: string) => void) => {
+    ipcRenderer.on('subtitle:sourceText', (_event, text: string) => callback(text))
+  },
+
+  // ── State sync from main renderer ─────────────────────────────────────────
+  /** Fired when session state changes in main renderer */
+  onState: (callback: (state: {
+    selectedProvider: string
+    selectedModel: string
+    isActive: boolean
+    isTranscribing: boolean
+    isTranslating: boolean
+    availableModels: { id: string; name: string }[]
+    audioMode: string
+    targetLang: string
+  }) => void) => {
+    ipcRenderer.on('subtitle:state', (_event, state) => callback(state))
+  },
+
+  // ── Actions → send to main process (forwarded to main renderer) ───────────
+  /** User clicked Start in subtitle window */
+  emitStart: () => ipcRenderer.send('subtitle:action:start'),
+  /** User clicked Stop in subtitle window */
+  emitStop: () => ipcRenderer.send('subtitle:action:stop'),
+  /** User changed provider in subtitle window */
+  emitSetProvider: (provider: string) => ipcRenderer.send('subtitle:action:setProvider', provider),
+  /** User changed model in subtitle window */
+  emitSetModel: (model: string) => ipcRenderer.send('subtitle:action:setModel', model),
+  /** User changed audio input mode in subtitle window */
+  emitSetAudioMode: (mode: string) => ipcRenderer.send('subtitle:action:setAudioMode', mode),
+  /** User changed target language in subtitle window */
+  emitSetTargetLang: (lang: string) => ipcRenderer.send('subtitle:action:setTargetLang', lang),
+  /** User changed style (color/opacity/fontSize) in subtitle window */
+  emitStyleUpdate: (style: { textColor: string; fontSize: number; bgOpacity: number }) =>
+    ipcRenderer.send('subtitle:action:updateStyle', style),
+
   /** Tell the main process the user clicked the ✕ close button */
   close: () => ipcRenderer.send('subtitle:close'),
 })

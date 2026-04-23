@@ -106,12 +106,14 @@ const SUBTITLE_BOTTOM_MARGIN = 40
 
 function createSubtitleWindow() {
   const { workAreaSize } = screen.getPrimaryDisplay()
-  const winW = 620
-  const winH = 100
+  const winW = 660
+  const winH = 300
 
   subtitleWindow = new BrowserWindow({
     width:  winW,
     height: winH,
+    minWidth:  400,
+    minHeight: 252,
     x: Math.round(workAreaSize.width  / 2 - winW / 2),
     y: Math.round(workAreaSize.height - winH - SUBTITLE_BOTTOM_MARGIN),
     frame:     false,
@@ -119,7 +121,7 @@ function createSubtitleWindow() {
     alwaysOnTop: true,
     hasShadow:   false,
     skipTaskbar: true,
-    resizable:   false,
+    resizable:   true,
     movable:     true,
     webPreferences: {
       preload: path.join(__dirname, 'subtitle-preload.js'),
