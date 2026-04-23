@@ -8,403 +8,442 @@
     * { box-sizing: border-box; margin: 0; padding: 0 }
 
     body {
-      width: 340px;
+      width: 540px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
       font-size: 13px;
-      background: #f8f9ff;
+      background: #ffffff;
       color: #1e1b4b;
     }
 
-    /* ── Header ── */
+    /* ══════════════════════════════════════
+       ROW 1 — Header
+    ══════════════════════════════════════ */
     .header {
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 14px 16px 13px;
-      background: linear-gradient(135deg, #4f46e5, #7c3aed);
-      position: relative;
-      overflow: hidden;
+      padding: 10px 14px;
+      background: linear-gradient(135deg, #ede9fe 0%, #e0e7ff 100%);
+      border-bottom: 1px solid #ddd6fe;
     }
-    .header::before {
-      content: '';
-      position: absolute;
-      top: -30px; right: -30px;
-      width: 100px; height: 100px;
-      background: rgba(255,255,255,0.08);
-      border-radius: 50%;
-    }
-    .header::after {
-      content: '';
-      position: absolute;
-      bottom: -20px; left: 60px;
-      width: 70px; height: 70px;
-      background: rgba(255,255,255,0.05);
-      border-radius: 50%;
-    }
+
     .header-logo {
-      width: 32px;
-      height: 32px;
-      border-radius: 9px;
+      width: 22px;
+      height: 22px;
+      border-radius: 5px;
       overflow: hidden;
       flex-shrink: 0;
-      position: relative;
-      z-index: 1;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
     }
-    .header-logo img { width: 32px; height: 32px; display: block; }
-    .header-text { position: relative; z-index: 1; }
-    .header-title { font-weight: 800; font-size: 14px; color: #fff; letter-spacing: -0.2px }
-    .header-subtitle { font-size: 10px; color: rgba(255,255,255,0.75); margin-top: 1px }
-    .header-settings {
-      margin-left: auto;
-      padding: 5px 10px;
-      background: rgba(255,255,255,0.18);
-      color: #fff;
-      border: 1px solid rgba(255,255,255,0.25);
-      border-radius: 7px;
+    .header-logo img { width: 22px; height: 22px; display: block; }
+
+    /* Status badge */
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255,255,255,0.6);
+      border: 1px solid #c4b5fd;
+      border-radius: 20px;
+      padding: 3px 10px;
       font-size: 11px;
       font-weight: 600;
-      cursor: pointer;
-      transition: background 0.15s;
-      position: relative;
-      z-index: 1;
-      backdrop-filter: blur(8px);
+      color: #5b21b6;
     }
-    .header-settings:hover { background: rgba(255,255,255,0.28); }
-
-    /* ── Sections ── */
-    .section {
-      padding: 14px 16px;
-      border-bottom: 1px solid #e8eeff;
-      background: #fff;
-    }
-
-    label {
-      display: block;
-      font-size: 11px;
-      font-weight: 700;
-      color: #4f46e5;
-      margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    select, textarea {
-      width: 100%;
-      background: #f8f9ff;
-      border: 1.5px solid #dde3ff;
-      border-radius: 9px;
-      color: #1e1b4b;
-      font-size: 13px;
-      font-family: inherit;
-      padding: 8px 12px;
-      outline: none;
-      transition: border-color 0.15s, box-shadow 0.15s;
-    }
-    select:focus, textarea:focus {
-      border-color: #4f46e5;
-      background: #fff;
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.10);
-    }
-    select { appearance: none; padding-right: 28px; cursor: pointer }
-
-    .select-wrap { position: relative }
-    .select-wrap::after {
-      content: '▾';
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: #6366f1;
-      pointer-events: none;
-      font-size: 12px;
-    }
-
-    textarea {
-      resize: none;
-      height: 80px;
-      line-height: 1.55;
-      font-size: 13px;
-    }
-    textarea::placeholder { color: #b8c0f0; }
-
-    /* ── Button row ── */
-    .btn-row {
-      display: flex;
-      gap: 8px;
-      padding: 12px 16px;
-      background: #fff;
-      border-bottom: 1px solid #e8eeff;
-    }
-    .btn {
-      flex: 1;
-      padding: 9px 12px;
-      border: none;
-      border-radius: 9px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.15s;
-      letter-spacing: 0.01em;
-    }
-    .btn-primary {
-      background: linear-gradient(135deg, #4f46e5, #6d28d9);
-      color: #fff;
-      box-shadow: 0 3px 10px rgba(79, 70, 229, 0.30);
-    }
-    .btn-primary:hover {
-      background: linear-gradient(135deg, #4338ca, #5b21b6);
-      box-shadow: 0 5px 14px rgba(79, 70, 229, 0.40);
-      transform: translateY(-1px);
-    }
-    .btn-primary:active { transform: translateY(0); }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none }
-
-    .btn-secondary {
-      background: #f0f4ff;
-      color: #4f46e5;
-      border: 1.5px solid #dde3ff;
-    }
-    .btn-secondary:hover { background: #e0e7ff; border-color: #c7d2fe; }
-
-    /* ── Result box ── */
-    .result-box {
-      margin: 12px 16px;
-      padding: 12px 14px;
-      background: linear-gradient(135deg, #eef2ff, #f5f3ff);
-      border-radius: 12px;
-      border: 1.5px solid #c7d2fe;
-      display: none;
-    }
-    .result-label {
-      font-size: 10px;
-      color: #6366f1;
-      font-weight: 700;
-      margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .result-label::before { content: '✦'; font-size: 8px; }
-    .result-text {
-      color: #1e1b4b;
-      line-height: 1.6;
-      font-size: 13px;
-      margin-bottom: 10px;
-      font-weight: 500;
-    }
-    .result-actions {
-      display: flex;
-      gap: 6px;
-    }
-    .result-actions .btn {
-      flex: 1;
-      padding: 6px 8px;
-      font-size: 11px;
-      border-radius: 7px;
-    }
-    .btn-copy-result {
-      background: #fff;
-      color: #4f46e5;
-      border: 1.5px solid #c7d2fe;
-    }
-    .btn-copy-result:hover { background: #eef2ff; }
-    .btn-copy-result.copied {
-      background: #f0fdf4;
-      color: #065f46;
-      border-color: #6ee7b7;
-    }
-    .btn-replace {
-      background: #fff;
-      color: #0369a1;
-      border: 1.5px solid #bae6fd;
-    }
-    .btn-replace:hover { background: #f0f9ff; }
-    .btn-replace.replaced {
-      background: #f0fdf4;
-      color: #065f46;
-      border-color: #6ee7b7;
-    }
-
-    /* ── AI info bar ── */
-    .ai-info-bar {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 7px 16px;
-      background: linear-gradient(90deg, #eef2ff, #f5f3ff);
-      border-bottom: 1px solid #dde3ff;
-      font-size: 11px;
-      color: #4f46e5;
-      font-weight: 500;
-    }
-    .ai-info-bar .ai-dot {
-      width: 6px; height: 6px;
+    .status-dot {
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
       background: #4ade80;
-      flex-shrink: 0;
-      box-shadow: 0 0 4px rgba(74,222,128,0.6);
+      box-shadow: 0 0 5px rgba(74,222,128,0.7);
     }
-    .ai-info-bar .ai-dot.loading {
+    .status-dot.loading {
       background: #fbbf24;
       animation: pulse 1s ease-in-out infinite;
     }
-    .ai-info-bar .ai-dot.error { background: #f87171; box-shadow: none; }
-    @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
-    .ai-pill {
-      background: #4f46e5;
-      color: #fff;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.02em;
+    .status-dot.error {
+      background: #f87171;
+      box-shadow: none;
     }
-    .ai-pill-model {
-      background: #0d9488;
-      font-family: 'SF Mono', monospace;
+    @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
+
+    .header-spacer { flex: 1; }
+
+    /* Settings button */
+    .btn-settings {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      background: rgba(255,255,255,0.55);
+      border: 1px solid #c4b5fd;
+      border-radius: 7px;
+      color: #5b21b6;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.13s;
+      font-family: inherit;
+    }
+    .btn-settings:hover { background: rgba(255,255,255,0.9); }
+
+    /* ══════════════════════════════════════
+       ROW 2 — Controls bar
+    ══════════════════════════════════════ */
+    .controls-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px 14px;
+      background: #f8f7ff;
+      border-bottom: 1px solid #ede9fe;
+      flex-wrap: wrap;
     }
 
-    /* ── Status ── */
-    .status {
-      padding: 10px 16px;
+    /* Provider / Model display badges */
+    .ctrl-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .ctrl-badge-provider {
+      background: rgba(26,115,232,0.09);
+      border: 1px solid rgba(26,115,232,0.22);
+      color: #1A73E8;
+    }
+    .ctrl-badge-model {
+      background: #0d948810;
+      border: 1px solid #0d948830;
+      color: #0d9488;
+      font-family: 'SF Mono', 'Menlo', monospace;
+      max-width: 130px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    /* fallback loading state */
+    .ctrl-badge-loading {
+      background: #f0f0f0;
+      border: 1px solid #e0e0e0;
+      color: #9ca3af;
+    }
+
+    /* Divider between badges and selects */
+    .ctrl-divider {
+      width: 1px;
+      height: 18px;
+      background: #ddd6fe;
+      flex-shrink: 0;
+    }
+
+    /* Compact selects */
+    .ctrl-select {
+      appearance: none;
+      -webkit-appearance: none;
+      background: rgba(255,255,255,0.85);
+      border: 1px solid #c4b5fd;
+      border-radius: 6px;
+      color: #5b21b6;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 22px 3px 7px;
+      cursor: pointer;
+      outline: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235b21b6' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 5px center;
+      transition: border-color 0.13s, background-color 0.13s;
+      flex-shrink: 0;
+    }
+    .ctrl-select:hover { border-color: #7c3aed; background-color: #fff; }
+    .ctrl-select:focus { border-color: #7c3aed; box-shadow: 0 0 0 2px rgba(124,58,237,0.15); }
+    #ctrl-lang  { max-width: 130px; }
+    #ctrl-style { max-width: 110px; }
+
+    /* ══════════════════════════════════════
+       ROW 3 — Body (two columns)
+    ══════════════════════════════════════ */
+    .body {
+      display: flex;
+      flex-direction: row;
+      min-height: 160px;
+      max-height: 280px;
+    }
+
+    .panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+    .panel-source { background: #fafafa; }
+    .panel-result { background: #ffffff; }
+
+    .panel-label {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: #a78bfa;
+      padding: 8px 12px 4px;
+      flex-shrink: 0;
+    }
+
+    .panel-divider {
+      width: 1px;
+      background: #e9e6fc;
+      flex-shrink: 0;
+      margin: 10px 0;
+    }
+
+    /* Source textarea */
+    .source-textarea {
+      flex: 1;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: #374151;
+      font-family: inherit;
+      font-size: 12.5px;
+      line-height: 1.55;
+      padding: 0 12px 10px;
+      resize: none;
+      min-height: 0;
+    }
+    .source-textarea::placeholder { color: #c4b5fd; }
+
+    /* Translation result text */
+    .result-text {
+      flex: 1;
+      color: #1e1b4b;
+      padding: 0 12px 10px;
+      font-size: 13px;
+      line-height: 1.6;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+    .result-placeholder {
+      color: #c4b5fd;
+      font-style: italic;
       font-size: 12px;
+    }
+
+    /* ══════════════════════════════════════
+       ROW 4 — Footer
+    ══════════════════════════════════════ */
+    .footer {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 14px;
+      border-top: 1px solid #ede9fe;
+      background: #faf9ff;
+    }
+
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .footer-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+      /* hidden until translation is done */
+    }
+
+    .footer-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-family: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.13s;
+      white-space: nowrap;
+    }
+
+    /* Clear */
+    .btn-clear {
+      background: transparent;
+      color: #6b7280;
+      border: 1px solid #e5e7eb;
+    }
+    .btn-clear:hover { background: #f3f4f6; border-color: #d1d5db; color: #374151; }
+
+    /* Dịch (Translate) */
+    .btn-translate {
+      background: linear-gradient(135deg, #4f46e5, #6d28d9);
+      color: #fff;
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(79,70,229,0.28);
+    }
+    .btn-translate:hover { background: linear-gradient(135deg, #4338ca, #5b21b6); box-shadow: 0 3px 12px rgba(79,70,229,0.38); transform: translateY(-1px); }
+    .btn-translate:active { transform: translateY(0); }
+    .btn-translate:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* Copy */
+    .btn-copy {
+      background: #f0f4ff;
+      color: #4f46e5;
+      border: 1px solid #c7d2fe;
+    }
+    .btn-copy:hover { background: #e0e7ff; border-color: #a5b4fc; }
+
+    /* Replace */
+    .btn-replace {
+      background: #f0fdf4;
+      color: #0f766e;
+      border: 1px solid #a7f3d0;
+    }
+    .btn-replace:hover { background: #dcfce7; border-color: #6ee7b7; }
+
+    /* ══════════════════════════════════════
+       Status bar
+    ══════════════════════════════════════ */
+    .statusbar {
+      padding: 7px 14px;
+      font-size: 11.5px;
       font-weight: 500;
       text-align: center;
       display: none;
-      line-height: 1.4;
+      border-top: 1px solid #ede9fe;
     }
-    .status.error { color: #be123c; background: #fff1f2; border-top: 1px solid #ffe4e6; }
-    .status.success { color: #065f46; background: #f0fdf4; border-top: 1px solid #dcfce7; }
-    .status.loading { color: #4f46e5; background: #eef2ff; border-top: 1px solid #e0e7ff; }
+    .statusbar.error   { color: #be123c; background: #fff1f2; }
+    .statusbar.success { color: #065f46; background: #f0fdf4; }
+    .statusbar.loading { color: #4f46e5; background: #eef2ff; }
 
-    /* ── Not connected ── */
+    /* ══════════════════════════════════════
+       Not connected state
+    ══════════════════════════════════════ */
     .not-connected {
-      padding: 28px 20px;
+      padding: 36px 24px;
       text-align: center;
       background: #fff;
     }
-    .not-connected-icon {
-      font-size: 36px;
-      margin-bottom: 10px;
-    }
+    .not-connected-icon { font-size: 40px; margin-bottom: 12px; }
     .not-connected p {
       color: #6366f1;
-      margin-bottom: 16px;
+      margin-bottom: 18px;
       font-size: 13px;
-      line-height: 1.55;
+      line-height: 1.6;
       font-weight: 500;
     }
-    .not-connected .btn {
-      display: inline-block;
-      flex: none;
+    .btn-open-options {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
       padding: 10px 24px;
       background: linear-gradient(135deg, #4f46e5, #6d28d9);
       color: #fff;
       font-weight: 700;
       border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.30);
+      box-shadow: 0 4px 14px rgba(79,70,229,0.30);
       cursor: pointer;
       border: none;
       font-size: 13px;
+      font-family: inherit;
     }
-    .not-connected .btn:hover {
-      background: linear-gradient(135deg, #4338ca, #5b21b6);
-    }
-
-    /* ── Bottom padding ── */
-    .bottom-pad { height: 4px; background: #fff; }
+    .btn-open-options:hover { background: linear-gradient(135deg, #4338ca, #5b21b6); }
   </style>
 </head>
 <body>
 
-  <!-- Header -->
-  <div class="header">
-    <div class="header-logo">
-      <img src="icons/icon128.png" alt="Viezan" />
-    </div>
-    <div class="header-text">
-      <div class="header-title">Viezan</div>
-      <div class="header-subtitle">AI-powered · via native app</div>
-    </div>
-    <button type="button" class="header-settings" id="btn-options">⚙ Options</button>
-  </div>
-
-  <!-- Not connected state -->
+  <!-- ── Not connected ── -->
   <div class="not-connected" id="not-connected-state" style="display:none">
     <div class="not-connected-icon">🔌</div>
     <p>Not connected to Viezan app.<br>Set your token in Options first.</p>
-    <button type="button" id="btn-go-options">Open Options</button>
+    <button type="button" class="btn-open-options" id="btn-go-options">⚙ Open Options</button>
   </div>
 
-  <!-- Connected state -->
+  <!-- ── Connected ── -->
   <div id="connected-state" style="display:none">
 
-    <!-- Active AI provider/model bar -->
-    <div class="ai-info-bar" id="ai-info-bar">
-      <span class="ai-dot loading" id="ai-dot"></span>
-      <span id="ai-info-text">Loading…</span>
+    <!-- ROW 1: Header -->
+    <div class="header">
+      <div class="header-logo">
+        <img src="icons/icon128.png" alt="Viezan" />
+      </div>
+      <div class="status-badge" id="status-badge">
+        <span class="status-dot loading" id="status-dot"></span>
+        <span id="status-label">Connecting…</span>
+      </div>
+      <div class="header-spacer"></div>
+      <button type="button" class="btn-settings" id="btn-options">⚙ Options</button>
     </div>
 
-    <div class="section">
-      <label>Translate to</label>
-      <div class="select-wrap">
-        <select id="target-lang">
-          <option value="en">🇬🇧 English</option>
-          <option value="vi">🇻🇳 Vietnamese</option>
-          <option value="ja">🇯🇵 Japanese</option>
-          <option value="zh">🇨🇳 Chinese (Simplified)</option>
-          <option value="ko">🇰🇷 Korean</option>
-          <option value="fr">🇫🇷 French</option>
-          <option value="de">🇩🇪 German</option>
-          <option value="es">🇪🇸 Spanish</option>
-          <option value="pt">🇵🇹 Portuguese</option>
-          <option value="ru">🇷🇺 Russian</option>
-          <option value="ar">🇸🇦 Arabic</option>
-          <option value="th">🇹🇭 Thai</option>
-          <option value="id">🇮🇩 Indonesian</option>
-        </select>
+    <!-- ROW 2: Controls bar -->
+    <div class="controls-bar">
+      <span class="ctrl-badge ctrl-badge-loading" id="ctrl-provider">…</span>
+      <span class="ctrl-badge ctrl-badge-loading" id="ctrl-model">…</span>
+      <div class="ctrl-divider"></div>
+      <select class="ctrl-select" id="target-lang">
+        <option value="en">🇬🇧 English</option>
+        <option value="vi">🇻🇳 Vietnamese</option>
+        <option value="ja">🇯🇵 Japanese</option>
+        <option value="zh">🇨🇳 Chinese</option>
+        <option value="ko">🇰🇷 Korean</option>
+        <option value="fr">🇫🇷 French</option>
+        <option value="de">🇩🇪 German</option>
+        <option value="es">🇪🇸 Spanish</option>
+        <option value="pt">🇵🇹 Portuguese</option>
+        <option value="ru">🇷🇺 Russian</option>
+        <option value="ar">🇸🇦 Arabic</option>
+        <option value="th">🇹🇭 Thai</option>
+        <option value="id">🇮🇩 Indonesian</option>
+      </select>
+      <select class="ctrl-select" id="translation-style">
+        <option value="friendly">😊 Friendly</option>
+        <option value="neutral">⚖ Neutral</option>
+        <option value="professional">💼 Professional</option>
+        <option value="business">🏢 Business</option>
+        <option value="slack">💬 Slack</option>
+        <option value="polite">🙏 Polite</option>
+        <option value="technical">🔧 Technical</option>
+      </select>
+    </div>
+
+    <!-- ROW 3: Body (two-column) -->
+    <div class="body">
+      <div class="panel panel-source">
+        <div class="panel-label">Original</div>
+        <textarea class="source-textarea" id="input-text" placeholder="Paste or type text here…"></textarea>
+      </div>
+      <div class="panel-divider"></div>
+      <div class="panel panel-result">
+        <div class="panel-label">Translation</div>
+        <div class="result-text" id="result-text">
+          <span class="result-placeholder">Translation appears here…</span>
+        </div>
       </div>
     </div>
 
-    <div class="section">
-      <label>Translation style</label>
-      <div class="select-wrap">
-        <select id="translation-style">
-          <option value="friendly">😊 Friendly</option>
-          <option value="neutral">⚖ Neutral</option>
-          <option value="professional">💼 Professional</option>
-          <option value="business">🏢 Business</option>
-          <option value="slack">💬 Slack</option>
-          <option value="polite">🙏 Polite</option>
-          <option value="technical">🔧 Technical</option>
-        </select>
+    <!-- ROW 4: Footer -->
+    <div class="footer">
+      <div class="footer-left">
+        <button type="button" class="footer-btn btn-clear" id="btn-clear">✕ Clear</button>
+        <button type="button" class="footer-btn btn-translate" id="btn-translate">⚡ Translate</button>
+      </div>
+      <div class="footer-right" id="footer-result" style="display:none">
+        <button type="button" class="footer-btn btn-copy" id="btn-copy-result">📋 Copy</button>
+        <button type="button" class="footer-btn btn-replace" id="btn-replace">↩ Replace</button>
       </div>
     </div>
 
-    <div class="section">
-      <label>Text to translate</label>
-      <textarea id="input-text" placeholder="Paste or type text here…"></textarea>
-    </div>
-
-    <div class="btn-row">
-      <button type="button" class="btn btn-secondary" id="btn-clear">✕ Clear</button>
-      <button type="button" class="btn btn-primary" id="btn-translate">⚡ Translate</button>
-    </div>
-
-    <div class="result-box" id="result-box">
-      <div class="result-label">Translation</div>
-      <div class="result-text" id="result-text"></div>
-      <div class="result-actions">
-        <button type="button" class="btn btn-copy-result" id="btn-copy-result">📋 Copy</button>
-        <button type="button" class="btn btn-replace" id="btn-replace">↩ Replace</button>
-      </div>
-    </div>
-
-    <div class="status" id="status-msg"></div>
-    <div class="bottom-pad"></div>
+    <div class="statusbar" id="status-msg"></div>
   </div>
 
   <script src="popup.js"></script>
