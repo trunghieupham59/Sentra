@@ -267,7 +267,7 @@ export function useLiveTranslate() {
   // 'mic'    = microphone only (getUserMedia)
   // 'system' = system audio only (getDisplayMedia), no microphone
   // 'both'   = system audio (getDisplayMedia) + microphone — mixed
-  const [audioMode,      setAudioMode]      = useState<'mic' | 'system' | 'both'>('mic')
+  const [audioMode,      setAudioMode]      = useState<'mic' | 'system' | 'both'>('system')
 
   // macOS Screen Recording permission: null = not checked yet
   const [screenPermission, setScreenPermission] = useState<string | null>(null)
@@ -741,9 +741,10 @@ export function useLiveTranslate() {
         ? `[Context — for reference only, already translated. Do NOT retranslate]:\n"${contextText}"\n\n[Translate to ${targetLang}]:\n${sentenceText}`
         : sentenceText
 
-      // Push the raw sentence to subtitle window so it can show the source text above translation
+      // Push the raw sentence to subtitle window so it can show the source text above translation.
+      // Also pass segId so the subtitle window can create the entry immediately with a placeholder.
       if (showSubtitlesRef.current) {
-        void window.api.subtitle.setSourceText(sentenceText)
+        void window.api.subtitle.setSourceText(sentenceText, segId)
       }
 
       void (async (capturedSegId: string, capturedSourceText: string) => {
@@ -774,6 +775,7 @@ export function useLiveTranslate() {
                 sourceLang,
                 targetLang,
                 translationStyle: 'neutral',
+                segId: capturedSegId,
               })
               usedStreaming = txResult.success
             } catch {
@@ -1273,6 +1275,48 @@ export function useLiveTranslate() {
     speakerTurnHistoryRef.current    = []
   }, [])
 
+  /**
+   * handleNewSession — triggered by the "Mới" button in the subtitle overlay.
+   *
+   * Saves the current session to history BEFORE resetting, so the user never
+   * loses data when starting a new recording.
+   *
+   * Behaviour:
+   *   • If recording is active → handleStop() auto-saves to history, then clear
+   *   • If stopped but has data → save manually to history, then clear
+   *   • If no data → just clear (nothing to save)
+   */
+  const handleNewSession = useCallback(() => {
+    if (activeRef.current) {
+      // Recording is active → stop it; handleStop auto-saves to history
+      handleStop()
+    } else {
+      // Not recording — save any accumulated data manually before clearing
+      const raw = fullRawForSummaryRef.current.trim()
+      if (raw && sessionIdRef.current) {
+        const wc = raw.replace(/· · ·/g, '').split(/\s+/).filter(Boolean).length
+        const { sourceLang, targetLang, selectedProvider, selectedModels } = paramsRef.current
+        addLiveSession({
+          id: sessionIdRef.current,
+          createdAt: sessionStartRef.current || Date.now(),
+          sourceLang,
+          targetLang,
+          provider: selectedProvider,
+          model: selectedModels[selectedProvider],
+          rawTranscript: raw,
+          translation: fullTxForSummaryRef.current.trim(),
+          wordCount: wc,
+          segments: segmentsRef.current,
+          speakerNameMap: Object.keys(speakerNameMapRef.current).length > 0
+            ? speakerNameMapRef.current
+            : undefined,
+        })
+      }
+    }
+    // Reset UI state for a fresh session
+    handleClear()
+  }, [handleStop, handleClear, addLiveSession])
+
   // ── AI Summarize ────────────────────────────────────────────────────────────
   const handleSummarize = useCallback(async () => {
     let raw = fullRawForSummaryRef.current
@@ -1642,6 +1686,8 @@ export function useLiveTranslate() {
     const cleanupStyle    = window.api.subtitle.onStyleUpdate((style) => {
       setSubtitleSettings(style)
     })
+    // "Mới" button → save current session to history, then reset for a new one
+    const cleanupClear    = window.api.subtitle.onClear(() => { handleNewSession() })
     return () => {
       cleanupStart()
       cleanupStop()
@@ -1650,8 +1696,9 @@ export function useLiveTranslate() {
       cleanupAudioMode()
       cleanupTargetLang()
       cleanupStyle()
+      cleanupClear()
     }
-  }, [handleStart, handleStop, setSelectedProvider, setSelectedModel, selectedProvider, setTargetLang])
+  }, [handleStart, handleStop, handleClear, handleNewSession, setSelectedProvider, setSelectedModel, selectedProvider, setTargetLang])
 
   // Cleanup on unmount — stop audio pipeline, mark component as unmounted, close subtitle window.
   // mountedRef.current = false prevents in-flight async callbacks (STT, translation) from

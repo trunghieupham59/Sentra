@@ -160,6 +160,19 @@
     .start-btn.active { background: rgba(252,129,74,0.18); border-color: rgba(252,129,74,0.35); color: #fc8d5a; }
     .start-btn.active:hover { background: rgba(252,129,74,0.28); }
 
+    /* ── New session button ───────────────────────────────────────────────────── */
+    .new-btn {
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 5px; color: rgba(255,255,255,0.45);
+      font-size: 11px; font-weight: 600;
+      padding: 3px 9px; height: 28px;
+      cursor: pointer; white-space: nowrap;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .new-btn:hover { background: rgba(255,100,100,0.15); border-color: rgba(255,100,100,0.30); color: #fc8d8d; }
+
     /* ── Audio mode buttons (SVG icons) ──────────────────────────────────────── */
     .audio-group { display: flex; gap: 3px; flex-shrink: 0; }
     .audio-btn {
@@ -196,36 +209,44 @@
     .body {
       flex: 1;
       display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
+      align-items: flex-start; justify-content: flex-end;
       padding: 8px 18px 10px;
       min-height: 0; overflow-y: auto;
       background: rgba(0,0,0,0.84);
       transition: background 0.2s;
       -webkit-app-region: no-drag;
     }
-    .source-wrap { width: 100%; text-align: center; min-height: 0; }
+    .subtitle-list {
+      width: 100%;
+      display: flex; flex-direction: column;
+      gap: 6px;
+    }
+    .subtitle-entry {
+      width: 100%;
+    }
     .source-text {
       display: none;
       color: rgba(255,255,255,0.38); font-size: 12px;
       font-style: italic; line-height: 1.4; word-break: break-word;
-      margin-bottom: 5px;
+      margin-bottom: 3px;
+      text-align: left;
     }
     .tx-text {
-      display: none; width: 100%;
+      display: block; width: 100%;
       color: #fff; font-size: 18px; font-weight: 600;
-      text-align: center; line-height: 1.45;
+      text-align: left; line-height: 1.45;
       text-shadow: 0 2px 8px rgba(0,0,0,0.95);
       word-break: break-word;
       transition: color 0.2s, font-size 0.15s;
     }
-    .placeholder { color: rgba(255,255,255,0.20); font-size: 13px; font-style: italic; text-align: center; }
-    .cursor {
-      display: inline-block; width: 2px; height: 1.1em;
-      background: currentColor; margin-left: 1px;
-      vertical-align: text-bottom; border-radius: 1px;
-      animation: blink 0.55s step-end infinite;
+    .tx-text.history {
+      opacity: 0.45;
+      font-size: 0.85em;
     }
-    @keyframes blink { 0%,100% { opacity:0.8; } 50% { opacity:0; } }
+    .source-text.history {
+      opacity: 0.45;
+    }
+    .placeholder { color: rgba(255,255,255,0.20); font-size: 13px; font-style: italic; text-align: left; }
 
     /* ── Style bar ───────────────────────────────────────────────────────────── */
     .style-bar {
@@ -310,6 +331,7 @@
       </div>
       <select id="modelSel" class="sel" title="Chọn Model"></select>
       <button type="button" id="startStopBtn" class="start-btn">▶ Bắt đầu</button>
+      <button type="button" id="newSessionBtn" class="new-btn" title="Phiên mới — lưu phiên hiện tại vào lịch sử">＋ Mới</button>
     </div>
 
     <!-- ── Controls row 2: Audio Mode / Target Language ───────────────────── -->
@@ -317,7 +339,7 @@
       <span class="ctrl-label">Nguồn</span>
       <div class="audio-group">
         <!-- MicrophoneIcon SVG from media.tsx -->
-        <button type="button" class="audio-btn active" data-mode="mic" title="Microphone">
+        <button type="button" class="audio-btn" data-mode="mic" title="Microphone">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
             <path stroke-linecap="round" stroke-linejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2"/>
@@ -327,7 +349,7 @@
           Mic
         </button>
         <!-- MonitorIcon SVG from media.tsx -->
-        <button type="button" class="audio-btn" data-mode="system" title="System Audio">
+        <button type="button" class="audio-btn active" data-mode="system" title="System Audio">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="2" y="3" width="20" height="14" rx="2"/>
             <path stroke-linecap="round" d="M8 21h8M12 17v4"/>
@@ -355,11 +377,8 @@
 
     <!-- ── Content area ───────────────────────────────────────────────────── -->
     <div class="body" id="body">
-      <div class="source-wrap">
-        <span class="source-text" id="src"></span>
-      </div>
       <span class="placeholder" id="ph">Chờ bản dịch…</span>
-      <span class="tx-text" id="txt"></span>
+      <div class="subtitle-list" id="subtitleList"></div>
     </div>
 
     <!-- ── Style bar ──────────────────────────────────────────────────────── -->
@@ -442,9 +461,8 @@
     const langSel       = document.getElementById('langSel')
     const statusBadge   = document.getElementById('statusBadge')
     const statusText    = document.getElementById('statusText')
-    const src           = document.getElementById('src')
     const ph            = document.getElementById('ph')
-    const txt           = document.getElementById('txt')
+    const subtitleList  = document.getElementById('subtitleList')
     const body          = document.getElementById('body')
     const colorPicker   = document.getElementById('colorPicker')
     const opacitySlider = document.getElementById('opacitySlider')
@@ -452,9 +470,18 @@
     const audioBtns     = document.querySelectorAll('.audio-btn')
 
     // ── State ─────────────────────────────────────────────────────────────────
-    let currentProvider  = 'gemini'
-    let isSessionActive  = false
-    let streamText       = ''
+    let currentProvider        = 'gemini'
+    let isSessionActive        = false
+    let streamText             = ''
+    let lastFinalizedText      = ''    // text of the last completed entry (for dedup)
+    let isStreaming            = false // true between onStreamStart and onStreamEnd
+    // ── Per-segment entry tracking ────────────────────────────────────────────
+    // entriesBySegId: segId → { entry, srcEl, txEl }
+    // Entries are created IMMEDIATELY when source text arrives, before translation.
+    const entriesBySegId        = {}
+    let currentStreamEntry      = null   // the entry currently being streamed into
+    let currentStreamSegId      = null   // segId of the current stream
+    const pendingTranslationQueue = []   // ordered segIds waiting for non-streaming translation
 
     // ── Populate language dropdown ─────────────────────────────────────────────
     TARGET_LANGUAGES.forEach(l => {
@@ -546,18 +573,90 @@
 
     closeBtn.onclick = () => window.subtitleAPI.close()
 
+    // ── New session / clear ─────────────────────────────────────────────────────
+    function clearSubtitleList() {
+      subtitleList.innerHTML = ''
+      // Clear all segment tracking state
+      for (const k of Object.keys(entriesBySegId)) delete entriesBySegId[k]
+      pendingTranslationQueue.length = 0
+      currentStreamEntry = null
+      currentStreamSegId = null
+      lastFinalizedText  = ''
+      streamText         = ''
+      isStreaming        = false
+      ph.style.display   = 'block'
+      ph.textContent     = 'Chờ bản dịch…'
+    }
+    document.getElementById('newSessionBtn').onclick = () => {
+      window.subtitleAPI.emitClear()   // → handleNewSession: save to history then reset
+      clearSubtitleList()              // clear subtitle window display
+    }
+
     // ── Text helpers ───────────────────────────────────────────────────────────
     function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
-    function showText(content, withCursor) {
-      txt.style.display = 'block'; ph.style.display = 'none'
-      txt.innerHTML = escHtml(content) + (withCursor ? '<span class="cursor"></span>' : '')
+
+    function scrollToBottom() {
+      body.scrollTop = body.scrollHeight
     }
-    function showSourceText(text) { src.textContent = text||''; src.style.display = text ? 'block' : 'none' }
+
+    function trimHistory() {
+      // Keep ALL entries — user can scroll up to see history.
+      // Mark all but the LAST entry as dimmed history.
+      const all = subtitleList.querySelectorAll('.subtitle-entry')
+      all.forEach((entry, i) => {
+        const isLast = i === all.length - 1
+        entry.querySelectorAll('.tx-text').forEach(el => el.classList.toggle('history', !isLast))
+        entry.querySelectorAll('.source-text').forEach(el => el.classList.toggle('history', !isLast))
+      })
+    }
+
+    /**
+     * Create a subtitle entry immediately when source text arrives.
+     * Shows the source text above and a "Đang dịch…" placeholder below.
+     * Registers the entry in entriesBySegId for later translation fill-in.
+     */
+    function createEntryForSeg(sourceText, segId) {
+      const entry = document.createElement('div')
+      entry.className = 'subtitle-entry'
+
+      const srcEl = document.createElement('div')
+      srcEl.className = 'source-text'
+      if (sourceText) {
+        srcEl.textContent = sourceText
+        srcEl.style.display = 'block'
+      }
+
+      const txEl = document.createElement('div')
+      txEl.className = 'tx-text'
+      txEl.style.color = colorPicker.value
+      txEl.style.fontSize = fontSizeSlider.value + 'px'
+      // Show placeholder while waiting for translation
+      txEl.style.opacity = '0.35'
+      txEl.textContent = 'Đang dịch…'
+
+      entry.appendChild(srcEl)
+      entry.appendChild(txEl)
+      subtitleList.appendChild(entry)
+
+      const entryData = { entry, srcEl, txEl }
+      if (segId) {
+        entriesBySegId[segId] = entryData
+        pendingTranslationQueue.push(segId)
+      }
+
+      ph.style.display = 'none'
+      trimHistory()
+      scrollToBottom()
+      return entryData
+    }
 
     // ── Style helpers ──────────────────────────────────────────────────────────
     function applyStyle({ textColor, fontSize, bgOpacity }) {
-      txt.style.color = textColor
-      txt.style.fontSize = fontSize + 'px'
+      // Apply color & size to ALL entries (current + history)
+      subtitleList.querySelectorAll('.tx-text').forEach(el => {
+        el.style.color = textColor
+        el.style.fontSize = fontSize + 'px'
+      })
       body.style.background = `rgba(0,0,0,${(bgOpacity/100).toFixed(2)})`
       colorPicker.value = textColor; fontSizeSlider.value = fontSize; opacitySlider.value = bgOpacity
     }
@@ -576,31 +675,146 @@
     window.subtitleAPI.onState(({ selectedProvider, selectedModel, isActive, isTranscribing, isTranslating, availableModels, audioMode, targetLang }) => {
       if (selectedProvider !== currentProvider) setProviderUI(selectedProvider)
       populateModels(availableModels, selectedModel)
-      setAudioModeUI(audioMode || 'mic')
+      setAudioModeUI(audioMode || 'system')
       if (targetLang && langSel.value !== targetLang) langSel.value = targetLang
       isSessionActive = isActive
       updateStartStopBtn()
       updateStatus(isActive, isTranscribing, isTranslating)
     })
 
-    window.subtitleAPI.onSourceText((text) => showSourceText(text))
+    // Source text arrives BEFORE translation starts → create entry immediately with placeholder
+    window.subtitleAPI.onSourceText(({ text, segId }) => {
+      if (!text) return
+      createEntryForSeg(text, segId)
+    })
+
     window.subtitleAPI.onStyle((style) => applyStyle(style))
 
-    // Streaming
-    window.subtitleAPI.onStreamStart(() => {
-      streamText = ''; txt.style.display = 'block'; ph.style.display = 'none'
-      txt.innerHTML = '<span class="cursor"></span>'
-    })
-    window.subtitleAPI.onStreamToken((token) => { streamText += token; showText(streamText, true) })
-    window.subtitleAPI.onStreamEnd(() => showText(streamText, false))
+    // ── Overlap deduplication ──────────────────────────────────────────────────
+    function stripOverlap(prev, curr) {
+      if (!prev || !curr) return curr
+      const p = prev.trim()
+      const c = curr.trim()
 
-    // Non-streaming fallback
+      // Case 1: new text is a pure duplicate (or subset) of the previous entry
+      if (p === c || p.includes(c)) return null   // null = discard
+
+      // Case 2: new text STARTS WITH the entire previous entry
+      // (e.g. prev = "Bạn cần gọi cho ai?" and curr = "Bạn cần gọi cho ai? Tôi cần…")
+      // Also handle joined-without-space: "Prev sentence.Next sentence"
+      if (c.startsWith(p)) {
+        const remainder = c.substring(p.length).replace(/^[\s,.!?。！？]+/, '').trim()
+        return remainder || null   // null if nothing meaningful remains
+      }
+
+      // Case 2b: joined without space — prev ends with a word and curr starts with it
+      // e.g. prev = "...gọi cho ai?" curr = "gọi cho ai?Tôi cần..."
+      const pNoPunct = p.replace(/[,.!?。！？\s]+$/, '')
+      if (pNoPunct.length >= 8 && c.startsWith(pNoPunct)) {
+        const remainder = c.substring(pNoPunct.length).replace(/^[\s,.!?。！？]+/, '').trim()
+        return remainder || null
+      }
+
+      // Case 3: partial suffix-of-prev is a prefix-of-curr (sliding window overlap)
+      // Try progressively shorter suffixes of prev (min 8 chars to avoid false positives)
+      const minLen = Math.max(8, Math.floor(p.length * 0.25))
+      for (let len = Math.min(p.length, c.length); len >= minLen; len--) {
+        const suffix = p.slice(-len)
+        if (c.startsWith(suffix)) {
+          const remainder = c.substring(len).replace(/^[\s,.!?。！？]+/, '').trim()
+          return remainder || null
+        }
+      }
+
+      return curr   // no overlap — keep as-is
+    }
+
+    // Streaming
+    // ── Streaming path ─────────────────────────────────────────────────────────
+    window.subtitleAPI.onStreamStart(({ segId }) => {
+      isStreaming = true
+      streamText = ''
+      currentStreamSegId = segId || null
+
+      // Find the entry pre-created by onSourceText; fall back to creating a new one
+      const entryData = segId ? entriesBySegId[segId] : null
+      if (entryData) {
+        currentStreamEntry = entryData
+        currentStreamEntry.txEl.textContent = ''      // clear placeholder
+        currentStreamEntry.txEl.style.opacity = '1'
+      } else {
+        // onSourceText hasn't arrived yet — create entry now without source text
+        currentStreamEntry = createEntryForSeg('', segId)
+        currentStreamEntry.txEl.textContent = ''
+        currentStreamEntry.txEl.style.opacity = '1'
+      }
+    })
+
+    window.subtitleAPI.onStreamToken((token) => {
+      streamText += token
+      if (currentStreamEntry) {
+        currentStreamEntry.txEl.innerHTML = escHtml(streamText)
+        scrollToBottom()
+      }
+    })
+
+    window.subtitleAPI.onStreamEnd(({ segId }) => {
+      isStreaming = false
+
+      if (currentStreamEntry) {
+        const deduped = stripOverlap(lastFinalizedText, streamText)
+        if (deduped === null) {
+          // Pure duplicate — remove entry
+          subtitleList.removeChild(currentStreamEntry.entry)
+          if (currentStreamSegId) delete entriesBySegId[currentStreamSegId]
+        } else {
+          if (deduped !== streamText) {
+            currentStreamEntry.txEl.innerHTML = escHtml(deduped)
+          }
+          currentStreamEntry.txEl.style.opacity = '1'
+          lastFinalizedText = deduped
+        }
+      }
+
+      // Remove from pending queue
+      const idx = pendingTranslationQueue.indexOf(currentStreamSegId)
+      if (idx !== -1) pendingTranslationQueue.splice(idx, 1)
+
+      currentStreamEntry = null
+      currentStreamSegId = null
+      trimHistory()
+    })
+
+    // ── Non-streaming fallback ─────────────────────────────────────────────────
+    // Fired by the latestSubtitle useEffect in React. Ignored when streaming is active.
+    // When streaming fails/isn't used, fills the oldest pending entry's translation.
     window.subtitleAPI.onText(({ text, isTranslating }) => {
-      if (text) { streamText = text; showText(text, isTranslating) }
-      else {
-        txt.style.display = 'none'; txt.innerHTML = ''
-        ph.style.display = 'block'
-        ph.textContent = isTranslating ? 'Đang dịch…' : 'Chờ bản dịch…'
+      if (isStreaming) return   // stream handles its own entry — ignore
+      if (!text) return
+
+      streamText = text
+
+      // Find the oldest entry waiting for a translation
+      const oldestSegId = pendingTranslationQueue[0] || null
+      const entryData   = oldestSegId ? entriesBySegId[oldestSegId] : null
+
+      if (entryData) {
+        const deduped = stripOverlap(lastFinalizedText, text)
+        if (deduped === null) {
+          subtitleList.removeChild(entryData.entry)
+          delete entriesBySegId[oldestSegId]
+          pendingTranslationQueue.shift()
+        } else {
+          entryData.txEl.innerHTML = escHtml(deduped)
+          entryData.txEl.style.opacity = '1'
+          lastFinalizedText = deduped
+          if (!isTranslating) {
+            pendingTranslationQueue.shift()
+            trimHistory()
+          }
+        }
+      } else {
+        // No pending entry — this is a stale latestSubtitle update, ignore
       }
     })
   </script>

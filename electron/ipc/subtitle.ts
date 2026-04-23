@@ -39,10 +39,10 @@ export function registerSubtitleHandlers(
   })
 
   // ── Source text (raw STT text shown above translation) ─────────────────────
-  ipc.handle('subtitle:setSourceText', (_event, text: string) => {
+  ipc.handle('subtitle:setSourceText', (_event, { text, segId }: { text: string; segId?: string }) => {
     const win = getSubtitleWindow()
     if (win && !win.isDestroyed()) {
-      win.webContents.send('subtitle:sourceText', text)
+      win.webContents.send('subtitle:sourceText', { text, segId })
     }
   })
 
@@ -95,6 +95,10 @@ export function registerSubtitleHandlers(
     getMainWindow()?.webContents.send('subtitle:action:updateStyle', style)
   })
 
+  ipc.on('subtitle:action:clear', () => {
+    getMainWindow()?.webContents.send('subtitle:action:clear')
+  })
+
   // Fired when the ✕ button inside subtitle.html is clicked
   ipc.on('subtitle:close', () => {
     const win = getSubtitleWindow()
@@ -122,7 +126,7 @@ export function registerSubtitleHandlers(
     params: {
       provider: string; model: string
       sourceText: string; sourceLang: string; targetLang: string
-      translationStyle?: string
+      translationStyle?: string; segId?: string
     }
   ) => {
     const { provider, model, sourceText, sourceLang, targetLang, translationStyle } = params
@@ -139,7 +143,9 @@ export function registerSubtitleHandlers(
       }
     }
 
-    sendToSubtitle('subtitle:stream:start')
+    const { segId } = params
+
+    sendToSubtitle('subtitle:stream:start', { segId })
 
     try {
       const fullText = await streamTranslation(
@@ -148,10 +154,10 @@ export function registerSubtitleHandlers(
         (translationStyle ?? 'neutral') as 'friendly' | 'neutral' | 'professional' | 'business' | 'slack' | 'polite' | 'technical',
         (token) => sendToSubtitle('subtitle:stream:token', token)
       )
-      sendToSubtitle('subtitle:stream:end')
+      sendToSubtitle('subtitle:stream:end', { segId })
       return { success: true, translatedText: fullText }
     } catch (error: unknown) {
-      sendToSubtitle('subtitle:stream:end')
+      sendToSubtitle('subtitle:stream:end', { segId })
       const msg = error instanceof Error ? error.message : String(error)
       return { success: false, error: msg }
     }

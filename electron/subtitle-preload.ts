@@ -13,23 +13,23 @@ contextBridge.exposeInMainWorld('subtitleAPI', {
   },
 
   // ── Streaming translation events ───────────────────────────────────────────
-  /** Fired when a new streaming translation begins — clear current text */
-  onStreamStart: (callback: () => void) => {
-    ipcRenderer.on('subtitle:stream:start', () => callback())
+  /** Fired when a new streaming translation begins — carries segId to identify the entry */
+  onStreamStart: (callback: (data: { segId?: string }) => void) => {
+    ipcRenderer.on('subtitle:stream:start', (_event, data) => callback(data ?? {}))
   },
   /** Fired for each token as the AI generates it — append to current text */
   onStreamToken: (callback: (token: string) => void) => {
     ipcRenderer.on('subtitle:stream:token', (_event, token: string) => callback(token))
   },
-  /** Fired when the streaming is complete — hide cursor */
-  onStreamEnd: (callback: () => void) => {
-    ipcRenderer.on('subtitle:stream:end', () => callback())
+  /** Fired when the streaming is complete — carries segId */
+  onStreamEnd: (callback: (data: { segId?: string }) => void) => {
+    ipcRenderer.on('subtitle:stream:end', (_event, data) => callback(data ?? {}))
   },
 
   // ── Source text (raw STT text, shown above translation) ───────────────────
-  /** Fired when a new raw/source text segment arrives */
-  onSourceText: (callback: (text: string) => void) => {
-    ipcRenderer.on('subtitle:sourceText', (_event, text: string) => callback(text))
+  /** Fired when a new raw/source text segment arrives — carries segId for entry matching */
+  onSourceText: (callback: (data: { text: string; segId?: string }) => void) => {
+    ipcRenderer.on('subtitle:sourceText', (_event, data) => callback(data))
   },
 
   // ── State sync from main renderer ─────────────────────────────────────────
@@ -63,6 +63,9 @@ contextBridge.exposeInMainWorld('subtitleAPI', {
   /** User changed style (color/opacity/fontSize) in subtitle window */
   emitStyleUpdate: (style: { textColor: string; fontSize: number; bgOpacity: number }) =>
     ipcRenderer.send('subtitle:action:updateStyle', style),
+
+  /** User clicked "New session / Clear" in subtitle window */
+  emitClear: () => ipcRenderer.send('subtitle:action:clear'),
 
   /** Tell the main process the user clicked the ✕ close button */
   close: () => ipcRenderer.send('subtitle:close'),

@@ -16,8 +16,8 @@ export const subtitleSection = {
     setStyle: (style: { textColor: string; fontSize: number; bgOpacity: number }) =>
       ipcRenderer.invoke('subtitle:setStyle', style),
     /** Push the latest raw (source) text to show above the translation */
-    setSourceText: (text: string) =>
-      ipcRenderer.invoke('subtitle:setSourceText', text),
+    setSourceText: (text: string, segId?: string) =>
+      ipcRenderer.invoke('subtitle:setSourceText', { text, segId }),
     /** Push current session state to subtitle window */
     pushState: (state: {
       selectedProvider: string
@@ -80,6 +80,12 @@ export const subtitleSection = {
       const handler = (_event: Electron.IpcRendererEvent, style: { textColor: string; fontSize: number; bgOpacity: number }) => callback(style)
       ipcRenderer.on('subtitle:action:updateStyle', handler)
       return () => ipcRenderer.removeListener('subtitle:action:updateStyle', handler)
+    },
+    /** Listen for "new session / clear" action from subtitle window. Returns cleanup fn. */
+    onClear: (callback: () => void) => {
+      const handler = () => callback()
+      ipcRenderer.on('subtitle:action:clear', handler)
+      return () => ipcRenderer.removeListener('subtitle:action:clear', handler)
     },
   },
 }
