@@ -94,7 +94,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  flex: 1;
+  flex-shrink: 0;
   overflow: hidden;
 }
 
@@ -115,7 +115,8 @@
   font-family: 'SF Mono', 'Menlo', monospace;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 120px;
+  white-space: nowrap;
+  max-width: 160px;
 }
 
 /* ── Two-column body ─────────────────────────────────────────────────────── */
@@ -225,6 +226,18 @@
   background: #f0fdf4;
 }
 
+/* ── Style label in header ───────────────────────────────────────────────── */
+
+#tre-result-tooltip .tre-style-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #7c3aed;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
 /* ── Style selector in header ────────────────────────────────────────────── */
 
 #tre-result-tooltip .tre-style-select {
@@ -258,6 +271,17 @@
   box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
 }
 
+/* ── Language label in header ────────────────────────────────────────────── */
+
+#tre-result-tooltip .tre-lang-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #7c3aed;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
 /* ── Language selector in header ─────────────────────────────────────────── */
 
 #tre-result-tooltip .tre-lang-select {
@@ -278,6 +302,7 @@
   background-position: right 5px center;
   transition: border-color 0.13s, background-color 0.13s;
   flex-shrink: 0;
+  max-width: 120px;
 }
 
 #tre-result-tooltip .tre-lang-select:hover {

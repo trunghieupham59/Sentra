@@ -19,6 +19,9 @@
 
   const PORT = 39875
   const ICON_URL = chrome.runtime.getURL('icons/icon48.png')
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+  const COPY_LABEL    = isMac ? '⌘C  Copy'    : 'Ctrl+C  Copy'
+  const REPLACE_LABEL = isMac ? '⌘↵  Replace' : 'Ctrl+↵  Replace'
 
   // ── Cleanup stale UI from a previous content script instance ──────────────
   // When the extension is reloaded/updated, background.js re-injects this
@@ -48,26 +51,28 @@
       <img class="tre-tooltip-logo" alt="Viezan" />
       <span class="tre-tooltip-label">Viezan</span>
       <span class="tre-ai-info"></span>
+      <span class="tre-style-label">Style</span>
       <select class="tre-style-select" title="Translation style">
-        <option value="friendly">😊 Friendly</option>
-        <option value="neutral">⚖ Neutral</option>
-        <option value="professional">💼 Professional</option>
-        <option value="business">🏢 Business</option>
-        <option value="slack">💬 Slack</option>
-        <option value="polite">🙏 Polite</option>
-        <option value="technical">🔧 Technical</option>
+        <option value="friendly">Friendly</option>
+        <option value="neutral">Neutral</option>
+        <option value="professional">Professional</option>
+        <option value="business">Business</option>
+        <option value="slack">Slack</option>
+        <option value="polite">Polite</option>
+        <option value="technical">Technical</option>
       </select>
+      <span class="tre-lang-label">Lang</span>
       <select class="tre-lang-select" title="Target language">
-        <option value="en">🇺🇸 EN</option>
-        <option value="vi">🇻🇳 VI</option>
-        <option value="ja">🇯🇵 JA</option>
-        <option value="zh">🇨🇳 ZH</option>
-        <option value="ko">🇰🇷 KO</option>
-        <option value="fr">🇫🇷 FR</option>
-        <option value="de">🇩🇪 DE</option>
-        <option value="es">🇪🇸 ES</option>
-        <option value="th">🇹🇭 TH</option>
-        <option value="ru">🇷🇺 RU</option>
+        <option value="en">🇺🇸 English</option>
+        <option value="vi">🇻🇳 Vietnamese</option>
+        <option value="ja">🇯🇵 Japanese</option>
+        <option value="zh">🇨🇳 Chinese</option>
+        <option value="ko">🇰🇷 Korean</option>
+        <option value="fr">🇫🇷 French</option>
+        <option value="de">🇩🇪 German</option>
+        <option value="es">🇪🇸 Spanish</option>
+        <option value="th">🇹🇭 Thai</option>
+        <option value="ru">🇷🇺 Russian</option>
       </select>
       <button class="tre-close-btn" title="Close">✕</button>
     </div>
@@ -85,6 +90,7 @@
     <div class="tre-tooltip-actions">
       <button class="tre-action-btn tre-copy-btn">📋 Copy</button>
       <button class="tre-action-btn tre-replace-btn">↵ Replace</button>
+      <!-- labels updated dynamically after isMac detection -->
     </div>
   `
   // Set logo src separately after innerHTML is parsed (avoids chrome-extension:// in innerHTML)
@@ -102,6 +108,10 @@
   const langSelect = tooltip.querySelector('.tre-lang-select')
   const styleSelect = tooltip.querySelector('.tre-style-select')
   const closeBtn = tooltip.querySelector('.tre-close-btn')
+
+  // Apply OS-aware shortcut labels to action buttons
+  copyBtn.textContent = COPY_LABEL
+  replaceBtn.textContent = REPLACE_LABEL
 
   // ── State ─────────────────────────────────────────────────────────────────
 
@@ -147,7 +157,30 @@
     return { provider: data.provider, model: data.model }
   }
 
-  const PROVIDER_LABELS = { gemini: '✨ Gemini', openai: '🤖 OpenAI', claude: '🧠 Claude' }
+  /** Provider metadata — SVG icon + full name + brand colors (mirrors the main app) */
+  const PROVIDER_META = {
+    gemini: {
+      name: 'Google Gemini',
+      color: '#1A73E8',
+      bg: 'rgba(26,115,232,0.08)',
+      border: 'rgba(26,115,232,0.2)',
+      svg: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 2C12.3 5.5 13.8 8.8 16 10.5C13.8 12.2 12.3 15.5 12 19C11.7 15.5 10.2 12.2 8 10.5C10.2 8.8 11.7 5.5 12 2Z" fill="#1A73E8"/><path d="M2 10.5C5.5 10.8 8.8 10.2 10.5 8C12.2 10.2 15.5 10.8 19 10.5C15.5 10.2 12.2 11.8 10.5 14C8.8 11.8 5.5 10.2 2 10.5Z" fill="#1A73E8" opacity="0.5"/></svg>',
+    },
+    openai: {
+      name: 'OpenAI GPT',
+      color: '#10A37F',
+      bg: 'rgba(16,163,127,0.08)',
+      border: 'rgba(16,163,127,0.2)',
+      svg: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 7L15.46 9V13L12 15L8.54 13V9L12 7Z" fill="#10A37F"/><path d="M12 3.5V7M12 15V18.5M8.54 9L5.5 7.25M15.46 13L18.5 14.75M8.54 13L5.5 14.75M15.46 9L18.5 7.25" stroke="#10A37F" stroke-width="1.5" stroke-linecap="round"/></svg>',
+    },
+    claude: {
+      name: 'Anthropic Claude',
+      color: '#D97706',
+      bg: 'rgba(217,119,6,0.08)',
+      border: 'rgba(217,119,6,0.2)',
+      svg: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 5.5L18.2 20.5H15.5L14.2 17H9.8L8.5 20.5H5.8L12 5.5ZM12 9.5L10.7 13H13.3L12 9.5Z" fill="#D97706"/></svg>',
+    },
+  }
 
   /** Populate the AI info badges in the tooltip header */
   async function updateAiInfo (token) {
@@ -155,10 +188,16 @@
     if (!infoEl) return
     try {
       const config = await getAppConfig(token)
-      const providerLabel = PROVIDER_LABELS[config.provider] || config.provider
-      infoEl.innerHTML =
-        `<span class="tre-ai-pill">${providerLabel}</span>` +
-        `<span class="tre-ai-pill tre-ai-pill-model">${config.model || '—'}</span>`
+      const meta = PROVIDER_META[config.provider]
+      if (meta) {
+        infoEl.innerHTML =
+          `<span class="tre-ai-pill" style="background:${meta.bg};border:1px solid ${meta.border};color:${meta.color};display:inline-flex;align-items:center;gap:3px;">${meta.svg}${meta.name}</span>` +
+          `<span class="tre-ai-pill tre-ai-pill-model">${config.model || '—'}</span>`
+      } else {
+        infoEl.innerHTML =
+          `<span class="tre-ai-pill">${config.provider}</span>` +
+          `<span class="tre-ai-pill tre-ai-pill-model">${config.model || '—'}</span>`
+      }
     } catch {
       infoEl.innerHTML = ''
     }
@@ -278,7 +317,7 @@
     tooltip.querySelector('.tre-tooltip-text').textContent = text.replace(/\n{2,}/g, '\n')
 
     tooltip.style.display = 'block'
-    copyBtn.textContent = '📋 Copy'
+    copyBtn.textContent = COPY_LABEL
     // Force reflow so offsetWidth is available
     tooltip.getBoundingClientRect()
     positionElement(tooltip, rect)
@@ -302,10 +341,10 @@
     try {
       await navigator.clipboard.writeText(currentTranslation)
       copyBtn.textContent = '✓ Copied!'
-      setTimeout(() => { copyBtn.textContent = '📋 Copy' }, 1500)
+      setTimeout(() => { copyBtn.textContent = COPY_LABEL }, 1500)
     } catch {
       copyBtn.textContent = '❌ Failed'
-      setTimeout(() => { copyBtn.textContent = '📋 Copy' }, 1500)
+      setTimeout(() => { copyBtn.textContent = COPY_LABEL }, 1500)
     }
   })
 
@@ -331,7 +370,7 @@
       const translated = await translateText(lastSelection, settings)
       currentTranslation = translated
       tooltipText.textContent = translated.replace(/\n{2,}/g, '\n')
-      copyBtn.textContent = '📋 Copy'
+      copyBtn.textContent = COPY_LABEL
       try { await navigator.clipboard.writeText(translated) } catch { /* ignore */ }
     } catch (err) {
       tooltipText.textContent = '❌ ' + (err.message || 'Translation failed')
@@ -360,7 +399,7 @@
       const translated = await translateText(lastSelection, settings)
       currentTranslation = translated
       tooltipText.textContent = translated.replace(/\n{2,}/g, '\n')
-      copyBtn.textContent = '📋 Copy'
+      copyBtn.textContent = COPY_LABEL
       try { await navigator.clipboard.writeText(translated) } catch { /* ignore */ }
     } catch (err) {
       tooltipText.textContent = '❌ ' + (err.message || 'Translation failed')
@@ -582,6 +621,21 @@
     if (isSelectAll) {
       // Wait a tick for the browser to apply the full-page selection
       setTimeout(checkKeyboardSelection, 100)
+    }
+
+    // ── Tooltip keyboard shortcuts (only when tooltip is visible) ─────────
+    if (tooltip.style.display !== 'none') {
+      const mod = e.metaKey || e.ctrlKey
+      // Cmd/Ctrl+C → Copy translation
+      if (mod && e.key === 'c') {
+        e.preventDefault()
+        copyBtn.click()
+      }
+      // Cmd/Ctrl+Enter → Replace
+      if (mod && e.key === 'Enter') {
+        e.preventDefault()
+        replaceBtn.click()
+      }
     }
   })
 
