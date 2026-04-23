@@ -54,13 +54,11 @@ export function RewriteButton({
     >
       {isThisPanel ? (
         <>
-          <SpinnerIcon />
-          <span className="hidden min-[1100px]:inline">{labelRewriting}</span>
+          <SpinnerIcon className="w-4 h-4 animate-spin" />
         </>
       ) : (
         <>
           <RewriteIcon />
-          <span className="hidden min-[1100px]:inline">{labelRewrite}</span>
         </>
       )}
     </button>

@@ -15,10 +15,10 @@ export function ClearButton({ onClick, label }: ClearButtonProps) {
     <button
       type="button"
       onClick={onClick}
+      title={label}
       className="btn-ghost py-1 px-2 text-xs flex items-center gap-1"
     >
       <TrashIcon />
-      <span className="hidden min-[1100px]:inline">{label}</span>
     </button>
   )
 }

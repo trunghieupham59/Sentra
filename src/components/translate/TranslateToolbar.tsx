@@ -38,8 +38,7 @@ export function TranslateToolbar({
   labelPhonetic, titleAutoMode, titleManualMode, labelAutoMode, labelManualMode,
 }: TranslateToolbarProps) {
   return (
-    <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 overflow-hidden
-                    bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
+    <div className="flex items-center gap-2 overflow-hidden flex-wrap">
       <div className="flex-1 min-w-0 overflow-hidden">
         <ModelSelector />
       </div>

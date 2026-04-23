@@ -8,6 +8,8 @@ interface LanguageSelectorProps {
   includeAuto?: boolean
   label?: string
   disabled?: boolean
+  /** Override className for the <select> element */
+  selectClassName?: string
 }
 
 export function LanguageSelector({
@@ -16,6 +18,7 @@ export function LanguageSelector({
   includeAuto = false,
   label,
   disabled = false,
+  selectClassName,
 }: LanguageSelectorProps) {
   const t = useT()
   const options = includeAuto ? LANGUAGES : TARGET_LANGUAGES
@@ -28,7 +31,7 @@ export function LanguageSelector({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
-          className="select-field pr-8 text-sm"
+          className={selectClassName ?? 'select-field pr-8 text-sm'}
         >
           {options.map((lang) => (
             <option key={lang.code} value={lang.code}>

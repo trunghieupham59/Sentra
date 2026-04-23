@@ -63,20 +63,17 @@ export function SpeakButton({
       {isLoading ? (
         /* Loading spinner */
         <>
-          <SpinnerIcon />
-          <span className="hidden min-[1100px]:inline">{labelSpeak}</span>
+          <SpinnerIcon className="w-4 h-4 animate-spin" />
         </>
       ) : isThisPanel ? (
         /* Stop icon */
         <>
           <StopIcon />
-          <span className="hidden min-[1100px]:inline">{labelStop}</span>
         </>
       ) : (
         /* Speaker icon */
         <>
           <SpeakerIcon />
-          <span className="hidden min-[1100px]:inline">{labelSpeak}</span>
         </>
       )}
     </button>
