@@ -385,6 +385,20 @@ jobs:
                   echo "Uploading unsigned: $INSTALLER_NAME"
                   gh release upload "$TAG" "$INSTALLER" --clobber
 
+            # ── Upload latest.yml so electron-updater can find the correct Windows installer ──
+            - name: Upload latest.yml to GitHub Release
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  TAG="${GITHUB_REF#refs/tags/}"
+                  if [ -f "release/latest.yml" ]; then
+                    echo "Uploading latest.yml"
+                    gh release upload "$TAG" "release/latest.yml" --clobber
+                  else
+                    echo "latest.yml not found in release/, skipping"
+                  fi
+
     # ─────────────────────────────────────────────
     # Linux build
     # ─────────────────────────────────────────────
