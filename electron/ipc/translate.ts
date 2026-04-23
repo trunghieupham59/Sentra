@@ -42,13 +42,13 @@ interface RewriteParams {
 }
 
 const STYLE_TONE: Record<TranslationStyle, string> = {
-  friendly: 'friendly, warm, casual — like chatting with a close friend or family member; use informal language, contractions, and expressive wording; convey genuine warmth and personal closeness; feel free to use common colloquialisms and playful phrasing; avoid any stiff, corporate, or overly formal expression',
-  neutral: 'neutral, clear, natural — well-balanced register suitable for general everyday use; neither overly formal nor overly casual; factual, direct, and easy to understand without any emotional coloring or bias; appropriate for informational or general-purpose content',
-  professional: 'professional, polished, confident — appropriate for interactions with colleagues, clients, or business partners; clear, well-structured, and demonstrates competence and mutual respect; avoids slang and colloquialisms but remains approachable and human; suitable for workplace emails, presentations, and reports',
-  business: 'formal business register — highly concise, precise, and objective; appropriate for official corporate communication, formal emails, proposals, contracts, and business reports; uses standard formal business vocabulary; maintains a respectful but impersonal tone; avoids personal feelings, humor, or informality',
-  slack: 'concise workplace chat style — informal yet professional; direct and efficient as in instant messaging; uses common workplace abbreviations and natural digital communication patterns; friendly but task-focused; avoids long sentences or over-explanation; feels like a message from a trusted colleague',
-  polite: 'polite, respectful, considerate — suitable for addressing someone of higher status, seniority, or unfamiliar parties; uses appropriate honorifics, respectful vocabulary, and softened expressions for the target language and culture; conveys deference and care without being servile; avoids bluntness, casual slang, or any expression that could seem presumptuous',
-  technical: 'technical, precise, domain-specific — uses accurate, industry-standard technical terminology; sentences are clear, unambiguous, and logically structured; suitable for documentation, technical specifications, research, or expert-to-expert communication; avoids casual language, metaphors, and any imprecision; prioritizes exactness over readability for a lay audience',
+  friendly: 'friendly, warm, casual — like chatting with a close friend or family member; use informal language, contractions, and expressive wording',
+  neutral: 'neutral, clear, natural — well-balanced register suitable for general everyday use; neither overly formal nor overly casual',
+  professional: 'professional, polished, confident — appropriate for interactions with colleagues, clients, or business partners',
+  business: 'formal business register — highly concise, precise, and objective; appropriate for official corporate communication',
+  slack: 'concise workplace chat style — informal yet professional; direct and efficient as in instant messaging',
+  polite: 'polite, respectful, considerate — suitable for addressing someone of higher status or unfamiliar parties; uses appropriate honorifics',
+  technical: 'precise, technical, domain-specific — use accurate industry-standard terminology; sentences are clear, unambiguous, and logically structured; suitable for documentation, specs, or expert-to-expert communication; prioritizes exactness; avoid casual language, metaphors, and any imprecision',
 }
 
 const SYSTEM_PROMPT = `You are an expert translator and linguist with deep knowledge of cultural nuance. Your translations sound completely natural to native speakers of the target language.

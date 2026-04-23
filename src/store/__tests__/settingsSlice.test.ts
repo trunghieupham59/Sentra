@@ -128,9 +128,9 @@ describe('setTranslationStyle', () => {
     expect(useAppStore.getState().translationStyle).toBe('technical')
   })
 
-  it('sets style to business', () => {
-    act(() => useAppStore.getState().setTranslationStyle('business'))
-    expect(useAppStore.getState().translationStyle).toBe('business')
+  it('sets style to professional', () => {
+    act(() => useAppStore.getState().setTranslationStyle('professional'))
+    expect(useAppStore.getState().translationStyle).toBe('professional')
   })
 })
 

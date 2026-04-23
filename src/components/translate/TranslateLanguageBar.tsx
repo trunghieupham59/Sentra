@@ -1,7 +1,9 @@
 import { LanguageSelector } from '../LanguageSelector'
-import { AutoDetectIcon, SpinnerIcon, SwapIcon } from '../ui/icons'
+import { SpinnerIcon, SwapIcon } from '../ui/icons'
 
 interface TranslateLanguageBarProps {
+  sourceLang: string
+  onSourceLangChange: (lang: string) => void
   targetLang: string
   onTargetLangChange: (lang: string) => void
   detectedSourceLang: string | null
@@ -9,35 +11,38 @@ interface TranslateLanguageBarProps {
   canSwap: boolean
   isDetectingLang: boolean
   onSwap: () => void
-  langAutoLabel: string
   langNames: Record<string, string>
   swapTitle: string
 }
 
+const PILL_SELECT_CLS = `block w-full px-3 py-1.5 pr-9
+                         bg-white dark:bg-gray-800
+                         border border-gray-200 dark:border-gray-700
+                         rounded-xl text-[13px] font-medium text-gray-700 dark:text-gray-200
+                         appearance-none cursor-pointer
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         transition-colors duration-100`
+
 export function TranslateLanguageBar({
+  sourceLang, onSourceLangChange,
   targetLang, onTargetLangChange,
   detectedSourceLang, canSwap, isDetectingLang, onSwap,
-  langAutoLabel, langNames, swapTitle,
+  langNames, swapTitle,
 }: TranslateLanguageBarProps) {
   return (
-    /**
-     * Use the same grid-cols-2 + gap-8 as the panels row below,
-     * so the left/right edges of the language selectors align
-     * pixel-perfectly with the left/right edges of the panels.
-     * The swap button is absolutely centred in the 32 px gap.
-     */
     <div className="relative grid grid-cols-2 gap-16 items-center">
 
-      {/* ── Col 1: source auto-detect display ── */}
-      <div className="flex items-center gap-2 px-4 py-2.5
-                      rounded-xl border border-gray-200 dark:border-gray-700
-                      bg-white dark:bg-gray-800 select-none overflow-hidden">
-        <AutoDetectIcon className="w-4 h-4 flex-shrink-0 text-blue-400" />
-        <span className="flex-1 truncate text-sm text-gray-600 dark:text-gray-300">
-          {langAutoLabel}
-        </span>
-        {detectedSourceLang && (
-          <span className="text-xs font-medium text-blue-500 dark:text-blue-400 shrink-0 truncate">
+      {/* ── Col 1: source language selector (includes Auto option) ── */}
+      <div className="relative">
+        <LanguageSelector
+          value={sourceLang}
+          onChange={onSourceLangChange}
+          includeAuto={true}
+          selectClassName={PILL_SELECT_CLS}
+        />
+        {/* Detected language badge shown when auto is selected */}
+        {sourceLang === 'auto' && detectedSourceLang && (
+          <span className="absolute right-9 top-1/2 -translate-y-1/2 text-xs font-medium text-blue-500 dark:text-blue-400 pointer-events-none pr-1">
             {langNames[detectedSourceLang] ?? detectedSourceLang}
           </span>
         )}
@@ -67,13 +72,7 @@ export function TranslateLanguageBar({
           value={targetLang}
           onChange={onTargetLangChange}
           includeAuto={false}
-          selectClassName="block w-full px-4 py-2.5 pr-9
-                           bg-white dark:bg-gray-800
-                           border border-gray-200 dark:border-gray-700
-                           rounded-xl text-sm text-gray-700 dark:text-gray-200
-                           appearance-none cursor-pointer
-                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                           transition-colors duration-100"
+          selectClassName={PILL_SELECT_CLS}
         />
       </div>
     </div>

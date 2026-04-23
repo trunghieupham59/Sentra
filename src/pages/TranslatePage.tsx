@@ -15,10 +15,11 @@ import { TranslateButton } from '../components/ui/TranslateButton'
 import { ACCEPTED_IMAGE_MIME_TYPES } from '../constants/image'
 import { MAX_INPUT_CHARS } from '../constants/providers'
 import { IMAGE_TRANSLATED_SENTINEL, useTranslate } from '../hooks/useTranslate'
-import { useT } from '../store/useAppStore'
+import { useAppStore, useT } from '../store/useAppStore'
 
 export function TranslatePage() {
   const t = useT()
+  const { setSourceLang } = useAppStore()
   const {
     // Store state
     sourceText, translatedText, phoneticText, sourceLang, targetLang,
@@ -100,7 +101,11 @@ export function TranslatePage() {
             Dịch Thuật Với AI
           </h1>
 
-          {/* Toolbar — below title */}
+          {/* Toolbar + Language bar — combined in a single gray card */}
+          <div className="rounded-2xl bg-gray-50 dark:bg-gray-900/60 border border-gray-100 dark:border-gray-800 px-5 py-4 flex flex-col gap-4 flex-shrink-0">
+            <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+              Cấu hình AI Nâng Cao
+            </h2>
           <TranslateToolbar
             translationStyle={translationStyle}
             onStyleChange={setTranslationStyle}
@@ -114,14 +119,18 @@ export function TranslatePage() {
               (isTranslating || (!!translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL))
             }
             labelStyleLabel={t.translate_style_label}
-            labelStyleFriendly={t.translate_style_friendly}
             labelStyleNeutral={t.translate_style_neutral}
+            labelStyleFriendly={t.translate_style_friendly}
             labelStyleProfessional={t.translate_style_professional}
             labelStyleBusiness={t.translate_style_business}
             labelStyleSlack={t.translate_style_slack}
             labelStylePolite={t.translate_style_polite}
             labelStyleTechnical={t.translate_style_technical}
-            labelPhonetic={t.translate_phonetic}
+            labelPhoneticSection={t.translate_phonetic}
+            labelPhoneticOff={t.translate_phonetic_off}
+            labelPhoneticStandard={t.translate_phonetic_standard}
+            labelPhoneticTranscription={t.translate_phonetic_transcription}
+            labelAutoSection={t.settings_auto_translate}
             titleAutoMode={t.translate_mode_auto_title}
             titleManualMode={t.translate_mode_manual_title}
             labelAutoMode={t.translate_mode_auto}
@@ -130,16 +139,18 @@ export function TranslatePage() {
 
           {/* Language bar — above the panels */}
           <TranslateLanguageBar
+            sourceLang={sourceLang}
+            onSourceLangChange={setSourceLang}
             targetLang={targetLang}
             onTargetLangChange={setTargetLang}
             detectedSourceLang={detectedSourceLang}
             canSwap={!!(translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL && !imageAttachment)}
             isDetectingLang={isDetectingLang}
             onSwap={handleSwapLanguages}
-            langAutoLabel={t.lang_auto}
             langNames={t.lang_names}
             swapTitle={t.translate_swap}
           />
+          </div>
 
           {/* Text panels — smaller gap than language bar so panels sit closer together */}
           <div className="grid grid-cols-2 gap-4 flex-1 min-h-0">

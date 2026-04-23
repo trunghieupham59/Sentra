@@ -31,7 +31,7 @@ export function LanguageSelector({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
-          className={selectClassName ?? 'select-field pr-8 text-sm'}
+          className={selectClassName ?? 'select-field pr-8'}
         >
           {options.map((lang) => (
             <option key={lang.code} value={lang.code}>

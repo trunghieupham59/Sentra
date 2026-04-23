@@ -32,9 +32,15 @@ export interface Translations {
   /** Error shown when copy to clipboard fails */
   translate_error_copy: string
   translate_phonetic: string
+  /** Phonetic mode dropdown — off */
+  translate_phonetic_off: string
+  /** Phonetic mode dropdown — standard (furigana/romanisation) */
+  translate_phonetic_standard: string
+  /** Phonetic mode dropdown — full phonetic transcription */
+  translate_phonetic_transcription: string
   translate_style_label: string
-  translate_style_friendly: string
   translate_style_neutral: string
+  translate_style_friendly: string
   translate_style_professional: string
   translate_style_business: string
   translate_style_slack: string
