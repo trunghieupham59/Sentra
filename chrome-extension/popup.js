@@ -7,10 +7,11 @@ let lastTranslated = ''
 
 async function getSettings () {
   return new Promise((resolve) => {
-    chrome.storage.local.get(['treToken', 'treTargetLang'], (data) => {
+    chrome.storage.local.get(['treToken', 'treTargetLang', 'treTranslationStyle'], (data) => {
       resolve({
         token: data.treToken || '',
         targetLang: data.treTargetLang || 'en',
+        translationStyle: data.treTranslationStyle || 'neutral',
       })
     })
   })
@@ -93,6 +94,15 @@ async function init () {
       chrome.storage.local.set({ treTargetLang: langSelect.value })
     })
 
+    // Restore saved translation style
+    const styleSelect = $('translation-style')
+    if (settings.translationStyle) styleSelect.value = settings.translationStyle
+
+    // Persist style change
+    styleSelect.addEventListener('change', () => {
+      chrome.storage.local.set({ treTranslationStyle: styleSelect.value })
+    })
+
     // Try to pre-fill with current tab selection
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
@@ -137,6 +147,7 @@ $('btn-translate').addEventListener('click', async () => {
         targetLang,
         provider: appConfig.provider,
         model: appConfig.model,
+        translationStyle: $('translation-style').value || 'neutral',
       }),
     })
 

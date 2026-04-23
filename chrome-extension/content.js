@@ -47,6 +47,16 @@
     <div class="tre-tooltip-header">
       <img class="tre-tooltip-logo" alt="Viezan" />
       <span class="tre-tooltip-label">Viezan</span>
+      <span class="tre-ai-info"></span>
+      <select class="tre-style-select" title="Translation style">
+        <option value="friendly">😊 Friendly</option>
+        <option value="neutral">⚖ Neutral</option>
+        <option value="professional">💼 Professional</option>
+        <option value="business">🏢 Business</option>
+        <option value="slack">💬 Slack</option>
+        <option value="polite">🙏 Polite</option>
+        <option value="technical">🔧 Technical</option>
+      </select>
       <select class="tre-lang-select" title="Target language">
         <option value="en">🇺🇸 EN</option>
         <option value="vi">🇻🇳 VI</option>
@@ -90,6 +100,7 @@
   const copyBtn = tooltip.querySelector('.tre-copy-btn')
   const replaceBtn = tooltip.querySelector('.tre-replace-btn')
   const langSelect = tooltip.querySelector('.tre-lang-select')
+  const styleSelect = tooltip.querySelector('.tre-style-select')
   const closeBtn = tooltip.querySelector('.tre-close-btn')
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -112,10 +123,11 @@
     return new Promise((resolve, reject) => {
       if (!isContextValid()) { reject(new Error('Extension context invalidated. Please reload the page.')); return }
       try {
-        chrome.storage.local.get(['treToken', 'treTargetLang'], (data) => {
+        chrome.storage.local.get(['treToken', 'treTargetLang', 'treTranslationStyle'], (data) => {
           resolve({
             token: data.treToken || '',
             targetLang: data.treTargetLang || 'en',
+            translationStyle: data.treTranslationStyle || 'neutral',
           })
         })
       } catch {
@@ -135,6 +147,23 @@
     return { provider: data.provider, model: data.model }
   }
 
+  const PROVIDER_LABELS = { gemini: '✨ Gemini', openai: '🤖 OpenAI', claude: '🧠 Claude' }
+
+  /** Populate the AI info badges in the tooltip header */
+  async function updateAiInfo (token) {
+    const infoEl = tooltip.querySelector('.tre-ai-info')
+    if (!infoEl) return
+    try {
+      const config = await getAppConfig(token)
+      const providerLabel = PROVIDER_LABELS[config.provider] || config.provider
+      infoEl.innerHTML =
+        `<span class="tre-ai-pill">${providerLabel}</span>` +
+        `<span class="tre-ai-pill tre-ai-pill-model">${config.model || '—'}</span>`
+    } catch {
+      infoEl.innerHTML = ''
+    }
+  }
+
   async function translateText (text, settings) {
     const appConfig = await getAppConfig(settings.token)
     const resp = await fetch(`http://127.0.0.1:${PORT}/api/translate`, {
@@ -148,6 +177,7 @@
         targetLang: settings.targetLang,
         provider: appConfig.provider,
         model: appConfig.model,
+        translationStyle: settings.translationStyle || styleSelect.value || 'neutral',
       }),
     })
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
@@ -158,17 +188,25 @@
 
   function positionElement (el, rect) {
     const margin = 8
-    // position:fixed → coords are relative to viewport (same as getBoundingClientRect)
-    // Do NOT add window.scrollY
-    let top = rect.top - el.offsetHeight - margin
-    let left = rect.left + rect.width / 2 - el.offsetWidth / 2
+    const elH = el.offsetHeight
+    const elW = el.offsetWidth
 
-    // Keep on screen
-    if (top < margin) top = rect.bottom + margin
-    if (left < margin) left = margin
-    if (left + el.offsetWidth > window.innerWidth - margin) {
-      left = window.innerWidth - el.offsetWidth - margin
+    // Smart vertical: prefer above selection; fall back to below; clamp if neither fits
+    let top
+    if (rect.top - elH - margin >= margin) {
+      // Enough space above → show above
+      top = rect.top - elH - margin
+    } else if (rect.bottom + elH + margin <= window.innerHeight - margin) {
+      // Enough space below → show below
+      top = rect.bottom + margin
+    } else {
+      // Neither fits perfectly → place as high as possible without going off-screen
+      top = Math.max(margin, window.innerHeight - elH - margin)
     }
+
+    // Horizontal: centre on selection, clamped to viewport
+    let left = rect.left + rect.width / 2 - elW / 2
+    left = Math.max(margin, Math.min(left, window.innerWidth - elW - margin))
 
     el.style.top = `${top}px`
     el.style.left = `${left}px`
@@ -187,9 +225,27 @@
     lastSelectionRect = rect   // save for use in button click handler
     resetBtnIcon()
     btn.style.display = 'flex'
-    // position:fixed → rect.bottom is already viewport-relative; no scrollY needed
-    btn.style.top = `${rect.bottom + 6}px`
-    btn.style.left = `${rect.left + rect.width / 2 - 18}px`
+
+    const btnSize = 36
+    const gap = 6
+    const margin = 8
+
+    // Smart vertical: prefer below selection; if too close to bottom, show above
+    let top
+    if (rect.bottom + gap + btnSize <= window.innerHeight - margin) {
+      top = rect.bottom + gap
+    } else {
+      top = rect.top - gap - btnSize
+    }
+    // Clamp to viewport
+    top = Math.max(margin, Math.min(top, window.innerHeight - btnSize - margin))
+
+    // Horizontal: centre on selection, clamped to viewport
+    let left = rect.left + rect.width / 2 - btnSize / 2
+    left = Math.max(margin, Math.min(left, window.innerWidth - btnSize - margin))
+
+    btn.style.top = `${top}px`
+    btn.style.left = `${left}px`
   }
 
   function hideButton () {
@@ -197,7 +253,7 @@
     resetBtnIcon()
   }
 
-  function showTooltip (text, rect, range, targetLang) {
+  function showTooltip (text, rect, range, targetLang, translationStyle) {
     currentTranslation = text
     // Only update savedRange if a valid range is provided.
     // Clicking the translate button clears the browser selection, so `range`
@@ -208,6 +264,11 @@
     // Sync language selector to current target language
     if (targetLang && langSelect.value !== targetLang) {
       langSelect.value = targetLang
+    }
+
+    // Sync style selector to current translation style
+    if (translationStyle && styleSelect.value !== translationStyle) {
+      styleSelect.value = translationStyle
     }
 
     // Left panel: original / source text
@@ -267,6 +328,35 @@
     try {
       const settings = await getSettings()
       settings.targetLang = newLang          // use the just-selected language
+      const translated = await translateText(lastSelection, settings)
+      currentTranslation = translated
+      tooltipText.textContent = translated
+      copyBtn.textContent = '📋 Copy'
+      try { await navigator.clipboard.writeText(translated) } catch { /* ignore */ }
+    } catch (err) {
+      tooltipText.textContent = '❌ ' + (err.message || 'Translation failed')
+    }
+  })
+
+  // ── Style selector → re-translate ─────────────────────────────────────────
+
+  styleSelect.addEventListener('change', async (e) => {
+    e.stopPropagation()
+    const newStyle = styleSelect.value
+
+    // Persist the new style choice across sessions
+    if (isContextValid()) {
+      try { chrome.storage.local.set({ treTranslationStyle: newStyle }) } catch { /* ignore */ }
+    }
+
+    if (!lastSelection) return
+
+    const tooltipText = tooltip.querySelector('.tre-tooltip-text')
+    tooltipText.textContent = '⏳ Translating…'
+
+    try {
+      const settings = await getSettings()
+      settings.translationStyle = newStyle   // use the just-selected style
       const translated = await translateText(lastSelection, settings)
       currentTranslation = translated
       tooltipText.textContent = translated
@@ -542,7 +632,9 @@
 
       const translated = await translateText(text, settings)
       hideButton()
-      showTooltip(translated, rect, range, settings.targetLang)
+      showTooltip(translated, rect, range, settings.targetLang, settings.translationStyle)
+      // Update provider/model info in header (non-blocking)
+      updateAiInfo(settings.token)
 
       try { await navigator.clipboard.writeText(translated) } catch { /* ignore */ }
     } catch (err) {

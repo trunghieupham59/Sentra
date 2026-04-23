@@ -7,22 +7,36 @@ import {
 } from './ipcConstants'
 import { getStoredApiKey } from './storage'
 
+type TranslationStyle = 'friendly' | 'neutral' | 'professional' | 'business' | 'slack' | 'polite' | 'technical'
+
+const STYLE_TONE: Record<TranslationStyle, string> = {
+  friendly: 'friendly, warm, casual — like chatting with a close friend or family member; use informal language, contractions, and expressive wording',
+  neutral: 'neutral, clear, natural — well-balanced register suitable for general everyday use; neither overly formal nor overly casual',
+  professional: 'professional, polished, confident — appropriate for interactions with colleagues, clients, or business partners',
+  business: 'formal business register — highly concise, precise, and objective; appropriate for official corporate communication',
+  slack: 'concise workplace chat style — informal yet professional; direct and efficient as in instant messaging',
+  polite: 'polite, respectful, considerate — suitable for addressing someone of higher status or unfamiliar parties; uses appropriate honorifics',
+  technical: 'technical, precise, domain-specific — uses accurate, industry-standard technical terminology; clear and unambiguous',
+}
+
 export interface LightweightTranslateParams {
   text: string
   targetLang: string
   provider?: string
   model?: string
+  translationStyle?: TranslationStyle
 }
 
 /**
  * Lightweight translation — dùng cho global hotkey và browser extension.
- * Không có chunking, style, furigana — chỉ dịch nhanh.
+ * Hỗ trợ translationStyle để phù hợp với màn hình AI Dịch.
  */
 export async function lightweightTranslate({
   text,
   targetLang,
   provider = 'gemini',
   model,
+  translationStyle = 'neutral',
 }: LightweightTranslateParams): Promise<{ success: boolean; translatedText?: string; error?: string }> {
   if (!text?.trim()) return { success: false, error: 'Text is empty' }
 
@@ -35,7 +49,8 @@ export async function lightweightTranslate({
   const apiKey = await getStoredApiKey(provider)
   if (!apiKey) return { success: false, error: `No API key configured for ${provider}` }
 
-  const prompt = `Translate into ${targetLang}. Tone: neutral. Output only the translation.\n\n${text}`
+  const tone = STYLE_TONE[translationStyle] ?? STYLE_TONE.neutral
+  const prompt = `Translate into ${targetLang}. Tone: ${tone}. Output only the translation.\n\n${text}`
 
   try {
     if (provider === 'gemini') {

@@ -85,7 +85,37 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
+  flex-shrink: 0;
+}
+
+/* ── AI provider/model info badges ───────────────────────────────────────── */
+
+#tre-result-tooltip .tre-ai-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   flex: 1;
+  overflow: hidden;
+}
+
+#tre-result-tooltip .tre-ai-pill {
+  background: #5b21b6;
+  color: #fff;
+  padding: 1px 7px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+#tre-result-tooltip .tre-ai-pill-model {
+  background: #0d9488;
+  font-family: 'SF Mono', 'Menlo', monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
 }
 
 /* ── Two-column body ─────────────────────────────────────────────────────── */
@@ -191,6 +221,39 @@
 
 #tre-result-tooltip .tre-replace-btn:hover {
   background: #f0fdf4;
+}
+
+/* ── Style selector in header ────────────────────────────────────────────── */
+
+#tre-result-tooltip .tre-style-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid #c4b5fd;
+  border-radius: 6px;
+  color: #5b21b6;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 20px 2px 6px;
+  cursor: pointer;
+  outline: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235b21b6' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 5px center;
+  transition: border-color 0.13s, background-color 0.13s;
+  flex-shrink: 0;
+  max-width: 110px;
+}
+
+#tre-result-tooltip .tre-style-select:hover {
+  border-color: #7c3aed;
+  background-color: rgba(255, 255, 255, 0.95);
+}
+
+#tre-result-tooltip .tre-style-select:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
 }
 
 /* ── Language selector in header ─────────────────────────────────────────── */
