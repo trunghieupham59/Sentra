@@ -23,10 +23,10 @@ export function TranslatePage() {
   const {
     // Store state
     sourceText, translatedText, phoneticText, sourceLang, targetLang,
-    isTranslating, translateError, autoTranslate, showFurigana, translationStyle,
+    isTranslating, translateError, autoTranslate, phoneticMode, translationStyle,
     keyStatus, selectedProvider,
     // Store setters
-    setTargetLang, setActivePage, setShowFurigana, setTranslationStyle, setAutoTranslate,
+    setTargetLang, setActivePage, setPhoneticMode, setTranslationStyle, setAutoTranslate,
     // Local state
     copied, isRewriting, imageSwitchNotice, detectedSourceLang, isDetectingLang,
     imageAttachment, imageRegions, editedImageUrl, isDraggingOver,
@@ -111,10 +111,10 @@ export function TranslatePage() {
             onStyleChange={setTranslationStyle}
             autoTranslate={autoTranslate}
             onAutoTranslateChange={setAutoTranslate}
-            showFurigana={showFurigana}
-            onShowFuriganaChange={setShowFurigana}
+            phoneticMode={phoneticMode}
+            onPhoneticModeChange={setPhoneticMode}
             isPhoneticLoading={
-              showFurigana &&
+              phoneticMode !== 'off' &&
               !phoneticText &&
               (isTranslating || (!!translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL))
             }
@@ -297,8 +297,12 @@ export function TranslatePage() {
                     className="max-w-full rounded-lg fade-in"
                   />
                 ) : translatedText ? (
-                  showFurigana && phoneticText
-                    ? <FuriganaText text={phoneticText} className="textarea-field fade-in" />
+                  phoneticMode !== 'off' && phoneticText
+                    ? phoneticMode === 'standard'
+                      // Standard mode: show {word|reading} ruby annotations over original script
+                      ? <FuriganaText text={phoneticText} className="textarea-field fade-in" />
+                      // Phonetic mode: replace original script with pure phonetics (hiragana/pinyin/romanization/IPA)
+                      : <MarkdownText text={phoneticText} className="textarea-field fade-in" />
                     : <MarkdownText text={translatedText} className="textarea-field fade-in" />
                 ) : (
                   <p className="text-[15px] text-gray-300 dark:text-gray-700 leading-relaxed select-none">

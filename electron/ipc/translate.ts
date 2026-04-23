@@ -21,6 +21,8 @@ import {
 
 type TranslationStyle = 'friendly' | 'neutral' | 'professional' | 'business' | 'slack' | 'polite' | 'technical'
 
+type PhoneticMode = 'off' | 'standard' | 'phonetic'
+
 interface TranslateParams {
   provider: string
   model: string
@@ -28,6 +30,12 @@ interface TranslateParams {
   sourceLang: string
   targetLang: string
   showFurigana?: boolean
+  /**
+   * Explicit phonetic mode:
+   *  - 'standard' — add {word|reading} ruby annotations (furigana/pinyin/romanization above original script)
+   *  - 'phonetic' — replace script with pure phonetics (hiragana-only, pinyin-only, romanization-only, IPA)
+   */
+  phoneticMode?: PhoneticMode
   translationStyle?: TranslationStyle
   /** When true, skip translation — only add phonetic annotations to the already-translated sourceText */
   phoneticOnly?: boolean
@@ -70,9 +78,56 @@ const REWRITE_SYSTEM_PROMPT = `You are a brilliant native writer — not a trans
 
 You restructure sentences, choose authentic collocations, apply real idioms, and match the natural rhythm and feel of the target language — until every trace of foreignness disappears. You eliminate translationese ruthlessly: awkward word order, calques, unnatural prepositions, overly literal phrasing, stiff sentence length, and anything that reveals a foreign source. You think in the target language, not about it.`
 
-function buildPrompt(sourceText: string, sourceLang: string, targetLang: string, showFurigana = false, style: TranslationStyle = 'neutral', phoneticOnly = false): string {
-  // phoneticOnly mode: add phonetic annotations to already-translated text without re-translating
+function buildPrompt(
+  sourceText: string,
+  sourceLang: string,
+  targetLang: string,
+  showFurigana = false,
+  style: TranslationStyle = 'neutral',
+  phoneticOnly = false,
+  phoneticMode: PhoneticMode = 'standard',
+): string {
+  // ── phoneticOnly pass: annotate already-translated text ─────────────────────
   if (phoneticOnly && showFurigana) {
+
+    // ── PHIÊN ÂM NGỮ ÂM (pure phonetic transcription) ──────────────────────
+    // Replace the target script entirely with its phonetic representation.
+    // Output contains ONLY phonetics — no original characters, no ruby format.
+    if (phoneticMode === 'phonetic') {
+      let phoneticInstruction = ''
+      if (targetLang === 'ja') {
+        phoneticInstruction =
+          'Convert ALL kanji and katakana to hiragana. ' +
+          'Output ONLY hiragana text — remove every kanji character entirely. ' +
+          'Preserve spaces, punctuation, and particles as hiragana where applicable. ' +
+          'Do NOT use {kanji|reading} brackets or any annotation format.'
+      } else if (targetLang === 'zh' || targetLang === 'zh-TW') {
+        phoneticInstruction =
+          'Convert ALL Chinese characters to pinyin romanization with correct tone marks (ā á ǎ à etc.). ' +
+          'Output ONLY pinyin — remove every Chinese character entirely. ' +
+          'Separate syllables with spaces; capitalize proper nouns. ' +
+          'Do NOT use {character|pinyin} brackets or any annotation format.'
+      } else if (targetLang === 'ko') {
+        phoneticInstruction =
+          'Convert ALL Korean hangul to Revised Romanization of Korean. ' +
+          'Output ONLY romanized text — remove every hangul character entirely. ' +
+          'Do NOT use {한국어|romanization} brackets or any annotation format.'
+      } else {
+        phoneticInstruction =
+          'Transcribe the text into IPA (International Phonetic Alphabet). ' +
+          'Output ONLY the IPA transcription enclosed in /.../ for each sentence. ' +
+          'Transcribe every word phonetically — do not keep the original spelling.'
+      }
+      return (
+        `Convert the following ${targetLang} text to its pure phonetic representation. ` +
+        `Do NOT translate or alter the meaning — only convert the script to phonetics. ` +
+        `Return only the phonetic text, no explanations, no notes, no original characters.\n\n` +
+        `${phoneticInstruction}\n\nText:\n${sourceText}`
+      )
+    }
+
+    // ── NGỮ ÂM CHUẨN (standard ruby/furigana annotations) ────────────────────
+    // Keep the original script and annotate it with {word|reading} ruby format.
     let phoneticInstruction = ''
     if (targetLang === 'ja') {
       phoneticInstruction = 'For every kanji word or phrase, wrap it with its furigana reading in the format {kanji|reading} (e.g. {東京|とうきょう}). Apply to ALL kanji including standalone characters.'
@@ -86,6 +141,7 @@ function buildPrompt(sourceText: string, sourceLang: string, targetLang: string,
     return `Add phonetic annotations to the following ${targetLang} text. Do NOT translate or change the text content in any way — only add phonetic annotations. Return only the annotated text, no explanations, no notes.\n\n${phoneticInstruction}\n\nText to annotate:\n${sourceText}`
   }
 
+  // ── Normal translation (with optional inline standard annotations) ──────────
   const tone = STYLE_TONE[style] ?? STYLE_TONE.neutral
   let phoneticInstruction = ''
   if (showFurigana) {
@@ -300,7 +356,8 @@ async function translateWithGemini(
   targetLang: string,
   showFurigana: boolean,
   style: TranslationStyle,
-  phoneticOnly: boolean
+  phoneticOnly: boolean,
+  phoneticMode: PhoneticMode,
 ): Promise<string> {
   const { GoogleGenerativeAI } = await import('@google/generative-ai')
   const genAI = new GoogleGenerativeAI(apiKey)
@@ -308,7 +365,7 @@ async function translateWithGemini(
     model,
     systemInstruction: SYSTEM_PROMPT,
   })
-  const result = await genModel.generateContent(buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style, phoneticOnly))
+  const result = await genModel.generateContent(buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style, phoneticOnly, phoneticMode))
   return result.response.text().trim()
 }
 
@@ -320,7 +377,8 @@ async function translateWithClaude(
   targetLang: string,
   showFurigana: boolean,
   style: TranslationStyle,
-  phoneticOnly: boolean
+  phoneticOnly: boolean,
+  phoneticMode: PhoneticMode,
 ): Promise<string> {
   const Anthropic = (await import('@anthropic-ai/sdk')).default
   const client = new Anthropic({ apiKey })
@@ -331,7 +389,7 @@ async function translateWithClaude(
     messages: [
       {
         role: 'user',
-        content: buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style, phoneticOnly),
+        content: buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style, phoneticOnly, phoneticMode),
       },
     ],
   })
@@ -348,7 +406,8 @@ async function translateWithOpenAI(
   targetLang: string,
   showFurigana: boolean,
   style: TranslationStyle,
-  phoneticOnly: boolean
+  phoneticOnly: boolean,
+  phoneticMode: PhoneticMode,
 ): Promise<string> {
   const OpenAI = (await import('openai')).default
   const client = new OpenAI({ apiKey })
@@ -361,7 +420,7 @@ async function translateWithOpenAI(
       },
       {
         role: 'user',
-        content: buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style, phoneticOnly),
+        content: buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style, phoneticOnly, phoneticMode),
       },
     ],
     max_completion_tokens: MAX_OUTPUT_TOKENS_OPENAI,  // HC-01
@@ -449,7 +508,8 @@ async function verifyOpenAIKey(apiKey: string): Promise<void> {
 type TranslateFn = (
   apiKey: string, model: string,
   sourceText: string, sourceLang: string, targetLang: string,
-  showFurigana: boolean, style: TranslationStyle, phoneticOnly: boolean
+  showFurigana: boolean, style: TranslationStyle, phoneticOnly: boolean,
+  phoneticMode: PhoneticMode,
 ) => Promise<string>
 
 type RewriteFn = (
@@ -643,7 +703,7 @@ export async function streamTranslation(
   const streamFn = STREAM_PROVIDERS[provider]
   if (!streamFn) {
     // Unknown provider — fall back to batch translate and emit all at once
-    const fullText = await translateWithOpenAI(apiKey, model, sourceText, sourceLang, targetLang, false, style, false)
+    const fullText = await translateWithOpenAI(apiKey, model, sourceText, sourceLang, targetLang, false, style, false, 'off')
     onToken(fullText)
     return fullText
   }
@@ -709,7 +769,9 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
   })
 
   ipcMain.handle('translate', async (_event, params: TranslateParams) => {
-    const { provider, model, sourceText, sourceLang, targetLang, showFurigana, translationStyle, phoneticOnly } = params
+    const { provider, model, sourceText, sourceLang, targetLang, showFurigana, translationStyle, phoneticOnly, phoneticMode } = params
+    // Resolve effective phonetic mode: 'standard' is the default when showFurigana is true without an explicit mode
+    const effectivePhoneticMode: PhoneticMode = phoneticMode ?? (showFurigana ? 'standard' : 'off')
 
     if (!sourceText.trim()) {
       return { success: false, error: 'Source text is empty' }
@@ -738,11 +800,11 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
       // Chunked translation has its own per-chunk timeout (CHUNK_TIMEOUT_MS) so retry isn't applied there.
       translatedText = needsChunking
         ? await translateChunked(
-            (text) => translateFn(apiKey, model, text, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', false),
+            (text) => translateFn(apiKey, model, text, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', false, effectivePhoneticMode),
             sourceText,
           )
         : await withRetry(() =>
-            translateFn(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', !!phoneticOnly)
+            translateFn(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', !!phoneticOnly, effectivePhoneticMode)
           )
 
       return { success: true, translatedText }

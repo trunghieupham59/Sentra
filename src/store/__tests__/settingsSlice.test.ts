@@ -17,7 +17,7 @@ beforeEach(() => {
       localeAuto: true,
       autoTranslate: false,
       autoTranslateDelay: 500,
-      showFurigana: false,
+      phoneticMode: 'off',
       translationStyle: 'neutral',
       ttsVoice: 'nova',
       fontSize: 'medium',
@@ -102,18 +102,23 @@ describe('setAutoTranslateDelay', () => {
   })
 })
 
-describe('setShowFurigana', () => {
-  it('enables furigana display', () => {
-    act(() => useAppStore.getState().setShowFurigana(true))
-    expect(useAppStore.getState().showFurigana).toBe(true)
+describe('setPhoneticMode', () => {
+  it('enables standard phonetic mode', () => {
+    act(() => useAppStore.getState().setPhoneticMode('standard'))
+    expect(useAppStore.getState().phoneticMode).toBe('standard')
   })
 
-  it('disables furigana display', () => {
+  it('enables pure phonetic transcription mode', () => {
+    act(() => useAppStore.getState().setPhoneticMode('phonetic'))
+    expect(useAppStore.getState().phoneticMode).toBe('phonetic')
+  })
+
+  it('disables phonetic mode', () => {
     act(() => {
-      useAppStore.getState().setShowFurigana(true)
-      useAppStore.getState().setShowFurigana(false)
+      useAppStore.getState().setPhoneticMode('standard')
+      useAppStore.getState().setPhoneticMode('off')
     })
-    expect(useAppStore.getState().showFurigana).toBe(false)
+    expect(useAppStore.getState().phoneticMode).toBe('off')
   })
 })
 

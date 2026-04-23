@@ -36,13 +36,16 @@ export function useTranslate() {
   const {
     sourceText, translatedText, phoneticText, sourceLang, targetLang,
     isTranslating, translateError,
-    selectedProvider, selectedModels, autoTranslate, autoTranslateDelay, keyStatus, showFurigana, translationStyle,
+    selectedProvider, selectedModels, autoTranslate, autoTranslateDelay, keyStatus, phoneticMode, translationStyle,
     ttsVoice,
     setSourceText, setTranslatedText, setPhoneticText, setTargetLang,
-    setIsTranslating, setTranslateError, setActivePage, setShowFurigana, setTranslationStyle, setAutoTranslate, addHistory,
+    setIsTranslating, setTranslateError, setActivePage, setPhoneticMode, setTranslationStyle, setAutoTranslate, addHistory,
     swapLanguages,
   } = useAppStore()
   const t = useT()
+
+  // Derived boolean — true when any phonetic mode is active
+  const showFurigana = phoneticMode !== 'off'
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   /**
@@ -302,13 +305,24 @@ export function useTranslate() {
           translatedText: plainText,
         })
 
-        translationService.translate({ ...baseParams, sourceText: plainText, showFurigana: true, phoneticOnly: true })
-          .then((res) => {
-            // Also guard the phonetic pass against cancellation
-            if (translateGenerationRef.current !== generation) return
-            if (res.success && res.translatedText) setPhoneticText(res.translatedText)
+        // Second pass: add phonetic annotations in the selected mode.
+        // Only run when a phonetic mode is active; phoneticMode is forwarded so the
+        // backend can distinguish standard (ruby format) from phonetic (pure transcription).
+        if (showFurigana) {
+          translationService.translate({
+            ...baseParams,
+            sourceText: plainText,
+            showFurigana: true,
+            phoneticOnly: true,
+            phoneticMode,
           })
-          .catch(() => {})
+            .then((res) => {
+              // Also guard the phonetic pass against cancellation
+              if (translateGenerationRef.current !== generation) return
+              if (res.success && res.translatedText) setPhoneticText(res.translatedText)
+            })
+            .catch(() => {})
+        }
 
         // Background language detection — runs in parallel with phonetic pass.
         // Identifies the source language so the swap button can set the correct target.
@@ -323,8 +337,8 @@ export function useTranslate() {
       if (translateGenerationRef.current === generation) setIsTranslating(false)
     }
   }, [imageAttachment, sourceText, sourceLang, targetLang, selectedProvider, selectedModels,
-       isTranslating, hasKey, translationStyle, setIsTranslating, setTranslateError,
-       setTranslatedText, setPhoneticText, addHistory, t, detectLanguageInBackground])
+       isTranslating, hasKey, translationStyle, phoneticMode, showFurigana,
+       setIsTranslating, setTranslateError, setTranslatedText, setPhoneticText, addHistory, t, detectLanguageInBackground])
 
   /** Download the translated image (original + text regions overlaid) */
   const handleDownloadTranslatedImage = useCallback(async () => {
@@ -479,7 +493,8 @@ export function useTranslate() {
           const rewrittenText = result.translatedText
           setTranslatedText(rewrittenText)
           setPhoneticText('')
-          // If phonetic mode is active, regenerate phonetic text for the rewritten content
+          // If phonetic mode is active, regenerate phonetic text for the rewritten content.
+          // Pass phoneticMode so the backend produces standard vs pure-phonetic output.
           if (showFurigana) {
             translationService.translate({
               provider: selectedProvider,
@@ -490,6 +505,7 @@ export function useTranslate() {
               translationStyle,
               showFurigana: true,
               phoneticOnly: true,
+              phoneticMode,
             })
               .then((res) => {
                 if (res.success && res.translatedText) setPhoneticText(res.translatedText)
@@ -504,7 +520,8 @@ export function useTranslate() {
       setIsRewriting(null)
     }
   }, [isRewriting, hasKey, sourceText, translatedText, sourceLang, targetLang, translationStyle,
-      selectedProvider, selectedModels, showFurigana, setSourceText, setTranslatedText, setPhoneticText, setTranslateError, t])
+      selectedProvider, selectedModels, phoneticMode, showFurigana,
+      setSourceText, setTranslatedText, setPhoneticText, setTranslateError, t])
 
   /** Handles MarkdownEditor source text changes */
   const handleSourceChange = useCallback((val: string) => {
@@ -560,14 +577,14 @@ export function useTranslate() {
     isTranslating,
     translateError,
     autoTranslate,
-    showFurigana,
+    phoneticMode,
     translationStyle,
     keyStatus,
     selectedProvider,
     // ── Store setters (used directly in JSX) ───────────────────────────────
     setTargetLang,
     setActivePage,
-    setShowFurigana,
+    setPhoneticMode,
     setTranslationStyle,
     setAutoTranslate,
     // ── Local state ────────────────────────────────────────────────────────

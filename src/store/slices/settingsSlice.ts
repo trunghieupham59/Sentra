@@ -8,7 +8,7 @@
 import type { StateCreator } from 'zustand'
 import { DEFAULT_SETTINGS, PROVIDERS } from '../../constants/providers'
 import type { AppLocale } from '../../i18n'
-import type { FetchedModel, Provider, TranslationStyle, TtsVoice } from '../../types'
+import type { FetchedModel, PhoneticMode, Provider, TranslationStyle, TtsVoice } from '../../types'
 
 export interface SettingsSlice {
   // Locale
@@ -19,7 +19,13 @@ export interface SettingsSlice {
   // UI preferences
   autoTranslate: boolean
   autoTranslateDelay: number
-  showFurigana: boolean
+  /**
+   * Phonetic annotation mode for the translation result:
+   *  - 'off'      — no phonetic annotations
+   *  - 'standard' — ruby/furigana annotations above original characters ({word|reading} format)
+   *  - 'phonetic' — replace script with pure phonetics (hiragana-only, pinyin-only, romanization-only, IPA)
+   */
+  phoneticMode: PhoneticMode
   translationStyle: TranslationStyle
   ttsVoice: TtsVoice
   fontSize: 'small' | 'medium' | 'large'
@@ -42,7 +48,7 @@ export interface SettingsSlice {
   // Actions — preferences
   setAutoTranslate: (v: boolean) => void
   setAutoTranslateDelay: (ms: number) => void
-  setShowFurigana: (v: boolean) => void
+  setPhoneticMode: (mode: PhoneticMode) => void
   setTranslationStyle: (style: TranslationStyle) => void
   setTtsVoice: (voice: TtsVoice) => void
   setFontSize: (size: 'small' | 'medium' | 'large') => void
@@ -60,7 +66,7 @@ export const createSettingsSlice: StateCreator<any, [], [], SettingsSlice> = (se
   localeAuto: true,
   autoTranslate: DEFAULT_SETTINGS.autoTranslate,
   autoTranslateDelay: DEFAULT_SETTINGS.autoTranslateDelay,
-  showFurigana: false,
+  phoneticMode: 'off' as PhoneticMode,
   translationStyle: 'neutral' as TranslationStyle,
   ttsVoice: 'nova' as TtsVoice,
   fontSize: 'medium' as const,
@@ -79,7 +85,7 @@ export const createSettingsSlice: StateCreator<any, [], [], SettingsSlice> = (se
 
   setAutoTranslate: (v) => set({ autoTranslate: v }),
   setAutoTranslateDelay: (ms) => set({ autoTranslateDelay: ms }),
-  setShowFurigana: (v) => set({ showFurigana: v }),
+  setPhoneticMode: (mode) => set({ phoneticMode: mode }),
   setTranslationStyle: (style) => set({ translationStyle: style }),
   setTtsVoice: (voice) => set({ ttsVoice: voice }),
   setFontSize: (size) => set({ fontSize: size }),

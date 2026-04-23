@@ -1,4 +1,4 @@
-import type { TranslationStyle } from '../../types'
+import type { PhoneticMode, TranslationStyle } from '../../types'
 import { ModelSelector } from '../ModelSelector'
 import { AutoTranslateToggle } from '../ui/AutoTranslateToggle'
 import { ChevronDownIcon } from '../ui/icons'
@@ -9,8 +9,8 @@ interface TranslateToolbarProps {
   onStyleChange: (style: TranslationStyle) => void
   autoTranslate: boolean
   onAutoTranslateChange: (v: boolean) => void
-  showFurigana: boolean
-  onShowFuriganaChange: (v: boolean) => void
+  phoneticMode: PhoneticMode
+  onPhoneticModeChange: (mode: PhoneticMode) => void
   isPhoneticLoading: boolean
   // i18n
   labelStyleLabel: string
@@ -37,7 +37,7 @@ interface TranslateToolbarProps {
 export function TranslateToolbar({
   translationStyle, onStyleChange,
   autoTranslate, onAutoTranslateChange,
-  showFurigana, onShowFuriganaChange, isPhoneticLoading,
+  phoneticMode, onPhoneticModeChange, isPhoneticLoading,
   labelStyleLabel,
   labelStyleNeutral, labelStyleFriendly, labelStyleProfessional,
   labelStyleBusiness, labelStyleSlack, labelStylePolite, labelStyleTechnical,
@@ -88,8 +88,8 @@ export function TranslateToolbar({
             {labelPhoneticSection}
           </span>
           <PhoneticToggle
-            showFurigana={showFurigana}
-            onChange={onShowFuriganaChange}
+            phoneticMode={phoneticMode}
+            onChange={onPhoneticModeChange}
             labelOff={labelPhoneticOff}
             labelStandard={labelPhoneticStandard}
             labelPhonetic={labelPhoneticTranscription}

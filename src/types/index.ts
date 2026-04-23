@@ -2,6 +2,14 @@ export type Provider = 'gemini' | 'claude' | 'openai'
 
 export type TranslationStyle = 'friendly' | 'neutral' | 'professional' | 'business' | 'slack' | 'polite' | 'technical'
 
+/**
+ * Phonetic annotation mode:
+ *  - 'off'      — no phonetic annotations
+ *  - 'standard' — add {word|reading} ruby annotations (furigana/pinyin/romanization above original script)
+ *  - 'phonetic' — replace original script with pure phonetics (hiragana-only, pinyin-only, romanization-only, IPA)
+ */
+export type PhoneticMode = 'off' | 'standard' | 'phonetic'
+
 export type TtsVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
 
 export interface ProviderConfig {
@@ -39,6 +47,8 @@ export interface TranslateParams {
   sourceLang: string
   targetLang: string
   showFurigana?: boolean
+  /** Explicit phonetic mode — overrides showFurigana when present */
+  phoneticMode?: PhoneticMode
   translationStyle?: TranslationStyle
   /** When true, skip translation — only add phonetic annotations to the already-translated sourceText */
   phoneticOnly?: boolean
