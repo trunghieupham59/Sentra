@@ -16,28 +16,13 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v4
 
-            - name: Install Google Chrome
+            - name: Package Chrome Extension as ZIP
               shell: bash
               run: |
-                  wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-                  sudo apt-get install -y ./google-chrome-stable_current_amd64.deb
-
-            - name: Package Chrome Extension as CRX
-              shell: bash
-              run: |
-                  # Copy extension to a temp folder without the .pem key file
-                  # (Chrome refuses to pack if the key file is inside the extension folder)
-                  cp -r chrome-extension chrome-extension-build
-                  rm chrome-extension-build/chrome-extension.pem
-
-                  # Pack the extension using the existing .pem private key
-                  google-chrome-stable \
-                    --pack-extension=chrome-extension-build \
-                    --pack-extension-key=chrome-extension/chrome-extension.pem \
-                    --no-sandbox
-
-                  mv chrome-extension-build.crx viezan-chrome-extension.crx
-                  echo "Chrome extension packaged: $(du -sh viezan-chrome-extension.crx | cut -f1)"
+                  zip -r viezan-chrome-extension.zip chrome-extension \
+                    --exclude "chrome-extension/chrome-extension.pem" \
+                    --exclude "chrome-extension/README.md"
+                  echo "Chrome extension zipped: $(du -sh viezan-chrome-extension.zip | cut -f1)"
 
             - name: Upload Chrome Extension to Release
               shell: bash
@@ -53,11 +38,11 @@ jobs:
 
                   # Check if a release with the app tag already exists
                   if gh release view "$APP_TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
-                    echo "Release $APP_TAG found — uploading .crx (replace existing)"
-                    gh release upload "$APP_TAG" viezan-chrome-extension.crx --clobber
+                    echo "Release $APP_TAG found — uploading .zip (replace existing)"
+                    gh release upload "$APP_TAG" viezan-chrome-extension.zip --clobber
                   else
                     echo "Release $APP_TAG not found — creating new release for $EXT_TAG"
-                    gh release create "$EXT_TAG" viezan-chrome-extension.crx \
+                    gh release create "$EXT_TAG" viezan-chrome-extension.zip \
                       --title "Viezan Chrome Extension $APP_TAG" \
                       --notes "Chrome Extension update for Viezan $APP_TAG" \
                       --repo "$GITHUB_REPOSITORY"
