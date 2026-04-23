@@ -187,7 +187,7 @@ jobs:
                   CSC_IDENTITY_AUTO_DISCOVERY: false
                   APPLE_ID: ${{ secrets.APPLE_ID }}
                   APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-                  APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+                  APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID || '' }}
               run: npx electron-builder --mac --arm64 --publish always
 
     # ─────────────────────────────────────────────
@@ -231,7 +231,7 @@ jobs:
                   CSC_IDENTITY_AUTO_DISCOVERY: false
                   APPLE_ID: ${{ secrets.APPLE_ID }}
                   APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-                  APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+                  APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID || '' }}
               run: npx electron-builder --mac --x64 --publish always
 
     # ─────────────────────────────────────────────
@@ -243,7 +243,7 @@ jobs:
     #   3. Create project slug: "tre-assistant"
     #   4. Create signing policy slug: "release-signing"
     #   5. Create artifact config slug: "windows-installer"
-    #   6. Add SIGNPATH_API_TOKEN & SIGNPATH_ORGANIZATION_ID as repo secrets
+    #   6. Add SIGNPATH_API_TOKEN as a repo secret, SIGNPATH_ORGANIZATION_ID as a repo variable
     # ─────────────────────────────────────────────
     build-windows:
         needs: create-release
@@ -306,8 +306,8 @@ jobs:
                     echo "SignPath secrets not configured — will upload unsigned installer."
                   fi
               env:
-                  SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
-                  SIGNPATH_ORG_ID: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+                  SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN || '' }}
+                  SIGNPATH_ORG_ID: ${{ vars.SIGNPATH_ORGANIZATION_ID || '' }}
 
             # ── SignPath signing (only when secrets are configured) ──────
             - name: Package installer + app PE files into ZIP for SignPath
@@ -343,8 +343,8 @@ jobs:
               continue-on-error: true
               uses: signpath/github-action-submit-signing-request@v1
               with:
-                  api-token: "${{ secrets.SIGNPATH_API_TOKEN }}"
-                  organization-id: "${{ secrets.SIGNPATH_ORGANIZATION_ID }}"
+                  api-token: "${{ secrets.SIGNPATH_API_TOKEN || '' }}"
+                  organization-id: "${{ vars.SIGNPATH_ORGANIZATION_ID || '' }}"
                   project-slug: "tre-assistant"
                   signing-policy-slug: "release-signing"
                   artifact-configuration-slug: "windows-installer"
