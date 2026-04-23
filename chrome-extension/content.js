@@ -272,10 +272,10 @@
     }
 
     // Left panel: original / source text
-    tooltip.querySelector('.tre-source-text').textContent = lastSelection
+    tooltip.querySelector('.tre-source-text').textContent = lastSelection.replace(/\n{2,}/g, '\n')
 
     // Right panel: translation result
-    tooltip.querySelector('.tre-tooltip-text').textContent = text
+    tooltip.querySelector('.tre-tooltip-text').textContent = text.replace(/\n{2,}/g, '\n')
 
     tooltip.style.display = 'block'
     copyBtn.textContent = '📋 Copy'
@@ -330,7 +330,7 @@
       settings.targetLang = newLang          // use the just-selected language
       const translated = await translateText(lastSelection, settings)
       currentTranslation = translated
-      tooltipText.textContent = translated
+      tooltipText.textContent = translated.replace(/\n{2,}/g, '\n')
       copyBtn.textContent = '📋 Copy'
       try { await navigator.clipboard.writeText(translated) } catch { /* ignore */ }
     } catch (err) {
@@ -359,7 +359,7 @@
       settings.translationStyle = newStyle   // use the just-selected style
       const translated = await translateText(lastSelection, settings)
       currentTranslation = translated
-      tooltipText.textContent = translated
+      tooltipText.textContent = translated.replace(/\n{2,}/g, '\n')
       copyBtn.textContent = '📋 Copy'
       try { await navigator.clipboard.writeText(translated) } catch { /* ignore */ }
     } catch (err) {

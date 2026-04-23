@@ -163,6 +163,7 @@
   line-height: 1.55;
   overflow-y: auto;
   flex: 1;
+  white-space: pre-wrap;
 }
 
 /* Vertical divider between columns */
@@ -181,6 +182,7 @@
   line-height: 1.6;
   overflow-y: auto;
   flex: 1;
+  white-space: pre-wrap;
 }
 
 /* ── Action buttons row ──────────────────────────────────────────────────── */
