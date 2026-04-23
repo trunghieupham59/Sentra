@@ -27,20 +27,20 @@ export function TranslateButton({
       onClick={onClick}
       disabled={isTranslating || disabled}
       className={[
-        'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold',
+        'flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold',
         'bg-blue-600 text-white shadow-sm transition-all duration-200 cursor-pointer select-none',
-        'hover:bg-blue-700 active:scale-95',
-        'disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100',
+        'hover:bg-blue-700 hover:shadow-md active:scale-95',
+        'disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100',
       ].join(' ')}
     >
       {isTranslating ? (
         <>
-          <SpinnerIcon />
+          <SpinnerIcon className="w-3.5 h-3.5 animate-spin" />
           <span>{labelLoading}</span>
         </>
       ) : (
         <>
-          <ArrowRightIcon />
+          <ArrowRightIcon className="w-3.5 h-3.5" />
           <span>{labelTranslate}</span>
         </>
       )}

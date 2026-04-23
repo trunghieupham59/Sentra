@@ -83,20 +83,20 @@ export function TranslatePage() {
     }
   }, [])
 
-  /** Shared Tailwind classes for panel footer bars (inside cards, no bg override) */
+  /** Shared Tailwind classes for panel footer bars (inside cards) */
   const PANEL_FOOTER_CLS =
     'flex-shrink-0 flex items-center justify-between px-4 h-12 ' +
-    'border-t border-gray-100 dark:border-gray-800'
+    'border-t border-gray-200 dark:border-gray-800'
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-950">
 
       {/* Centered content — fills remaining height */}
       <div className="flex-1 flex flex-col min-h-0">
-        <div className="px-6 pt-8 pb-6 flex flex-col gap-6 flex-1 min-h-0 min-w-0">
+        <div className="px-6 pt-6 pb-4 flex flex-col gap-4 flex-1 min-h-0 min-w-0">
 
           {/* Page title */}
-          <h1 className="text-2xl font-bold text-center text-gray-800 dark:text-gray-100">
+          <h1 className="text-2xl font-bold text-center text-gray-800 dark:text-gray-100 flex-shrink-0">
             Dịch Thuật Với AI
           </h1>
 
@@ -147,10 +147,10 @@ export function TranslatePage() {
             {/* ── Source panel card ── */}
             <section
               aria-label={t.image_translate_title}
-              className={`flex-1 flex flex-col rounded-2xl border bg-white dark:bg-gray-900 shadow-sm overflow-hidden relative transition-colors duration-150
+              className={`flex-1 flex flex-col rounded-2xl border bg-white dark:bg-gray-900 shadow-sm overflow-hidden relative transition-all duration-150
                           ${isDraggingOver
                             ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/20 ring-2 ring-inset ring-emerald-300 dark:ring-emerald-700'
-                            : 'border-gray-200 dark:border-gray-700'}`}
+                            : 'border-gray-200 dark:border-gray-700 focus-within:border-blue-300 dark:focus-within:border-blue-600 focus-within:shadow-md focus-within:shadow-blue-100/50 dark:focus-within:shadow-blue-900/20'}`}
               onDragOver={handleSourcePanelDragOver}
               onDragLeave={handleSourcePanelDragLeave}
               onDrop={handleSourcePanelDrop}
@@ -192,7 +192,7 @@ export function TranslatePage() {
               </div>
 
               {/* Source panel footer — LEFT: icons | RIGHT: char count + translate button */}
-              <div className="flex-shrink-0 flex items-center justify-between px-4 h-12 border-t border-gray-100 dark:border-gray-800 relative z-20">
+              <div className="flex-shrink-0 flex items-center justify-between px-4 h-12 border-t border-gray-200 dark:border-gray-800 relative z-20">
                 {/* LEFT: mic, image, (clear, rewrite, speak when content present) */}
                 <SourcePanelActions
                   isVoiceActive={isVoiceActive}
