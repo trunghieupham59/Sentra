@@ -117,6 +117,11 @@ jobs:
                     echo "2. Run the installer and follow the setup wizard."
                     echo "3. You can choose a custom installation directory during setup."
                     echo ""
+                    echo "### 🐧 Linux"
+                    echo "1. Download the \`.AppImage\` or \`.deb\` file."
+                    echo "2. For AppImage: \`chmod +x Viezan-*.AppImage && ./Viezan-*.AppImage\`"
+                    echo "3. For .deb: \`sudo dpkg -i Viezan-*.deb\`"
+                    echo ""
                     echo "---"
                     echo ""
                     if [ -n "$PREV_TAG" ]; then
@@ -130,12 +135,6 @@ jobs:
                   echo "PREV_TAG=$PREV_TAG" >> "$GITHUB_OUTPUT"
                   echo "CURRENT_TAG=$CURRENT_TAG" >> "$GITHUB_OUTPUT"
 
-            - name: Package Chrome Extension
-              shell: bash
-              run: |
-                  zip -r tre-assistant-chrome-extension.zip chrome-extension/
-                  echo "Chrome extension packaged: $(du -sh tre-assistant-chrome-extension.zip | cut -f1)"
-
             - name: Create GitHub Release
               id: create_release
               uses: softprops/action-gh-release@v2
@@ -144,23 +143,14 @@ jobs:
                   body: ${{ steps.notes.outputs.RELEASE_BODY }}
                   draft: false
                   prerelease: ${{ contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-rc') }}
-                  files: tre-assistant-chrome-extension.zip
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     # ─────────────────────────────────────────────
-    # macOS builds (Apple signing + notarization)
+    # macOS build — Apple Silicon (M1/M2/M3)
     # ─────────────────────────────────────────────
-    build-mac:
+    build-mac-arm64:
         needs: create-release
-        strategy:
-            matrix:
-                include:
-                    - arch: arm64
-                      cmd: npx electron-builder --mac --arm64 --publish always
-                    - arch: x64
-                      cmd: npx electron-builder --mac --x64 --publish always
-
         runs-on: macos-latest
 
         steps:
@@ -191,14 +181,58 @@ jobs:
             - name: Build
               run: npm run build
 
-            - name: Build and publish (macOS)
+            - name: Build and publish (macOS arm64)
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   CSC_IDENTITY_AUTO_DISCOVERY: false
                   APPLE_ID: ${{ secrets.APPLE_ID }}
                   APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
                   APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-              run: ${{ matrix.cmd }}
+              run: npx electron-builder --mac --arm64 --publish always
+
+    # ─────────────────────────────────────────────
+    # macOS build — Intel (x64)
+    # ─────────────────────────────────────────────
+    build-mac-intel:
+        needs: create-release
+        runs-on: macos-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: npm
+
+            - name: Update version in package.json
+              shell: bash
+              run: |
+                  VERSION="${GITHUB_REF#refs/tags/v}"
+                  CURRENT=$(node -p "require('./package.json').version")
+                  if [ "$CURRENT" != "$VERSION" ]; then
+                    echo "Updating package.json from $CURRENT to $VERSION"
+                    npm version "$VERSION" --no-git-tag-version
+                  else
+                    echo "package.json already at version $VERSION, skipping."
+                  fi
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build
+              run: npm run build
+
+            - name: Build and publish (macOS x64)
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  CSC_IDENTITY_AUTO_DISCOVERY: false
+                  APPLE_ID: ${{ secrets.APPLE_ID }}
+                  APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+                  APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+              run: npx electron-builder --mac --x64 --publish always
 
     # ─────────────────────────────────────────────
     # Windows build → SignPath signing (free for OSS, optional)
@@ -350,3 +384,92 @@ jobs:
                   INSTALLER_NAME="${{ steps.find_installer.outputs.INSTALLER_NAME }}"
                   echo "Uploading unsigned: $INSTALLER_NAME"
                   gh release upload "$TAG" "$INSTALLER" --clobber
+
+    # ─────────────────────────────────────────────
+    # Linux build
+    # ─────────────────────────────────────────────
+    build-linux:
+        needs: create-release
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: npm
+
+            - name: Install system dependencies
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y \
+                    libgtk-3-dev \
+                    libwebkit2gtk-4.0-dev \
+                    libayatana-appindicator3-dev \
+                    librsvg2-dev \
+                    patchelf
+
+            - name: Update version in package.json
+              shell: bash
+              run: |
+                  VERSION="${GITHUB_REF#refs/tags/v}"
+                  CURRENT=$(node -p "require('./package.json').version")
+                  if [ "$CURRENT" != "$VERSION" ]; then
+                    echo "Updating package.json from $CURRENT to $VERSION"
+                    npm version "$VERSION" --no-git-tag-version
+                  else
+                    echo "package.json already at version $VERSION, skipping."
+                  fi
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build
+              run: npm run build
+
+            - name: Build and publish (Linux)
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: npx electron-builder --linux --publish always
+
+    # ─────────────────────────────────────────────
+    # Google Chrome Extension build
+    # ─────────────────────────────────────────────
+    build-chrome-extension:
+        needs: create-release
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Install Google Chrome
+              shell: bash
+              run: |
+                  wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+                  sudo apt-get install -y ./google-chrome-stable_current_amd64.deb
+
+            - name: Package Chrome Extension as CRX
+              shell: bash
+              run: |
+                  # Pack the extension using the existing .pem private key
+                  # Output: chrome-extension.crx (placed next to the folder)
+                  google-chrome-stable \
+                    --pack-extension=chrome-extension \
+                    --pack-extension-key=chrome-extension/chrome-extension.pem \
+                    --no-sandbox
+
+                  mv chrome-extension.crx viezan-chrome-extension.crx
+                  echo "Chrome extension packaged: $(du -sh viezan-chrome-extension.crx | cut -f1)"
+
+            - name: Upload Chrome Extension to GitHub Release
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  TAG="${GITHUB_REF#refs/tags/}"
+                  echo "Uploading Chrome extension to release $TAG"
+                  gh release upload "$TAG" viezan-chrome-extension.crx --clobber
