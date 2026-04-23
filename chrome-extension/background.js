@@ -96,6 +96,18 @@ async function injectContentScript (tabId) {
   }
 }
 
+// ── Keyboard shortcut command ─────────────────────────────────────────────────
+
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== 'translate-selection') return
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (tab?.id) {
+      await chrome.tabs.sendMessage(tab.id, { type: 'VIEZAN_TRANSLATE_SHORTCUT' })
+    }
+  } catch { /* ignore */ }
+})
+
 // ── Context menu click ────────────────────────────────────────────────────────
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {

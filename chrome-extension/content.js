@@ -715,6 +715,51 @@
       sendResponse({ alive: true })
       return true
     }
+
+    // ── Keyboard shortcut: translate currently selected text ───────────────
+    if (msg.type === 'VIEZAN_TRANSLATE_SHORTCUT') {
+      const activeEl = document.activeElement
+      const tag = activeEl?.tagName?.toLowerCase()
+
+      // Case 1: textarea / input selection
+      if ((tag === 'input' || tag === 'textarea') && typeof activeEl.selectionStart === 'number') {
+        const start = activeEl.selectionStart
+        const end = activeEl.selectionEnd
+        if (end > start) {
+          const text = activeEl.value.substring(start, end).trim()
+          if (text.length > 1) {
+            lastSelection = text
+            savedInputEl    = activeEl
+            savedInputStart = start
+            savedInputEnd   = end
+            savedRange      = null
+            const rect = activeEl.getBoundingClientRect()
+            showButton(rect)
+            setTimeout(() => btn.click(), 50)
+            sendResponse({ ok: true })
+            return true
+          }
+        }
+      }
+
+      // Case 2: DOM / contenteditable selection
+      const sel = window.getSelection()
+      const text = sel ? sel.toString().trim() : ''
+      if (text.length > 1) {
+        lastSelection = text
+        savedInputEl = null
+        try { savedRange = sel.getRangeAt(0).cloneRange() } catch { savedRange = null }
+        const rect = savedRange ? savedRange.getBoundingClientRect() : { top: 100, bottom: 120, left: window.innerWidth / 2, width: 0 }
+        showButton(rect)
+        setTimeout(() => btn.click(), 50)
+      } else if (btn.style.display !== 'none') {
+        // Floating button already visible from a prior selection — just trigger it
+        btn.click()
+      }
+
+      sendResponse({ ok: true })
+      return true
+    }
   })
 
   // Inject spin keyframe
