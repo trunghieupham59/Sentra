@@ -49,19 +49,18 @@
   tooltip.innerHTML = `
     <div class="tre-tooltip-header">
       <img class="tre-tooltip-logo" alt="Viezan" />
-      <span class="tre-tooltip-label">Viezan</span>
-      <span class="tre-ai-info"></span>
-      <span class="tre-style-label">Style</span>
-      <select class="tre-style-select" title="Translation style">
-        <option value="friendly">Friendly</option>
-        <option value="neutral">Neutral</option>
-        <option value="professional">Professional</option>
-        <option value="business">Business</option>
-        <option value="slack">Slack</option>
-        <option value="polite">Polite</option>
-        <option value="technical">Technical</option>
-      </select>
-      <span class="tre-lang-label">Lang</span>
+      <span class="tre-tooltip-label">VIEZAN</span>
+      <span class="tre-status-badge">
+        <span class="tre-status-dot tre-status-loading"></span>
+        <span class="tre-status-text">Connecting…</span>
+      </span>
+      <div class="tre-header-spacer"></div>
+      <button class="tre-close-btn" title="Close">✕</button>
+    </div>
+    <div class="tre-controls-row">
+      <span class="tre-ctrl-item tre-ctrl-provider">—</span>
+      <span class="tre-ctrl-item tre-ctrl-model">—</span>
+      <div class="tre-ctrl-divider"></div>
       <select class="tre-lang-select" title="Target language">
         <option value="en">🇺🇸 English</option>
         <option value="vi">🇻🇳 Vietnamese</option>
@@ -74,7 +73,15 @@
         <option value="th">🇹🇭 Thai</option>
         <option value="ru">🇷🇺 Russian</option>
       </select>
-      <button class="tre-close-btn" title="Close">✕</button>
+      <select class="tre-style-select" title="Translation style">
+        <option value="friendly">Friendly</option>
+        <option value="neutral">Neutral</option>
+        <option value="professional">Professional</option>
+        <option value="business">Business</option>
+        <option value="slack">Slack</option>
+        <option value="polite">Polite</option>
+        <option value="technical">Technical</option>
+      </select>
     </div>
     <div class="tre-tooltip-body">
       <div class="tre-panel tre-source-panel">
@@ -182,24 +189,38 @@
     },
   }
 
-  /** Populate the AI info badges in the tooltip header */
+  /** Populate the provider/model badges and status in the controls row */
   async function updateAiInfo (token) {
-    const infoEl = tooltip.querySelector('.tre-ai-info')
-    if (!infoEl) return
+    const providerEl  = tooltip.querySelector('.tre-ctrl-provider')
+    const modelEl     = tooltip.querySelector('.tre-ctrl-model')
+    const statusDot   = tooltip.querySelector('.tre-status-dot')
+    const statusText  = tooltip.querySelector('.tre-status-text')
+    if (!providerEl || !modelEl) return
     try {
       const config = await getAppConfig(token)
       const meta = PROVIDER_META[config.provider]
+
+      // Update status → Active
+      if (statusDot)  { statusDot.className = 'tre-status-dot tre-status-active' }
+      if (statusText) { statusText.textContent = 'Active' }
+
+      // Provider badge
       if (meta) {
-        infoEl.innerHTML =
-          `<span class="tre-ai-pill" style="background:${meta.bg};border:1px solid ${meta.border};color:${meta.color};display:inline-flex;align-items:center;gap:3px;">${meta.svg}${meta.name}</span>` +
-          `<span class="tre-ai-pill tre-ai-pill-model">${config.model || '—'}</span>`
+        providerEl.innerHTML = `${meta.svg}${meta.name}`
+        providerEl.style.cssText = `background:${meta.bg};border-color:${meta.border};color:${meta.color}`
       } else {
-        infoEl.innerHTML =
-          `<span class="tre-ai-pill">${config.provider}</span>` +
-          `<span class="tre-ai-pill tre-ai-pill-model">${config.model || '—'}</span>`
+        providerEl.textContent = config.provider || '—'
+        providerEl.style.cssText = ''
       }
+
+      // Model badge
+      modelEl.textContent = config.model || '—'
+      modelEl.style.cssText = ''
     } catch {
-      infoEl.innerHTML = ''
+      if (statusDot)  { statusDot.className = 'tre-status-dot tre-status-error' }
+      if (statusText) { statusText.textContent = 'Offline' }
+      if (providerEl) { providerEl.textContent = '—' }
+      if (modelEl)    { modelEl.textContent = '—' }
     }
   }
 

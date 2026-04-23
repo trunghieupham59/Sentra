@@ -61,13 +61,15 @@
   overflow: hidden;
 }
 
-/* ── Header bar ──────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════
+   ROW 1 — Header: Logo + Status + Close
+══════════════════════════════════════ */
 
 #tre-result-tooltip .tre-tooltip-header {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 9px 10px 8px 14px;
+  gap: 8px;
+  padding: 9px 10px 9px 14px;
   background: linear-gradient(135deg, #ede9fe 0%, #e0e7ff 100%);
   border-bottom: 1px solid #ddd6fe;
 }
@@ -88,44 +90,207 @@
   flex-shrink: 0;
 }
 
-/* ── AI provider/model info badges ───────────────────────────────────────── */
+/* Status badge */
+#tre-result-tooltip .tre-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid #c4b5fd;
+  border-radius: 20px;
+  padding: 2px 9px;
+  flex-shrink: 0;
+}
 
-#tre-result-tooltip .tre-ai-info {
+#tre-result-tooltip .tre-status-text {
+  font-size: 10px;
+  font-weight: 600;
+  color: #5b21b6;
+}
+
+#tre-result-tooltip .tre-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+#tre-result-tooltip .tre-status-loading {
+  background: #fbbf24;
+  animation: tre-pulse 1s ease-in-out infinite;
+}
+
+#tre-result-tooltip .tre-status-active {
+  background: #4ade80;
+  box-shadow: 0 0 5px rgba(74, 222, 128, 0.7);
+}
+
+#tre-result-tooltip .tre-status-error {
+  background: #f87171;
+  box-shadow: none;
+}
+
+@keyframes tre-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+#tre-result-tooltip .tre-header-spacer {
+  flex: 1;
+}
+
+/* Close (✕) button */
+#tre-result-tooltip .tre-close-btn {
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #7c3aed;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
   flex-shrink: 0;
-  overflow: hidden;
+  transition: background 0.13s, color 0.13s;
 }
 
-#tre-result-tooltip .tre-ai-pill {
-  background: #5b21b6;
-  color: #fff;
-  padding: 1px 7px;
+#tre-result-tooltip .tre-close-btn:hover {
+  background: rgba(124, 58, 237, 0.15);
+  color: #4c1d95;
+}
+
+/* ══════════════════════════════════════
+   ROW 2 — Controls: Provider | Model | Lang | Style
+══════════════════════════════════════ */
+
+#tre-result-tooltip .tre-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: #f8f7ff;
+  border-bottom: 1px solid #ede9fe;
+  flex-wrap: wrap;
+}
+
+/* Shared control item base */
+#tre-result-tooltip .tre-ctrl-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
   border-radius: 8px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.02em;
   white-space: nowrap;
   flex-shrink: 0;
+  border: 1px solid transparent;
 }
 
-#tre-result-tooltip .tre-ai-pill-model {
-  background: #0d9488;
+/* Provider badge */
+#tre-result-tooltip .tre-ctrl-provider {
+  background: rgba(16, 163, 127, 0.08);
+  border-color: rgba(16, 163, 127, 0.2);
+  color: #10A37F;
+}
+
+/* Model badge */
+#tre-result-tooltip .tre-ctrl-model {
+  background: rgba(79, 70, 229, 0.07);
+  border-color: rgba(79, 70, 229, 0.18);
+  color: #4f46e5;
   font-family: 'SF Mono', 'Menlo', monospace;
+  max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 160px;
 }
 
-/* ── Two-column body ─────────────────────────────────────────────────────── */
+/* Divider between badges and selects */
+#tre-result-tooltip .tre-ctrl-divider {
+  width: 1px;
+  height: 18px;
+  background: #ddd6fe;
+  flex-shrink: 0;
+}
+
+/* Language selector */
+#tre-result-tooltip .tre-lang-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #c4b5fd;
+  border-radius: 6px;
+  color: #5b21b6;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 22px 3px 7px;
+  cursor: pointer;
+  outline: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235b21b6' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 5px center;
+  transition: border-color 0.13s, background-color 0.13s;
+  flex-shrink: 0;
+  max-width: 130px;
+}
+
+#tre-result-tooltip .tre-lang-select:hover {
+  border-color: #7c3aed;
+  background-color: rgba(255, 255, 255, 0.95);
+}
+
+#tre-result-tooltip .tre-lang-select:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+}
+
+/* Style selector */
+#tre-result-tooltip .tre-style-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #c4b5fd;
+  border-radius: 6px;
+  color: #5b21b6;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 22px 3px 7px;
+  cursor: pointer;
+  outline: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235b21b6' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 5px center;
+  transition: border-color 0.13s, background-color 0.13s;
+  flex-shrink: 0;
+  max-width: 110px;
+}
+
+#tre-result-tooltip .tre-style-select:hover {
+  border-color: #7c3aed;
+  background-color: rgba(255, 255, 255, 0.95);
+}
+
+#tre-result-tooltip .tre-style-select:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+}
+
+/* ══════════════════════════════════════
+   ROW 3 — Body: two-column panels
+══════════════════════════════════════ */
 
 #tre-result-tooltip .tre-tooltip-body {
   display: flex;
   flex-direction: row;
   min-height: 64px;
-  max-height: 180px;
+  max-height: 200px;
 }
 
 #tre-result-tooltip .tre-panel {
@@ -186,7 +351,9 @@
   white-space: pre-wrap;
 }
 
-/* ── Action buttons row ──────────────────────────────────────────────────── */
+/* ══════════════════════════════════════
+   ROW 4 — Action buttons
+══════════════════════════════════════ */
 
 #tre-result-tooltip .tre-tooltip-actions {
   display: flex;
@@ -196,7 +363,7 @@
 
 #tre-result-tooltip .tre-action-btn {
   flex: 1;
-  padding: 8px 10px;
+  padding: 9px 10px;
   border: none;
   border-radius: 0;
   font-size: 12px;
@@ -224,119 +391,4 @@
 
 #tre-result-tooltip .tre-replace-btn:hover {
   background: #f0fdf4;
-}
-
-/* ── Style label in header ───────────────────────────────────────────────── */
-
-#tre-result-tooltip .tre-style-label {
-  font-size: 10px;
-  font-weight: 700;
-  color: #7c3aed;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  flex-shrink: 0;
-  margin-left: auto;
-}
-
-/* ── Style selector in header ────────────────────────────────────────────── */
-
-#tre-result-tooltip .tre-style-select {
-  appearance: none;
-  -webkit-appearance: none;
-  background: rgba(255, 255, 255, 0.75);
-  border: 1px solid #c4b5fd;
-  border-radius: 6px;
-  color: #5b21b6;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 20px 2px 6px;
-  cursor: pointer;
-  outline: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235b21b6' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 5px center;
-  transition: border-color 0.13s, background-color 0.13s;
-  flex-shrink: 0;
-  max-width: 110px;
-}
-
-#tre-result-tooltip .tre-style-select:hover {
-  border-color: #7c3aed;
-  background-color: rgba(255, 255, 255, 0.95);
-}
-
-#tre-result-tooltip .tre-style-select:focus {
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
-}
-
-/* ── Language label in header ────────────────────────────────────────────── */
-
-#tre-result-tooltip .tre-lang-label {
-  font-size: 10px;
-  font-weight: 700;
-  color: #7c3aed;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  flex-shrink: 0;
-}
-
-/* ── Language selector in header ─────────────────────────────────────────── */
-
-#tre-result-tooltip .tre-lang-select {
-  appearance: none;
-  -webkit-appearance: none;
-  background: rgba(255, 255, 255, 0.75);
-  border: 1px solid #c4b5fd;
-  border-radius: 6px;
-  color: #5b21b6;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 20px 2px 6px;
-  cursor: pointer;
-  outline: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235b21b6' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 5px center;
-  transition: border-color 0.13s, background-color 0.13s;
-  flex-shrink: 0;
-  max-width: 120px;
-}
-
-#tre-result-tooltip .tre-lang-select:hover {
-  border-color: #7c3aed;
-  background-color: rgba(255, 255, 255, 0.95);
-}
-
-#tre-result-tooltip .tre-lang-select:focus {
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
-}
-
-/* ── Close (✕) button in header ─────────────────────────────────────────── */
-
-#tre-result-tooltip .tre-close-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  margin-left: 4px;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: #7c3aed;
-  font-size: 12px;
-  line-height: 1;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.13s, color 0.13s;
-}
-
-#tre-result-tooltip .tre-close-btn:hover {
-  background: rgba(124, 58, 237, 0.15);
-  color: #4c1d95;
 }
