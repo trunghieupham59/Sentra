@@ -463,8 +463,8 @@ export function ChatPage() {
       )}
 
       {/* Textarea + buttons */}
-      <div className="flex items-end gap-2 px-3 py-3">
-        <div className="flex items-center gap-1 flex-shrink-0 pb-1">
+      <div className="flex items-center gap-2 px-3 py-3">
+        <div className="flex items-center gap-1 flex-shrink-0">
           <VoiceRecorder
             sourceLang="auto"
             onTranscript={handleVoiceTranscript}
@@ -538,7 +538,7 @@ export function ChatPage() {
           onClick={handleSend}
           disabled={(!inputText.trim() && !attachedImage) || isSending || !hasKey}
           title={t.chat_send}
-          className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full mb-0.5
+          className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full
                       transition-all duration-200 cursor-pointer
                       disabled:opacity-40 disabled:cursor-not-allowed
                       ${isSending

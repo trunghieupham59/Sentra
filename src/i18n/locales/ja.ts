@@ -452,6 +452,7 @@ const ja: Translations = {
   live_error_system_audio_unavailable: 'システムオーディオが利用できません — 画面共有ダイアログで「オーディオを共有」を有効にしてから再試行してください。',
   live_error_screen_permission_denied: '画面録画の権限がありません。システム設定 → プライバシーとセキュリティ → 画面録画で有効にしてください。',
   live_error_mic_denied: 'マイクへのアクセスが拒否されました。',
+  live_webspeech_not_supported: 'ブラウザー音声APIはLive Translateでは使用できません — 代わりにWhisperが使用されます。',
 }
 
 export default ja

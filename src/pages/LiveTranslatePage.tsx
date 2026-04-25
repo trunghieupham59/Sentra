@@ -53,7 +53,7 @@ type PostTab = 'summary' | 'actions' | 'decisions'
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function LiveTranslatePage() {
-  const { targetLang, setTargetLang, openSettings } = useAppStore()
+  const { targetLang, setTargetLang, openSettings, sttProvider } = useAppStore()
   const t = useT()
 
   const {
@@ -508,6 +508,7 @@ export function LiveTranslatePage() {
             </Notice>
           )}
 
+
           {/* ── Two panels: Nguyên Bản | Bản Dịch ── */}
           <div className="grid grid-cols-2 gap-4 flex-1 min-h-0">
 
@@ -936,6 +937,29 @@ export function LiveTranslatePage() {
                 {t.live_open_system_settings}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* webSpeech fallback toast — shown when user picked Browser Speech API which isn't
+          supported in Live Translate (uses Whisper instead). Floating near footer, dismissable. */}
+      {sttProvider === 'webSpeech' && (
+        <div className="absolute bottom-16 inset-x-0 flex justify-center px-4 z-40 pointer-events-none">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg
+                          bg-blue-50 dark:bg-blue-950/60
+                          border border-blue-200 dark:border-blue-700/60
+                          text-blue-600 dark:text-blue-300
+                          text-xs font-medium shadow-sm
+                          pointer-events-auto">
+            <InfoCircleIcon className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>{t.live_webspeech_not_supported}</span>
+            <button
+              type="button"
+              onClick={() => openSettings()}
+              className="underline font-semibold ml-0.5 cursor-pointer hover:text-blue-800 dark:hover:text-blue-100 transition-colors"
+            >
+              {t.translate_error_open_settings}
+            </button>
           </div>
         </div>
       )}

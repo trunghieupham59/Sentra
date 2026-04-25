@@ -452,6 +452,7 @@ const en: Translations = {
   live_error_system_audio_unavailable: 'System audio not available — please check "Share audio" in the screen sharing dialog, then try again.',
   live_error_screen_permission_denied: 'Screen Recording permission denied. Enable it in System Settings → Privacy → Screen Recording.',
   live_error_mic_denied: 'Microphone access denied.',
+  live_webspeech_not_supported: 'Browser Speech API is not supported in Live Translate — Whisper will be used instead.',
 }
 
 export default en

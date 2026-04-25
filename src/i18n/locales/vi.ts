@@ -452,6 +452,7 @@ const vi: Translations = {
   live_error_system_audio_unavailable: 'Không có âm thanh hệ thống — vui lòng bật "Share audio" trong hộp thoại chia sẻ màn hình, rồi thử lại.',
   live_error_screen_permission_denied: 'Không có quyền Screen Recording. Bật trong System Settings → Privacy → Screen Recording.',
   live_error_mic_denied: 'Không có quyền truy cập microphone.',
+  live_webspeech_not_supported: 'Browser Speech API không được hỗ trợ trong Live Translate — sẽ dùng Whisper thay thế.',
 }
 
 export default vi

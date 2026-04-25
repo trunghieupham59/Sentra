@@ -70,7 +70,7 @@ export const VERIFY_MAX_TOKENS = 10
 export const VERIFY_MODEL_GEMINI = 'gemini-2.0-flash'
 
 /** Cheapest Claude model suitable for a minimal messages.create call. */
-export const VERIFY_MODEL_CLAUDE = 'claude-3-haiku-20240307'
+export const VERIFY_MODEL_CLAUDE = 'claude-3-5-haiku-20241022'
 
 /** Cheapest OpenAI chat model suitable for a minimal chat.completions.create call. */
 export const VERIFY_MODEL_OPENAI = 'gpt-4o-mini'

@@ -281,6 +281,7 @@ export function VoiceRecorder({
     recognition.onend = () => {
       if (!isRecordingRef.current || recognitionRef.current !== recognition) return
       if (retryCountRef.current >= VOICE_RECORDER_MAX_RETRIES) {
+        // Bug fix: reset refs so the component is in a clean state after giving up
         isRecordingRef.current = false
         recognitionRef.current = null
         setState('error')
@@ -288,9 +289,13 @@ export function VoiceRecorder({
         onRecordingChange?.(false)
         return
       }
+      // Bug fix: do NOT increment retryCountRef here.
+      // retryCountRef is only incremented in onerror for actual network failures.
+      // Natural browser-side timeouts (Chromium stops continuous recognition after
+      // a period of silence) must restart silently without consuming retry budget —
+      // otherwise the component enters error state after ~30 s of silence.
       setTimeout(() => {
         if (!isRecordingRef.current || recognitionRef.current !== recognition) return
-        retryCountRef.current++
         try { recognition.start() } catch {
           isRecordingRef.current = false
           recognitionRef.current = null

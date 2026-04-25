@@ -550,4 +550,7 @@ export interface Translations {
   live_error_system_audio_unavailable: string
   live_error_screen_permission_denied: string
   live_error_mic_denied: string
+  /** Warning shown in Live Translate when the user has selected Browser Speech API
+   *  (webSpeech) which is not supported in this pipeline — Whisper will be used instead. */
+  live_webspeech_not_supported: string
 }
