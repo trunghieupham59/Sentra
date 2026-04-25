@@ -7,74 +7,115 @@
  *   1. Tavily   — Best for LLMs, requires key (app.tavily.com)
  *   2. Brave    — Good quality, requires key (api.search.brave.com)
  *   3. Jina AI  — Free forever, no key needed (default fallback)
- *
- * Layout:
- *   [Jina AI — mặc định miễn phí ✓]
- *
- *   PROVIDER  STATUS  API KEY
- *   Tavily      ✓     [tvly-●●●●] Lưu
- *   Brave             [input...]  Lưu
  */
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useEffect } from 'react'
 import { useAppStore } from '../../store/useAppStore'
-import { CheckIcon, XIcon } from '../ui/icons'
+import { CheckCircleIcon, CheckIcon, SpinnerIcon, TrashIcon } from '../ui/icons'
 
-// ─── Single provider row ──────────────────────────────────────────────────────
+// ─── Provider config ──────────────────────────────────────────────────────────
 
-interface KeyRowProps {
-  label: string
-  /** Provider id for keychain AND for webSearchVerify ('tavily' | 'brave') */
-  keychainId: 'tavily' | 'brave'
+interface WebSearchProviderConfig {
+  id: 'tavily' | 'brave'
+  name: string
+  docsUrl: string
   placeholder: string
+  colors: {
+    border: string
+    bg: string
+    text: string
+  }
+  emoji: string
+}
+
+const WEB_SEARCH_PROVIDERS: WebSearchProviderConfig[] = [
+  {
+    id: 'tavily',
+    name: 'Tavily',
+    docsUrl: 'https://app.tavily.com',
+    placeholder: 'tvly-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+    colors: {
+      border: 'border-indigo-500',
+      bg: 'bg-indigo-50 dark:bg-indigo-900/30',
+      text: 'text-indigo-700 dark:text-indigo-300',
+    },
+    emoji: '🔍',
+  },
+  {
+    id: 'brave',
+    name: 'Brave Search',
+    docsUrl: 'https://api.search.brave.com',
+    placeholder: 'BSA1-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+    colors: {
+      border: 'border-orange-500',
+      bg: 'bg-orange-50 dark:bg-orange-900/30',
+      text: 'text-orange-700 dark:text-orange-300',
+    },
+    emoji: '🦁',
+  },
+]
+
+// ─── Single provider card ─────────────────────────────────────────────────────
+
+type VerifyStatus = 'idle' | 'verifying' | 'saving' | 'valid' | 'invalid'
+
+interface KeyCardProps {
+  provider: WebSearchProviderConfig
   onStatusChange: (exists: boolean) => void
 }
 
-function KeyRow({ label, keychainId, placeholder, onStatusChange }: KeyRowProps) {
+function KeyCard({ provider, onStatusChange }: KeyCardProps) {
   const [masked, setMasked] = useState<string | null>(null)
   const [exists, setExists] = useState(false)
-  const [editing, setEditing] = useState(false)
-  const [input, setInput] = useState('')
-  /** 'idle' | 'verifying' | 'saving' */
-  const [status, setStatus] = useState<'idle' | 'verifying' | 'saving'>('idle')
-  const [verifyError, setVerifyError] = useState<string | null>(null)
+  const [inputValue, setInputValue] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [verifyStatus, setVerifyStatus] = useState<VerifyStatus>('idle')
+  const [verifyMessage, setVerifyMessage] = useState('')
+
+  const { colors } = provider
+  const isVerifying = verifyStatus === 'verifying' || verifyStatus === 'saving'
+  const isSuccess = verifyStatus === 'valid'
+  const isError = verifyStatus === 'invalid'
+
+  // Show masked dots in the input when a key is saved and the user hasn't started typing
+  const showMasked = exists && inputValue === ''
 
   useEffect(() => {
     if (!window.api) return
-    window.api.keychain.get(keychainId).then((res) => {
+    window.api.keychain.get(provider.id).then((res) => {
       const e = res.exists ?? false
       setExists(e)
       setMasked(res.masked ?? null)
       onStatusChange(e)
     }).catch(() => {})
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [keychainId])
+  }, [provider.id])
 
-  const handleSave = async () => {
-    const key = input.trim()
+  const handleVerify = async () => {
+    const key = inputValue.trim()
     if (!key || !window.api) return
-    setVerifyError(null)
+    setVerifyMessage('')
 
-    // Step 1 — Verify the key is actually valid (only if the IPC handler is available)
+    // Step 1 — Verify the key
     if (typeof window.api.webSearchVerify === 'function') {
-      setStatus('verifying')
+      setVerifyStatus('verifying')
       try {
-        const verifyResult = await window.api.webSearchVerify({ provider: keychainId, apiKey: key })
+        const verifyResult = await window.api.webSearchVerify({ provider: provider.id, apiKey: key })
         if (!verifyResult.valid) {
-          setVerifyError(verifyResult.error ?? 'API key không hợp lệ')
-          setStatus('idle')
+          setVerifyStatus('invalid')
+          setVerifyMessage(verifyResult.error ?? 'API key không hợp lệ')
           return
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
-        // Skip verification if the IPC handler isn't registered yet (app not fully rebuilt)
         const isIpcMissing =
           msg.includes('not a function') ||
           msg.includes('No handler registered') ||
           msg.includes('undefined') ||
           msg.includes('ERR_IPC')
         if (!isIpcMissing) {
-          setVerifyError(msg || 'Không thể xác minh key')
-          setStatus('idle')
+          setVerifyStatus('invalid')
+          setVerifyMessage(msg || 'Không thể xác minh key')
           return
         }
         // IPC not available → fall through to save directly
@@ -82,139 +123,195 @@ function KeyRow({ label, keychainId, placeholder, onStatusChange }: KeyRowProps)
     }
 
     // Step 2 — Save to secure keychain
-    setStatus('saving')
+    setVerifyStatus('saving')
     try {
-      await window.api.keychain.save(keychainId, key)
-      const updated = await window.api.keychain.get(keychainId)
+      await window.api.keychain.save(provider.id, key)
+      const updated = await window.api.keychain.get(provider.id)
       const e = updated.exists ?? false
       setExists(e)
       setMasked(updated.masked ?? null)
       onStatusChange(e)
-      setInput('')
-      setEditing(false)
-    } catch { /* ignore */ } finally {
-      setStatus('idle')
+      setVerifyStatus('valid')
+      setVerifyMessage('API key đã được xác minh và lưu thành công!')
+      setInputValue('')
+      setTimeout(() => setVerifyStatus('idle'), 5000)
+    } catch (err) {
+      setVerifyStatus('invalid')
+      setVerifyMessage(err instanceof Error ? err.message : 'Không thể lưu key')
     }
   }
 
   const handleDelete = async () => {
-    if (!window.api) return
-    await window.api.keychain.delete(keychainId).catch(() => {})
-    setExists(false)
-    setMasked(null)
-    onStatusChange(false)
-    setInput('')
-    setEditing(false)
-    setVerifyError(null)
+    if (!confirm(`Xóa API key cho ${provider.name}?`)) return
+    setIsDeleting(true)
+    setVerifyStatus('idle')
+    setVerifyMessage('')
+    setInputValue('')
+    try {
+      await window.api.keychain.delete(provider.id)
+      setExists(false)
+      setMasked(null)
+      onStatusChange(false)
+    } catch { /* ignore */ } finally {
+      setIsDeleting(false)
+    }
   }
 
-  const inViewMode = exists && !editing
-  const isBusy = status !== 'idle'
-
-  const saveLabel =
-    status === 'verifying' ? 'Đang kiểm tra…'
-    : status === 'saving'   ? 'Đang lưu…'
-    : 'Lưu'
+  // Status badge
+  const badge = () => {
+    if (isError) {
+      return (
+        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
+          <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
+          </span>
+          Key không hợp lệ
+        </span>
+      )
+    }
+    if (isSuccess || exists) {
+      return (
+        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">
+          <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
+            <span className={[
+              'absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75',
+              isSuccess ? 'animate-ping' : 'animate-pulse',
+            ].join(' ')} />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+          </span>
+          Đã lưu
+        </span>
+      )
+    }
+    return (
+      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+        <span className="w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
+        Chưa có key
+      </span>
+    )
+  }
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="grid grid-cols-[80px_32px_1fr_auto] items-center gap-x-2">
-        {/* PROVIDER */}
-        <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
-          {label}
-        </span>
-
-        {/* STATUS */}
-        <div className="flex items-center justify-center">
-          {exists && !editing && (
-            <CheckIcon className="w-3.5 h-3.5 text-emerald-500" />
-          )}
+    <div className={`card p-4 space-y-3 border-l-4 ${colors.border}`}>
+      {/* Provider header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors.bg} flex-shrink-0 text-xl`}>
+            {provider.emoji}
+          </div>
+          <div>
+            <h3 className={`font-semibold ${colors.text}`}>{provider.name}</h3>
+            <button
+              type="button"
+              onClick={() => window.api?.openExternal(provider.docsUrl)}
+              className="text-xs text-blue-500 hover:text-blue-700 hover:underline"
+            >
+              Lấy API key →
+            </button>
+          </div>
         </div>
-
-        {/* API KEY field */}
-        <div className={`flex items-center px-2.5 py-1.5 rounded-lg min-w-0 border
-                         ${verifyError
-                           ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/20'
-                           : inViewMode
-                             ? 'border-gray-100 dark:border-gray-800 bg-transparent'
-                             : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60'}`}>
-          {inViewMode ? (
-            <span className="flex-1 text-xs font-mono text-gray-400 dark:text-gray-500 truncate">
-              {masked ?? '••••••••'}
-            </span>
-          ) : (
-            <input
-              type="password"
-              value={input}
-              onChange={(e) => { setInput(e.target.value); setVerifyError(null) }}
-              onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-              placeholder={placeholder}
-              disabled={isBusy}
-              className="flex-1 text-xs bg-transparent outline-none min-w-0
-                         text-gray-700 dark:text-gray-200
-                         placeholder-gray-400 dark:placeholder-gray-600
-                         disabled:opacity-60"
-            />
-          )}
-        </div>
-
-        {/* ACTIONS */}
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {inViewMode ? (
-            <>
-              <button
-                type="button"
-                onClick={() => { setEditing(true); setVerifyError(null) }}
-                className="text-[11px] text-gray-400 hover:text-gray-700 dark:hover:text-gray-200
-                           cursor-pointer transition-colors px-1.5 py-1 rounded
-                           hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                Thay đổi
-              </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                title="Xóa key"
-                className="text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400
-                           cursor-pointer transition-colors p-1 rounded"
-              >
-                <XIcon className="w-3 h-3" />
-              </button>
-            </>
-          ) : (
-            <>
-              {editing && (
-                <button
-                  type="button"
-                  onClick={() => { setEditing(false); setInput(''); setVerifyError(null) }}
-                  className="text-gray-400 hover:text-gray-600 cursor-pointer p-1 rounded
-                             hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                >
-                  <XIcon className="w-3 h-3" />
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={!input.trim() || isBusy}
-                className="px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap
-                           bg-indigo-500 hover:bg-indigo-600 text-white
-                           disabled:opacity-50 disabled:cursor-not-allowed
-                           cursor-pointer transition-colors"
-              >
-                {saveLabel}
-              </button>
-            </>
-          )}
-        </div>
+        {badge()}
       </div>
 
-      {/* Verification error */}
-      {verifyError && (
-        <div className="col-span-full ml-[112px] text-[11px] text-red-500 dark:text-red-400">
-          {verifyError}
+      {/* Input row */}
+      <div className="flex gap-2">
+        <div className="flex-1 relative">
+          <input
+            type="password"
+            value={showMasked ? (masked ?? '••••••••••••••••••••••••••••••••') : inputValue}
+            readOnly={showMasked}
+            onChange={showMasked ? undefined : (e) => {
+              setInputValue(e.target.value)
+              if (verifyStatus !== 'idle') setVerifyStatus('idle')
+            }}
+            onClick={showMasked ? () => setInputValue('') : undefined}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !showMasked) handleVerify() }}
+            placeholder={exists ? 'Nhập key mới để thay thế…' : provider.placeholder}
+            className={[
+              'w-full px-3 py-2 border rounded-lg text-sm font-mono',
+              'focus:outline-none focus:ring-2 focus:ring-blue-500',
+              'text-gray-800 dark:text-gray-200 placeholder-gray-400 transition-colors',
+              showMasked
+                ? 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 text-gray-400 cursor-pointer pr-9'
+                : isSuccess
+                  ? 'bg-white dark:bg-gray-700 border-green-400 dark:border-green-600'
+                  : isError
+                    ? 'bg-white dark:bg-gray-700 border-red-400 dark:border-red-600'
+                    : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600',
+            ].join(' ')}
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+          {/* Delete icon — shown inside input when key exists and not editing */}
+          {showMasked && exists && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              title="Xóa key"
+              className="absolute right-2 inset-y-0 flex items-center text-gray-300 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
+            >
+              {isDeleting ? (
+                <SpinnerIcon className="w-4 h-4 animate-spin" />
+              ) : (
+                <TrashIcon className="w-4 h-4" />
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* Verify & Save button — only shown when user is typing */}
+        {!showMasked && (
+          <button
+            type="button"
+            onClick={handleVerify}
+            disabled={!inputValue.trim() || isVerifying}
+            className={[
+              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+              'whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed',
+              isSuccess
+                ? 'bg-green-600 text-white hover:bg-green-700'
+                : isError
+                  ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300'
+                  : 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800',
+            ].join(' ')}
+          >
+            {isVerifying ? (
+              <>
+                <SpinnerIcon className="w-4 h-4 animate-spin" />
+                {verifyStatus === 'verifying' ? 'Đang kiểm tra…' : 'Đang lưu…'}
+              </>
+            ) : isSuccess ? (
+              <>
+                <CheckIcon className="w-4 h-4" />
+                Đã xác minh
+              </>
+            ) : isError ? (
+              'Thử lại'
+            ) : (
+              <>
+                <CheckCircleIcon className="w-4 h-4" />
+                Xác minh & Lưu
+              </>
+            )}
+          </button>
+        )}
+      </div>
+
+      {/* Result message */}
+      {verifyMessage && (
+        <div className={[
+          'px-3 py-2 rounded-lg text-xs font-medium',
+          isSuccess
+            ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300 border border-green-200 dark:border-green-800'
+            : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300 border border-red-200 dark:border-red-800',
+        ].join(' ')}>
+          {verifyMessage}
         </div>
       )}
+
     </div>
   )
 }
@@ -224,9 +321,13 @@ function KeyRow({ label, keychainId, placeholder, onStatusChange }: KeyRowProps)
 export function DeepResearchApiSection() {
   const { setHasTavilyKey, setHasBraveKey } = useAppStore()
 
+  const statusHandlers: Record<'tavily' | 'brave', (exists: boolean) => void> = {
+    tavily: setHasTavilyKey,
+    brave: setHasBraveKey,
+  }
+
   return (
     <div className="flex flex-col gap-3">
-
       {/* Jina AI free badge */}
       <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg
                       bg-emerald-50 dark:bg-emerald-950/20
@@ -237,38 +338,14 @@ export function DeepResearchApiSection() {
         </span>
       </div>
 
-      {/* Table */}
-      <div className="flex flex-col gap-2">
-        {/* Column headers */}
-        <div className="grid grid-cols-[80px_32px_1fr_auto] gap-x-2 px-0.5">
-          <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-            Provider
-          </span>
-          <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest text-center">
-            ✓
-          </span>
-          <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-            API Key
-          </span>
-          <span />
-        </div>
-
-        {/* Tavily */}
-        <KeyRow
-          label="Tavily"
-          keychainId="tavily"
-          placeholder="tvly-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-          onStatusChange={setHasTavilyKey}
+      {/* Provider cards */}
+      {WEB_SEARCH_PROVIDERS.map((provider) => (
+        <KeyCard
+          key={provider.id}
+          provider={provider}
+          onStatusChange={statusHandlers[provider.id]}
         />
-
-        {/* Brave Search */}
-        <KeyRow
-          label="Brave Search"
-          keychainId="brave"
-          placeholder="BSA1-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-          onStatusChange={setHasBraveKey}
-        />
-      </div>
+      ))}
 
       {/* Hint */}
       <p className="text-[10px] text-gray-400 dark:text-gray-600 leading-relaxed">
