@@ -24,8 +24,8 @@ export const PROVIDERS: ProviderConfig[] = [
     docsUrl: 'https://console.anthropic.com',
     models: [
       // ★ When adding a new Claude model, mark the fastest/best translation model as tag:'recommended'
-      { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', description: 'Fastest & efficient', tag: 'recommended' },
-      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', description: 'Balanced performance', tag: 'balanced' },
+      { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5', description: 'Fastest & efficient', tag: 'recommended' },
+      { id: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5', description: 'Balanced performance', tag: 'balanced' },
       { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet', description: 'Most powerful', tag: 'powerful' },
     ],
   },

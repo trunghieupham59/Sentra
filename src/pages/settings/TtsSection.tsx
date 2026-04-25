@@ -64,19 +64,6 @@ export function TtsSection() {
     <section className="space-y-3">
       <h2 className="section-label">{t.settings_tts_section}</h2>
 
-      {/* TTS priority info */}
-      <div className="px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900">
-        <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-0.5">
-          {t.settings_tts_section} — {t.settings_tts_priority_label}
-        </p>
-        <p className="text-xs text-blue-600 dark:text-blue-400 font-mono tracking-wide">
-          {t.settings_tts_priority_desc}
-        </p>
-        <p className="text-[10px] text-blue-500 dark:text-blue-500 mt-1">
-          {t.settings_tts_edge_free_note}
-        </p>
-      </div>
-
       <div className="card divide-y divide-gray-100 dark:divide-gray-700">
 
         {/* Voice selector — applies when OpenAI is the active provider */}

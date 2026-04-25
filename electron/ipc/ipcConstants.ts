@@ -70,7 +70,7 @@ export const VERIFY_MAX_TOKENS = 10
 export const VERIFY_MODEL_GEMINI = 'gemini-2.0-flash'
 
 /** Cheapest Claude model suitable for a minimal messages.create call. */
-export const VERIFY_MODEL_CLAUDE = 'claude-3-5-haiku-20241022'
+export const VERIFY_MODEL_CLAUDE = 'claude-haiku-4-5'
 
 /** Cheapest OpenAI chat model suitable for a minimal chat.completions.create call. */
 export const VERIFY_MODEL_OPENAI = 'gpt-4o-mini'
@@ -183,6 +183,30 @@ export const WHISPER_MODEL = 'whisper-1'
  */
 export const GEMINI_STT_MODEL = 'gemini-2.0-flash'
 
+// ── Groq STT (Whisper-compatible free fallback) ───────────────────────────────
+/**
+ * Groq API base URL — OpenAI-compatible endpoint.
+ * Groq uses the same OpenAI SDK format (just override baseURL), so transcribeWithGroq()
+ * is nearly identical to transcribeWithWhisper() with no new SDK needed.
+ * Used as the 3rd fallback in 'auto' mode: Whisper → Gemini → Groq.
+ */
+export const GROQ_API_BASE = 'https://api.groq.com/openai/v1'
+
+/**
+ * Groq Whisper model — whisper-large-v3-turbo runs ~10× faster than OpenAI's whisper-1
+ * with comparable accuracy. Free tier: ~28,800 audio seconds / day, no credit card required.
+ * Register at console.groq.com to get an API key.
+ */
+export const GROQ_STT_MODEL = 'whisper-large-v3-turbo'
+
+// ── STT rate-limit ban duration ───────────────────────────────────────────────
+/**
+ * How long (ms) Whisper is marked unavailable after hitting a rate limit.
+ * OpenAI rate limits typically clear within 60 s; adding a 30 s buffer gives
+ * the session enough time to stabilise on Gemini/Groq before retrying Whisper.
+ */
+export const WHISPER_RATE_LIMIT_BAN_MS = 90_000
+
 // ── Lightweight translate default models (used when no model is specified) ────
 /**
  * Default OpenAI model for lightweight translation (global hotkey, bookmarklet).
@@ -191,7 +215,7 @@ export const GEMINI_STT_MODEL = 'gemini-2.0-flash'
 export const EXT_DEFAULT_OPENAI_MODEL = 'gpt-4o-mini'
 
 /** Default Claude model for lightweight translation. */
-export const EXT_DEFAULT_CLAUDE_MODEL = 'claude-3-5-haiku-20241022'
+export const EXT_DEFAULT_CLAUDE_MODEL = 'claude-haiku-4-5'
 
 // ── Edge TTS timeout ──────────────────────────────────────────────────────────
 /**

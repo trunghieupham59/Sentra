@@ -132,7 +132,7 @@ const en: Translations = {
   settings_stt_feature_live: 'AI Interpret (Live)',
   settings_stt_select_provider: 'Select STT Engine',
   settings_stt_auto: 'Auto (Recommended)',
-  settings_stt_auto_desc: 'Try Whisper first — automatically falls back to Gemini STT if OpenAI is unavailable or out of credits.',
+  settings_stt_auto_desc: 'Smart routing: Whisper → Gemini STT → Groq (free). Automatically skips unavailable providers — zero latency penalty.',
   settings_stt_whisper: 'OpenAI Whisper',
   settings_stt_whisper_desc: 'whisper-1 · 99 languages · Highest accuracy · Requires OpenAI key',
   settings_stt_google: 'Gemini STT',
@@ -142,6 +142,9 @@ const en: Translations = {
   settings_stt_webspeech_desc: 'Free · Real-time · No API key needed · Chrome/Electron built-in',
   settings_stt_always_available: 'Always available',
   settings_stt_needs_gemini: 'Needs Gemini key',
+  settings_stt_groq: 'Groq Whisper (Free)',
+  settings_stt_groq_desc: 'whisper-large-v3-turbo · Free · 28,800 sec/day · No credit card · Add key below',
+  settings_stt_needs_groq: 'Needs Groq key',
   settings_tts_section: 'Text-to-Speech (TTS)',
   settings_tts_priority_label: 'Priority',
   settings_tts_el_key_placeholder: 'Paste your ElevenLabs API key…',
@@ -453,6 +456,13 @@ const en: Translations = {
   live_error_screen_permission_denied: 'Screen Recording permission denied. Enable it in System Settings → Privacy → Screen Recording.',
   live_error_mic_denied: 'Microphone access denied.',
   live_webspeech_not_supported: 'Browser Speech API is not supported in Live Translate — Whisper will be used instead.',
+  settings_stt_groq_key: 'Groq API Key (optional)',
+  settings_stt_groq_key_desc: 'Free STT fallback · 28,800 sec/day · No credit card required · Get key at console.groq.com',
+  settings_stt_groq_key_placeholder: 'Paste your Groq API key…',
+  settings_stt_groq_saved: '✓ Groq key saved!',
+  settings_stt_groq_failed: 'Failed to save',
+  live_stt_badge_label: 'STT',
+  live_stt_backend_none: 'No key',
 }
 
 export default en

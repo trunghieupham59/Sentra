@@ -132,7 +132,7 @@ const ja: Translations = {
   settings_stt_feature_live: 'AIライブ通訳',
   settings_stt_select_provider: 'STTエンジンを選択',
   settings_stt_auto: '自動（推奨）',
-  settings_stt_auto_desc: 'まずWhisperを試み — OpenAIが利用不可またはクォータ超過の場合、自動的にGoogle STTにフォールバック。',
+  settings_stt_auto_desc: 'スマートルーティング: Whisper → Gemini STT → Groq（無料）。利用不可のプロバイダーを即座にスキップ — レイテンシーペナルティなし。',
   settings_stt_whisper: 'OpenAI Whisper',
   settings_stt_whisper_desc: 'whisper-1 · 99言語 · 最高精度 · OpenAI keyが必要',
   settings_stt_google: 'Gemini STT',
@@ -142,6 +142,9 @@ const ja: Translations = {
   settings_stt_webspeech_desc: '無料 · リアルタイム · APIキー不要 · Chrome/Electron内蔵',
   settings_stt_always_available: '常に利用可能',
   settings_stt_needs_gemini: 'Gemini keyが必要',
+  settings_stt_groq: 'Groq Whisper（無料）',
+  settings_stt_groq_desc: 'whisper-large-v3-turbo · 無料 · 28,800秒/日 · クレジットカード不要 · 下記でキーを追加',
+  settings_stt_needs_groq: 'Groq keyが必要',
   settings_tts_section: '読み上げ（TTS）',
   settings_tts_priority_label: '優先順位',
   settings_tts_el_key_placeholder: 'ElevenLabs APIキーを貼り付け…',
@@ -453,6 +456,13 @@ const ja: Translations = {
   live_error_screen_permission_denied: '画面録画の権限がありません。システム設定 → プライバシーとセキュリティ → 画面録画で有効にしてください。',
   live_error_mic_denied: 'マイクへのアクセスが拒否されました。',
   live_webspeech_not_supported: 'ブラウザー音声APIはLive Translateでは使用できません — 代わりにWhisperが使用されます。',
+  settings_stt_groq_key: 'Groq APIキー（オプション）',
+  settings_stt_groq_key_desc: '無料STTフォールバック · 28,800秒/日 · クレジットカード不要 · console.groq.comでキーを取得',
+  settings_stt_groq_key_placeholder: 'Groq APIキーを貼り付け…',
+  settings_stt_groq_saved: '✓ Groqキーを保存しました！',
+  settings_stt_groq_failed: '保存に失敗しました',
+  live_stt_badge_label: 'STT',
+  live_stt_backend_none: 'キーなし',
 }
 
 export default ja

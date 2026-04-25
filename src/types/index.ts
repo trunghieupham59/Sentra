@@ -13,13 +13,34 @@ export type PhoneticMode = 'off' | 'standard' | 'phonetic'
 export type TtsVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
 
 /**
- * STT provider preference:
- *  - 'auto'      — try Whisper first, fallback to Google STT, then surface error
+ * STT provider user-facing preference (stored in settings):
+ *  - 'auto'      — smart routing: Whisper → Gemini STT → Groq (free) → surface error
  *  - 'whisper'   — OpenAI Whisper only (highest accuracy, requires OpenAI key)
- *  - 'google'    — Google Cloud STT only (uses Gemini API key, very reliable)
- *  - 'webSpeech' — Browser Web Speech API (free, real-time, no key needed, Chrome-based)
+ *  - 'google'    — Gemini STT only (uses Gemini API key, no extra GCP setup)
+ *  - 'groq'      — Groq Whisper (free, 28,800 sec/day, requires Groq key)
+ *  - 'webSpeech' — Browser Web Speech API (free, real-time, no key needed, Chrome-based;
+ *                  kept for backward compat — not shown in UI; only used in VoiceRecorder
+ *                  for real-time streaming where IPC audio upload is not possible)
  */
-export type SttProvider = 'auto' | 'whisper' | 'google' | 'webSpeech'
+export type SttProvider = 'auto' | 'whisper' | 'google' | 'groq' | 'webSpeech'
+
+/**
+ * Which STT backend actually produced a transcription result.
+ * Groq is only used internally as a 3rd fallback in 'auto' mode — not user-selectable.
+ */
+export type SttBackend = 'whisper' | 'gemini' | 'groq'
+
+/**
+ * Pre-flight STT availability check result.
+ * Returned by `checkSttProviders()` before starting a live session so the
+ * pipeline can skip unavailable providers from the very first audio chunk.
+ */
+export interface SttProviderCheckResult {
+  /** The best available backend (used as default for this session). */
+  primary: SttBackend | 'none'
+  /** All backends that have a configured key, in priority order. */
+  available: SttBackend[]
+}
 
 export interface ProviderConfig {
   id: Provider
@@ -105,6 +126,15 @@ export interface TranscribeResult {
   noSpeechProb?: number
   avgLogprob?: number
   compressionRatio?: number
+  /**
+   * Per-segment text from Whisper verbose_json — each entry is one natural
+   * phrase boundary as detected by the model itself.  When 2+ segments are
+   * present, processChunk iterates them independently for language-agnostic
+   * sentence splitting (no regex heuristics needed).
+   */
+  segmentTexts?: string[]
+  /** Which STT backend actually produced this result (for telemetry / UI badge). */
+  usedProvider?: SttBackend
 }
 
 export interface TtsResult {
@@ -356,6 +386,14 @@ export interface WindowApi {
   }) => Promise<ChatResult>
   checkScreenPermission: () => Promise<string>
   openExternal: (url: string) => Promise<void>
+  /**
+   * Pre-flight STT availability check — call before starting a Live Translate session.
+   * Checks which STT keys are configured (instant, no API call, no decryption) and
+   * pre-warms the session cache so the very first audio chunk goes to the right backend.
+   *
+   * Returns the best available provider and the full ordered list of available backends.
+   */
+  checkSttProviders: () => Promise<SttProviderCheckResult>
   /**
    * Streaming translation — each AI token is pushed directly to the subtitle
    * window in real-time. Returns the full translated text when complete.

@@ -161,6 +161,12 @@ export interface Translations {
   settings_stt_always_available: string
   /** Status badge: needs Gemini API key */
   settings_stt_needs_gemini: string
+  /** Groq Whisper option label */
+  settings_stt_groq: string
+  /** Groq Whisper option description */
+  settings_stt_groq_desc: string
+  /** Status badge: needs Groq key */
+  settings_stt_needs_groq: string
 
   settings_tts_section: string
   /** Short description of TTS provider priority order */
@@ -553,4 +559,22 @@ export interface Translations {
   /** Warning shown in Live Translate when the user has selected Browser Speech API
    *  (webSpeech) which is not supported in this pipeline — Whisper will be used instead. */
   live_webspeech_not_supported: string
+
+  // STT — Groq API key (optional free fallback)
+  /** Label for the Groq API key input in STT Settings */
+  settings_stt_groq_key: string
+  /** Description for the Groq API key input */
+  settings_stt_groq_key_desc: string
+  /** Placeholder text for the Groq API key input */
+  settings_stt_groq_key_placeholder: string
+  /** Success message after saving Groq key */
+  settings_stt_groq_saved: string
+  /** Error label when Groq key save fails */
+  settings_stt_groq_failed: string
+
+  // Live — active STT backend badge
+  /** Label prefix for the active STT backend badge, e.g. "STT:" */
+  live_stt_badge_label: string
+  /** Shown in the badge when no STT key is configured */
+  live_stt_backend_none: string
 }

@@ -132,7 +132,7 @@ const vi: Translations = {
   settings_stt_feature_live: 'AI Phiên Dịch (trực tiếp)',
   settings_stt_select_provider: 'Chọn Engine STT',
   settings_stt_auto: 'Tự động (Khuyến nghị)',
-  settings_stt_auto_desc: 'Thử Whisper trước — tự động chuyển sang Google STT nếu OpenAI không khả dụng hoặc hết quota.',
+  settings_stt_auto_desc: 'Tự động định tuyến: Whisper → Gemini STT → Groq (miễn phí). Bỏ qua tức thì các provider không khả dụng — không tốn thêm thời gian.',
   settings_stt_whisper: 'OpenAI Whisper',
   settings_stt_whisper_desc: 'whisper-1 · 99 ngôn ngữ · Độ chính xác cao nhất · Cần OpenAI key',
   settings_stt_google: 'Gemini STT',
@@ -142,6 +142,9 @@ const vi: Translations = {
   settings_stt_webspeech_desc: 'Miễn phí · Thời gian thực · Không cần API key · Tích hợp Chrome/Electron',
   settings_stt_always_available: 'Luôn sẵn sàng',
   settings_stt_needs_gemini: 'Cần Gemini key',
+  settings_stt_groq: 'Groq Whisper (Miễn phí)',
+  settings_stt_groq_desc: 'whisper-large-v3-turbo · Miễn phí · 28.800 giây/ngày · Không cần thẻ · Thêm key bên dưới',
+  settings_stt_needs_groq: 'Cần Groq key',
   settings_tts_section: 'Đọc to (TTS)',
   settings_tts_priority_label: 'Thứ tự ưu tiên',
   settings_tts_el_key_placeholder: 'Dán API key ElevenLabs vào đây…',
@@ -453,6 +456,13 @@ const vi: Translations = {
   live_error_screen_permission_denied: 'Không có quyền Screen Recording. Bật trong System Settings → Privacy → Screen Recording.',
   live_error_mic_denied: 'Không có quyền truy cập microphone.',
   live_webspeech_not_supported: 'Browser Speech API không được hỗ trợ trong Live Translate — sẽ dùng Whisper thay thế.',
+  settings_stt_groq_key: 'Groq API Key (tuỳ chọn)',
+  settings_stt_groq_key_desc: 'STT miễn phí · 28.800 giây/ngày · Không cần thẻ tín dụng · Lấy key tại console.groq.com',
+  settings_stt_groq_key_placeholder: 'Dán Groq API key vào đây…',
+  settings_stt_groq_saved: '✓ Đã lưu Groq key!',
+  settings_stt_groq_failed: 'Lưu thất bại',
+  live_stt_badge_label: 'STT',
+  live_stt_backend_none: 'Không có key',
 }
 
 export default vi

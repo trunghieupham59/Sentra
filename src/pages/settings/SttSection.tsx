@@ -2,13 +2,15 @@
  * SttSection — Speech-to-Text settings section.
  *
  * Lets users choose between four STT engines:
- *   - Auto (recommended) — Whisper first, Google STT fallback
+ *   - Auto (recommended) — Whisper → Gemini STT → Groq (free) smart routing
  *   - OpenAI Whisper      — highest accuracy, requires OpenAI key
- *   - Google Cloud STT    — uses Gemini API key, very reliable
- *   - Browser Speech API  — free, real-time, no key needed (Chrome/Electron built-in)
+ *   - Gemini STT          — uses Gemini API key, no extra GCP setup
+ *   - Groq Whisper (Free) — whisper-large-v3-turbo, 28,800 sec/day, no credit card
  *
  * The selected provider is persisted in the Zustand store (sttProvider field).
+ * The Groq API key is stored in the OS keychain — add it in the card below the selector.
  */
+import { useEffect, useState } from 'react'
 import { MicrophoneIcon } from '../../components/ui/icons'
 import { useAppStore, useT } from '../../store/useAppStore'
 import type { SttProvider } from '../../types'
@@ -111,13 +113,60 @@ export function SttSection() {
   const hasOpenAIKey = keyStatus.openai
   const hasGeminiKey = keyStatus.gemini
 
+  // ── Groq key state (optional free fallback — not in main keyStatus) ────────
+  const [groqKeyExists,  setGroqKeyExists]  = useState(false)
+  const [groqMasked,     setGroqMasked]     = useState<string | null>(null)
+  const [groqInput,      setGroqInput]      = useState('')
+  const [groqSaveMsg,    setGroqSaveMsg]    = useState<string | null>(null)
+  const [groqSaving,     setGroqSaving]     = useState(false)
+
+  // Load Groq key status on mount
+  useEffect(() => {
+    if (!window.api) return
+    window.api.keychain.get('groq')
+      .then((result) => {
+        setGroqKeyExists(result.exists ?? false)
+        setGroqMasked(result.masked ?? null)
+      })
+      .catch(() => {/* ignore */})
+  }, [])
+
+  const handleSaveGroq = async () => {
+    if (!groqInput.trim()) return
+    setGroqSaving(true)
+    setGroqSaveMsg(null)
+    try {
+      await window.api.keychain.save('groq', groqInput.trim())
+      const updated = await window.api.keychain.get('groq')
+      setGroqKeyExists(updated.exists ?? false)
+      setGroqMasked(updated.masked ?? null)
+      setGroqInput('')
+      setGroqSaveMsg(t.settings_stt_groq_saved)
+      setTimeout(() => setGroqSaveMsg(null), 3000)
+    } catch {
+      setGroqSaveMsg(t.settings_stt_groq_failed)
+    } finally {
+      setGroqSaving(false)
+    }
+  }
+
+  const handleDeleteGroq = async () => {
+    try {
+      await window.api.keychain.delete('groq')
+      setGroqKeyExists(false)
+      setGroqMasked(null)
+      setGroqInput('')
+      setGroqSaveMsg(null)
+    } catch {/* ignore */}
+  }
+
   const providers: Omit<ProviderCardProps, 'selected' | 'onSelect'>[] = [
     {
       id: 'auto',
       label: t.settings_stt_auto,
       description: t.settings_stt_auto_desc,
       statusBadge: (
-        hasOpenAIKey || hasGeminiKey
+        hasOpenAIKey || hasGeminiKey || groqKeyExists
           ? <BadgeReady label={t.settings_stt_ready} />
           : <BadgeWarning label={t.settings_stt_needs_key} />
       ),
@@ -144,10 +193,14 @@ export function SttSection() {
       ),
     },
     {
-      id: 'webSpeech',
-      label: t.settings_stt_webspeech,
-      description: t.settings_stt_webspeech_desc,
-      statusBadge: <BadgeReady label={t.settings_stt_always_available} />,
+      id: 'groq',
+      label: t.settings_stt_groq,
+      description: t.settings_stt_groq_desc,
+      statusBadge: (
+        groqKeyExists
+          ? <BadgeReady label={t.settings_stt_ready} />
+          : <BadgeWarning label={t.settings_stt_needs_groq} />
+      ),
     },
   ]
 
@@ -178,6 +231,78 @@ export function SttSection() {
             onSelect={() => setSttProvider(p.id)}
           />
         ))}
+      </div>
+
+      {/* ── Groq API Key (optional free STT fallback) ─────────────────────────── */}
+      {/* Groq uses the same Whisper model API format (OpenAI-compatible) at no cost.
+          When configured, it becomes the 3rd fallback in 'auto' mode:
+          OpenAI Whisper → Gemini STT → Groq Whisper */}
+      <div className="card px-4 py-3 space-y-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+              {t.settings_stt_groq_key}
+            </p>
+            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 leading-relaxed">
+              {t.settings_stt_groq_key_desc}
+            </p>
+          </div>
+          {groqKeyExists && (
+            <BadgeReady label={t.settings_stt_ready} />
+          )}
+        </div>
+
+        {/* Masked existing key / input row */}
+        <div className="flex items-center gap-2">
+          <input
+            type="password"
+            value={groqInput}
+            onChange={(e) => setGroqInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleSaveGroq() }}
+            placeholder={groqMasked ?? t.settings_stt_groq_key_placeholder}
+            className="flex-1 min-w-0 px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700
+                       bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200
+                       placeholder-gray-300 dark:placeholder-gray-600
+                       focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400
+                       transition-colors duration-150"
+          />
+          <button
+            type="button"
+            disabled={!groqInput.trim() || groqSaving}
+            onClick={handleSaveGroq}
+            className={[
+              'flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150',
+              groqInput.trim() && !groqSaving
+                ? 'bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600',
+            ].join(' ')}
+          >
+            {groqSaving ? '…' : t.settings_verify_save}
+          </button>
+          {groqKeyExists && (
+            <button
+              type="button"
+              onClick={handleDeleteGroq}
+              className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium text-red-500
+                         hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30
+                         transition-colors duration-150 cursor-pointer"
+            >
+              {t.settings_remove}
+            </button>
+          )}
+        </div>
+
+        {/* Save feedback message */}
+        {groqSaveMsg && (
+          <p className={[
+            'text-[11px] font-medium',
+            groqSaveMsg.startsWith('✓')
+              ? 'text-emerald-600 dark:text-emerald-400'
+              : 'text-red-500 dark:text-red-400',
+          ].join(' ')}>
+            {groqSaveMsg}
+          </p>
+        )}
       </div>
 
       {/* Feature tags */}

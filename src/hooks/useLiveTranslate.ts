@@ -18,7 +18,7 @@ import { getSupportedAudioMimeType } from '../constants/audio'
 import { LANG_NAMES_FOR_AI } from '../constants/langNames'
 import { MIN_AUDIO_BLOB_BYTES } from '../constants/ui'
 import { useAppStore, useT } from '../store/useAppStore'
-import type { Provider, SubtitleSettings } from '../types'
+import type { Provider, SttBackend, SubtitleSettings } from '../types'
 import { extractCompleteSentences, isHallucination, jaccardSimilarity, splitSentences } from '../utils/live-translate'
 import { float32ToWav } from '../utils/wav-encoder'
 
@@ -284,6 +284,12 @@ export function useLiveTranslate() {
   const [pipelineError,  setPipelineError]  = useState<string | null>(null)
   /** 'energy' (default) or 'silero' (auto-upgraded when noisy). Exposed for UI indicator. */
   const [vadMode,        setVadMode]        = useState<'energy' | 'silero'>('energy')
+  /**
+   * Active STT backend for this session — set by pre-flight check on mount and
+   * whenever keyStatus changes. Exposed to the UI to show a provider badge so
+   * the user always knows which backend will handle their audio.
+   */
+  const [activeSttProvider, setActiveSttProvider] = useState<SttBackend | 'none'>('none')
 
   // ── Subtitle overlay state ─────────────────────────────────────────────────
   const [showSubtitles,      setShowSubtitles]      = useState(false)
@@ -595,9 +601,9 @@ export function useLiveTranslate() {
     //
     // This replaces the earlier approach of matching Japanese-only morphemes
     // (よ/ね/ます/etc.) which was language-specific and therefore not optimal.
-    const sttExt = stt as { segmentTexts?: string[] }
-    const whisperParts: string[] = (sttExt?.segmentTexts?.length ?? 0) > 1
-      ? (sttExt.segmentTexts ?? []).map((s: string) => s.trim()).filter(Boolean)
+    // segmentTexts is now properly typed in TranscribeResult — no cast needed.
+    const whisperParts: string[] = (stt?.segmentTexts?.length ?? 0) > 1
+      ? (stt?.segmentTexts ?? []).map((s: string) => s.trim()).filter(Boolean)
       : [newText]
 
     // Collect all complete sentences found across the Whisper parts in this chunk
@@ -1710,6 +1716,26 @@ export function useLiveTranslate() {
     }
   }, [handleStart, handleStop, handleClear, handleNewSession, setSelectedProvider, setSelectedModel, selectedProvider, setTargetLang])
 
+  // ── Pre-flight STT provider check ─────────────────────────────────────────
+  // Runs on mount and whenever keyStatus changes (e.g. user adds/removes a key in Settings).
+  // This achieves two goals:
+  //   1. Updates activeSttProvider so the UI badge reflects the current best backend.
+  //   2. Pre-warms the session-level cache in the main process so the VERY FIRST audio
+  //      chunk of a new session goes directly to the best available provider — zero
+  //      wasted attempts on unavailable backends.
+  //
+  // keyStatus is the intentional trigger: it changes only when the user saves or deletes
+  // an API key, which is exactly when we need to re-evaluate the fallback chain.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyStatus is the intentional dependency
+  useEffect(() => {
+    if (!window.api?.checkSttProviders) return  // guard: running in tests / web builds
+    window.api.checkSttProviders()
+      .then((result) => {
+        if (mountedRef.current) setActiveSttProvider(result.primary)
+      })
+      .catch(() => { /* ignore — activeSttProvider stays 'none' */ })
+  }, [keyStatus])
+
   // Cleanup on unmount — stop audio pipeline, mark component as unmounted, close subtitle window.
   // mountedRef.current = false prevents in-flight async callbacks (STT, translation) from
   // calling setState after the component has been removed from the tree.
@@ -1797,5 +1823,7 @@ export function useLiveTranslate() {
     hasAnyKey,
     // Adaptive VAD mode — 'energy' (default) or 'silero' (auto-upgraded when noisy)
     vadMode,
+    // Active STT backend — pre-flight checked on mount, updates when keys change
+    activeSttProvider,
   }
 }
