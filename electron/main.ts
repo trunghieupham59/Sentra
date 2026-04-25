@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { app, BrowserWindow, desktopCapturer, ipcMain, nativeImage, nativeTheme, screen, shell } from 'electron'
 import { registerChatHandlers } from './ipc/chat'
+import { registerWebSearchHandlers } from './ipc/webSearch'
 import { initGlobalHotkey } from './ipc/globalHotkey'
 import { registerImageTranslateHandlers } from './ipc/imageTranslate'
 import { registerKeychainHandlers } from './ipc/keychain'
@@ -184,6 +185,7 @@ app.whenReady().then(() => {
   registerTtsHandlers(ipcMain)
   registerImageTranslateHandlers(ipcMain)
   registerChatHandlers(ipcMain)
+  registerWebSearchHandlers(ipcMain)
 
   // Global hotkey — translate selected text in any OS application
   initGlobalHotkey(ipcMain, () => mainWindow)

@@ -1,9 +1,19 @@
+import { useEffect, useState } from 'react'
 import { AppLogoIcon } from '../../components/AppLogo'
 import { PROVIDERS } from '../../constants/providers'
 import { useT } from '../../store/useAppStore'
 
 export function AboutSection() {
   const t = useT()
+  const [appVersion, setAppVersion] = useState('')
+
+  useEffect(() => {
+    if (window.api?.updater) {
+      window.api.updater.getVersion().then((res: { version: string }) => {
+        if (res?.version) setAppVersion(res.version)
+      })
+    }
+  }, [])
 
   return (
     <section className="space-y-3">
@@ -14,7 +24,9 @@ export function AboutSection() {
             <AppLogoIcon size={44} />
             <div>
               <p className="font-bold text-gray-900 dark:text-gray-50">Viezan</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_about_version}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                {appVersion ? `v${appVersion} · ` : ''}{t.settings_about_version}
+              </p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                 {t.settings_about_platform}: {window.api?.platform || 'web'}
               </p>

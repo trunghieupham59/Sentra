@@ -185,6 +185,12 @@ export interface ChatMessage {
   timestamp: number
   isLoading?: boolean
   error?: string
+  /** Deep Research mode — intermediate step bubble (collapsible, gray) */
+  isResearchStep?: boolean
+  /** Label shown in the research step header, e.g. "🔍 Phân tích câu hỏi" */
+  researchStepLabel?: string
+  /** Deep Research mode — final synthesis bubble (highlighted, indigo) */
+  isResearchFinal?: boolean
 }
 
 export interface ChatSession {
@@ -314,6 +320,24 @@ export interface WindowApi {
    * Returns a cleanup function — call it to unsubscribe.
    */
   onImageModelSwitched: (cb: (data: { model: string; provider: string }) => void) => () => void
+  /** Web search via Tavily → Brave → Jina fallback chain */
+  webSearch: (params: {
+    query: string
+    maxResults?: number
+  }) => Promise<{
+    success: boolean
+    results?: Array<{ title: string; url: string; content: string; score: number }>
+    answer?: string
+    error?: string
+  }>
+  /**
+   * Verify a web search API key by making a real minimal request.
+   * Must be called BEFORE saving to keychain so the user gets immediate feedback.
+   */
+  webSearchVerify: (params: {
+    provider: 'tavily' | 'brave'
+    apiKey: string
+  }) => Promise<{ valid: boolean; error?: string }>
   chat: (params: {
     provider: string
     model: string

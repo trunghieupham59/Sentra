@@ -19,6 +19,7 @@ import { updaterSection } from './preload/updater'
 import { hotkeySection } from './preload/hotkey'
 import { legacyAssistantSection } from './preload/legacyAssistant'
 import { localServerSection } from './preload/localServer'
+import { webSearchSection } from './preload/webSearch'
 
 contextBridge.exposeInMainWorld('api', {
   ...keychainSection,
@@ -31,4 +32,5 @@ contextBridge.exposeInMainWorld('api', {
   ...hotkeySection,
   ...legacyAssistantSection,
   ...localServerSection,
+  ...webSearchSection,
 })

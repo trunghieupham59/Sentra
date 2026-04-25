@@ -159,7 +159,7 @@ const en: Translations = {
   settings_tts_voice_nova: 'Nova — Warm, natural (default)',
   settings_tts_voice_shimmer: 'Shimmer — Soft, gentle',
   settings_about: 'About',
-  settings_about_version: 'Version 1.0.0 · Local AI Translation',
+  settings_about_version: 'Local AI Translation',
   settings_about_platform: 'Platform',
   settings_about_supports: 'Supports',
   settings_about_footer: '🔒 100% local · No server · No telemetry · API keys stay on your device',

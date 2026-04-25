@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ApiKeyInput } from '../../components/ApiKeyInput'
+import { DeepResearchApiSection } from '../../components/chat/DeepResearchApiSection'
 import { LockIcon } from '../../components/ui/icons'
 import { PROVIDERS } from '../../constants/providers'
 import { useAppStore, useT } from '../../store/useAppStore'
@@ -70,7 +71,7 @@ export function ApiKeysSection() {
         </div>
       </div>
 
-      {/* API Keys */}
+      {/* AI Provider API Keys */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="section-label">{t.settings_api_keys}</h2>
@@ -88,6 +89,41 @@ export function ApiKeysSection() {
             onDelete={() => handleDeleteKey(provider.id)}
           />
         ))}
+      </section>
+
+      {/* Deep Research Web Search API Keys */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="section-label">Web Search (Deep Research)</h2>
+        </div>
+
+        {/* Info card */}
+        <div className="flex items-start gap-3 px-4 py-3
+                        bg-indigo-50 dark:bg-indigo-950/20
+                        border border-indigo-100 dark:border-indigo-900/40 rounded-xl">
+          <span className="text-base flex-shrink-0">🌐</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+              Deep Research — Web Search Providers
+            </p>
+            <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-0.5">
+              Mặc định dùng{' '}
+              <button
+                type="button"
+                onClick={() => window.api?.openExternal('https://jina.ai')}
+                className="underline cursor-pointer hover:text-indigo-800 dark:hover:text-indigo-200"
+              >
+                Jina AI
+              </button>
+              {' '}miễn phí. Thêm key Tavily hoặc Brave để nâng chất lượng kết quả tìm kiếm.
+            </p>
+          </div>
+        </div>
+
+        {/* Shared provider table */}
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden px-4 py-3">
+          <DeepResearchApiSection />
+        </div>
       </section>
     </>
   )

@@ -159,7 +159,7 @@ const vi: Translations = {
   settings_tts_voice_nova: 'Nova — Ấm áp, tự nhiên (mặc định)',
   settings_tts_voice_shimmer: 'Shimmer — Nhẹ nhàng, mềm mại',
   settings_about: 'Thông tin',
-  settings_about_version: 'Phiên bản 1.0.0 · Dịch thuật AI cục bộ',
+  settings_about_version: 'Dịch thuật AI cục bộ',
   settings_about_platform: 'Nền tảng',
   settings_about_supports: 'Hỗ trợ',
   settings_about_footer: '🔒 100% cục bộ · Không có server · Không theo dõi · API key ở lại thiết bị',

@@ -1,10 +1,25 @@
+import { useEffect, useState } from 'react'
 import type { ChatMessage } from '../../types'
 import { AppLogoIcon } from '../AppLogo'
 import { MarkdownText } from '../MarkdownText'
-import { ClipboardIcon, RefreshIcon, UserIcon } from '../ui/icons'
+import { ClipboardIcon, RefreshIcon, SpinnerIcon, UserIcon } from '../ui/icons'
 
 // HC-11: Named constant for loading dot animation stagger
 const DOT_ANIM_DELAY_STEP_S = 0.15  // s between each loading dot's bounce start
+
+/** Animated "Thinking..." label — dots cycle 1 → 2 → 3 → 1 every 400 ms */
+function ThinkingLabel() {
+  const [dots, setDots] = useState(1)
+  useEffect(() => {
+    const t = setInterval(() => setDots((d) => (d >= 3 ? 1 : d + 1)), 400)
+    return () => clearInterval(t)
+  }, [])
+  return (
+    <span className="text-gray-400 dark:text-gray-500 italic select-none">
+      {'Thinking' + '.'.repeat(dots)}
+    </span>
+  )
+}
 
 interface MessageBubbleProps {
   message: ChatMessage
@@ -29,6 +44,120 @@ export function MessageBubble({
   const textContent = message.content.find((c) => c.type === 'text')?.text ?? ''
   const imageContents = message.content.filter((c) => c.type === 'image')
 
+  // Collapse state for research step bubbles (starts collapsed)
+  const [isStepCollapsed, setIsStepCollapsed] = useState(true)
+
+  // ── Research Step bubble (collapsible, gray) ──────────────────────────────
+  if (message.isResearchStep) {
+    return (
+      <div className="flex gap-2 items-start pl-11">
+        <div className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700
+                        bg-white dark:bg-gray-900 overflow-hidden text-xs shadow-sm">
+          {/* Header — always visible, click to expand/collapse */}
+          <button
+            type="button"
+            onClick={() => !message.isLoading && setIsStepCollapsed((v) => !v)}
+            className="w-full flex items-center justify-between px-3 py-2
+                       text-gray-500 dark:text-gray-400
+                       hover:bg-gray-50 dark:hover:bg-gray-800/50
+                       transition-colors duration-150 cursor-pointer"
+          >
+            <span className="font-medium text-left">
+              {message.isLoading ? <ThinkingLabel /> : message.researchStepLabel}
+            </span>
+            {message.isLoading ? (
+              <SpinnerIcon className="w-3 h-3 animate-spin text-gray-400 flex-shrink-0" />
+            ) : (
+              <span
+                className={`text-gray-400 text-base leading-none flex-shrink-0 transition-transform duration-200
+                            ${isStepCollapsed ? '' : 'rotate-90'}`}
+              >
+                ›
+              </span>
+            )}
+          </button>
+
+          {/* Content — hidden when collapsed or loading */}
+          {!isStepCollapsed && !message.isLoading && textContent && (
+            <div className="px-3 py-2.5 border-t border-gray-100 dark:border-gray-800
+                            text-gray-600 dark:text-gray-300 leading-relaxed">
+              <MarkdownText text={textContent} className="text-xs" />
+            </div>
+          )}
+
+          {/* Error state */}
+          {message.error && (
+            <div className="px-3 py-2 border-t border-red-100 dark:border-red-900/30
+                            text-red-500 dark:text-red-400 text-xs">
+              {message.error}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Research Final bubble (highlighted, indigo) ───────────────────────────
+  if (message.isResearchFinal) {
+    return (
+      <div className="flex gap-3 items-start">
+        {/* Avatar */}
+        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center overflow-hidden
+                        bg-white dark:bg-gray-800
+                        border border-indigo-200 dark:border-indigo-700">
+          <AppLogoIcon size={28} />
+        </div>
+
+        <div className="flex-1 flex flex-col gap-1.5">
+          {message.isLoading ? (
+            <div className="rounded-2xl border-2 border-indigo-200 dark:border-indigo-700
+                            bg-indigo-50/30 dark:bg-indigo-950/20 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <SpinnerIcon className="w-4 h-4 animate-spin text-indigo-400" />
+                <span className="text-xs text-indigo-500 dark:text-indigo-400">Đang tổng hợp kết quả...</span>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border-2 border-indigo-200 dark:border-indigo-700
+                            bg-white dark:bg-gray-900 overflow-hidden shadow-sm">
+              {/* Badge header */}
+              <div className="flex items-center gap-2 px-4 py-2.5
+                              border-b border-indigo-100 dark:border-indigo-900/50
+                              bg-indigo-50/60 dark:bg-indigo-950/20">
+                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest select-none">
+                  💡 Deep Research
+                </span>
+              </div>
+              {/* Content */}
+              <div className="px-4 py-3 select-text cursor-text">
+                <MarkdownText text={textContent} />
+              </div>
+            </div>
+          )}
+
+          {/* Timestamp + copy */}
+          {!message.isLoading && textContent && (
+            <div className="flex items-center gap-2 px-1">
+              <span className="text-[10px] text-gray-400 dark:text-gray-600">
+                {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+              <button
+                type="button"
+                onClick={() => onCopy(textContent)}
+                title={copyLabel ?? 'Copy'}
+                className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-700 dark:hover:text-gray-200
+                           transition-colors duration-150 cursor-pointer"
+              >
+                <ClipboardIcon />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Normal bubble ─────────────────────────────────────────────────────────
   return (
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'} items-end`}>
       {/* Avatar */}
@@ -115,7 +244,6 @@ export function MessageBubble({
                          disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer"
             >
               <RefreshIcon />
-              {regenerateLabel}
             </button>
           )}
         </div>

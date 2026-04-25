@@ -60,11 +60,18 @@ export interface SettingsSlice {
   setFontSize: (size: 'small' | 'medium' | 'large') => void
   setSttProvider: (provider: SttProvider) => void
 
+  /** Whether a Tavily API key is stored (used for Deep Research web search) */
+  hasTavilyKey: boolean
+  /** Whether a Brave Search API key is stored (Deep Research fallback) */
+  hasBraveKey: boolean
+
   // Actions — provider state
   setKeyStatus: (provider: Provider, hasKey: boolean) => void
   setDynamicModels: (provider: Provider, models: FetchedModel[]) => void
   setModelsLoading: (provider: Provider, loading: boolean) => void
   setModelsError: (provider: Provider, error: string | null) => void
+  setHasTavilyKey: (v: boolean) => void
+  setHasBraveKey: (v: boolean) => void
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: StateCreator full-state generic omitted to avoid circular deps — full AppState is assembled in useAppStore.ts
@@ -84,6 +91,8 @@ export const createSettingsSlice: StateCreator<any, [], [], SettingsSlice> = (se
   dynamicModels: Object.fromEntries(PROVIDERS.map((p): [string, FetchedModel[]] => [p.id, []])) as Record<Provider, FetchedModel[]>,
   modelsLoading: Object.fromEntries(PROVIDERS.map((p) => [p.id, false])) as Record<Provider, boolean>,
   modelsError: Object.fromEntries(PROVIDERS.map((p): [string, string | null] => [p.id, null])) as Record<Provider, string | null>,
+  hasTavilyKey: false,
+  hasBraveKey: false,
 
   // Locale — explicit user choice turns off auto-follow
   setLocale: (locale) => set({ locale, localeAuto: false }),
@@ -107,4 +116,6 @@ export const createSettingsSlice: StateCreator<any, [], [], SettingsSlice> = (se
     set((state: SettingsSlice) => ({ modelsLoading: { ...state.modelsLoading, [provider]: loading } })),
   setModelsError: (provider, error) =>
     set((state: SettingsSlice) => ({ modelsError: { ...state.modelsError, [provider]: error } })),
+  setHasTavilyKey: (v) => set({ hasTavilyKey: v }),
+  setHasBraveKey: (v) => set({ hasBraveKey: v }),
 })

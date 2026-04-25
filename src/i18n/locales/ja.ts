@@ -159,7 +159,7 @@ const ja: Translations = {
   settings_tts_voice_nova: 'Nova — 温かみ、自然（デフォルト）',
   settings_tts_voice_shimmer: 'Shimmer — 柔らか、穏やか',
   settings_about: 'アプリについて',
-  settings_about_version: 'バージョン 1.0.0 · ローカルAI翻訳',
+  settings_about_version: 'ローカルAI翻訳',
   settings_about_platform: 'プラットフォーム',
   settings_about_supports: '対応',
   settings_about_footer: '🔒 完全ローカル · サーバーなし · 追跡なし · APIキーはデバイスに留まる',
