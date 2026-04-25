@@ -473,7 +473,6 @@ export function ChatPage() {
             titleStop={t.chat_voice_stop}
             labelTranscribing="…"
             labelRecording="…"
-            useWhisper={keyStatus.openai}
           />
           <button
             type="button"

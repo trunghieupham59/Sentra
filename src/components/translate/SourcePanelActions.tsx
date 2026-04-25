@@ -15,7 +15,6 @@ interface SourcePanelActionsProps {
   sourceText: string
   sourceLang: string
   hasImage: boolean
-  useWhisper: boolean
   // TTS state
   speakingPanel: SpeakPanel | null
   speakLoading: boolean
@@ -46,7 +45,7 @@ interface SourcePanelActionsProps {
 export function SourcePanelActions({
   isVoiceActive, isVoiceInterim: _isVoiceInterim,
   isRewriting, sourceText, sourceLang,
-  hasImage, useWhisper,
+  hasImage,
   speakingPanel, speakLoading,
   onVoiceTranscript, onVoiceRecordingChange, onImageButtonClick,
   onSpeak, onRewrite, onClear,
@@ -67,7 +66,6 @@ export function SourcePanelActions({
         titleStop={labelVoiceStop}
         labelTranscribing={labelVoiceTranscribing}
         labelRecording={labelVoiceRecording}
-        useWhisper={useWhisper}
       />
       <ImageTranslateButton
         onClick={onImageButtonClick}

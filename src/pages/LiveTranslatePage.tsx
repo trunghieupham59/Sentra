@@ -9,6 +9,7 @@ import { SwapIcon } from '../components/ui/icons'
 import {
   AlertTriangleIcon,
   CheckIcon,
+  CopyIcon,
   DownloadIcon,
   GearIcon,
   InfoCircleIcon,
@@ -20,6 +21,7 @@ import {
   SubtitlesIcon,
   TranslateIcon,
   TrashIcon,
+  XIcon,
 } from '../components/ui/icons'
 import { COPY_FEEDBACK_DURATION_MS } from '../constants/ui'
 import { MACOS_SCREEN_RECORDING_PREFS } from '../constants/urls'
@@ -73,8 +75,10 @@ export function LiveTranslatePage() {
   const [copiedRaw,     setCopiedRaw]     = useState(false)
   const [copiedTx,      setCopiedTx]      = useState(false)
   const [copiedSummary, setCopiedSummary] = useState(false)
+  const [copiedAll,     setCopiedAll]     = useState(false)
   const [postTab, setPostTab] = useState<PostTab>('summary')
   const [showScreenPermModal, setShowScreenPermModal] = useState(false)
+  const [showSummaryPopup, setShowSummaryPopup] = useState(false)
 
   /** CẤU HÌNH AI NÂNG CAO popup — contains Model + Nguồn + Phụ Đề + Transcript */
   const [showAIConfig, setShowAIConfig] = useState(false)
@@ -155,9 +159,25 @@ export function LiveTranslatePage() {
     { label: t.live_subtitle_color_pink,   value: '#f472b6' },
   ]
 
-  const showPostPanel = showSummaryBtn || !!summary || isSummarizing
-    || !!actionItems || isExtractingActionItems
-    || !!decisions || isExtractingDecisions
+  // ── Open summary popup and auto-trigger summarize ─────────────────────────
+  const handleOpenSummaryPopup = () => {
+    setShowSummaryPopup(true)
+    setPostTab('summary')
+    if (!isSummarizing && !summary) {
+      handleSummarize()
+    }
+  }
+
+  // ── Copy all transcript + translation ─────────────────────────────────────
+  const handleCopyAll = async () => {
+    const parts: string[] = []
+    if (rawTranscript) parts.push(`=== Nguyên bản ===\n${rawTranscript}`)
+    if (translation)   parts.push(`=== Bản dịch ===\n${translation}`)
+    if (!parts.length) return
+    await navigator.clipboard.writeText(parts.join('\n\n'))
+    setCopiedAll(true)
+    setTimeout(() => setCopiedAll(false), COPY_FEEDBACK_DURATION_MS)
+  }
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -506,47 +526,40 @@ export function LiveTranslatePage() {
 
             {/* Left: Nguyên Bản */}
             <div className="flex flex-col h-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
-              <div className="flex-shrink-0 flex items-center justify-between px-4 pt-2 pb-1">
-                <div className="flex items-center gap-2">
-                  {isActive && (
-                    <span className="flex items-center gap-1.5 select-none">
-                      {isTranscribing ? (
-                        <>
-                          <SpinnerIcon className="w-2.5 h-2.5 animate-spin text-violet-500 flex-shrink-0" />
-                          <span className="text-[10px] font-medium text-violet-500 dark:text-violet-400">Đang nhận diện...</span>
-                        </>
-                      ) : isTranslating ? (
-                        <>
-                          <SpinnerIcon className="w-2.5 h-2.5 animate-spin text-blue-500 flex-shrink-0" />
-                          <span className="text-[10px] font-medium text-blue-500 dark:text-blue-400">Đang dịch...</span>
-                        </>
-                      ) : pendingText ? (
-                        <>
-                          <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500" />
-                          </span>
-                          <span className="text-[10px] font-medium text-amber-500 dark:text-amber-400">Đang thu âm...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
-                          </span>
-                          <span className="text-[10px] font-medium text-green-600 dark:text-green-400">Đang nghe...</span>
-                        </>
-                      )}
-                    </span>
-                  )}
-                  {rawTranscript && (
-                    <button type="button" onClick={() => handleCopy(rawTranscript, setCopiedRaw)}
-                      className={`btn-ghost py-0.5 px-2 text-xs ${copiedRaw ? 'text-green-600' : ''}`}>
-                      {copiedRaw ? t.translate_copied : t.translate_copy}
-                    </button>
-                  )}
+              {/* Status indicator bar (only when active) */}
+              {isActive && (
+                <div className="flex-shrink-0 flex items-center px-4 pt-2 pb-1">
+                  <span className="flex items-center gap-1.5 select-none">
+                    {isTranscribing ? (
+                      <>
+                        <SpinnerIcon className="w-2.5 h-2.5 animate-spin text-violet-500 flex-shrink-0" />
+                        <span className="text-[10px] font-medium text-violet-500 dark:text-violet-400">Đang nhận diện...</span>
+                      </>
+                    ) : isTranslating ? (
+                      <>
+                        <SpinnerIcon className="w-2.5 h-2.5 animate-spin text-blue-500 flex-shrink-0" />
+                        <span className="text-[10px] font-medium text-blue-500 dark:text-blue-400">Đang dịch...</span>
+                      </>
+                    ) : pendingText ? (
+                      <>
+                        <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500" />
+                        </span>
+                        <span className="text-[10px] font-medium text-amber-500 dark:text-amber-400">Đang thu âm...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+                        </span>
+                        <span className="text-[10px] font-medium text-green-600 dark:text-green-400">Đang nghe...</span>
+                      </>
+                    )}
+                  </span>
                 </div>
-              </div>
+              )}
               <div className="flex-1 overflow-y-auto p-4 space-y-1.5">
                 {segments.length > 0 || (isActive && pendingText) ? (
                   <>
@@ -595,18 +608,34 @@ export function LiveTranslatePage() {
                 )}
                 <div ref={rawEndRef} />
               </div>
+
+              {/* Left panel footer — Copy icon + word count */}
+              <div className="flex-shrink-0 flex items-center justify-between px-4 h-12 border-t border-gray-200 dark:border-gray-800">
+                <button
+                  type="button"
+                  disabled={!rawTranscript}
+                  onClick={() => handleCopy(rawTranscript, setCopiedRaw)}
+                  title={t.translate_copy}
+                  className={[
+                    'flex items-center justify-center w-8 h-8 rounded-lg transition-colors duration-150',
+                    rawTranscript
+                      ? 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-800 cursor-pointer'
+                      : 'text-gray-200 dark:text-gray-700 cursor-not-allowed',
+                    copiedRaw ? '!text-green-500 dark:!text-green-400' : '',
+                  ].join(' ')}
+                >
+                  {copiedRaw ? <CheckIcon className="w-4 h-4" /> : <CopyIcon className="w-4 h-4" />}
+                </button>
+                {wordCount > 0 && (
+                  <span className="text-xs text-gray-400 tabular-nums select-none">
+                    {wordCount.toLocaleString()} {t.live_words}
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Right: Bản Dịch */}
             <div className="flex flex-col h-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
-              <div className="flex-shrink-0 flex items-center justify-between px-4 pt-2 pb-1">
-                {translation && (
-                  <button type="button" onClick={() => handleCopy(translation, setCopiedTx)}
-                    className={`btn-ghost py-0.5 px-2 text-xs ${copiedTx ? 'text-green-600' : ''}`}>
-                    {copiedTx ? t.translate_copied : t.translate_copy}
-                  </button>
-                )}
-              </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-1.5">
                 {segments.length > 0 ? (
                   <>
@@ -639,6 +668,38 @@ export function LiveTranslatePage() {
                 )}
                 <div ref={txEndRef} />
               </div>
+
+              {/* Right panel footer — Copy icon + Tổng hợp nội dung button */}
+              <div className="flex-shrink-0 flex items-center justify-between px-4 h-12 border-t border-gray-200 dark:border-gray-800">
+                <button
+                  type="button"
+                  disabled={!translation}
+                  onClick={() => handleCopy(translation, setCopiedTx)}
+                  title={t.translate_copy}
+                  className={[
+                    'flex items-center justify-center w-8 h-8 rounded-lg transition-colors duration-150',
+                    translation
+                      ? 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-800 cursor-pointer'
+                      : 'text-gray-200 dark:text-gray-700 cursor-not-allowed',
+                    copiedTx ? '!text-green-500 dark:!text-green-400' : '',
+                  ].join(' ')}
+                >
+                  {copiedTx ? <CheckIcon className="w-4 h-4" /> : <CopyIcon className="w-4 h-4" />}
+                </button>
+
+                {showSummaryBtn && (
+                  <button
+                    type="button"
+                    onClick={handleOpenSummaryPopup}
+                    className="flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold
+                               bg-purple-500 hover:bg-purple-600 text-white cursor-pointer
+                               transition-all duration-200 shadow-sm select-none"
+                  >
+                    <LightbulbIcon className="w-3.5 h-3.5" />
+                    Tổng hợp nội dung
+                  </button>
+                )}
+              </div>
             </div>
           </div>
           {/* ── End two panels ── */}
@@ -647,25 +708,44 @@ export function LiveTranslatePage() {
       </div>
       {/* ── End main scrollable area ── */}
 
-      {/* ── Post-session AI panels ── */}
-      {showPostPanel && (
-        <div className="flex-shrink-0 border-t-2 border-purple-100 dark:border-purple-900/40
-                        bg-purple-50/50 dark:bg-purple-950/10">
+      {/* ── Summary popup ── */}
+      {showSummaryPopup && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={() => setShowSummaryPopup(false)}
+        >
+          <div
+            className="relative w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden"
+            style={{ maxHeight: '80vh' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Popup header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <LightbulbIcon className="w-4 h-4 text-purple-500" />
+                <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Tổng hợp nội dung</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSummaryPopup(false)}
+                className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-200 dark:hover:bg-gray-800 transition-colors duration-150 cursor-pointer"
+              >
+                <XIcon className="w-4 h-4" />
+              </button>
+            </div>
 
-          <div className="flex items-center gap-2 px-4 py-2.5 flex-wrap">
-            <LightbulbIcon className="w-4 h-4 text-purple-500 flex-shrink-0" />
-
-            <div className="flex items-center gap-0.5 flex-1 min-w-0 overflow-x-auto">
+            {/* Tabs */}
+            <div className="flex items-center gap-1 px-5 pt-3 pb-1 flex-shrink-0">
               {(['summary', 'actions', 'decisions'] as PostTab[]).map(tab => (
                 <button
                   key={tab}
                   type="button"
                   onClick={() => setPostTab(tab)}
                   className={[
-                    'px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-150 cursor-pointer select-none',
+                    'px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-150 cursor-pointer select-none',
                     postTab === tab
                       ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
-                      : 'text-gray-400 hover:text-purple-600 dark:hover:text-purple-400',
+                      : 'text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-gray-50 dark:hover:bg-gray-800/50',
                   ].join(' ')}
                 >
                   {tab === 'summary' ? t.live_post_tab_summary : tab === 'actions' ? t.live_post_tab_actions : t.live_post_tab_decisions}
@@ -673,105 +753,134 @@ export function LiveTranslatePage() {
               ))}
             </div>
 
-            {postTab === 'summary' && summary && !isSummarizing && (
-              <button type="button" onClick={() => handleCopy(summary, setCopiedSummary)}
-                className={`btn-ghost py-0.5 px-2 text-xs ${copiedSummary ? 'text-green-600' : ''}`}>
-                {copiedSummary ? t.translate_copied : t.translate_copy}
-              </button>
-            )}
+            {/* Tab content */}
+            <div className="flex-1 overflow-y-auto px-5 py-3 min-h-0">
+              {/* ── Tóm tắt ── */}
+              {postTab === 'summary' && (
+                isSummarizing ? (
+                  <div className="flex flex-col items-center justify-center gap-3 py-10 text-purple-400 dark:text-purple-600">
+                    <SpinnerIcon className="w-6 h-6 animate-spin" />
+                    <span className="text-sm">{t.live_summarizing}</span>
+                  </div>
+                ) : summary ? (
+                  <MarkdownText text={summary} className="text-gray-800 dark:text-gray-200" />
+                ) : (
+                  <p className="text-sm text-gray-400 dark:text-gray-600 italic py-4 text-center">{t.live_empty_desc}</p>
+                )
+              )}
 
-            {postTab === 'summary' && !isSummarizing && (
-              <button
-                type="button" onClick={handleSummarize}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold
-                           bg-purple-500 hover:bg-purple-600 text-white cursor-pointer
-                           transition-all duration-200 shadow-sm flex-shrink-0"
-              >
-                <LightbulbIcon className="w-3.5 h-3.5" />
-                {summary ? t.live_summarize_again : t.live_summarize}
-              </button>
-            )}
-            {postTab === 'summary' && isSummarizing && (
-              <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-purple-500 dark:text-purple-400">
-                <SpinnerIcon className="w-3.5 h-3.5 animate-spin" />
-                {t.live_summarizing}
-              </span>
-            )}
+              {/* ── Việc cần làm ── */}
+              {postTab === 'actions' && (
+                isExtractingActionItems ? (
+                  <div className="flex flex-col items-center justify-center gap-3 py-10 text-amber-400 dark:text-amber-600">
+                    <SpinnerIcon className="w-6 h-6 animate-spin" />
+                    <span className="text-sm">{t.live_extracting_action_items}</span>
+                  </div>
+                ) : actionItems ? (
+                  <MarkdownText text={actionItems} className="text-gray-800 dark:text-gray-200" />
+                ) : (
+                  <p className="text-sm text-gray-400 dark:text-gray-600 italic py-4 text-center">{t.live_empty_desc}</p>
+                )
+              )}
 
-            {postTab === 'actions' && !isExtractingActionItems && (
-              <button
-                type="button" onClick={handleExtractActionItems}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold
-                           bg-amber-500 hover:bg-amber-600 text-white cursor-pointer
-                           transition-all duration-200 shadow-sm flex-shrink-0"
-              >
-                <CheckIcon className="w-3.5 h-3.5" />
-                {actionItems ? t.live_action_items_extract_again : t.live_action_items_extract}
-              </button>
-            )}
-            {postTab === 'actions' && isExtractingActionItems && (
-              <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-amber-500 dark:text-amber-400">
-                <SpinnerIcon className="w-3.5 h-3.5 animate-spin" />
-                {t.live_extracting_action_items}
-              </span>
-            )}
+              {/* ── Quyết định ── */}
+              {postTab === 'decisions' && (
+                isExtractingDecisions ? (
+                  <div className="flex flex-col items-center justify-center gap-3 py-10 text-green-400 dark:text-green-600">
+                    <SpinnerIcon className="w-6 h-6 animate-spin" />
+                    <span className="text-sm">{t.live_extracting_decisions}</span>
+                  </div>
+                ) : decisions ? (
+                  <MarkdownText text={decisions} className="text-gray-800 dark:text-gray-200" />
+                ) : (
+                  <p className="text-sm text-gray-400 dark:text-gray-600 italic py-4 text-center">{t.live_empty_desc}</p>
+                )
+              )}
+            </div>
 
-            {postTab === 'decisions' && !isExtractingDecisions && (
-              <button
-                type="button" onClick={handleExtractDecisions}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold
-                           bg-green-500 hover:bg-green-600 text-white cursor-pointer
-                           transition-all duration-200 shadow-sm flex-shrink-0"
-              >
-                <CheckIcon className="w-3.5 h-3.5" />
-                {decisions ? t.live_decisions_extract_again : t.live_decisions_extract}
-              </button>
-            )}
-            {postTab === 'decisions' && isExtractingDecisions && (
-              <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-green-500 dark:text-green-400">
-                <SpinnerIcon className="w-3.5 h-3.5 animate-spin" />
-                {t.live_extracting_decisions}
-              </span>
-            )}
-          </div>
+            {/* Popup footer — action buttons */}
+            <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 dark:border-gray-800 flex-shrink-0 gap-2">
+              {/* Copy active tab content */}
+              {postTab === 'summary' && summary && !isSummarizing && (
+                <button
+                  type="button"
+                  onClick={() => handleCopy(summary, setCopiedSummary)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150 cursor-pointer
+                              ${copiedSummary ? 'text-green-600 dark:text-green-400' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-800'}`}
+                >
+                  {copiedSummary ? <CheckIcon className="w-3.5 h-3.5" /> : <CopyIcon className="w-3.5 h-3.5" />}
+                  {copiedSummary ? t.translate_copied : t.translate_copy}
+                </button>
+              )}
+              {postTab === 'actions' && actionItems && !isExtractingActionItems && (
+                <button
+                  type="button"
+                  onClick={() => handleCopy(actionItems, setCopiedSummary)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150 cursor-pointer
+                              ${copiedSummary ? 'text-green-600 dark:text-green-400' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-800'}`}
+                >
+                  {copiedSummary ? <CheckIcon className="w-3.5 h-3.5" /> : <CopyIcon className="w-3.5 h-3.5" />}
+                  {copiedSummary ? t.translate_copied : t.translate_copy}
+                </button>
+              )}
+              {postTab === 'decisions' && decisions && !isExtractingDecisions && (
+                <button
+                  type="button"
+                  onClick={() => handleCopy(decisions, setCopiedSummary)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150 cursor-pointer
+                              ${copiedSummary ? 'text-green-600 dark:text-green-400' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-800'}`}
+                >
+                  {copiedSummary ? <CheckIcon className="w-3.5 h-3.5" /> : <CopyIcon className="w-3.5 h-3.5" />}
+                  {copiedSummary ? t.translate_copied : t.translate_copy}
+                </button>
+              )}
+              {/* Spacer if no copy button */}
+              {((postTab === 'summary' && (!summary || isSummarizing)) ||
+                (postTab === 'actions' && (!actionItems || isExtractingActionItems)) ||
+                (postTab === 'decisions' && (!decisions || isExtractingDecisions))) && (
+                <div />
+              )}
 
-          <div className="px-4 pb-4 max-h-44 overflow-y-auto">
-            {postTab === 'summary' && (
-              isSummarizing ? (
-                <div className="flex items-center gap-2 text-sm text-purple-400 dark:text-purple-600">
-                  <SpinnerIcon className="w-4 h-4 animate-spin" />
-                  {t.live_summarizing}
-                </div>
-              ) : summary ? (
-                <MarkdownText text={summary} className="text-purple-800 dark:text-purple-200" />
-              ) : (
-                <p className="text-xs text-gray-400 dark:text-gray-600 italic">{t.live_empty_desc}</p>
-              )
-            )}
-            {postTab === 'actions' && (
-              isExtractingActionItems ? (
-                <div className="flex items-center gap-2 text-sm text-amber-400 dark:text-amber-600">
-                  <SpinnerIcon className="w-4 h-4 animate-spin" />
-                  {t.live_extracting_action_items}
-                </div>
-              ) : actionItems ? (
-                <MarkdownText text={actionItems} className="text-amber-800 dark:text-amber-200" />
-              ) : (
-                <p className="text-xs text-gray-400 dark:text-gray-600 italic">{t.live_empty_desc}</p>
-              )
-            )}
-            {postTab === 'decisions' && (
-              isExtractingDecisions ? (
-                <div className="flex items-center gap-2 text-sm text-green-400 dark:text-green-600">
-                  <SpinnerIcon className="w-4 h-4 animate-spin" />
-                  {t.live_extracting_decisions}
-                </div>
-              ) : decisions ? (
-                <MarkdownText text={decisions} className="text-green-800 dark:text-green-200" />
-              ) : (
-                <p className="text-xs text-gray-400 dark:text-gray-600 italic">{t.live_empty_desc}</p>
-              )
-            )}
+              {/* Right-side action button per tab */}
+              <div className="flex items-center gap-2 ml-auto">
+                {postTab === 'summary' && !isSummarizing && (
+                  <button
+                    type="button"
+                    onClick={handleSummarize}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold
+                               bg-purple-500 hover:bg-purple-600 text-white cursor-pointer
+                               transition-all duration-200 shadow-sm"
+                  >
+                    <LightbulbIcon className="w-3.5 h-3.5" />
+                    {summary ? t.live_summarize_again : t.live_summarize}
+                  </button>
+                )}
+                {postTab === 'actions' && !isExtractingActionItems && (
+                  <button
+                    type="button"
+                    onClick={handleExtractActionItems}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold
+                               bg-amber-500 hover:bg-amber-600 text-white cursor-pointer
+                               transition-all duration-200 shadow-sm"
+                  >
+                    <CheckIcon className="w-3.5 h-3.5" />
+                    {actionItems ? t.live_action_items_extract_again : t.live_action_items_extract}
+                  </button>
+                )}
+                {postTab === 'decisions' && !isExtractingDecisions && (
+                  <button
+                    type="button"
+                    onClick={handleExtractDecisions}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold
+                               bg-green-500 hover:bg-green-600 text-white cursor-pointer
+                               transition-all duration-200 shadow-sm"
+                  >
+                    <CheckIcon className="w-3.5 h-3.5" />
+                    {decisions ? t.live_decisions_extract_again : t.live_decisions_extract}
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}

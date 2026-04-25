@@ -259,6 +259,7 @@ const ADAPTIVE_VAD_EVAL_WINDOW       = 12    // rolling 12-chunk window
 export function useLiveTranslate() {
   const {
     sourceLang, targetLang, selectedProvider, selectedModels, keyStatus,
+    sttProvider,
     addLiveSession, updateLiveSession,
     viewingLiveSessionId, liveSessions, setViewingLiveSession,
     setSelectedProvider, setSelectedModel, setTargetLang,
@@ -327,10 +328,10 @@ export function useLiveTranslate() {
   const [sessionStartTime, setSessionStartTime] = useState<number>(0)
 
   // Stable ref so audio callbacks always read fresh params
-  const paramsRef = useRef({ sourceLang, targetLang, selectedProvider, selectedModels })
+  const paramsRef = useRef({ sourceLang, targetLang, selectedProvider, selectedModels, sttProvider })
   useEffect(() => {
-    paramsRef.current = { sourceLang, targetLang, selectedProvider, selectedModels }
-  }, [sourceLang, targetLang, selectedProvider, selectedModels])
+    paramsRef.current = { sourceLang, targetLang, selectedProvider, selectedModels, sttProvider }
+  }, [sourceLang, targetLang, selectedProvider, selectedModels, sttProvider])
 
   const pendingBufferRef     = useRef('')
   const pendingChunkCountRef = useRef(0)
@@ -470,7 +471,12 @@ export function useLiveTranslate() {
     // ── Adaptive VAD: count chunk in rolling evaluation window ────────────
     adaptiveChunksRef.current += 1
 
-    const { sourceLang, targetLang, selectedProvider, selectedModels } = paramsRef.current
+    const { sourceLang, targetLang, selectedProvider, selectedModels, sttProvider } = paramsRef.current
+
+    // Live Translate uses MediaRecorder (audio chunks) — it cannot use the
+    // browser's Web Speech API which requires a real-time stream. If the user
+    // chose 'webSpeech', fall back to 'auto' so STT still works here.
+    const effectiveSttProvider = sttProvider === 'webSpeech' ? 'auto' : sttProvider
 
     // ── STT call — keep reference to full result for confidence gate ──────
     setIsTranscribing(true)
@@ -486,6 +492,7 @@ export function useLiveTranslate() {
         // maintaining terminology consistency across chunks and preventing
         // the decoder from drifting to a YouTube-caption style opening.
         previousText: lastChunkTextRef.current || undefined,
+        sttProvider:  effectiveSttProvider,
       })
     } catch {
       setPipelineError('STT failed — retrying next chunk')

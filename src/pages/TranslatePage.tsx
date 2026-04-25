@@ -279,7 +279,6 @@ export function TranslatePage() {
                   sourceText={sourceText}
                   sourceLang={sourceLang}
                   hasImage={!!imageAttachment}
-                  useWhisper={keyStatus.openai}
                   speakingPanel={speakingPanel}
                   speakLoading={speakLoading}
                   onVoiceTranscript={handleVoiceTranscript}

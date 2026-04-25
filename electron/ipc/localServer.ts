@@ -137,6 +137,11 @@ function ttlMs (days: number): number {
   return Math.max(1, Math.min(days, 365)) * 24 * 60 * 60 * 1000
 }
 
+// ── HTTP server helpers ───────────────────────────────────────────────────────
+
+const MAX_LISTEN_RETRIES = 5
+const LISTEN_RETRY_DELAY_MS = 500
+
 // ── HTTP server ───────────────────────────────────────────────────────────────
 
 function sendJSON (res: http.ServerResponse, statusCode: number, data: unknown): void {
@@ -161,10 +166,8 @@ function readBody (req: http.IncomingMessage): Promise<string> {
   })
 }
 
-export function startLocalServer (ipcMain: Electron.IpcMain): void {
-  activeTokens = loadTokens()
-
-  server = http.createServer(async (req, res) => {
+function createHttpServer (): http.Server {
+  return http.createServer(async (req, res) => {
     if (req.method === 'OPTIONS') { sendJSON(res, 200, {}); return }
 
     // Validate token against all active, non-expired tokens
@@ -211,13 +214,45 @@ export function startLocalServer (ipcMain: Electron.IpcMain): void {
     }
     sendJSON(res, 404, { success: false, error: 'Not found' })
   })
+}
+
+/**
+ * Attempt to bind the server to LOCAL_SERVER_PORT.
+ * On EADDRINUSE (port held by a previous instance that hasn't fully released
+ * yet), close the failed socket and retry up to MAX_LISTEN_RETRIES times with
+ * a short exponential back-off.  This covers the common crash / hot-reload
+ * scenario where the OS reclaims the port within a second or two.
+ */
+function listenWithRetry (attempt = 0): void {
+  // Tear down whatever failed server we had
+  if (server) {
+    server.removeAllListeners()
+    server.close()
+  }
+
+  server = createHttpServer()
 
   server.listen(LOCAL_SERVER_PORT, '127.0.0.1', () => {
     console.log(`[LocalServer] Listening on http://127.0.0.1:${LOCAL_SERVER_PORT}`)
   })
-  server.on('error', (err) => {
-    console.error('[LocalServer] Error:', err)
+
+  server.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE' && attempt < MAX_LISTEN_RETRIES) {
+      const delay = LISTEN_RETRY_DELAY_MS * (attempt + 1)
+      console.warn(
+        `[LocalServer] Port ${LOCAL_SERVER_PORT} in use — retry ${attempt + 1}/${MAX_LISTEN_RETRIES} in ${delay} ms`
+      )
+      setTimeout(() => listenWithRetry(attempt + 1), delay)
+    } else {
+      console.error('[LocalServer] Error:', err)
+    }
   })
+}
+
+export function startLocalServer (ipcMain: Electron.IpcMain): void {
+  activeTokens = loadTokens()
+
+  listenWithRetry()
 
   // ── IPC handlers ─────────────────────────────────────────────────────────
 
