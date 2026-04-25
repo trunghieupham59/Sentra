@@ -441,6 +441,17 @@ const vi: Translations = {
   live_export_summary_section: '--- Summary ---',
   live_export_action_items_section: '--- Action Items ---',
   live_export_decisions_section: '--- Key Decisions ---',
+  live_subtitles_on: 'Đang bật',
+  live_transcript_label: 'Transcript',
+  live_speaker_default: 'Speaker 1',
+  live_screen_permission_title: 'Cần cấp quyền Screen Recording',
+  chat_thinking_label: 'Đang suy nghĩ',
+  chat_deep_research_summarizing: 'Đang tổng hợp kết quả…',
+  chat_deep_research_badge: '💡 Deep Research',
+  live_error_stt_failed: 'Nhận dạng thất bại — đang thử lại',
+  live_error_system_audio_unavailable: 'Không có âm thanh hệ thống — vui lòng bật "Share audio" trong hộp thoại chia sẻ màn hình, rồi thử lại.',
+  live_error_screen_permission_denied: 'Không có quyền Screen Recording. Bật trong System Settings → Privacy → Screen Recording.',
+  live_error_mic_denied: 'Không có quyền truy cập microphone.',
 }
 
 export default vi

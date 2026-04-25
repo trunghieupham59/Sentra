@@ -441,6 +441,17 @@ const en: Translations = {
   live_export_summary_section: '--- Summary ---',
   live_export_action_items_section: '--- Action Items ---',
   live_export_decisions_section: '--- Key Decisions ---',
+  live_subtitles_on: 'On',
+  live_transcript_label: 'Transcript',
+  live_speaker_default: 'Speaker 1',
+  live_screen_permission_title: 'Screen Recording Permission Required',
+  chat_thinking_label: 'Thinking',
+  chat_deep_research_summarizing: 'Synthesizing results…',
+  chat_deep_research_badge: '💡 Deep Research',
+  live_error_stt_failed: 'STT failed — retrying next chunk',
+  live_error_system_audio_unavailable: 'System audio not available — please check "Share audio" in the screen sharing dialog, then try again.',
+  live_error_screen_permission_denied: 'Screen Recording permission denied. Enable it in System Settings → Privacy → Screen Recording.',
+  live_error_mic_denied: 'Microphone access denied.',
 }
 
 export default en

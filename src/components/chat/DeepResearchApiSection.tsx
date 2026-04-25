@@ -8,9 +8,9 @@
  *   2. Brave    — Good quality, requires key (api.search.brave.com)
  *   3. Jina AI  — Free forever, no key needed (default fallback)
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useAppStore, useT } from '../../store/useAppStore'
-import { CheckCircleIcon, CheckIcon, SpinnerIcon, TrashIcon } from '../ui/icons'
+import { BraveSearchIcon, CheckCircleIcon, CheckIcon, SpinnerIcon, TavilyIcon, TrashIcon } from '../ui/icons'
 
 // ─── Provider config ──────────────────────────────────────────────────────────
 
@@ -24,7 +24,7 @@ interface WebSearchProviderConfig {
     bg: string
     text: string
   }
-  emoji: string
+  icon: ReactNode
 }
 
 const WEB_SEARCH_PROVIDERS: WebSearchProviderConfig[] = [
@@ -38,7 +38,7 @@ const WEB_SEARCH_PROVIDERS: WebSearchProviderConfig[] = [
       bg: 'bg-indigo-50 dark:bg-indigo-900/30',
       text: 'text-indigo-700 dark:text-indigo-300',
     },
-    emoji: '🔍',
+    icon: <TavilyIcon size={22} />,
   },
   {
     id: 'brave',
@@ -50,7 +50,7 @@ const WEB_SEARCH_PROVIDERS: WebSearchProviderConfig[] = [
       bg: 'bg-orange-50 dark:bg-orange-900/30',
       text: 'text-orange-700 dark:text-orange-300',
     },
-    emoji: '🦁',
+    icon: <BraveSearchIcon size={22} />,
   },
 ]
 
@@ -198,8 +198,8 @@ function KeyCard({ provider, onStatusChange }: KeyCardProps) {
       {/* Provider header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors.bg} flex-shrink-0 text-xl`}>
-            {provider.emoji}
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors.bg} flex-shrink-0`}>
+            {provider.icon}
           </div>
           <div>
             <h3 className={`font-semibold ${colors.text}`}>{provider.name}</h3>

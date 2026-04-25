@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useT } from '../../store/useAppStore'
 import type { ChatMessage } from '../../types'
 import { AppLogoIcon } from '../AppLogo'
 import { MarkdownText } from '../MarkdownText'
@@ -15,9 +16,10 @@ function ThinkingLabel() {
     const t = setInterval(() => setDots((d) => (d >= 3 ? 1 : d + 1)), DOT_BOUNCE_INTERVAL_MS)
     return () => clearInterval(t)
   }, [])
+  const t = useT()
   return (
     <span className="text-gray-400 dark:text-gray-500 italic select-none">
-      {`Thinking${'.'.repeat(dots)}`}
+      {`${t.chat_thinking_label}${'.'.repeat(dots)}`}
     </span>
   )
 }
@@ -41,6 +43,7 @@ export function MessageBubble({
   copyLabel,
   regenerateLabel,
 }: MessageBubbleProps) {
+  const t = useT()
   const isUser = message.role === 'user'
   const textContent = message.content.find((c) => c.type === 'text')?.text ?? ''
   const imageContents = message.content.filter((c) => c.type === 'image')
@@ -115,7 +118,7 @@ export function MessageBubble({
                             bg-indigo-50/30 dark:bg-indigo-950/20 px-4 py-3">
               <div className="flex items-center gap-2">
                 <SpinnerIcon className="w-4 h-4 animate-spin text-indigo-400" />
-                <span className="text-xs text-indigo-500 dark:text-indigo-400">Đang tổng hợp kết quả...</span>
+                <span className="text-xs text-indigo-500 dark:text-indigo-400">{t.chat_deep_research_summarizing}</span>
               </div>
             </div>
           ) : (
@@ -126,7 +129,7 @@ export function MessageBubble({
                               border-b border-indigo-100 dark:border-indigo-900/50
                               bg-indigo-50/60 dark:bg-indigo-950/20">
                 <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest select-none">
-                  💡 Deep Research
+                  {t.chat_deep_research_badge}
                 </span>
               </div>
               {/* Content */}
@@ -145,7 +148,7 @@ export function MessageBubble({
               <button
                 type="button"
                 onClick={() => onCopy(textContent)}
-                title={copyLabel ?? 'Copy'}
+                title={copyLabel ?? t.translate_copy}
                 className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-700 dark:hover:text-gray-200
                            transition-colors duration-150 cursor-pointer"
               >
@@ -226,7 +229,7 @@ export function MessageBubble({
             <button
               type="button"
               onClick={() => onCopy(textContent)}
-              title={copyLabel ?? 'Copy'}
+              title={copyLabel ?? t.translate_copy}
               className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-700 dark:hover:text-gray-200
                          transition-colors duration-150 cursor-pointer"
             >
@@ -240,7 +243,7 @@ export function MessageBubble({
               type="button"
               onClick={onRegenerate}
               disabled={isSending}
-              title={regenerateLabel ?? 'Regenerate response'}
+              title={regenerateLabel ?? t.chat_regenerate}
               className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-blue-500 dark:hover:text-blue-400
                          disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer"
             >

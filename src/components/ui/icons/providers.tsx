@@ -1,11 +1,13 @@
 /**
- * Provider icons — SVG brand icons for AI providers (Gemini, Claude, OpenAI).
+ * Provider icons — SVG brand icons for AI providers (Gemini, Claude, OpenAI)
+ * and web search providers (Tavily, Brave Search).
  *
  * SPLIT-ICON-01: Moved from ProviderIcon.tsx into the centralized icon registry
  * so all SVG definitions are managed in one place.
  *
  * Usage:
  *   import { GeminiProviderIcon, ClaudeProviderIcon, OpenAIProviderIcon } from './ui/icons'
+ *   import { TavilyIcon, BraveSearchIcon } from './ui/icons'
  */
 
 /**
@@ -93,6 +95,55 @@ export function OpenAIProviderIcon({ size = 20 }: { size?: number }) {
         strokeWidth="1.5"
         strokeLinecap="round"
       />
+    </svg>
+  )
+}
+
+/**
+ * Tavily — Web search provider for AI/LLMs.
+ * Brand color: #4F46E5 (indigo)
+ */
+export function TavilyIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <title>Tavily</title>
+      {/* Outer circle */}
+      <circle cx="12" cy="12" r="9.5" stroke="#4F46E5" strokeWidth="1.5" />
+      {/* Compass rose / T mark */}
+      <path d="M8.5 8.5H15.5" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" />
+      <path d="M12 8.5V16" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" />
+      {/* Subtle cross lines for compass effect */}
+      <path d="M12 3.5V5.5M12 18.5V20.5M3.5 12H5.5M18.5 12H20.5" stroke="#4F46E5" strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
+    </svg>
+  )
+}
+
+/**
+ * Brave Search — Privacy-focused web search.
+ * Brand color: #FB542B (Brave orange)
+ */
+export function BraveSearchIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <title>Brave Search</title>
+      {/* Shield shape */}
+      <path
+        d="M12 2.5L20 6V12C20 16.4 16.4 20.2 12 21.5C7.6 20.2 4 16.4 4 12V6L12 2.5Z"
+        fill="#FB542B"
+        opacity="0.15"
+      />
+      <path
+        d="M12 2.5L20 6V12C20 16.4 16.4 20.2 12 21.5C7.6 20.2 4 16.4 4 12V6L12 2.5Z"
+        stroke="#FB542B"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      {/* Lion simplified — B mark */}
+      <path
+        d="M9.5 8H13C14.1 8 15 8.9 15 10C15 10.7 14.6 11.3 14 11.6C14.6 11.9 15 12.5 15 13.3C15 14.4 14.1 15 13 15H9.5V8Z"
+        fill="#FB542B"
+      />
+      <rect x="9.5" y="8" width="1.5" height="7" fill="#FB542B" />
     </svg>
   )
 }

@@ -16,7 +16,7 @@ import { MicVAD } from '@ricky0123/vad-web'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getSupportedAudioMimeType } from '../constants/audio'
 import { LANG_NAMES_FOR_AI } from '../constants/langNames'
-import { useAppStore } from '../store/useAppStore'
+import { useAppStore, useT } from '../store/useAppStore'
 import type { Provider, SubtitleSettings } from '../types'
 import { extractCompleteSentences, isHallucination, jaccardSimilarity, splitSentences } from '../utils/live-translate'
 import { float32ToWav } from '../utils/wav-encoder'
@@ -257,9 +257,10 @@ const ADAPTIVE_VAD_EVAL_WINDOW       = 12    // rolling 12-chunk window
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useLiveTranslate() {
+  const t = useT()
   const {
     sourceLang, targetLang, selectedProvider, selectedModels, keyStatus,
-    sttProvider,
+    sttProvider, locale,
     addLiveSession, updateLiveSession,
     viewingLiveSessionId, liveSessions, setViewingLiveSession,
     setSelectedProvider, setSelectedModel, setTargetLang,
@@ -495,7 +496,7 @@ export function useLiveTranslate() {
         sttProvider:  effectiveSttProvider,
       })
     } catch {
-      setPipelineError('STT failed — retrying next chunk')
+      setPipelineError(t.live_error_stt_failed)
       if (pipelineErrorTimerRef.current) clearTimeout(pipelineErrorTimerRef.current)
       pipelineErrorTimerRef.current = setTimeout(() => setPipelineError(null), PIPELINE_ERROR_DISPLAY_MS)
     }
@@ -1062,7 +1063,7 @@ export function useLiveTranslate() {
           sysGain.connect(analyser)   // VAD reads filtered + boosted signal
           sysGain.connect(dest)       // Whisper receives filtered + boosted signal
         } else {
-          setMicError('System audio not available — please check "Share audio" in the screen sharing dialog, then try again.')
+          setMicError(t.live_error_system_audio_unavailable)
           audioCtx.close()
           return
         }
@@ -1191,8 +1192,8 @@ export function useLiveTranslate() {
       const msg = err instanceof Error ? err.message : String(err)
       if (msg.includes('Permission denied') || msg.includes('NotAllowedError')) {
         setMicError(audioMode === 'system'
-          ? 'Screen Recording permission denied. Enable it in System Settings → Privacy → Screen Recording.'
-          : 'Microphone access denied.')
+          ? t.live_error_screen_permission_denied
+          : t.live_error_mic_denied)
       } else if (!msg.includes('cancelled') && !msg.includes('AbortError')) {
         setMicError(msg)
       }
@@ -1650,10 +1651,10 @@ export function useLiveTranslate() {
       .then((result) => {
         const availableModels = (result?.models ?? []) as { id: string; name: string }[]
         cachedSubtitleModelsRef.current = availableModels
-        void window.api.subtitle.pushState({ selectedProvider: provider, selectedModel: model, isActive, isTranscribing, isTranslating, availableModels, audioMode: mode, targetLang: lang })
+        void window.api.subtitle.pushState({ selectedProvider: provider, selectedModel: model, isActive, isTranscribing, isTranslating, availableModels, audioMode: mode, targetLang: lang, locale })
       })
       .catch(() => {
-        void window.api.subtitle.pushState({ selectedProvider: provider, selectedModel: model, isActive, isTranscribing, isTranslating, availableModels: cachedSubtitleModelsRef.current, audioMode: mode, targetLang: lang })
+        void window.api.subtitle.pushState({ selectedProvider: provider, selectedModel: model, isActive, isTranscribing, isTranslating, availableModels: cachedSubtitleModelsRef.current, audioMode: mode, targetLang: lang, locale })
       })
   }, [showSubtitles, selectedProvider, selectedModels, audioMode, targetLang])
 
@@ -1670,6 +1671,7 @@ export function useLiveTranslate() {
       availableModels: cachedSubtitleModelsRef.current,
       audioMode,
       targetLang,
+      locale,
     })
   }, [showSubtitles, isActive, isTranscribing, isTranslating])
 

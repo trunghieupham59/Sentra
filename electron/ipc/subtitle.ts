@@ -56,6 +56,7 @@ export function registerSubtitleHandlers(
     availableModels: { id: string; name: string }[]
     audioMode: string
     targetLang: string
+    locale?: string
   }) => {
     const win = getSubtitleWindow()
     if (win && !win.isDestroyed()) {

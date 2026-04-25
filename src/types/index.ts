@@ -388,6 +388,7 @@ export interface WindowApi {
       availableModels: { id: string; name: string }[]
       audioMode: string
       targetLang: string
+      locale?: string
     }) => Promise<void>
     /** Returns a cleanup function that removes the listener */
     onClosed: (callback: () => void) => () => void

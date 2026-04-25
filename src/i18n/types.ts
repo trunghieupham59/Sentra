@@ -530,4 +530,24 @@ export interface Translations {
   live_export_summary_section: string
   live_export_action_items_section: string
   live_export_decisions_section: string
+
+  // Live — subtitle on/off toggle label
+  live_subtitles_on: string
+  // Live — transcript section label
+  live_transcript_label: string
+  // Live — default speaker label
+  live_speaker_default: string
+  // Live — Screen Recording permission modal title
+  live_screen_permission_title: string
+
+  // Chat — MessageBubble
+  chat_thinking_label: string
+  chat_deep_research_summarizing: string
+  chat_deep_research_badge: string
+
+  // Live — runtime error messages
+  live_error_stt_failed: string
+  live_error_system_audio_unavailable: string
+  live_error_screen_permission_denied: string
+  live_error_mic_denied: string
 }

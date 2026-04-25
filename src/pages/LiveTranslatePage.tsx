@@ -323,7 +323,7 @@ export function LiveTranslatePage() {
                   {/* Phụ đề */}
                   <div className="flex flex-col gap-2">
                     <span className="text-[0.65rem] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
-                      Phụ đề
+                      {t.live_subtitles}
                     </span>
                     <div className="flex items-center gap-2 relative">
                       <button
@@ -338,7 +338,7 @@ export function LiveTranslatePage() {
                         ].join(' ')}
                       >
                         <SubtitlesIcon className="w-3.5 h-3.5" />
-                        <span>{showSubtitles ? 'Đang bật' : 'Tắt'}</span>
+                        <span>{showSubtitles ? t.live_subtitles_on : t.translate_phonetic_off}</span>
                       </button>
                       <button
                         type="button"
@@ -435,7 +435,7 @@ export function LiveTranslatePage() {
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between">
                       <span className="text-[0.65rem] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
-                        Transcript
+                        {t.live_transcript_label}
                       </span>
                       {wordCount > 0 && (
                         <span className="text-xs text-gray-400 tabular-nums">
@@ -519,12 +519,12 @@ export function LiveTranslatePage() {
                     {isTranscribing ? (
                       <>
                         <SpinnerIcon className="w-2.5 h-2.5 animate-spin text-violet-500 flex-shrink-0" />
-                        <span className="text-[10px] font-medium text-violet-500 dark:text-violet-400">Đang nhận diện...</span>
+                        <span className="text-[10px] font-medium text-violet-500 dark:text-violet-400">{t.voice_transcribing}</span>
                       </>
                     ) : isTranslating ? (
                       <>
                         <SpinnerIcon className="w-2.5 h-2.5 animate-spin text-blue-500 flex-shrink-0" />
-                        <span className="text-[10px] font-medium text-blue-500 dark:text-blue-400">Đang dịch...</span>
+                        <span className="text-[10px] font-medium text-blue-500 dark:text-blue-400">{t.live_status_translating}</span>
                       </>
                     ) : pendingText ? (
                       <>
@@ -532,7 +532,7 @@ export function LiveTranslatePage() {
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
                           <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500" />
                         </span>
-                        <span className="text-[10px] font-medium text-amber-500 dark:text-amber-400">Đang thu âm...</span>
+                        <span className="text-[10px] font-medium text-amber-500 dark:text-amber-400">{t.voice_whisper_mode}</span>
                       </>
                     ) : (
                       <>
@@ -540,7 +540,7 @@ export function LiveTranslatePage() {
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
                           <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
                         </span>
-                        <span className="text-[10px] font-medium text-green-600 dark:text-green-400">Đang nghe...</span>
+                        <span className="text-[10px] font-medium text-green-600 dark:text-green-400">{t.live_status_listening}</span>
                       </>
                     )}
                   </span>
@@ -564,7 +564,7 @@ export function LiveTranslatePage() {
                                          bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
                           {segments.length > 0
                             ? (speakerNameMap[segments[segments.length - 1].speaker] || segments[segments.length - 1].speaker)
-                            : 'Speaker 1'}
+                            : t.live_speaker_default}
                         </span>
                         <span className="text-[15px] text-gray-500 dark:text-gray-500 leading-relaxed italic">
                           {pendingText}
@@ -682,7 +682,7 @@ export function LiveTranslatePage() {
                                transition-all duration-200 shadow-sm select-none"
                   >
                     <LightbulbIcon className="w-3.5 h-3.5" />
-                    Tổng hợp nội dung
+                    {t.live_summarize}
                   </button>
                 )}
               </div>
@@ -714,7 +714,7 @@ export function LiveTranslatePage() {
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <LightbulbIcon className="w-4 h-4 text-purple-500" />
-                <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Tổng hợp nội dung</h2>
+                <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">{t.live_summary_title}</h2>
               </div>
               <button
                 type="button"
@@ -898,7 +898,7 @@ export function LiveTranslatePage() {
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-                  Cần cấp quyền Screen Recording
+                  {t.live_screen_permission_title}
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
                   {t.live_screen_recording_hint.split(/(<strong>.*?<\/strong>)/g).map((part, i) => {
@@ -917,7 +917,7 @@ export function LiveTranslatePage() {
                 onClick={() => setShowScreenPermModal(false)}
                 className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-150 cursor-pointer"
               >
-                Đóng
+                {t.translate_error_dismiss}
               </button>
               <button
                 type="button"

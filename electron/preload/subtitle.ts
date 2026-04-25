@@ -28,6 +28,7 @@ export const subtitleSection = {
       availableModels: { id: string; name: string }[]
       audioMode: string
       targetLang: string
+      locale?: string
     }) => ipcRenderer.invoke('subtitle:setState', state),
     /**
      * Register a one-time listener that fires when the subtitle window is closed
