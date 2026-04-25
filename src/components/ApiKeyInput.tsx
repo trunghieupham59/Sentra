@@ -117,7 +117,7 @@ export function ApiKeyInput({ provider, onSave, onDelete, hasKey, maskedKey }: A
   }
 
   return (
-    <div className={`card p-4 space-y-3 border-l-4 ${colors.border}`}>
+    <div className={`card p-4 space-y-3 border-2 ${colors.borderActive}`}>
       {/* Provider header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
