@@ -149,7 +149,7 @@ export function ChatPage() {
       setAttachedImage(result)
     } catch (err) {
       // Show error in the UI so the user knows the attachment failed
-      const msg = err instanceof Error ? err.message : 'Failed to process image'
+      const msg = err instanceof Error ? err.message : t.image_translate_error_failed
       setAttachImageError(msg)
     }
   }, [])
@@ -217,13 +217,13 @@ export function ChatPage() {
       } else {
         updateChatMessage(activeChatSessionId, assistantMsgId, {
           isLoading: false,
-          error: result.error || 'Failed to regenerate response',
+          error: result.error || t.chat_error_failed_regenerate,
         })
       }
     } catch (err) {
       updateChatMessage(activeChatSessionId, assistantMsgId, {
         isLoading: false,
-        error: err instanceof Error ? err.message : 'Unexpected error',
+        error: err instanceof Error ? err.message : t.chat_error_unexpected,
       })
     } finally {
       setIsSending(false)
@@ -356,13 +356,13 @@ export function ChatPage() {
       } else {
         updateChatMessage(sessionId, assistantMsgId, {
           isLoading: false,
-          error: result.error || 'Failed to get response',
+          error: result.error || t.chat_error_failed_response,
         })
       }
     } catch (err) {
       updateChatMessage(sessionId, assistantMsgId, {
         isLoading: false,
-        error: err instanceof Error ? err.message : 'Unexpected error',
+        error: err instanceof Error ? err.message : t.chat_error_unexpected,
       })
     } finally {
       setIsSending(false)
@@ -414,7 +414,7 @@ export function ChatPage() {
             type="button"
             onClick={() => setAttachImageError(null)}
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
-            aria-label="Dismiss"
+            aria-label={t.translate_error_dismiss}
           >
             <XIcon className="w-3 h-3" />
           </button>
@@ -458,7 +458,7 @@ export function ChatPage() {
             <LightbulbIcon className="w-2.5 h-2.5 text-indigo-500" />
             <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">Deep Research</span>
           </span>
-          <span className="text-[10px] text-gray-400 dark:text-gray-600">Câu hỏi sẽ được nghiên cứu đa chiều</span>
+          <span className="text-[10px] text-gray-400 dark:text-gray-600">{t.chat_deep_research_hint}</span>
         </div>
       )}
 
@@ -499,7 +499,7 @@ export function ChatPage() {
           <button
             type="button"
             onClick={() => setDeepResearchMode((v) => !v)}
-            title={deepResearchMode ? 'Tắt Deep Research' : 'Bật Deep Research Mode'}
+            title={deepResearchMode ? t.chat_deep_research_disable : t.chat_deep_research_enable}
             className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 cursor-pointer
                         ${deepResearchMode
                           ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400'
@@ -554,7 +554,7 @@ export function ChatPage() {
   return (
     <div
       role="application"
-      aria-label="Chat drop zone"
+      aria-label={t.chat_attach_image}
       className="flex flex-col h-full bg-white dark:bg-gray-950 relative"
       onDragOver={(e) => { e.preventDefault(); setIsDraggingOver(true) }}
       onDragLeave={handleDragLeave}
@@ -606,7 +606,7 @@ export function ChatPage() {
               <button
                 type="button"
                 onClick={() => setShowAIConfig((v) => !v)}
-                title="Cấu hình AI Nâng Cao"
+                title={t.translate_ai_config_title}
                 className={`flex items-center justify-center w-8 h-8 rounded-full border transition-all duration-200 cursor-pointer
                             ${showAIConfig
                               ? 'bg-blue-50 border-blue-200 text-blue-500 dark:bg-blue-950/40 dark:border-blue-700 dark:text-blue-400'
@@ -622,7 +622,7 @@ export function ChatPage() {
                                 border border-gray-200 dark:border-gray-700
                                 rounded-2xl shadow-xl p-4 flex flex-col gap-4">
                   <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-                    Cấu hình AI Nâng Cao
+                    {t.translate_ai_config_title}
                   </h2>
                   <div className="flex flex-col gap-3">
                     <ModelSelector />
@@ -640,7 +640,7 @@ export function ChatPage() {
                   {/* Deep Research API keys */}
                   <div className="border-t border-gray-100 dark:border-gray-800 pt-3 flex flex-col gap-2">
                     <h3 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-                      Deep Research API
+                      {t.chat_deep_research_api}
                     </h3>
                     <DeepResearchApiSection />
                   </div>

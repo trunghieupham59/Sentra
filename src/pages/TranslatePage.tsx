@@ -158,7 +158,7 @@ export function TranslatePage() {
               <button
                 type="button"
                 onClick={() => setShowAIConfig((v) => !v)}
-                title="Cấu hình AI Nâng Cao"
+                title={t.translate_ai_config_title}
                 className={`flex items-center justify-center w-8 h-8 rounded-full border transition-all duration-200 cursor-pointer
                             ${showAIConfig
                               ? 'bg-blue-50 border-blue-200 text-blue-500 dark:bg-blue-950/40 dark:border-blue-700 dark:text-blue-400'
@@ -174,7 +174,7 @@ export function TranslatePage() {
                                 border border-gray-200 dark:border-gray-700
                                 rounded-2xl shadow-xl p-4 flex flex-col gap-4">
                     <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-                      Cấu hình AI Nâng Cao
+                      {t.translate_ai_config_title}
                     </h2>
                     {/* Row 1: Provider + Model selector */}
                     <ModelSelector />

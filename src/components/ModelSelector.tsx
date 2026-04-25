@@ -48,10 +48,10 @@ export function ModelSelector() {
           setSelectedModel(provider, target)
         }
       } else {
-        setModelsError(provider, result.error || 'Failed to load models')
+        setModelsError(provider, result.error || t.model_load_error)
       }
     } catch (err) {
-      setModelsError(provider, err instanceof Error ? err.message : 'Error')
+      setModelsError(provider, err instanceof Error ? err.message : t.settings_hotkey_status_error)
     } finally {
       setModelsLoading(provider, false)
     }

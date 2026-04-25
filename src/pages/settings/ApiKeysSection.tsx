@@ -94,7 +94,7 @@ export function ApiKeysSection() {
       {/* Deep Research Web Search API Keys */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="section-label">Web Search (Deep Research)</h2>
+          <h2 className="section-label">{t.settings_web_search_section}</h2>
         </div>
 
         {/* Info card */}
@@ -104,10 +104,10 @@ export function ApiKeysSection() {
           <span className="text-base flex-shrink-0">🌐</span>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
-              Deep Research — Web Search Providers
+              {t.settings_web_search_title}
             </p>
             <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-0.5">
-              Mặc định dùng{' '}
+              {t.settings_web_search_desc_prefix}{' '}
               <button
                 type="button"
                 onClick={() => window.api?.openExternal('https://jina.ai')}
@@ -115,7 +115,7 @@ export function ApiKeysSection() {
               >
                 Jina AI
               </button>
-              {' '}miễn phí. Thêm key Tavily hoặc Brave để nâng chất lượng kết quả tìm kiếm.
+              {' '}{t.settings_web_search_desc_suffix}
             </p>
           </div>
         </div>

@@ -102,7 +102,6 @@ export interface Translations {
   settings_show: string
   settings_hide: string
   settings_remove: string
-  settings_hint_verify: string
   settings_msg_valid: string
   settings_msg_rate_limited: string
   settings_msg_invalid: string
@@ -162,8 +161,6 @@ export interface Translations {
   settings_stt_always_available: string
   /** Status badge: needs Gemini API key */
   settings_stt_needs_gemini: string
-  /** Shown below provider selector in auto mode */
-  settings_stt_auto_note: string
 
   settings_tts_section: string
   /** Short description of TTS provider priority order */
@@ -216,6 +213,8 @@ export interface Translations {
   image_translate_error_no_key: string
   /** HC-10: Error shown when user uploads a non-image file */
   image_translate_type_error: string
+  /** Fallback error when image processing fails */
+  image_translate_error_failed: string
 
   // History page
   history_title: string
@@ -494,4 +493,41 @@ export interface Translations {
   settings_chat_preset_delete: string
   settings_chat_preset_save: string
   settings_chat_preset_cancel: string
+
+  // Translate page — Advanced AI Config popup
+  translate_ai_config_title: string
+
+  // Settings — Web Search (Deep Research)
+  settings_web_search_section: string
+  settings_web_search_title: string
+  settings_web_search_desc_prefix: string
+  settings_web_search_desc_suffix: string
+
+  // Settings — TTS ElevenLabs delete confirm
+  settings_tts_el_delete_confirm: string
+
+  // Settings modal close
+  settings_close: string
+
+  // Chat — Deep Research
+  chat_deep_research_hint: string
+  chat_deep_research_enable: string
+  chat_deep_research_disable: string
+  chat_deep_research_api: string
+
+  // Chat — error messages
+  chat_error_failed_regenerate: string
+  chat_error_unexpected: string
+  chat_error_failed_response: string
+
+  // Live — audio source section label
+  live_audio_source_label: string
+
+  // Live — export file section headers
+  live_export_header: string
+  live_export_original_section: string
+  live_export_translation_section: string
+  live_export_summary_section: string
+  live_export_action_items_section: string
+  live_export_decisions_section: string
 }

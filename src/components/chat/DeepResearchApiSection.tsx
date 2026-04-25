@@ -9,7 +9,7 @@
  *   3. Jina AI  — Free forever, no key needed (default fallback)
  */
 import { useEffect, useState } from 'react'
-import { useAppStore } from '../../store/useAppStore'
+import { useAppStore, useT } from '../../store/useAppStore'
 import { CheckCircleIcon, CheckIcon, SpinnerIcon, TrashIcon } from '../ui/icons'
 
 // ─── Provider config ──────────────────────────────────────────────────────────
@@ -71,6 +71,7 @@ function KeyCard({ provider, onStatusChange }: KeyCardProps) {
   const [verifyStatus, setVerifyStatus] = useState<VerifyStatus>('idle')
   const [verifyMessage, setVerifyMessage] = useState('')
 
+  const t = useT()
   const { colors } = provider
   const isVerifying = verifyStatus === 'verifying' || verifyStatus === 'saving'
   const isSuccess = verifyStatus === 'valid'
@@ -102,7 +103,7 @@ function KeyCard({ provider, onStatusChange }: KeyCardProps) {
         const verifyResult = await window.api.webSearchVerify({ provider: provider.id, apiKey: key })
         if (!verifyResult.valid) {
           setVerifyStatus('invalid')
-          setVerifyMessage(verifyResult.error ?? 'API key không hợp lệ')
+          setVerifyMessage(verifyResult.error ?? t.settings_msg_invalid)
           return
         }
       } catch (err) {
@@ -114,7 +115,7 @@ function KeyCard({ provider, onStatusChange }: KeyCardProps) {
           msg.includes('ERR_IPC')
         if (!isIpcMissing) {
           setVerifyStatus('invalid')
-          setVerifyMessage(msg || 'Không thể xác minh key')
+          setVerifyMessage(msg || t.settings_msg_invalid)
           return
         }
         // IPC not available → fall through to save directly
@@ -131,18 +132,18 @@ function KeyCard({ provider, onStatusChange }: KeyCardProps) {
       setMasked(updated.masked ?? null)
       onStatusChange(e)
       setVerifyStatus('valid')
-      setVerifyMessage('API key đã được xác minh và lưu thành công!')
+      setVerifyMessage(t.settings_msg_valid)
       setInputValue('')
       const VERIFY_STATUS_RESET_MS = 5_000  // Reset verify badge after 5s
       setTimeout(() => setVerifyStatus('idle'), VERIFY_STATUS_RESET_MS)
     } catch (err) {
       setVerifyStatus('invalid')
-      setVerifyMessage(err instanceof Error ? err.message : 'Không thể lưu key')
+      setVerifyMessage(err instanceof Error ? err.message : t.settings_msg_invalid)
     }
   }
 
   const handleDelete = async () => {
-    if (!confirm(`Xóa API key cho ${provider.name}?`)) return
+    if (!confirm(`${t.settings_remove} API key for ${provider.name}?`)) return
     setIsDeleting(true)
     setVerifyStatus('idle')
     setVerifyMessage('')
@@ -166,7 +167,7 @@ function KeyCard({ provider, onStatusChange }: KeyCardProps) {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
           </span>
-          Key không hợp lệ
+          {t.settings_key_invalid}
         </span>
       )
     }
@@ -180,14 +181,14 @@ function KeyCard({ provider, onStatusChange }: KeyCardProps) {
             ].join(' ')} />
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
           </span>
-          Đã lưu
+          {t.settings_key_saved}
         </span>
       )
     }
     return (
       <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">
         <span className="w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
-        Chưa có key
+        {t.settings_no_key}
       </span>
     )
   }
@@ -207,7 +208,7 @@ function KeyCard({ provider, onStatusChange }: KeyCardProps) {
               onClick={() => window.api?.openExternal(provider.docsUrl)}
               className="text-xs text-blue-500 hover:text-blue-700 hover:underline"
             >
-              Lấy API key →
+              {t.settings_get_key}
             </button>
           </div>
         </div>
@@ -227,7 +228,7 @@ function KeyCard({ provider, onStatusChange }: KeyCardProps) {
             }}
             onClick={showMasked ? () => setInputValue('') : undefined}
             onKeyDown={(e) => { if (e.key === 'Enter' && !showMasked) handleVerify() }}
-            placeholder={exists ? 'Nhập key mới để thay thế…' : provider.placeholder}
+            placeholder={exists ? t.settings_key_placeholder_new : provider.placeholder}
             className={[
               'w-full px-3 py-2 border rounded-lg text-sm font-mono',
               'focus:outline-none focus:ring-2 focus:ring-blue-500',
@@ -250,7 +251,7 @@ function KeyCard({ provider, onStatusChange }: KeyCardProps) {
               type="button"
               onClick={handleDelete}
               disabled={isDeleting}
-              title="Xóa key"
+              title={t.settings_remove}
               className="absolute right-2 inset-y-0 flex items-center text-gray-300 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
             >
               {isDeleting ? (
@@ -281,19 +282,19 @@ function KeyCard({ provider, onStatusChange }: KeyCardProps) {
             {isVerifying ? (
               <>
                 <SpinnerIcon className="w-4 h-4 animate-spin" />
-                {verifyStatus === 'verifying' ? 'Đang kiểm tra…' : 'Đang lưu…'}
+                {t.settings_verifying}
               </>
             ) : isSuccess ? (
               <>
                 <CheckIcon className="w-4 h-4" />
-                Đã xác minh
+                {t.settings_verified}
               </>
             ) : isError ? (
-              'Thử lại'
+              t.settings_try_again
             ) : (
               <>
                 <CheckCircleIcon className="w-4 h-4" />
-                Xác minh & Lưu
+                {t.settings_verify_save}
               </>
             )}
           </button>
@@ -328,16 +329,6 @@ export function DeepResearchApiSection() {
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Jina AI free badge */}
-      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg
-                      bg-emerald-50 dark:bg-emerald-950/20
-                      border border-emerald-100 dark:border-emerald-900/30">
-        <CheckIcon className="w-3 h-3 text-emerald-500 flex-shrink-0" />
-        <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
-          Jina AI — mặc định miễn phí, không cần API key
-        </span>
-      </div>
-
       {/* Provider cards */}
       {WEB_SEARCH_PROVIDERS.map((provider) => (
         <KeyCard
@@ -347,10 +338,6 @@ export function DeepResearchApiSection() {
         />
       ))}
 
-      {/* Hint */}
-      <p className="text-[10px] text-gray-400 dark:text-gray-600 leading-relaxed">
-        Khi có API key, provider đó được ưu tiên hơn Jina AI miễn phí.
-      </p>
     </div>
   )
 }

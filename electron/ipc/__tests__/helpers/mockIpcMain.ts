@@ -23,7 +23,8 @@ export function buildMockIpcMain() {
   }
 
   /** Invoke a registered handler with a fake Electron event + any extra args. */
-  const invoke = (channel: string, ...args: unknown[]) =>
+  // biome-ignore lint/suspicious/noExplicitAny: test helper — callers need to access result properties without explicit casting
+  const invoke = (channel: string, ...args: unknown[]): any =>
     handlers[channel]?.({} /* fake _event */, ...args)
 
   return { ipcMain, invoke }

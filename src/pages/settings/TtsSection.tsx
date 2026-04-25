@@ -47,7 +47,7 @@ export function TtsSection() {
   }
 
   const handleElDelete = async () => {
-    if (!window.api || !confirm(`${t.settings_remove} ElevenLabs API key?`)) return
+    if (!window.api || !confirm(t.settings_tts_el_delete_confirm)) return
     setElDeleting(true)
     try {
       await window.api.keychain.delete('elevenlabs')

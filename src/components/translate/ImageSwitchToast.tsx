@@ -1,3 +1,4 @@
+import { useT } from '../../store/useAppStore'
 import { tpl } from '../../utils/tpl'
 import { AlertTriangleIcon, XIcon } from '../ui/icons'
 
@@ -16,6 +17,7 @@ export function ImageSwitchToast({
   model, provider, currentProvider, onDismiss,
   titleLabel, bodyLabel, usingLabel,
 }: ImageSwitchToastProps) {
+  const t = useT()
   return (
     <div className="pointer-events-auto fixed bottom-16 left-1/2 -translate-x-1/2 z-50
                     max-w-sm w-full mx-4 fade-in">
@@ -35,7 +37,7 @@ export function ImageSwitchToast({
           type="button"
           onClick={onDismiss}
           className="flex-shrink-0 text-white/70 hover:text-white cursor-pointer mt-0.5"
-          aria-label="Dismiss"
+          aria-label={t.translate_error_dismiss}
         >
           <XIcon className="w-3.5 h-3.5" />
         </button>

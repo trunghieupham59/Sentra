@@ -10,6 +10,7 @@
  * and SpeakerAnalysisText (read-only).
  */
 import { useState } from 'react'
+import { useT } from '../../store/useAppStore'
 import { PencilIcon } from '../ui/icons'
 
 interface SpeakerBadgeProps {
@@ -32,6 +33,7 @@ export function SpeakerBadge({
   onRename,
   className = '',
 }: SpeakerBadgeProps) {
+  const t = useT()
   const [isRenaming, setIsRenaming] = useState(false)
   const [value, setValue] = useState(name)
 
@@ -65,7 +67,7 @@ export function SpeakerBadge({
       <button
         type="button"
         onClick={() => { setValue(name); setIsRenaming(true) }}
-        title="Click to rename speaker"
+        title={t.live_speakers_rename_hint}
         className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold
                     flex-shrink-0 mt-0.5 cursor-pointer hover:opacity-80 group ${colorClass} ${className}`}
       >

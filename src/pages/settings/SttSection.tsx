@@ -180,17 +180,6 @@ export function SttSection() {
         ))}
       </div>
 
-      {/* Auto-mode hint */}
-      {sttProvider === 'auto' && (
-        <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-950/30
-                        border border-blue-100 dark:border-blue-900/50">
-          <span className="text-blue-400 dark:text-blue-500 text-sm leading-none mt-0.5">ℹ</span>
-          <p className="text-[11px] text-blue-600 dark:text-blue-400 leading-relaxed">
-            {t.settings_stt_auto_note}
-          </p>
-        </div>
-      )}
-
       {/* Feature tags */}
       <div className="flex flex-wrap gap-1.5 px-0.5">
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium

@@ -105,18 +105,18 @@ export function LiveTranslatePage() {
   const handleExportTxt = () => {
     if (!rawTranscript) return
     const lines: string[] = [
-      '=== Meeting Transcript ===',
+      t.live_export_header,
       `Date: ${new Date().toLocaleString()}`,
       '',
-      '--- Original ---',
+      t.live_export_original_section,
       rawTranscript,
       '',
-      '--- Translation ---',
+      t.live_export_translation_section,
       translation,
     ]
-    if (summary) lines.push('', '--- Summary ---', summary)
-    if (actionItems) lines.push('', '--- Action Items ---', actionItems)
-    if (decisions) lines.push('', '--- Key Decisions ---', decisions)
+    if (summary) lines.push('', t.live_export_summary_section, summary)
+    if (actionItems) lines.push('', t.live_export_action_items_section, actionItems)
+    if (decisions) lines.push('', t.live_export_decisions_section, decisions)
     downloadTextFile(lines.join('\n'), 'meeting', 'txt')
   }
 
@@ -238,7 +238,7 @@ export function LiveTranslatePage() {
               <button
                 type="button"
                 onClick={() => setShowAIConfig((v) => !v)}
-                title="Cấu hình AI Nâng Cao"
+                title={t.translate_ai_config_title}
                 className={`flex items-center justify-center w-8 h-8 rounded-full border transition-all duration-200 cursor-pointer
                             ${showAIConfig
                               ? 'bg-blue-50 border-blue-200 text-blue-500 dark:bg-blue-950/40 dark:border-blue-700 dark:text-blue-400'
@@ -253,7 +253,7 @@ export function LiveTranslatePage() {
                                 border border-gray-200 dark:border-gray-700
                                 rounded-2xl shadow-xl p-4 flex flex-col gap-4">
                   <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-                    Cấu hình AI Nâng Cao
+                    {t.translate_ai_config_title}
                   </h2>
 
                   {/* Model */}
@@ -265,7 +265,7 @@ export function LiveTranslatePage() {
                   {/* Nguồn âm thanh */}
                   <div className="flex flex-col gap-2">
                     <span className="text-[0.65rem] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
-                      Nguồn âm thanh
+                      {t.live_audio_source_label}
                     </span>
                     <div className="flex items-center rounded-full border border-gray-200 dark:border-gray-700
                                     bg-gray-50 dark:bg-gray-800 p-0.5 gap-0.5 select-none w-fit">
@@ -281,7 +281,7 @@ export function LiveTranslatePage() {
                         ].join(' ')}
                       >
                         <MicrophoneIcon className="w-3 h-3" />
-                        <span>Mic</span>
+                        <span>{t.live_audio_mode_mic}</span>
                       </button>
                       <button
                         type="button" disabled={isActive} onClick={() => setAudioMode('system')}
@@ -295,7 +295,7 @@ export function LiveTranslatePage() {
                         ].join(' ')}
                       >
                         <MonitorIcon className="w-3 h-3" />
-                        <span>Hệ thống</span>
+                        <span>{t.live_audio_mode_system}</span>
                       </button>
                       <button
                         type="button" disabled={isActive} onClick={() => setAudioMode('both')}
@@ -312,7 +312,7 @@ export function LiveTranslatePage() {
                           <MicrophoneIcon className="w-2.5 h-2.5 absolute left-0" />
                           <MonitorIcon className="w-2.5 h-2.5 absolute right-0" />
                         </span>
-                        <span>Cả hai</span>
+                        <span>{t.live_audio_mode_both}</span>
                       </button>
                     </div>
                   </div>

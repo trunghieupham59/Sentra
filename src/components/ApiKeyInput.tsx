@@ -243,10 +243,6 @@ export function ApiKeyInput({ provider, onSave, onDelete, hasKey, maskedKey }: A
         </div>
       )}
 
-      {/* Hint — only shown when idle and no key yet */}
-      {verifyStatus === 'idle' && !verifyMessage && !showMasked && (
-        <p className="text-xs text-gray-400 dark:text-gray-500">{t.settings_hint_verify}</p>
-      )}
     </div>
   )
 }

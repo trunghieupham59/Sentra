@@ -62,7 +62,7 @@ export function ImageTranslator({ onImageReady, onClose }: ImageTranslatorProps)
       onClose()
     } catch (err) {
       setIsProcessing(false)
-      setErrorMsg(err instanceof Error ? err.message : 'Failed to process image')
+      setErrorMsg(err instanceof Error ? err.message : t.image_translate_error_failed)
     }
   }, [onImageReady, onClose, t])
 
@@ -89,7 +89,7 @@ export function ImageTranslator({ onImageReady, onClose }: ImageTranslatorProps)
       {/* Backdrop */}
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t.translate_error_dismiss}
         className="absolute inset-0 w-full h-full bg-black/60 backdrop-blur-sm cursor-default"
         onClick={onClose}
       />
