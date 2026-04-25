@@ -28,7 +28,14 @@ export interface CoreSlice {
   selectedModels: Record<Provider, string>
 
   // Active page
-  activePage: 'translate' | 'history' | 'settings' | 'chat' | 'live'
+  activePage: 'translate' | 'history' | 'chat' | 'live'
+
+  // Settings modal
+  settingsOpen: boolean
+
+  // Language usage tracking (for smart top-3 pills in language bar)
+  langUsage: Record<string, { count: number; lastUsed: number }>
+  recordLangUsage: (lang: string) => void
 
   // Core actions
   setSourceText: (text: string) => void
@@ -44,6 +51,8 @@ export interface CoreSlice {
   setSelectedProvider: (provider: Provider) => void
   setSelectedModel: (provider: Provider, model: string) => void
   setActivePage: (page: CoreSlice['activePage']) => void
+  openSettings: () => void
+  closeSettings: () => void
   clearTranslation: () => void
 
   // Computed — reads locale from SettingsSlice via store.get()
@@ -63,6 +72,8 @@ export const createCoreSlice: StateCreator<any, [], [], CoreSlice> = (set, get) 
   selectedProvider: DEFAULT_SETTINGS.defaultProvider,
   selectedModels: DEFAULT_SETTINGS.defaultModels,
   activePage: 'translate',
+  settingsOpen: false,
+  langUsage: {},
 
   // Computed getter — reads locale from SettingsSlice at access time.
   // NOTE: Zustand's shallow-merge on set() means this getter lives on the
@@ -81,6 +92,19 @@ export const createCoreSlice: StateCreator<any, [], [], CoreSlice> = (set, get) 
   setPhoneticText: (text) => set({ phoneticText: text }),
   setSourceLang: (lang) => set({ sourceLang: lang }),
   setTargetLang: (lang) => set({ targetLang: lang }),
+
+  recordLangUsage: (lang) => {
+    if (!lang || lang === 'auto') return
+    set((state: CoreSlice) => ({
+      langUsage: {
+        ...state.langUsage,
+        [lang]: {
+          count: (state.langUsage[lang]?.count ?? 0) + 1,
+          lastUsed: Date.now(),
+        },
+      },
+    }))
+  },
 
   swapLanguages: (detectedLang?: string) =>
     set((state: CoreSlice) => {
@@ -103,6 +127,8 @@ export const createCoreSlice: StateCreator<any, [], [], CoreSlice> = (set, get) 
     set((state: CoreSlice) => ({ selectedModels: { ...state.selectedModels, [provider]: model } })),
 
   setActivePage: (page) => set({ activePage: page }),
+  openSettings: () => set({ settingsOpen: true }),
+  closeSettings: () => set({ settingsOpen: false }),
   clearTranslation: () =>
     set({ sourceText: '', translatedText: '', phoneticText: '', translateError: null }),
 })

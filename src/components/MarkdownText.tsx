@@ -225,5 +225,5 @@ export function MarkdownText({ text, className }: Props) {
   flushOrderedList()
   if (tableLines.length > 0) flushTable()
 
-  return <div className={`text-sm space-y-0.5 ${className ?? ''}`}>{elements}</div>
+  return <div className={`text-[15px] space-y-0.5 ${className ?? ''}`}>{elements}</div>
 }

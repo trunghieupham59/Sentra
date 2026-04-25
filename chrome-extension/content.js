@@ -74,13 +74,12 @@
         <option value="ru">🇷🇺 Russian</option>
       </select>
       <select class="tre-style-select" title="Translation style">
-        <option value="friendly">Friendly</option>
-        <option value="neutral">Neutral</option>
-        <option value="professional">Professional</option>
+        <option value="general">General</option>
+        <option value="formal">Formal</option>
+        <option value="casual">Casual</option>
         <option value="business">Business</option>
-        <option value="slack">Slack</option>
-        <option value="polite">Polite</option>
         <option value="technical">Technical</option>
+        <option value="natural">Natural</option>
       </select>
     </div>
     <div class="tre-tooltip-body">
@@ -144,7 +143,7 @@
           resolve({
             token: data.treToken || '',
             targetLang: data.treTargetLang || 'en',
-            translationStyle: data.treTranslationStyle || 'neutral',
+            translationStyle: data.treTranslationStyle || 'general',
           })
         })
       } catch {
@@ -237,7 +236,7 @@
         targetLang: settings.targetLang,
         provider: appConfig.provider,
         model: appConfig.model,
-        translationStyle: settings.translationStyle || styleSelect.value || 'neutral',
+        translationStyle: settings.translationStyle || styleSelect.value || 'general',
       }),
     })
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`)

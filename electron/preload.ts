@@ -9,16 +9,17 @@
  * one `window.api` surface so the renderer API contract stays unchanged.
  */
 import { contextBridge } from 'electron'
-import { keychainSection } from './preload/keychain'
-import { translateSection } from './preload/translate'
 import { audioSection } from './preload/audio'
 import { chatSection } from './preload/chat'
-import { subtitleSection } from './preload/subtitle'
-import { systemSection } from './preload/system'
-import { updaterSection } from './preload/updater'
 import { hotkeySection } from './preload/hotkey'
+import { keychainSection } from './preload/keychain'
 import { legacyAssistantSection } from './preload/legacyAssistant'
 import { localServerSection } from './preload/localServer'
+import { subtitleSection } from './preload/subtitle'
+import { systemSection } from './preload/system'
+import { translateSection } from './preload/translate'
+import { updaterSection } from './preload/updater'
+import { webSearchSection } from './preload/webSearch'
 
 contextBridge.exposeInMainWorld('api', {
   ...keychainSection,
@@ -31,4 +32,5 @@ contextBridge.exposeInMainWorld('api', {
   ...hotkeySection,
   ...legacyAssistantSection,
   ...localServerSection,
+  ...webSearchSection,
 })

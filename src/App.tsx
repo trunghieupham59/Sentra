@@ -1,10 +1,10 @@
 import { useEffect } from 'react'
+import { SettingsModal } from './components/SettingsModal'
 import { Sidebar } from './components/Sidebar'
 import { PROVIDERS } from './constants/providers'
 import { ChatPage } from './pages/ChatPage'
 import { HistoryPage } from './pages/HistoryPage'
 import { LiveTranslatePage } from './pages/LiveTranslatePage'
-import { SettingsPage } from './pages/SettingsPage'
 import { TranslatePage } from './pages/TranslatePage'
 import { useAppStore } from './store/useAppStore'
 import type { Provider } from './types'
@@ -84,13 +84,14 @@ function App() {
             <LiveTranslatePage />
           ) : activePage === 'chat' ? (
             <ChatPage />
-          ) : activePage === 'history' ? (
-            <HistoryPage />
           ) : (
-            <SettingsPage />
+            <HistoryPage />
           )}
         </main>
       </div>
+
+      {/* Settings popup modal */}
+      <SettingsModal />
     </div>
   )
 }

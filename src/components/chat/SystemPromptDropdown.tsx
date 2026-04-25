@@ -68,7 +68,8 @@ export function SystemPromptDropdown({
   // Focus name input when form opens
   useEffect(() => {
     if (showAddForm) {
-      setTimeout(() => nameInputRef.current?.focus(), 50)
+      const FOCUS_DEFER_MS = 50  // Wait one tick for DOM to mount before focusing
+      setTimeout(() => nameInputRef.current?.focus(), FOCUS_DEFER_MS)
     }
   }, [showAddForm])
 

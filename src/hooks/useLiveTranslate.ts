@@ -16,8 +16,9 @@ import { MicVAD } from '@ricky0123/vad-web'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getSupportedAudioMimeType } from '../constants/audio'
 import { LANG_NAMES_FOR_AI } from '../constants/langNames'
-import { useAppStore } from '../store/useAppStore'
-import type { Provider, SubtitleSettings } from '../types'
+import { MIN_AUDIO_BLOB_BYTES } from '../constants/ui'
+import { useAppStore, useT } from '../store/useAppStore'
+import type { Provider, SttBackend, SubtitleSettings } from '../types'
 import { extractCompleteSentences, isHallucination, jaccardSimilarity, splitSentences } from '../utils/live-translate'
 import { float32ToWav } from '../utils/wav-encoder'
 
@@ -257,8 +258,10 @@ const ADAPTIVE_VAD_EVAL_WINDOW       = 12    // rolling 12-chunk window
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useLiveTranslate() {
+  const t = useT()
   const {
     sourceLang, targetLang, selectedProvider, selectedModels, keyStatus,
+    sttProvider, locale,
     addLiveSession, updateLiveSession,
     viewingLiveSessionId, liveSessions, setViewingLiveSession,
     setSelectedProvider, setSelectedModel, setTargetLang,
@@ -281,6 +284,12 @@ export function useLiveTranslate() {
   const [pipelineError,  setPipelineError]  = useState<string | null>(null)
   /** 'energy' (default) or 'silero' (auto-upgraded when noisy). Exposed for UI indicator. */
   const [vadMode,        setVadMode]        = useState<'energy' | 'silero'>('energy')
+  /**
+   * Active STT backend for this session — set by pre-flight check on mount and
+   * whenever keyStatus changes. Exposed to the UI to show a provider badge so
+   * the user always knows which backend will handle their audio.
+   */
+  const [activeSttProvider, setActiveSttProvider] = useState<SttBackend | 'none'>('none')
 
   // ── Subtitle overlay state ─────────────────────────────────────────────────
   const [showSubtitles,      setShowSubtitles]      = useState(false)
@@ -327,10 +336,10 @@ export function useLiveTranslate() {
   const [sessionStartTime, setSessionStartTime] = useState<number>(0)
 
   // Stable ref so audio callbacks always read fresh params
-  const paramsRef = useRef({ sourceLang, targetLang, selectedProvider, selectedModels })
+  const paramsRef = useRef({ sourceLang, targetLang, selectedProvider, selectedModels, sttProvider })
   useEffect(() => {
-    paramsRef.current = { sourceLang, targetLang, selectedProvider, selectedModels }
-  }, [sourceLang, targetLang, selectedProvider, selectedModels])
+    paramsRef.current = { sourceLang, targetLang, selectedProvider, selectedModels, sttProvider }
+  }, [sourceLang, targetLang, selectedProvider, selectedModels, sttProvider])
 
   const pendingBufferRef     = useRef('')
   const pendingChunkCountRef = useRef(0)
@@ -465,12 +474,17 @@ export function useLiveTranslate() {
 
   // ── Core pipeline ───────────────────────────────────────────────────────────
   const processChunk = useCallback(async (blob: Blob, mimeType: string) => {
-    if (blob.size < 1000) return
+    if (blob.size < MIN_AUDIO_BLOB_BYTES) return
 
     // ── Adaptive VAD: count chunk in rolling evaluation window ────────────
     adaptiveChunksRef.current += 1
 
-    const { sourceLang, targetLang, selectedProvider, selectedModels } = paramsRef.current
+    const { sourceLang, targetLang, selectedProvider, selectedModels, sttProvider } = paramsRef.current
+
+    // Live Translate uses MediaRecorder (audio chunks) — it cannot use the
+    // browser's Web Speech API which requires a real-time stream. If the user
+    // chose 'webSpeech', fall back to 'auto' so STT still works here.
+    const effectiveSttProvider = sttProvider === 'webSpeech' ? 'auto' : sttProvider
 
     // ── STT call — keep reference to full result for confidence gate ──────
     setIsTranscribing(true)
@@ -486,9 +500,10 @@ export function useLiveTranslate() {
         // maintaining terminology consistency across chunks and preventing
         // the decoder from drifting to a YouTube-caption style opening.
         previousText: lastChunkTextRef.current || undefined,
+        sttProvider:  effectiveSttProvider,
       })
     } catch {
-      setPipelineError('STT failed — retrying next chunk')
+      setPipelineError(t.live_error_stt_failed)
       if (pipelineErrorTimerRef.current) clearTimeout(pipelineErrorTimerRef.current)
       pipelineErrorTimerRef.current = setTimeout(() => setPipelineError(null), PIPELINE_ERROR_DISPLAY_MS)
     }
@@ -586,9 +601,9 @@ export function useLiveTranslate() {
     //
     // This replaces the earlier approach of matching Japanese-only morphemes
     // (よ/ね/ます/etc.) which was language-specific and therefore not optimal.
-    const sttExt = stt as { segmentTexts?: string[] }
-    const whisperParts: string[] = (sttExt?.segmentTexts?.length ?? 0) > 1
-      ? (sttExt.segmentTexts ?? []).map((s: string) => s.trim()).filter(Boolean)
+    // segmentTexts is now properly typed in TranscribeResult — no cast needed.
+    const whisperParts: string[] = (stt?.segmentTexts?.length ?? 0) > 1
+      ? (stt?.segmentTexts ?? []).map((s: string) => s.trim()).filter(Boolean)
       : [newText]
 
     // Collect all complete sentences found across the Whisper parts in this chunk
@@ -759,12 +774,12 @@ export function useLiveTranslate() {
             sourceText: capturedSourceText,
             sourceLang,
             targetLang,
-            translationStyle: 'neutral' as const,
+            translationStyle: 'general' as const,
             showFurigana: false,
           }
 
           let txResult: { success: boolean; translatedText?: string }
-          let usedStreaming = false
+          let _usedStreaming = false
 
           if (showSubtitlesRef.current) {
             try {
@@ -774,10 +789,10 @@ export function useLiveTranslate() {
                 sourceText: capturedSourceText,
                 sourceLang,
                 targetLang,
-                translationStyle: 'neutral',
+                translationStyle: 'general',
                 segId: capturedSegId,
               })
-              usedStreaming = txResult.success
+              _usedStreaming = txResult.success
             } catch {
               txResult = { success: false }
             }
@@ -809,7 +824,7 @@ export function useLiveTranslate() {
         }
       })(segId, sourceText)
     }
-  }, [])
+  }, [t])
 
   // ── Recorder cycling with VAD ─────────────────────────────────────────────────
   const startChunk = useCallback(() => {
@@ -1055,7 +1070,7 @@ export function useLiveTranslate() {
           sysGain.connect(analyser)   // VAD reads filtered + boosted signal
           sysGain.connect(dest)       // Whisper receives filtered + boosted signal
         } else {
-          setMicError('System audio not available — please check "Share audio" in the screen sharing dialog, then try again.')
+          setMicError(t.live_error_system_audio_unavailable)
           audioCtx.close()
           return
         }
@@ -1184,13 +1199,13 @@ export function useLiveTranslate() {
       const msg = err instanceof Error ? err.message : String(err)
       if (msg.includes('Permission denied') || msg.includes('NotAllowedError')) {
         setMicError(audioMode === 'system'
-          ? 'Screen Recording permission denied. Enable it in System Settings → Privacy → Screen Recording.'
-          : 'Microphone access denied.')
+          ? t.live_error_screen_permission_denied
+          : t.live_error_mic_denied)
       } else if (!msg.includes('cancelled') && !msg.includes('AbortError')) {
         setMicError(msg)
       }
     }
-  }, [startChunk, audioMode, setViewingLiveSession, processChunk])
+  }, [startChunk, audioMode, setViewingLiveSession, processChunk, t])
 
   const handleStop = useCallback(() => {
     activeRef.current = false
@@ -1643,10 +1658,10 @@ export function useLiveTranslate() {
       .then((result) => {
         const availableModels = (result?.models ?? []) as { id: string; name: string }[]
         cachedSubtitleModelsRef.current = availableModels
-        void window.api.subtitle.pushState({ selectedProvider: provider, selectedModel: model, isActive, isTranscribing, isTranslating, availableModels, audioMode: mode, targetLang: lang })
+        void window.api.subtitle.pushState({ selectedProvider: provider, selectedModel: model, isActive, isTranscribing, isTranslating, availableModels, audioMode: mode, targetLang: lang, locale })
       })
       .catch(() => {
-        void window.api.subtitle.pushState({ selectedProvider: provider, selectedModel: model, isActive, isTranscribing, isTranslating, availableModels: cachedSubtitleModelsRef.current, audioMode: mode, targetLang: lang })
+        void window.api.subtitle.pushState({ selectedProvider: provider, selectedModel: model, isActive, isTranscribing, isTranslating, availableModels: cachedSubtitleModelsRef.current, audioMode: mode, targetLang: lang, locale })
       })
   }, [showSubtitles, selectedProvider, selectedModels, audioMode, targetLang])
 
@@ -1663,6 +1678,7 @@ export function useLiveTranslate() {
       availableModels: cachedSubtitleModelsRef.current,
       audioMode,
       targetLang,
+      locale,
     })
   }, [showSubtitles, isActive, isTranscribing, isTranslating])
 
@@ -1699,6 +1715,26 @@ export function useLiveTranslate() {
       cleanupClear()
     }
   }, [handleStart, handleStop, handleClear, handleNewSession, setSelectedProvider, setSelectedModel, selectedProvider, setTargetLang])
+
+  // ── Pre-flight STT provider check ─────────────────────────────────────────
+  // Runs on mount and whenever keyStatus changes (e.g. user adds/removes a key in Settings).
+  // This achieves two goals:
+  //   1. Updates activeSttProvider so the UI badge reflects the current best backend.
+  //   2. Pre-warms the session-level cache in the main process so the VERY FIRST audio
+  //      chunk of a new session goes directly to the best available provider — zero
+  //      wasted attempts on unavailable backends.
+  //
+  // keyStatus is the intentional trigger: it changes only when the user saves or deletes
+  // an API key, which is exactly when we need to re-evaluate the fallback chain.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyStatus is the intentional dependency
+  useEffect(() => {
+    if (!window.api?.checkSttProviders) return  // guard: running in tests / web builds
+    window.api.checkSttProviders()
+      .then((result) => {
+        if (mountedRef.current) setActiveSttProvider(result.primary)
+      })
+      .catch(() => { /* ignore — activeSttProvider stays 'none' */ })
+  }, [keyStatus])
 
   // Cleanup on unmount — stop audio pipeline, mark component as unmounted, close subtitle window.
   // mountedRef.current = false prevents in-flight async callbacks (STT, translation) from
@@ -1787,5 +1823,7 @@ export function useLiveTranslate() {
     hasAnyKey,
     // Adaptive VAD mode — 'energy' (default) or 'silero' (auto-upgraded when noisy)
     vadMode,
+    // Active STT backend — pre-flight checked on mount, updates when keys change
+    activeSttProvider,
   }
 }

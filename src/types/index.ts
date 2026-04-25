@@ -1,8 +1,46 @@
 export type Provider = 'gemini' | 'claude' | 'openai'
 
-export type TranslationStyle = 'friendly' | 'neutral' | 'professional' | 'business' | 'slack' | 'polite' | 'technical'
+export type TranslationStyle = 'general' | 'formal' | 'casual' | 'business' | 'technical' | 'natural'
+
+/**
+ * Phonetic annotation mode:
+ *  - 'off'      — no phonetic annotations
+ *  - 'standard' — add {word|reading} ruby annotations (furigana/pinyin/romanization above original script)
+ *  - 'phonetic' — replace original script with pure phonetics (hiragana-only, pinyin-only, romanization-only, IPA)
+ */
+export type PhoneticMode = 'off' | 'standard' | 'phonetic'
 
 export type TtsVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
+
+/**
+ * STT provider user-facing preference (stored in settings):
+ *  - 'auto'      — smart routing: Whisper → Gemini STT → Groq (free) → surface error
+ *  - 'whisper'   — OpenAI Whisper only (highest accuracy, requires OpenAI key)
+ *  - 'google'    — Gemini STT only (uses Gemini API key, no extra GCP setup)
+ *  - 'groq'      — Groq Whisper (free, 28,800 sec/day, requires Groq key)
+ *  - 'webSpeech' — Browser Web Speech API (free, real-time, no key needed, Chrome-based;
+ *                  kept for backward compat — not shown in UI; only used in VoiceRecorder
+ *                  for real-time streaming where IPC audio upload is not possible)
+ */
+export type SttProvider = 'auto' | 'whisper' | 'google' | 'groq' | 'webSpeech'
+
+/**
+ * Which STT backend actually produced a transcription result.
+ * Groq is only used internally as a 3rd fallback in 'auto' mode — not user-selectable.
+ */
+export type SttBackend = 'whisper' | 'gemini' | 'groq'
+
+/**
+ * Pre-flight STT availability check result.
+ * Returned by `checkSttProviders()` before starting a live session so the
+ * pipeline can skip unavailable providers from the very first audio chunk.
+ */
+export interface SttProviderCheckResult {
+  /** The best available backend (used as default for this session). */
+  primary: SttBackend | 'none'
+  /** All backends that have a configured key, in priority order. */
+  available: SttBackend[]
+}
 
 export interface ProviderConfig {
   id: Provider
@@ -39,6 +77,8 @@ export interface TranslateParams {
   sourceLang: string
   targetLang: string
   showFurigana?: boolean
+  /** Explicit phonetic mode — overrides showFurigana when present */
+  phoneticMode?: PhoneticMode
   translationStyle?: TranslationStyle
   /** When true, skip translation — only add phonetic annotations to the already-translated sourceText */
   phoneticOnly?: boolean
@@ -86,6 +126,15 @@ export interface TranscribeResult {
   noSpeechProb?: number
   avgLogprob?: number
   compressionRatio?: number
+  /**
+   * Per-segment text from Whisper verbose_json — each entry is one natural
+   * phrase boundary as detected by the model itself.  When 2+ segments are
+   * present, processChunk iterates them independently for language-agnostic
+   * sentence splitting (no regex heuristics needed).
+   */
+  segmentTexts?: string[]
+  /** Which STT backend actually produced this result (for telemetry / UI badge). */
+  usedProvider?: SttBackend
 }
 
 export interface TtsResult {
@@ -166,6 +215,12 @@ export interface ChatMessage {
   timestamp: number
   isLoading?: boolean
   error?: string
+  /** Deep Research mode — intermediate step bubble (collapsible, gray) */
+  isResearchStep?: boolean
+  /** Label shown in the research step header, e.g. "🔍 Phân tích câu hỏi" */
+  researchStepLabel?: string
+  /** Deep Research mode — final synthesis bubble (highlighted, indigo) */
+  isResearchFinal?: boolean
 }
 
 export interface ChatSession {
@@ -271,6 +326,11 @@ export interface WindowApi {
     language?: string
     /** Last transcript text, forwarded to Whisper as prompt context. */
     previousText?: string
+    /**
+     * Which STT backend to use. Defaults to 'auto' (Whisper → Google fallback).
+     * 'webSpeech' is handled entirely in the renderer — never sent via IPC.
+     */
+    sttProvider?: SttProvider
   }) => Promise<TranscribeResult>
   speakText: (params: {
     text: string
@@ -290,6 +350,24 @@ export interface WindowApi {
    * Returns a cleanup function — call it to unsubscribe.
    */
   onImageModelSwitched: (cb: (data: { model: string; provider: string }) => void) => () => void
+  /** Web search via Tavily → Brave → Jina fallback chain */
+  webSearch: (params: {
+    query: string
+    maxResults?: number
+  }) => Promise<{
+    success: boolean
+    results?: Array<{ title: string; url: string; content: string; score: number }>
+    answer?: string
+    error?: string
+  }>
+  /**
+   * Verify a web search API key by making a real minimal request.
+   * Must be called BEFORE saving to keychain so the user gets immediate feedback.
+   */
+  webSearchVerify: (params: {
+    provider: 'tavily' | 'brave'
+    apiKey: string
+  }) => Promise<{ valid: boolean; error?: string }>
   chat: (params: {
     provider: string
     model: string
@@ -309,6 +387,14 @@ export interface WindowApi {
   checkScreenPermission: () => Promise<string>
   openExternal: (url: string) => Promise<void>
   /**
+   * Pre-flight STT availability check — call before starting a Live Translate session.
+   * Checks which STT keys are configured (instant, no API call, no decryption) and
+   * pre-warms the session cache so the very first audio chunk goes to the right backend.
+   *
+   * Returns the best available provider and the full ordered list of available backends.
+   */
+  checkSttProviders: () => Promise<SttProviderCheckResult>
+  /**
    * Streaming translation — each AI token is pushed directly to the subtitle
    * window in real-time. Returns the full translated text when complete.
    */
@@ -319,6 +405,8 @@ export interface WindowApi {
     sourceLang: string
     targetLang: string
     translationStyle?: string
+    /** Segment ID — used by subtitle window to correlate streaming tokens */
+    segId?: string
   }) => Promise<TranslateResult>
   /** Floating subtitle overlay — runs in a separate always-on-top OS window */
   subtitle: {
@@ -326,8 +414,38 @@ export interface WindowApi {
     hide: () => Promise<void>
     update: (text: string, isTranslating: boolean) => Promise<void>
     setStyle: (style: SubtitleSettings) => Promise<void>
+    /** Push the latest raw (source) text to show above the translation */
+    setSourceText: (text: string, segId?: string) => Promise<void>
+    /** Push current session state to subtitle window */
+    pushState: (state: {
+      selectedProvider: string
+      selectedModel: string
+      isActive: boolean
+      isTranscribing: boolean
+      isTranslating: boolean
+      availableModels: { id: string; name: string }[]
+      audioMode: string
+      targetLang: string
+      locale?: string
+    }) => Promise<void>
     /** Returns a cleanup function that removes the listener */
     onClosed: (callback: () => void) => () => void
+    /** Listen for Start action from subtitle window. Returns cleanup fn. */
+    onStart: (callback: () => void) => () => void
+    /** Listen for Stop action from subtitle window. Returns cleanup fn. */
+    onStop: (callback: () => void) => () => void
+    /** Listen for provider change from subtitle window. Returns cleanup fn. */
+    onSetProvider: (callback: (provider: string) => void) => () => void
+    /** Listen for model change from subtitle window. Returns cleanup fn. */
+    onSetModel: (callback: (model: string) => void) => () => void
+    /** Listen for audio mode change from subtitle window. Returns cleanup fn. */
+    onSetAudioMode: (callback: (mode: string) => void) => () => void
+    /** Listen for target language change from subtitle window. Returns cleanup fn. */
+    onSetTargetLang: (callback: (lang: string) => void) => () => void
+    /** Listen for style changes from subtitle window. Returns cleanup fn. */
+    onStyleUpdate: (callback: (style: SubtitleSettings) => void) => () => void
+    /** Listen for "new session / clear" action from subtitle window. Returns cleanup fn. */
+    onClear: (callback: () => void) => () => void
   }
   platform: string
   version: string

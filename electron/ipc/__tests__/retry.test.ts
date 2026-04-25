@@ -6,7 +6,7 @@
  *   1. isRetriableError() — classifies errors as retriable or non-retriable
  *   2. withRetry()        — retry count, backoff, success on retry, non-retriable passthrough
  */
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { isRetriableError, withRetry } from '../retry'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -46,6 +46,16 @@ describe('isRetriableError', () => {
 
   it('returns true for "connection reset"', () => {
     expect(isRetriableError(new Error('connection reset by peer'))).toBe(true)
+  })
+
+  it('returns true for OpenAI APIConnectionError "Connection error."', () => {
+    // OpenAI Node SDK throws APIConnectionError with this exact message on
+    // DNS failures, TCP resets, or proxy issues.
+    expect(isRetriableError(new Error('Connection error.'))).toBe(true)
+  })
+
+  it('returns true for lowercase "connection error"', () => {
+    expect(isRetriableError(new Error('connection error occurred'))).toBe(true)
   })
 
   // ── Non-retriable (hard) errors ───────────────────────────────────────────

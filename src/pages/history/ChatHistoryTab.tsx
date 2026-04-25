@@ -35,7 +35,7 @@ export function ChatHistoryTab() {
             const preview = lastMsg?.content.find((c) => c.type === 'text')?.text ?? ''
 
             return (
-              <li key={session.id} className="group bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+              <li key={session.id} className="group hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors duration-150">
                 <button
                   type="button"
                   className="w-full text-left px-4 pt-3 pb-2"

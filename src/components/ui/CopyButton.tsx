@@ -19,18 +19,13 @@ export function CopyButton({ copied, onClick, labelCopy, labelCopied }: CopyButt
     <button
       type="button"
       onClick={onClick}
+      title={copied ? labelCopied : labelCopy}
       className={`btn-ghost py-1 px-2 text-xs transition-all ${copied ? 'text-green-600' : ''}`}
     >
       {copied ? (
-        <>
-          <CheckIcon />
-          <span className="hidden min-[1100px]:inline">{labelCopied}</span>
-        </>
+        <CheckIcon />
       ) : (
-        <>
-          <CopyIcon />
-          <span className="hidden min-[1100px]:inline">{labelCopy}</span>
-        </>
+        <CopyIcon />
       )}
     </button>
   )

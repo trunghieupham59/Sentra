@@ -64,10 +64,11 @@ export const useAppStore = create<AppState>()(
         selectedModels: state.selectedModels,
         autoTranslate: state.autoTranslate,
         autoTranslateDelay: state.autoTranslateDelay,
-        showFurigana: state.showFurigana,
+        phoneticMode: state.phoneticMode,
         translationStyle: state.translationStyle,
         ttsVoice: state.ttsVoice,
         fontSize: state.fontSize,
+        sttProvider: state.sttProvider,
         locale: state.locale,
         localeAuto: state.localeAuto,
         history: state.history,
@@ -75,6 +76,7 @@ export const useAppStore = create<AppState>()(
         chatSessions: state.chatSessions,
         chatSystemPrompt: state.chatSystemPrompt,
         systemPromptPresets: state.systemPromptPresets,
+        langUsage: state.langUsage,
       }),
     }
   )

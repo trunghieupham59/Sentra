@@ -1,4 +1,4 @@
-import type { TranslationStyle } from '../../types'
+import type { PhoneticMode, TranslationStyle } from '../../types'
 import { ModelSelector } from '../ModelSelector'
 import { AutoTranslateToggle } from '../ui/AutoTranslateToggle'
 import { ChevronDownIcon } from '../ui/icons'
@@ -9,19 +9,26 @@ interface TranslateToolbarProps {
   onStyleChange: (style: TranslationStyle) => void
   autoTranslate: boolean
   onAutoTranslateChange: (v: boolean) => void
-  showFurigana: boolean
-  onShowFuriganaChange: (v: boolean) => void
+  phoneticMode: PhoneticMode
+  onPhoneticModeChange: (mode: PhoneticMode) => void
   isPhoneticLoading: boolean
+  /** When true, hides the embedded ModelSelector (useful when parent renders it separately) */
+  hideModelSelector?: boolean
   // i18n
   labelStyleLabel: string
-  labelStyleFriendly: string
-  labelStyleNeutral: string
-  labelStyleProfessional: string
+  labelStyleGeneral: string
+  labelStyleFormal: string
+  labelStyleCasual: string
   labelStyleBusiness: string
-  labelStyleSlack: string
-  labelStylePolite: string
   labelStyleTechnical: string
-  labelPhonetic: string
+  labelStyleNatural: string
+  labelPhoneticOff: string
+  labelPhoneticStandard: string
+  labelPhoneticTranscription: string
+  /** Short title displayed above the phonetic dropdown */
+  labelPhoneticSection: string
+  /** Short title displayed above the auto/manual toggle */
+  labelAutoSection: string
   titleAutoMode: string
   titleManualMode: string
   labelAutoMode: string
@@ -31,40 +38,46 @@ interface TranslateToolbarProps {
 export function TranslateToolbar({
   translationStyle, onStyleChange,
   autoTranslate, onAutoTranslateChange,
-  showFurigana, onShowFuriganaChange, isPhoneticLoading,
-  labelStyleLabel, labelStyleFriendly, labelStyleNeutral,
-  labelStyleProfessional, labelStyleBusiness, labelStyleSlack,
-  labelStylePolite, labelStyleTechnical,
-  labelPhonetic, titleAutoMode, titleManualMode, labelAutoMode, labelManualMode,
+  phoneticMode, onPhoneticModeChange, isPhoneticLoading,
+  hideModelSelector = false,
+  labelStyleLabel,
+  labelStyleGeneral, labelStyleFormal, labelStyleCasual,
+  labelStyleBusiness, labelStyleTechnical, labelStyleNatural,
+  labelPhoneticOff, labelPhoneticStandard, labelPhoneticTranscription,
+  labelPhoneticSection, labelAutoSection,
+  titleAutoMode, titleManualMode, labelAutoMode, labelManualMode,
 }: TranslateToolbarProps) {
   return (
-    <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 overflow-hidden
-                    bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
-      <div className="flex-1 min-w-0 overflow-hidden">
-        <ModelSelector />
-      </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
-        {/* Style dropdown */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-gray-400 whitespace-nowrap">{labelStyleLabel}</span>
+    <div className="flex items-end gap-3 overflow-hidden flex-wrap">
+      {!hideModelSelector && (
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <ModelSelector />
+        </div>
+      )}
+
+      <div className="flex items-end gap-3 flex-shrink-0">
+        {/* Style dropdown with label above */}
+        <div className="flex flex-col items-start gap-1">
+          <span className="text-[0.65rem] font-medium text-gray-400 whitespace-nowrap uppercase tracking-wide">
+            {labelStyleLabel}
+          </span>
           <div className="relative">
             <select
               value={translationStyle}
               onChange={(e) => onStyleChange(e.target.value as TranslationStyle)}
-              className={`text-xs font-medium px-2.5 py-1.5 pr-6 rounded-full border appearance-none cursor-pointer
-                          transition-colors duration-200 outline-none
-                          ${translationStyle !== 'neutral'
+              className={`text-[13px] font-medium px-2.5 py-1.5 pr-6 rounded-full border appearance-none cursor-pointer
+                          transition-colors duration-200 outline-none w-36
+                          ${translationStyle !== 'general'
                             ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-400'
                             : 'bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'
                           }`}
             >
-              <option value="friendly">{labelStyleFriendly}</option>
-              <option value="neutral">{labelStyleNeutral}</option>
-              <option value="professional">{labelStyleProfessional}</option>
+              <option value="general">{labelStyleGeneral}</option>
+              <option value="formal">{labelStyleFormal}</option>
+              <option value="casual">{labelStyleCasual}</option>
               <option value="business">{labelStyleBusiness}</option>
-              <option value="slack">{labelStyleSlack}</option>
-              <option value="polite">{labelStylePolite}</option>
               <option value="technical">{labelStyleTechnical}</option>
+              <option value="natural">{labelStyleNatural}</option>
             </select>
             <div className="pointer-events-none absolute right-2 inset-y-0 flex items-center">
               <ChevronDownIcon className="w-3 h-3 text-gray-400" />
@@ -72,21 +85,35 @@ export function TranslateToolbar({
           </div>
         </div>
 
-        <AutoTranslateToggle
-          autoTranslate={autoTranslate}
-          onChange={onAutoTranslateChange}
-          titleAuto={titleAutoMode}
-          titleManual={titleManualMode}
-          labelAuto={labelAutoMode}
-          labelManual={labelManualMode}
-        />
+        {/* Phonetic dropdown with label above */}
+        <div className="flex flex-col items-start gap-1">
+          <span className="text-[0.65rem] font-medium text-gray-400 whitespace-nowrap uppercase tracking-wide">
+            {labelPhoneticSection}
+          </span>
+          <PhoneticToggle
+            phoneticMode={phoneticMode}
+            onChange={onPhoneticModeChange}
+            labelOff={labelPhoneticOff}
+            labelStandard={labelPhoneticStandard}
+            labelPhonetic={labelPhoneticTranscription}
+            isLoading={isPhoneticLoading}
+          />
+        </div>
 
-        <PhoneticToggle
-          showFurigana={showFurigana}
-          onChange={onShowFuriganaChange}
-          label={labelPhonetic}
-          isLoading={isPhoneticLoading}
-        />
+        {/* Auto/Manual toggle with label above */}
+        <div className="flex flex-col items-start gap-1">
+          <span className="text-[0.65rem] font-medium text-gray-400 whitespace-nowrap uppercase tracking-wide">
+            {labelAutoSection}
+          </span>
+          <AutoTranslateToggle
+            autoTranslate={autoTranslate}
+            onChange={onAutoTranslateChange}
+            titleAuto={titleAutoMode}
+            titleManual={titleManualMode}
+            labelAuto={labelAutoMode}
+            labelManual={labelManualMode}
+          />
+        </div>
       </div>
     </div>
   )

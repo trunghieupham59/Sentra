@@ -8,7 +8,7 @@ import { detectSystemLocale } from '../../utils/locale'
 export function PreferencesSection() {
   const {
     autoTranslate, setAutoTranslate, autoTranslateDelay, setAutoTranslateDelay,
-    showFurigana, setShowFurigana,
+    phoneticMode, setPhoneticMode,
     locale, localeAuto, setLocale, setLocaleAuto, setLocaleFromSystem,
     fontSize, setFontSize,
   } = useAppStore()
@@ -88,8 +88,8 @@ export function PreferencesSection() {
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_furigana_desc}</p>
           </div>
           <ToggleSwitch
-            checked={showFurigana}
-            onChange={setShowFurigana}
+            checked={phoneticMode !== 'off'}
+            onChange={(v) => setPhoneticMode(v ? 'standard' : 'off')}
             aria-label={t.settings_furigana}
           />
         </div>

@@ -1,5 +1,5 @@
+import type { BrowserWindow, IpcMain } from 'electron'
 import { app, net, shell } from 'electron'
-import type { IpcMain, BrowserWindow } from 'electron'
 import { autoUpdater } from 'electron-updater'
 
 // ─── GitHub repo for update checks (macOS fallback) ────────────────────────

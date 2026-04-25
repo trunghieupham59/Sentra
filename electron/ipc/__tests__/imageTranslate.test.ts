@@ -9,7 +9,7 @@
  *
  * Provider SDKs are NOT imported — no real API calls made.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ── Mock Electron + storage before importing ──────────────────────────────────
 vi.mock('electron', () => ({
@@ -21,30 +21,15 @@ vi.mock('../storage', () => ({
 }))
 
 import {
-  langName,
   buildImageTranslatePrompt,
+  isModelNotFoundError,
+  isVisionUnsupportedError,
+  langName,
   registerImageTranslateHandlers,
   scoreModelForVision,
-  isVisionUnsupportedError,
-  isModelNotFoundError,
 } from '../imageTranslate'
 import { getStoredApiKey } from '../storage'
-
-// ─── Mock IpcMain helper ──────────────────────────────────────────────────────
-function buildMockIpcMain() {
-  // biome-ignore lint/suspicious/noExplicitAny: Function type needed for flexible IPC mock
-  const handlers: Record<string, Function> = {}
-  const ipcMain = {
-    // biome-ignore lint/suspicious/noExplicitAny: Function type needed for flexible IPC mock
-    handle: (channel: string, handler: Function) => {
-      handlers[channel] = handler
-    },
-  }
-  // Returns any intentionally — tests need to assert on result shape
-  const invoke = (channel: string, params: unknown) =>
-    handlers[channel]?.({} /* fake _event */, params)
-  return { ipcMain, invoke }
-}
+import { buildMockIpcMain } from './helpers/mockIpcMain'
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('langName', () => {

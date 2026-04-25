@@ -24,8 +24,8 @@ export const PROVIDERS: ProviderConfig[] = [
     docsUrl: 'https://console.anthropic.com',
     models: [
       // ★ When adding a new Claude model, mark the fastest/best translation model as tag:'recommended'
-      { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', description: 'Fastest & efficient', tag: 'recommended' },
-      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', description: 'Balanced performance', tag: 'balanced' },
+      { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5', description: 'Fastest & efficient', tag: 'recommended' },
+      { id: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5', description: 'Balanced performance', tag: 'balanced' },
       { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet', description: 'Most powerful', tag: 'powerful' },
     ],
   },
@@ -66,25 +66,26 @@ export function getRecommendedModel(providerId: Provider): string {
 
 export const LANGUAGES: Language[] = [
   { code: 'auto', name: 'Auto Detect', nativeName: 'Auto' },
-  { code: 'vi', name: 'Vietnamese', nativeName: 'Tiếng Việt' },
-  { code: 'en', name: 'English', nativeName: 'English' },
+  // Sorted alphabetically by English name:
+  { code: 'ar', name: 'Arabic', nativeName: 'العربية' },
   { code: 'zh', name: 'Chinese (Simplified)', nativeName: '中文' },
   { code: 'zh-TW', name: 'Chinese (Traditional)', nativeName: '繁體中文' },
-  { code: 'ja', name: 'Japanese', nativeName: '日本語' },
-  { code: 'ko', name: 'Korean', nativeName: '한국어' },
+  { code: 'nl', name: 'Dutch', nativeName: 'Nederlands' },
+  { code: 'en', name: 'English', nativeName: 'English' },
   { code: 'fr', name: 'French', nativeName: 'Français' },
   { code: 'de', name: 'German', nativeName: 'Deutsch' },
-  { code: 'es', name: 'Spanish', nativeName: 'Español' },
-  { code: 'pt', name: 'Portuguese', nativeName: 'Português' },
-  { code: 'ru', name: 'Russian', nativeName: 'Русский' },
-  { code: 'ar', name: 'Arabic', nativeName: 'العربية' },
-  { code: 'th', name: 'Thai', nativeName: 'ภาษาไทย' },
+  { code: 'hi', name: 'Hindi', nativeName: 'हिंदी' },
   { code: 'id', name: 'Indonesian', nativeName: 'Bahasa Indonesia' },
   { code: 'it', name: 'Italian', nativeName: 'Italiano' },
-  { code: 'nl', name: 'Dutch', nativeName: 'Nederlands' },
+  { code: 'ja', name: 'Japanese', nativeName: '日本語' },
+  { code: 'ko', name: 'Korean', nativeName: '한국어' },
   { code: 'pl', name: 'Polish', nativeName: 'Polski' },
+  { code: 'pt', name: 'Portuguese', nativeName: 'Português' },
+  { code: 'ru', name: 'Russian', nativeName: 'Русский' },
+  { code: 'es', name: 'Spanish', nativeName: 'Español' },
+  { code: 'th', name: 'Thai', nativeName: 'ภาษาไทย' },
   { code: 'tr', name: 'Turkish', nativeName: 'Türkçe' },
-  { code: 'hi', name: 'Hindi', nativeName: 'हिंदी' },
+  { code: 'vi', name: 'Vietnamese', nativeName: 'Tiếng Việt' },
 ]
 
 export const TARGET_LANGUAGES = LANGUAGES.filter((l) => l.code !== 'auto')

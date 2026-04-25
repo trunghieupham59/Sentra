@@ -34,6 +34,8 @@ interface ChatParams {
   model: string
   messages: ChatMessage[]
   systemPrompt?: string
+  /** Bypass the 3k char limit — used for Deep Research synthesis with long context */
+  bypassLengthCheck?: boolean
 }
 
 export const chatService = {

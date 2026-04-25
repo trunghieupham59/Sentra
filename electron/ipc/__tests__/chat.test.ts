@@ -9,7 +9,7 @@
  *
  * Provider SDKs (Gemini/Claude/OpenAI) are mocked — no real API calls made.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ── Mock Electron before importing chat.ts ────────────────────────────────────
 vi.mock('electron', () => ({
@@ -21,22 +21,9 @@ vi.mock('../storage', () => ({
   getStoredApiKey: vi.fn(),
 }))
 
-import { buildEnforcedSystemPrompt, isLikelyChatModel, scoreOpenAIChatModel, registerChatHandlers } from '../chat'
+import { buildEnforcedSystemPrompt, isLikelyChatModel, registerChatHandlers, scoreOpenAIChatModel } from '../chat'
 import { getStoredApiKey } from '../storage'
-
-// ─── Helper: build a minimal IpcMain mock ────────────────────────────────────
-function buildMockIpcMain() {
-  const handlers: Record<string, Function> = {}
-  const ipcMain = {
-    handle: (channel: string, handler: Function) => {
-      handlers[channel] = handler
-    },
-  }
-  // Invoke a registered handler with fake event + params
-  const invoke = (channel: string, params: unknown) =>
-    handlers[channel]?.({} /* fake event */, params)
-  return { ipcMain, invoke }
-}
+import { buildMockIpcMain } from './helpers/mockIpcMain'
 
 // ─── Helper: build a minimal chat message ────────────────────────────────────
 const textMsg = (role: 'user' | 'assistant', text: string) => ({

@@ -17,8 +17,8 @@ beforeEach(() => {
       localeAuto: true,
       autoTranslate: false,
       autoTranslateDelay: 500,
-      showFurigana: false,
-      translationStyle: 'neutral',
+      phoneticMode: 'off',
+      translationStyle: 'general',
       ttsVoice: 'nova',
       fontSize: 'medium',
       keyStatus: { gemini: false, claude: false, openai: false } as Record<string, boolean>,
@@ -102,25 +102,30 @@ describe('setAutoTranslateDelay', () => {
   })
 })
 
-describe('setShowFurigana', () => {
-  it('enables furigana display', () => {
-    act(() => useAppStore.getState().setShowFurigana(true))
-    expect(useAppStore.getState().showFurigana).toBe(true)
+describe('setPhoneticMode', () => {
+  it('enables standard phonetic mode', () => {
+    act(() => useAppStore.getState().setPhoneticMode('standard'))
+    expect(useAppStore.getState().phoneticMode).toBe('standard')
   })
 
-  it('disables furigana display', () => {
+  it('enables pure phonetic transcription mode', () => {
+    act(() => useAppStore.getState().setPhoneticMode('phonetic'))
+    expect(useAppStore.getState().phoneticMode).toBe('phonetic')
+  })
+
+  it('disables phonetic mode', () => {
     act(() => {
-      useAppStore.getState().setShowFurigana(true)
-      useAppStore.getState().setShowFurigana(false)
+      useAppStore.getState().setPhoneticMode('standard')
+      useAppStore.getState().setPhoneticMode('off')
     })
-    expect(useAppStore.getState().showFurigana).toBe(false)
+    expect(useAppStore.getState().phoneticMode).toBe('off')
   })
 })
 
 describe('setTranslationStyle', () => {
-  it('sets style to friendly', () => {
-    act(() => useAppStore.getState().setTranslationStyle('friendly'))
-    expect(useAppStore.getState().translationStyle).toBe('friendly')
+  it('sets style to casual', () => {
+    act(() => useAppStore.getState().setTranslationStyle('casual'))
+    expect(useAppStore.getState().translationStyle).toBe('casual')
   })
 
   it('sets style to technical', () => {
@@ -128,9 +133,9 @@ describe('setTranslationStyle', () => {
     expect(useAppStore.getState().translationStyle).toBe('technical')
   })
 
-  it('sets style to business', () => {
-    act(() => useAppStore.getState().setTranslationStyle('business'))
-    expect(useAppStore.getState().translationStyle).toBe('business')
+  it('sets style to formal', () => {
+    act(() => useAppStore.getState().setTranslationStyle('formal'))
+    expect(useAppStore.getState().translationStyle).toBe('formal')
   })
 })
 

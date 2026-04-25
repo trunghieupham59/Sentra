@@ -7,6 +7,7 @@
  * instead of duplicating the JSX inline.
  */
 
+import { useT } from '../../store/useAppStore'
 import { ImagePreviewThumbnail } from '../ui/ImagePreviewThumbnail'
 import type { ImageAttachment } from './ImageTranslator'
 
@@ -21,11 +22,12 @@ export function ImageAttachmentPreview({
   imageAttachment,
   onRemove,
 }: ImageAttachmentPreviewProps) {
+  const t = useT()
   return (
     <ImagePreviewThumbnail
       src={imageAttachment.previewDataUrl}
       alt={imageAttachment.fileName}
-      removeTitle="Remove image"
+      removeTitle={t.chat_remove_image}
       onRemove={onRemove}
     />
   )

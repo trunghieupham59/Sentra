@@ -60,7 +60,7 @@ describe('translationService.translate', () => {
   it('passes translation style and showFurigana when provided', async () => {
     mockApi.translate.mockResolvedValueOnce({ success: true, translatedText: 'result' })
 
-    const params = { ...BASE_TRANSLATE_PARAMS, translationStyle: 'friendly' as const, showFurigana: true }
+    const params = { ...BASE_TRANSLATE_PARAMS, translationStyle: 'casual' as const, showFurigana: true }
     await translationService.translate(params)
 
     expect(mockApi.translate).toHaveBeenCalledWith(params)

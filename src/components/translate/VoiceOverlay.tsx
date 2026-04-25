@@ -19,6 +19,13 @@ interface VoiceOverlayProps {
   recordLabel: string
 }
 
+/** Ripple ring config — each ring has different size, opacity, speed and delay */
+const RIPPLE_RINGS = [
+  { size: 'w-28 h-28', color: 'bg-red-100 dark:bg-red-900/20', duration: '1.8s', delay: undefined },
+  { size: 'w-20 h-20', color: 'bg-red-200 dark:bg-red-900/30', duration: '1.4s', delay: '0.2s' },
+  { size: 'w-14 h-14', color: 'bg-red-300 dark:bg-red-900/50', duration: '1.1s', delay: '0.1s' },
+] as const
+
 export function VoiceOverlay({
   isVoiceActive,
   isVoiceInterim,
@@ -33,12 +40,17 @@ export function VoiceOverlay({
                     bg-white dark:bg-gray-900 fade-in">
       {/* Animated rings */}
       <div className="relative flex items-center justify-center mb-5">
-        <span className="absolute w-28 h-28 rounded-full bg-red-100 dark:bg-red-900/20 animate-ping"
-              style={{ animationDuration: '1.8s' }} />
-        <span className="absolute w-20 h-20 rounded-full bg-red-200 dark:bg-red-900/30 animate-ping"
-              style={{ animationDuration: '1.4s', animationDelay: '0.2s' }} />
-        <span className="absolute w-14 h-14 rounded-full bg-red-300 dark:bg-red-900/50 animate-ping"
-              style={{ animationDuration: '1.1s', animationDelay: '0.1s' }} />
+        {RIPPLE_RINGS.map((ring, i) => (
+          <span
+            // biome-ignore lint/suspicious/noArrayIndexKey: stable ripple ring indices
+            key={i}
+            className={`absolute ${ring.size} rounded-full ${ring.color} animate-ping`}
+            style={{
+              animationDuration: ring.duration,
+              ...(ring.delay ? { animationDelay: ring.delay } : {}),
+            }}
+          />
+        ))}
 
         {/* Microphone circle */}
         <div className="relative w-16 h-16 rounded-full bg-red-500 dark:bg-red-600 flex items-center justify-center shadow-md">

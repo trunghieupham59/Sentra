@@ -18,7 +18,7 @@ export function SpinnerIcon({ className = 'w-3.5 h-3.5 animate-spin' }: IconProp
 }
 
 /** Stop square icon — used on media controls to indicate "stop playing". */
-export function StopIcon({ className = 'w-3.5 h-3.5' }: IconProps) {
+export function StopIcon({ className = 'w-4 h-4' }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path fillRule="evenodd"

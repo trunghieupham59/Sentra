@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppLogoIcon } from '../components/AppLogo'
+import { DeepResearchApiSection } from '../components/chat/DeepResearchApiSection'
 import { MessageBubble } from '../components/chat/MessageBubble'
 import { SystemPromptDropdown } from '../components/chat/SystemPromptDropdown'
 import { ModelSelector } from '../components/ModelSelector'
 import { DragOverlay } from '../components/ui/DragOverlay'
 import { ImagePreviewThumbnail } from '../components/ui/ImagePreviewThumbnail'
 import {
+  GearIcon,
   ImageIcon,
+  LightbulbIcon,
   PlusIcon, SendIcon,
   SpinnerIcon, TrashIcon, XIcon,
 } from '../components/ui/icons'
@@ -15,6 +18,7 @@ import { MAX_CHAT_IMAGE_DIMENSION } from '../constants/image'
 import { COPY_FEEDBACK_DURATION_MS } from '../constants/ui'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import { chatService } from '../services/chatService'
+import { deepResearchService } from '../services/deepResearchService'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { ChatMessage, ChatMessageContent } from '../types'
 import { extractImageFromClipboard, resizeImageFile } from '../utils/imageUtils'
@@ -59,7 +63,7 @@ export function ChatPage() {
     selectedProvider, selectedModels, keyStatus,
     chatSessions, activeChatSessionId, chatSystemPrompt, systemPromptPresets,
     createChatSession, setActiveChatSession, addChatMessage, updateChatMessage,
-    clearChatSession, setChatSystemPrompt, setActivePage, addSystemPromptPreset,
+    clearChatSession, setChatSystemPrompt, addSystemPromptPreset, openSettings,
   } = useAppStore()
   const t = useT()
 
@@ -73,6 +77,10 @@ export function ChatPage() {
   const [attachImageError, setAttachImageError] = useState<string | null>(null)
   /** Visual feedback state when user drags a file over the chat area */
   const [isDraggingOver, setIsDraggingOver] = useState(false)
+  /** Controls visibility of the AI config popup */
+  const [showAIConfig, setShowAIConfig] = useState(false)
+  /** Whether Deep Research multi-step pipeline is active */
+  const [deepResearchMode, setDeepResearchMode] = useState(false)
   // Active preset = the preset whose content matches chatSystemPrompt
   const activePreset = systemPromptPresets.find((p) => p.content === chatSystemPrompt) ?? null
 
@@ -90,6 +98,8 @@ export function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  /** Ref for AI config popup — used for click-outside detection */
+  const aiConfigRef = useRef<HTMLDivElement>(null)
 
   // Active session
   const activeSession = chatSessions.find((s) => s.id === activeChatSessionId) ?? null
@@ -110,6 +120,18 @@ export function ChatPage() {
     el.style.height = `${Math.min(el.scrollHeight, CHAT_TEXTAREA_MAX_HEIGHT_PX)}px`
   }, [inputText])
 
+  // ── Close AI config popup on outside click ──
+  useEffect(() => {
+    if (!showAIConfig) return
+    const handleOutside = (e: MouseEvent) => {
+      if (aiConfigRef.current && !aiConfigRef.current.contains(e.target as Node)) {
+        setShowAIConfig(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [showAIConfig])
+
   // ── Ensure active session exists for current provider/model ──
   const ensureSession = useCallback(() => {
     if (activeChatSessionId && chatSessions.find((s) => s.id === activeChatSessionId)) {
@@ -127,7 +149,7 @@ export function ChatPage() {
       setAttachedImage(result)
     } catch (err) {
       // Show error in the UI so the user knows the attachment failed
-      const msg = err instanceof Error ? err.message : 'Failed to process image'
+      const msg = err instanceof Error ? err.message : t.image_translate_error_failed
       setAttachImageError(msg)
     }
   }, [])
@@ -195,13 +217,13 @@ export function ChatPage() {
       } else {
         updateChatMessage(activeChatSessionId, assistantMsgId, {
           isLoading: false,
-          error: result.error || 'Failed to regenerate response',
+          error: result.error || t.chat_error_failed_regenerate,
         })
       }
     } catch (err) {
       updateChatMessage(activeChatSessionId, assistantMsgId, {
         isLoading: false,
-        error: err instanceof Error ? err.message : 'Unexpected error',
+        error: err instanceof Error ? err.message : t.chat_error_unexpected,
       })
     } finally {
       setIsSending(false)
@@ -214,6 +236,65 @@ export function ChatPage() {
     if (!hasKey) return
 
     const sessionId = ensureSession()
+
+    // ── Deep Research path ────────────────────────────────────────────────────
+    if (deepResearchMode && text) {
+      const userMsg: ChatMessage = {
+        id: `msg-${Date.now()}-u`,
+        role: 'user',
+        content: [{ type: 'text', text }],
+        timestamp: Date.now(),
+      }
+      addChatMessage(sessionId, userMsg)
+      setInputText('')
+      setIsSending(true)
+
+      try {
+        await deepResearchService.run({
+          provider: selectedProvider,
+          model: selectedModels[selectedProvider],
+          question: text,
+          callbacks: {
+            onStepStart: (label, icon) => {
+              const msgId = `msg-${Date.now()}-dr${Math.random().toString(36).slice(2, 6)}`
+              addChatMessage(sessionId, {
+                id: msgId,
+                role: 'assistant',
+                content: [{ type: 'text', text: '' }],
+                timestamp: Date.now(),
+                isLoading: true,
+                isResearchStep: true,
+                researchStepLabel: `${icon} ${label}`,
+              })
+              return msgId
+            },
+            onStepComplete: (msgId, content, isFinal) => {
+              updateChatMessage(sessionId, msgId, {
+                content: [{ type: 'text', text: content }],
+                isLoading: false,
+                isResearchStep: !isFinal,
+                isResearchFinal: isFinal,
+                ...(isFinal ? { researchStepLabel: undefined } : {}),
+              })
+            },
+            onStepError: (msgId, error) => {
+              updateChatMessage(sessionId, msgId, {
+                isLoading: false,
+                error,
+                isResearchStep: true,
+              })
+            },
+          },
+        })
+      } catch {
+        // Catastrophic error — individual step errors handled by onStepError
+      } finally {
+        setIsSending(false)
+      }
+      return
+    }
+
+    // ── Normal chat path ──────────────────────────────────────────────────────
 
     // Build content
     const userContent: ChatMessageContent[] = []
@@ -275,19 +356,19 @@ export function ChatPage() {
       } else {
         updateChatMessage(sessionId, assistantMsgId, {
           isLoading: false,
-          error: result.error || 'Failed to get response',
+          error: result.error || t.chat_error_failed_response,
         })
       }
     } catch (err) {
       updateChatMessage(sessionId, assistantMsgId, {
         isLoading: false,
-        error: err instanceof Error ? err.message : 'Unexpected error',
+        error: err instanceof Error ? err.message : t.chat_error_unexpected,
       })
     } finally {
       setIsSending(false)
     }
-  }, [inputText, attachedImage, isSending, hasKey, ensureSession, addChatMessage, updateChatMessage,
-      selectedProvider, selectedModels, chatSystemPrompt])
+  }, [inputText, attachedImage, isSending, hasKey, deepResearchMode, ensureSession,
+      addChatMessage, updateChatMessage, selectedProvider, selectedModels, chatSystemPrompt])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -322,12 +403,159 @@ export function ChatPage() {
 
   const messages = activeSession?.messages ?? []
 
+  /** Shared input area — reused in both empty-state and messages-state layouts */
+  const inputArea = (
+    <div>
+      {/* Image attach error */}
+      {attachImageError && (
+        <div className="px-4 pt-2 flex items-center gap-2">
+          <p className="text-xs text-red-500 dark:text-red-400">{attachImageError}</p>
+          <button
+            type="button"
+            onClick={() => setAttachImageError(null)}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
+            aria-label={t.translate_error_dismiss}
+          >
+            <XIcon className="w-3 h-3" />
+          </button>
+        </div>
+      )}
+
+      {/* Image preview */}
+      {attachedImage && (
+        <ImagePreviewThumbnail
+          src={attachedImage.previewUrl}
+          alt={attachedImage.fileName}
+          removeTitle={t.chat_remove_image}
+          onRemove={() => setAttachedImage(null)}
+        />
+      )}
+
+      {/* Voice overlay */}
+      {isVoiceActive && (
+        <div className="flex items-center gap-3 px-4 py-2 bg-red-50 dark:bg-red-950/20 border-t border-red-100 dark:border-red-900/50">
+          <div className="flex items-end gap-[3px] h-5">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <span
+                key={i}
+                className="w-1 rounded-full bg-red-400 dark:bg-red-500 animate-bounce"
+                style={{ height: `${VOICE_BAR_HEIGHT_BASE_PX + (i % 3) * VOICE_BAR_HEIGHT_STEP_PX}px`, animationDuration: `${VOICE_BAR_DURATION_BASE_S + i * VOICE_BAR_DURATION_STEP_S}s`, animationDelay: `${i * VOICE_BAR_DELAY_STEP_S}s` }}
+              />
+            ))}
+          </div>
+          <span className={`text-xs font-medium ${isVoiceInterim ? 'text-gray-400 italic' : 'text-red-500 dark:text-red-400'}`}>
+            {inputText || '…'}
+          </span>
+        </div>
+      )}
+
+      {/* Deep Research active badge */}
+      {deepResearchMode && (
+        <div className="flex items-center gap-1.5 px-4 pt-2">
+          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full
+                           bg-indigo-50 dark:bg-indigo-950/40
+                           border border-indigo-200 dark:border-indigo-700">
+            <LightbulbIcon className="w-2.5 h-2.5 text-indigo-500" />
+            <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">Deep Research</span>
+          </span>
+          <span className="text-[10px] text-gray-400 dark:text-gray-600">{t.chat_deep_research_hint}</span>
+        </div>
+      )}
+
+      {/* Textarea + buttons */}
+      <div className="flex items-center gap-2 px-3 py-3">
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <VoiceRecorder
+            sourceLang="auto"
+            onTranscript={handleVoiceTranscript}
+            onRecordingChange={handleVoiceRecordingChange}
+            titleRecord={t.chat_voice_record}
+            titleStop={t.chat_voice_stop}
+            labelTranscribing="…"
+            labelRecording="…"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            title={t.chat_attach_image}
+            className="flex items-center justify-center w-8 h-8 rounded-full
+                       text-gray-400 hover:text-emerald-500 hover:bg-emerald-50
+                       dark:hover:bg-emerald-950 dark:hover:text-emerald-400 transition-all duration-200 cursor-pointer"
+          >
+            <ImageIcon className="w-4 h-4" />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) handleImageSelect(file)
+              e.target.value = ''
+            }}
+          />
+          {/* Deep Research toggle */}
+          <button
+            type="button"
+            onClick={() => setDeepResearchMode((v) => !v)}
+            title={deepResearchMode ? t.chat_deep_research_disable : t.chat_deep_research_enable}
+            className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 cursor-pointer
+                        ${deepResearchMode
+                          ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400'
+                          : 'text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950 dark:hover:text-indigo-400'}`}
+          >
+            <LightbulbIcon className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 relative">
+          <textarea
+            ref={textareaRef}
+            value={inputText}
+            onChange={(e) => {
+              setInputText(e.target.value)
+              if (isVoiceActive) resetVoicePrefix()
+            }}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            placeholder={t.chat_placeholder}
+            rows={1}
+            disabled={isSending}
+            className={`w-full resize-none rounded-2xl px-4 py-2.5 text-sm leading-relaxed
+                        bg-gray-100 dark:bg-gray-800 border border-transparent
+                        focus:outline-none focus:border-blue-400 dark:focus:border-blue-600
+                        placeholder-gray-400 dark:placeholder-gray-600
+                        text-gray-900 dark:text-gray-100
+                        disabled:opacity-60 transition-colors duration-150
+                        ${isVoiceInterim ? 'italic text-gray-400 dark:text-gray-500' : ''}`}
+            style={{ maxHeight: `${CHAT_TEXTAREA_MAX_HEIGHT_PX}px`, overflowY: 'auto' }}
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleSend}
+          disabled={(!inputText.trim() && !attachedImage) || isSending || !hasKey}
+          title={t.chat_send}
+          className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full
+                      transition-all duration-200 cursor-pointer
+                      disabled:opacity-40 disabled:cursor-not-allowed
+                      ${isSending
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-blue-500 hover:bg-blue-600 text-white shadow-sm'}`}
+        >
+          {isSending ? <SpinnerIcon className="w-4 h-4 animate-spin" /> : <SendIcon />}
+        </button>
+      </div>
+    </div>
+  )
+
   return (
     <div
       role="application"
-      aria-label="Chat drop zone"
-      className={`flex flex-col h-full bg-gray-50 dark:bg-gray-950 relative transition-colors duration-150
-                  ${isDraggingOver ? 'bg-emerald-50 dark:bg-emerald-950/20' : ''}`}
+      aria-label={t.chat_attach_image}
+      className="flex flex-col h-full bg-white dark:bg-gray-950 relative"
       onDragOver={(e) => { e.preventDefault(); setIsDraggingOver(true) }}
       onDragLeave={handleDragLeave}
       onDrop={handleFileDrop}
@@ -336,104 +564,162 @@ export function ChatPage() {
       {isDraggingOver && (
         <DragOverlay label={t.chat_attach_image} zIndex="z-50" showRing />
       )}
-      {/* ── Toolbar ── */}
-      <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5
-                      bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
-        <div className="flex-1 min-w-0 overflow-hidden">
-          <ModelSelector />
-        </div>
 
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          {/* System Prompt Dropdown — state is managed inside the component */}
-          <SystemPromptDropdown
-            chatSystemPrompt={chatSystemPrompt}
-            systemPromptPresets={systemPromptPresets}
-            activePreset={activePreset}
-            onSetChatSystemPrompt={setChatSystemPrompt}
-            onNavigateSettings={() => setActivePage('settings')}
-            onAddPreset={addSystemPromptPreset}
-            t={t}
-          />
+      {/* ── Main area ── */}
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="px-6 pt-4 pb-4 flex flex-col gap-3 flex-1 min-h-0 min-w-0">
 
-          {/* New chat */}
-          <button
-            type="button"
-            onClick={handleNewChat}
-            title={t.chat_new_session}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium border
-                       bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200
-                       dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700
-                       transition-all duration-200 cursor-pointer whitespace-nowrap"
-          >
-            <PlusIcon />
-            <span>{t.chat_new_session}</span>
-          </button>
-
-          {/* Clear */}
-          {messages.length > 0 && (
+          {/* ── Top action bar: actions + settings icon ── */}
+          <div className="flex items-center justify-end gap-1.5 flex-shrink-0">
+            {/* New chat */}
             <button
               type="button"
-              onClick={handleClear}
-              title={t.chat_clear}
+              onClick={handleNewChat}
+              title={t.chat_new_session}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium border
-                         bg-gray-100 border-gray-200 text-gray-500 hover:bg-red-50 hover:border-red-200 hover:text-red-500
-                         dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-red-950 dark:hover:text-red-400
+                         bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200
+                         dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700
                          transition-all duration-200 cursor-pointer whitespace-nowrap"
             >
-              <TrashIcon />
-              <span>{t.chat_clear}</span>
+              <PlusIcon />
+              <span>{t.chat_new_session}</span>
             </button>
-          )}
-        </div>
-      </div>
 
-      {/* ── Messages ── */}
-      <div className="flex-1 overflow-y-auto">
-        {messages.length === 0 ? (
-          /* Empty state — full-height centered, no siblings to cause overflow */
-          <div className="h-full flex flex-col items-center justify-center text-center gap-3 select-none px-4 py-4">
-            <AppLogoIcon size={72} />
-            <div>
-              <h2 className="text-base font-semibold text-gray-700 dark:text-gray-200">{t.chat_empty_title}</h2>
-              <p className="text-sm text-gray-400 dark:text-gray-600 mt-1 max-w-[260px]">{t.chat_empty_desc}</p>
-            </div>
-            {!hasKey && (
-              <div className="mt-2 flex flex-col items-center gap-2">
-                <p className="text-xs text-orange-500 dark:text-orange-400">{t.chat_error_no_key}</p>
-                <button
-                  type="button"
-                  onClick={() => setActivePage('settings')}
-                  className="btn-primary text-xs py-1.5 px-3"
-                >
-                  {t.chat_error_open_settings}
-                </button>
-              </div>
+            {/* Clear — only when there are messages */}
+            {messages.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClear}
+                title={t.chat_clear}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium border
+                           bg-gray-100 border-gray-200 text-gray-500 hover:bg-red-50 hover:border-red-200 hover:text-red-500
+                           dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-red-950 dark:hover:text-red-400
+                           transition-all duration-200 cursor-pointer whitespace-nowrap"
+              >
+                <TrashIcon />
+                <span>{t.chat_clear}</span>
+              </button>
             )}
+
+            {/* AI Config settings icon + popup */}
+            <div className="relative" ref={aiConfigRef}>
+              <button
+                type="button"
+                onClick={() => setShowAIConfig((v) => !v)}
+                title={t.translate_ai_config_title}
+                className={`flex items-center justify-center w-8 h-8 rounded-full border transition-all duration-200 cursor-pointer
+                            ${showAIConfig
+                              ? 'bg-blue-50 border-blue-200 text-blue-500 dark:bg-blue-950/40 dark:border-blue-700 dark:text-blue-400'
+                              : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700'}`}
+              >
+                <GearIcon className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Settings popup */}
+              {showAIConfig && (
+                <div className="absolute top-full right-0 mt-2 z-50 w-[480px]
+                                bg-white dark:bg-gray-900
+                                border border-gray-200 dark:border-gray-700
+                                rounded-2xl shadow-xl p-4 flex flex-col gap-4">
+                  <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                    {t.translate_ai_config_title}
+                  </h2>
+                  <div className="flex flex-col gap-3">
+                    <ModelSelector />
+                    <SystemPromptDropdown
+                      chatSystemPrompt={chatSystemPrompt}
+                      systemPromptPresets={systemPromptPresets}
+                      activePreset={activePreset}
+                      onSetChatSystemPrompt={setChatSystemPrompt}
+                      onNavigateSettings={() => { openSettings(); setShowAIConfig(false) }}
+                      onAddPreset={addSystemPromptPreset}
+                      t={t}
+                    />
+                  </div>
+
+                  {/* Deep Research API keys */}
+                  <div className="border-t border-gray-100 dark:border-gray-800 pt-3 flex flex-col gap-2">
+                    <h3 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                      {t.chat_deep_research_api}
+                    </h3>
+                    <DeepResearchApiSection />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        ) : (
-          /* Messages list — scrollable with proper spacing */
-          <div className="px-4 py-4 space-y-4">
-            {/* Calculate lastAssistantIdx once — avoid O(n²) per-render .map().lastIndexOf() */}
-            {(() => {
-              const lastAssistantIdx = messages.reduce(
-                (acc, m, i) => (m.role === 'assistant' ? i : acc), -1
-              )
-              return messages.map((msg, idx) => (
-                <MessageBubble
-                  key={msg.id}
-                  message={msg}
-                  onCopy={handleCopy}
-                  onRegenerate={idx === lastAssistantIdx ? handleRegenerate : undefined}
-                  isLastAssistant={idx === lastAssistantIdx}
-                  isSending={isSending}
-                  copyLabel={t.translate_copy}
-              regenerateLabel={t.chat_regenerate}
-                />
-              ))
-            })()}
-            <div ref={messagesEndRef} />
-          </div>
-        )}
+
+          {messages.length === 0 ? (
+            /* ── Empty state: centered layout (ChatGPT-style) ── */
+            <div className="flex-1 flex flex-col items-center justify-center gap-8 pb-4">
+              {/* Logo + description */}
+              <div className="flex flex-col items-center gap-3 text-center select-none">
+                <AppLogoIcon size={72} />
+                <div>
+                  <h2 className="text-base font-semibold text-gray-700 dark:text-gray-200">{t.chat_empty_title}</h2>
+                  <p className="text-sm text-gray-400 dark:text-gray-600 mt-1 max-w-[280px]">{t.chat_empty_desc}</p>
+                </div>
+                {!hasKey && (
+                  <div className="mt-1 flex flex-col items-center gap-2">
+                    <p className="text-xs text-orange-500 dark:text-orange-400">{t.chat_error_no_key}</p>
+                    <button
+                      type="button"
+                      onClick={() => openSettings()}
+                      className="btn-primary text-xs py-1.5 px-3"
+                    >
+                      {t.chat_error_open_settings}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Input box — centered card, max-width constrained */}
+              <div className={`w-full max-w-2xl rounded-2xl border bg-white dark:bg-gray-900 shadow-sm transition-all duration-150
+                              ${isDraggingOver
+                                ? 'border-emerald-300 dark:border-emerald-700 ring-2 ring-inset ring-emerald-300 dark:ring-emerald-700'
+                                : 'border-gray-200 dark:border-gray-700'}`}>
+                {inputArea}
+              </div>
+            </div>
+          ) : (
+            /* ── With messages: card layout ── */
+            <div className={`flex-1 flex flex-col min-h-0 rounded-2xl border bg-white dark:bg-gray-900 shadow-sm overflow-hidden transition-all duration-150
+                            ${isDraggingOver
+                              ? 'border-emerald-300 dark:border-emerald-700 ring-2 ring-inset ring-emerald-300 dark:ring-emerald-700'
+                              : 'border-gray-200 dark:border-gray-700'}`}>
+
+              {/* Messages list */}
+              <div className="flex-1 overflow-y-auto">
+                <div className="px-4 py-4 space-y-4">
+                  {(() => {
+                    const lastAssistantIdx = messages.reduce(
+                      (acc, m, i) => (m.role === 'assistant' ? i : acc), -1
+                    )
+                    return messages.map((msg, idx) => (
+                      <MessageBubble
+                        key={msg.id}
+                        message={msg}
+                        onCopy={handleCopy}
+                        onRegenerate={idx === lastAssistantIdx ? handleRegenerate : undefined}
+                        isLastAssistant={idx === lastAssistantIdx}
+                        isSending={isSending}
+                        copyLabel={t.translate_copy}
+                        regenerateLabel={t.chat_regenerate}
+                      />
+                    ))
+                  })()}
+                  <div ref={messagesEndRef} />
+                </div>
+              </div>
+
+              {/* Input — panel footer */}
+              <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700">
+                {inputArea}
+              </div>
+            </div>
+          )}
+
+        </div>
       </div>
 
       {/* ── Copied toast ── */}
@@ -443,139 +729,6 @@ export function ChatPage() {
           {t.chat_copied}
         </div>
       )}
-
-      {/* ── Input area ── */}
-      <div className="flex-shrink-0 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
-
-        {/* Image attach error — shown when resizing/loading the image fails */}
-        {attachImageError && (
-          <div className="px-4 pt-2 flex items-center gap-2">
-            <p className="text-xs text-red-500 dark:text-red-400">{attachImageError}</p>
-            <button
-              type="button"
-              onClick={() => setAttachImageError(null)}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
-              aria-label="Dismiss"
-            >
-              <XIcon className="w-3 h-3" />
-            </button>
-          </div>
-        )}
-
-        {/* Image preview — Gemini-style large thumbnail */}
-        {/* SPLIT-DUP-01: Using shared ImagePreviewThumbnail instead of inline JSX */}
-        {attachedImage && (
-          <ImagePreviewThumbnail
-            src={attachedImage.previewUrl}
-            alt={attachedImage.fileName}
-            removeTitle={t.chat_remove_image}
-            onRemove={() => setAttachedImage(null)}
-          />
-        )}
-
-        {/* Voice overlay */}
-        {isVoiceActive && (
-          <div className="flex items-center gap-3 px-4 py-2 bg-red-50 dark:bg-red-950/20 border-t border-red-100 dark:border-red-900/50">
-            <div className="flex items-end gap-[3px] h-5">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <span
-                  key={i}
-                  className="w-1 rounded-full bg-red-400 dark:bg-red-500 animate-bounce"
-                  style={{ height: `${VOICE_BAR_HEIGHT_BASE_PX + (i % 3) * VOICE_BAR_HEIGHT_STEP_PX}px`, animationDuration: `${VOICE_BAR_DURATION_BASE_S + i * VOICE_BAR_DURATION_STEP_S}s`, animationDelay: `${i * VOICE_BAR_DELAY_STEP_S}s` }}
-                />
-              ))}
-            </div>
-            <span className={`text-xs font-medium ${isVoiceInterim ? 'text-gray-400 italic' : 'text-red-500 dark:text-red-400'}`}>
-              {inputText || '…'}
-            </span>
-          </div>
-        )}
-
-        {/* Textarea + buttons */}
-        <div className="flex items-end gap-2 px-3 py-3">
-          {/* Left controls */}
-          <div className="flex items-center gap-1 flex-shrink-0 pb-1">
-            {/* Voice recorder */}
-            <VoiceRecorder
-              sourceLang="auto"
-              onTranscript={handleVoiceTranscript}
-              onRecordingChange={handleVoiceRecordingChange}
-              titleRecord={t.chat_voice_record}
-              titleStop={t.chat_voice_stop}
-              labelTranscribing="…"
-              labelRecording="…"
-              useWhisper={keyStatus.openai}
-            />
-
-            {/* Image attach — uses ImageIcon from icons/actions instead of inline SVG */}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              title={t.chat_attach_image}
-              className="flex items-center justify-center w-8 h-8 rounded-full
-                         text-gray-400 hover:text-emerald-500 hover:bg-emerald-50
-                         dark:hover:bg-emerald-950 dark:hover:text-emerald-400 transition-all duration-200 cursor-pointer"
-            >
-              <ImageIcon className="w-4 h-4" />
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) handleImageSelect(file)
-                e.target.value = ''
-              }}
-            />
-          </div>
-
-          {/* Textarea */}
-          <div className="flex-1 relative">
-            <textarea
-              ref={textareaRef}
-              value={inputText}
-              onChange={(e) => {
-                setInputText(e.target.value)
-                // User edited manually while voice is active — reset prefix so next
-                // transcript chunk replaces the field content, not appends to stale prefix
-                if (isVoiceActive) resetVoicePrefix()
-              }}
-              onKeyDown={handleKeyDown}
-              onPaste={handlePaste}
-              placeholder={t.chat_placeholder}
-              rows={1}
-              disabled={isSending}
-              className={`w-full resize-none rounded-2xl px-4 py-2.5 text-sm leading-relaxed
-                          bg-gray-100 dark:bg-gray-800 border border-transparent
-                          focus:outline-none focus:border-blue-400 dark:focus:border-blue-600
-                          placeholder-gray-400 dark:placeholder-gray-600
-                          text-gray-900 dark:text-gray-100
-                          disabled:opacity-60 transition-colors duration-150
-                          ${isVoiceInterim ? 'italic text-gray-400 dark:text-gray-500' : ''}`}
-              style={{ maxHeight: `${CHAT_TEXTAREA_MAX_HEIGHT_PX}px`, overflowY: 'auto' }}
-            />
-          </div>
-
-          {/* Send button */}
-          <button
-            type="button"
-            onClick={handleSend}
-            disabled={(!inputText.trim() && !attachedImage) || isSending || !hasKey}
-            title={t.chat_send}
-            className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full mb-0.5
-                        transition-all duration-200 cursor-pointer
-                        disabled:opacity-40 disabled:cursor-not-allowed
-                        ${isSending
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-blue-500 hover:bg-blue-600 text-white shadow-sm'}`}
-          >
-            {isSending ? <SpinnerIcon className="w-4 h-4 animate-spin" /> : <SendIcon />}
-          </button>
-        </div>
-
-      </div>
     </div>
   )
 }

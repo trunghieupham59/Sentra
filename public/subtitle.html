@@ -288,9 +288,9 @@
       <!-- Status badge -->
       <div class="status-badge stopped" id="statusBadge">
         <span class="status-dot"></span>
-        <span id="statusText">Đã dừng</span>
+        <span id="statusText">Stopped</span>
       </div>
-      <button type="button" class="close-btn" id="closeBtn" title="Đóng subtitles">✕</button>
+      <button type="button" class="close-btn" id="closeBtn" title="Close">✕</button>
     </div>
 
     <!-- ── Controls row 1: Provider / Model / Start-Stop ──────────────────── -->
@@ -329,14 +329,14 @@
           </button>
         </div>
       </div>
-      <select id="modelSel" class="sel" title="Chọn Model"></select>
-      <button type="button" id="startStopBtn" class="start-btn">▶ Bắt đầu</button>
-      <button type="button" id="newSessionBtn" class="new-btn" title="Phiên mới — lưu phiên hiện tại vào lịch sử">＋ Mới</button>
+      <select id="modelSel" class="sel" title="Select Model"></select>
+      <button type="button" id="startStopBtn" class="start-btn"><span id="startStopText">▶ Start</span></button>
+      <button type="button" id="newSessionBtn" class="new-btn" title="New session"><span id="newSessionText">＋ New</span></button>
     </div>
 
     <!-- ── Controls row 2: Audio Mode / Target Language ───────────────────── -->
     <div class="controls2">
-      <span class="ctrl-label">Nguồn</span>
+      <span class="ctrl-label" id="sourceLabel">Source</span>
       <div class="audio-group">
         <!-- MicrophoneIcon SVG from media.tsx -->
         <button type="button" class="audio-btn" data-mode="mic" title="Microphone">
@@ -371,27 +371,27 @@
           </svg>
         </button>
       </div>
-      <span class="ctrl-label">Dịch sang</span>
+      <span class="ctrl-label" id="translateToLabel">Translate to</span>
       <select id="langSel" class="lang-sel" title="Ngôn ngữ đích"></select>
     </div>
 
     <!-- ── Content area ───────────────────────────────────────────────────── -->
     <div class="body" id="body">
-      <span class="placeholder" id="ph">Chờ bản dịch…</span>
+      <span class="placeholder" id="ph">Waiting for translation…</span>
       <div class="subtitle-list" id="subtitleList"></div>
     </div>
 
     <!-- ── Style bar ──────────────────────────────────────────────────────── -->
     <div class="style-bar">
-      <span class="style-label">Màu</span>
-      <input type="color" id="colorPicker" value="#ffffff" title="Màu chữ">
+      <span class="style-label" id="colorLabel">Color</span>
+      <input type="color" id="colorPicker" value="#ffffff" title="Text color">
       <div class="slider-group">
-        <span class="style-label">Mờ</span>
-        <input type="range" id="opacitySlider" min="0" max="100" value="84" title="Độ trong mờ nền">
+        <span class="style-label" id="opacityLabel">Opacity</span>
+        <input type="range" id="opacitySlider" min="0" max="100" value="84" title="Background opacity">
       </div>
       <div class="slider-group">
         <span class="style-label">Aa</span>
-        <input type="range" id="fontSizeSlider" min="12" max="40" value="18" title="Cỡ chữ">
+        <input type="range" id="fontSizeSlider" min="12" max="40" value="18" title="Font size">
       </div>
     </div>
 
@@ -450,6 +450,54 @@
       { code: 'hi',    name: 'हिंदी' },
     ]
 
+    // ── i18n strings ─────────────────────────────────────────────────────────
+    let currentLocale = 'en'
+    const STRINGS = {
+      vi: {
+        stopped: 'Đã dừng', listening: 'Đang nghe', transcribing: 'Nhận diện…', translating: 'Đang dịch…',
+        start: '▶ Bắt đầu', stop: '⏹ Dừng', newSession: '＋ Mới', newSessionTitle: 'Phiên mới',
+        source: 'Nguồn', translateTo: 'Dịch sang', waiting: 'Chờ bản dịch…', pending: 'Đang dịch…',
+        color: 'Màu', opacity: 'Mờ', close: 'Đóng', selectModel: 'Chọn Model',
+        colorTitle: 'Màu chữ', opacityTitle: 'Độ mờ nền', fontSizeTitle: 'Cỡ chữ',
+      },
+      en: {
+        stopped: 'Stopped', listening: 'Listening', transcribing: 'Transcribing…', translating: 'Translating…',
+        start: '▶ Start', stop: '⏹ Stop', newSession: '＋ New', newSessionTitle: 'New session',
+        source: 'Source', translateTo: 'Translate to', waiting: 'Waiting for translation…', pending: 'Translating…',
+        color: 'Color', opacity: 'Opacity', close: 'Close', selectModel: 'Select Model',
+        colorTitle: 'Text color', opacityTitle: 'Background opacity', fontSizeTitle: 'Font size',
+      },
+      ja: {
+        stopped: '停止中', listening: '聞き取り中', transcribing: '認識中…', translating: '翻訳中…',
+        start: '▶ 開始', stop: '⏹ 停止', newSession: '＋ 新規', newSessionTitle: '新規セッション',
+        source: 'ソース', translateTo: '翻訳先', waiting: '翻訳待ち…', pending: '翻訳中…',
+        color: '色', opacity: '透明度', close: '閉じる', selectModel: 'モデル選択',
+        colorTitle: '文字色', opacityTitle: '背景の透明度', fontSizeTitle: '文字サイズ',
+      },
+    }
+    function S(key) {
+      return (STRINGS[currentLocale] ?? STRINGS.en)[key] ?? (STRINGS.en)[key]
+    }
+    function applyLocale(locale) {
+      if (!locale) return
+      currentLocale = locale
+      document.getElementById('sourceLabel').textContent     = S('source')
+      document.getElementById('translateToLabel').textContent = S('translateTo')
+      document.getElementById('colorLabel').textContent      = S('color')
+      document.getElementById('opacityLabel').textContent    = S('opacity')
+      document.getElementById('startStopText').textContent   = isSessionActive ? S('stop') : S('start')
+      document.getElementById('newSessionText').textContent  = S('newSession')
+      document.getElementById('closeBtn').title              = S('close')
+      document.getElementById('modelSel').title              = S('selectModel')
+      document.getElementById('newSessionBtn').title         = S('newSessionTitle')
+      document.getElementById('colorPicker').title           = S('colorTitle')
+      document.getElementById('opacitySlider').title         = S('opacityTitle')
+      document.getElementById('fontSizeSlider').title        = S('fontSizeTitle')
+      // Update placeholder if visible
+      const phEl = document.getElementById('ph')
+      if (phEl && phEl.style.display !== 'none') phEl.textContent = S('waiting')
+    }
+
     // ── DOM refs ──────────────────────────────────────────────────────────────
     const closeBtn      = document.getElementById('closeBtn')
     const providerBtn   = document.getElementById('providerBtn')
@@ -496,16 +544,16 @@
       statusBadge.className = 'status-badge'
       if (!isActive) {
         statusBadge.classList.add('stopped')
-        statusText.textContent = 'Đã dừng'
+        statusText.textContent = S('stopped')
       } else if (isTranslating) {
         statusBadge.classList.add('translating')
-        statusText.textContent = 'Đang dịch…'
+        statusText.textContent = S('translating')
       } else if (isTranscribing) {
         statusBadge.classList.add('transcribing')
-        statusText.textContent = 'Nhận diện…'
+        statusText.textContent = S('transcribing')
       } else {
         statusBadge.classList.add('listening')
-        statusText.textContent = 'Đang nghe'
+        statusText.textContent = S('listening')
       }
     }
 
@@ -567,7 +615,7 @@
       else window.subtitleAPI.emitStart()
     }
     function updateStartStopBtn() {
-      startStopBtn.textContent = isSessionActive ? '⏹ Dừng' : '▶ Bắt đầu'
+      document.getElementById('startStopText').textContent = isSessionActive ? S('stop') : S('start')
       startStopBtn.classList.toggle('active', isSessionActive)
     }
 
@@ -585,7 +633,7 @@
       streamText         = ''
       isStreaming        = false
       ph.style.display   = 'block'
-      ph.textContent     = 'Chờ bản dịch…'
+      ph.textContent     = S('waiting')
     }
     document.getElementById('newSessionBtn').onclick = () => {
       window.subtitleAPI.emitClear()   // → handleNewSession: save to history then reset
@@ -632,7 +680,7 @@
       txEl.style.fontSize = fontSizeSlider.value + 'px'
       // Show placeholder while waiting for translation
       txEl.style.opacity = '0.35'
-      txEl.textContent = 'Đang dịch…'
+      txEl.textContent = S('pending')
 
       entry.appendChild(srcEl)
       entry.appendChild(txEl)
@@ -672,7 +720,8 @@
 
     // ── IPC listeners ──────────────────────────────────────────────────────────
 
-    window.subtitleAPI.onState(({ selectedProvider, selectedModel, isActive, isTranscribing, isTranslating, availableModels, audioMode, targetLang }) => {
+    window.subtitleAPI.onState(({ selectedProvider, selectedModel, isActive, isTranscribing, isTranslating, availableModels, audioMode, targetLang, locale }) => {
+      if (locale) applyLocale(locale)
       if (selectedProvider !== currentProvider) setProviderUI(selectedProvider)
       populateModels(availableModels, selectedModel)
       setAudioModeUI(audioMode || 'system')

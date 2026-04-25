@@ -43,7 +43,7 @@ function SidebarItem({ icon, label, active, badge, onClick }: SidebarItemProps) 
 }
 
 export function Sidebar() {
-  const { activePage, setActivePage, clearTranslation, keyStatus } = useAppStore()
+  const { activePage, setActivePage, clearTranslation, keyStatus, openSettings } = useAppStore()
   const t = useT()
 
   const hasAnyKey = PROVIDERS.some((p) => keyStatus[p.id as Provider])
@@ -106,9 +106,8 @@ export function Sidebar() {
       {/* Settings */}
       <SidebarItem
         label={t.nav_settings}
-        active={activePage === 'settings'}
         badge={!hasAnyKey}
-        onClick={() => setActivePage('settings')}
+        onClick={openSettings}
         icon={<GearIcon className="w-5 h-5" />}
       />
     </aside>

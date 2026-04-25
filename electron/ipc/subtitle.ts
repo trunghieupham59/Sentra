@@ -1,4 +1,4 @@
-import type { IpcMain, BrowserWindow } from 'electron'
+import type { BrowserWindow, IpcMain } from 'electron'
 import { getStoredApiKey } from './storage'
 import { streamTranslation } from './translate'
 
@@ -56,6 +56,7 @@ export function registerSubtitleHandlers(
     availableModels: { id: string; name: string }[]
     audioMode: string
     targetLang: string
+    locale?: string
   }) => {
     const win = getSubtitleWindow()
     if (win && !win.isDestroyed()) {
@@ -151,7 +152,7 @@ export function registerSubtitleHandlers(
       const fullText = await streamTranslation(
         provider, apiKey, model,
         sourceText, sourceLang, targetLang,
-        (translationStyle ?? 'neutral') as 'friendly' | 'neutral' | 'professional' | 'business' | 'slack' | 'polite' | 'technical',
+        (translationStyle ?? 'general') as 'general' | 'formal' | 'casual' | 'business' | 'technical' | 'natural',
         (token) => sendToSubtitle('subtitle:stream:token', token)
       )
       sendToSubtitle('subtitle:stream:end', { segId })

@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getSupportedAudioMimeType, LANG_TO_BCP47 } from '../constants/audio'
-import { useT } from '../store/useAppStore'
+import { useAppStore, useT } from '../store/useAppStore'
 import { MicrophoneIcon, SpinnerIcon, StopSquareIcon } from './ui/icons'
+
+// ─── SpeechRecognition retry config ──────────────────────────────────────────
+/** Max reconnect attempts before giving up on SpeechRecognition (network errors) */
+const VOICE_RECORDER_MAX_RETRIES = 3
+/** Delay (ms) before restarting SpeechRecognition after a transient failure */
+const VOICE_RECORDER_RESTART_DELAY_MS = 600
 
 // ─── Local type definitions for cross-browser Speech Recognition ──────────────
 interface SpeechRecResult {
@@ -54,8 +60,12 @@ interface VoiceRecorderProps {
   disabled?: boolean
   titleRecord?: string
   titleStop?: string
-  /** When true: use MediaRecorder + OpenAI Whisper (reliable, no Google dependency).
-   *  When false: use webkitSpeechRecognition (real-time, requires Google Speech API). */
+  /**
+   * When true: force MediaRecorder + IPC path regardless of the store's sttProvider.
+   * Use this for Live Translate where the pipeline specifically requires audio data.
+   * When false (default): honour the store's sttProvider setting — may use
+   * webkitSpeechRecognition if user chose 'webSpeech'.
+   */
   useWhisper?: boolean
   labelTranscribing?: string
   labelRecording?: string
@@ -74,6 +84,8 @@ export function VoiceRecorder({
   labelRecording = 'Recording…',
 }: VoiceRecorderProps) {
   const t = useT()
+  const { sttProvider } = useAppStore()
+
   const [state, setState] = useState<RecordingState>('idle')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
@@ -88,19 +100,29 @@ export function VoiceRecorder({
   const recognitionRef = useRef<SpeechRec | null>(null)
   const finalRef = useRef<string>('')
   const retryCountRef = useRef(0)
-  const MAX_RETRIES = 3
-  const RESTART_DELAY_MS = 600
+
+  /**
+   * Determine which recording path to use:
+   *   - true  → MediaRecorder + IPC (Whisper / Google STT, routed by sttProvider)
+   *   - false → webkitSpeechRecognition (browser-native, no API key needed)
+   *
+   * Priority:
+   *   1. If `useWhisper` prop is explicitly true → always IPC (Live Translate forces this).
+   *   2. If store's sttProvider is 'webSpeech' AND prop is not forced → browser path.
+   *   3. Otherwise (auto / whisper / google) → IPC path.
+   */
+  const useMediaRecorder = useWhisper || sttProvider !== 'webSpeech'
 
   const isSupported =
-    useWhisper
+    useMediaRecorder
       ? typeof navigator !== 'undefined' && !!navigator.mediaDevices
       : getSpeechRecognitionAPI() !== null
 
-  // ── WHISPER MODE: MediaRecorder + OpenAI Whisper ───────────────────────────
-  const stopWhisperRecording = useCallback(() => {
+  // ── IPC/MediaRecorder MODE (Whisper or Google STT) ────────────────────────
+  const stopMediaRecording = useCallback(() => {
     isRecordingRef.current = false
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop() // triggers onstop which sends to Whisper
+      mediaRecorderRef.current.stop() // triggers onstop which sends to STT backend
     } else {
       mediaRecorderRef.current = null
       setState('idle')
@@ -108,7 +130,7 @@ export function VoiceRecorder({
     }
   }, [onRecordingChange])
 
-  const startWhisperRecording = useCallback(async () => {
+  const startMediaRecording = useCallback(async () => {
     setErrorMsg(null)
     audioChunksRef.current = []
 
@@ -158,6 +180,9 @@ export function VoiceRecorder({
           audioData: arrayBuffer,
           mimeType,
           language: lang,
+          // Forward the store's sttProvider so the main process can route
+          // to the right backend. 'webSpeech' never reaches here (handled above).
+          sttProvider,
         })
 
         if (result.success && result.text) {
@@ -186,9 +211,9 @@ export function VoiceRecorder({
     recorder.start()
     setState('recording')
     onRecordingChange?.(true)
-  }, [onTranscript, onRecordingChange])
+  }, [onTranscript, onRecordingChange, sttProvider])
 
-  // ── SPEECH API MODE: webkitSpeechRecognition ───────────────────────────────
+  // ── SPEECH API MODE: webkitSpeechRecognition (browser native, Google) ────────
   const stopSpeechRecording = useCallback(() => {
     isRecordingRef.current = false
     const rec = recognitionRef.current
@@ -255,7 +280,8 @@ export function VoiceRecorder({
 
     recognition.onend = () => {
       if (!isRecordingRef.current || recognitionRef.current !== recognition) return
-      if (retryCountRef.current >= MAX_RETRIES) {
+      if (retryCountRef.current >= VOICE_RECORDER_MAX_RETRIES) {
+        // Bug fix: reset refs so the component is in a clean state after giving up
         isRecordingRef.current = false
         recognitionRef.current = null
         setState('error')
@@ -263,16 +289,20 @@ export function VoiceRecorder({
         onRecordingChange?.(false)
         return
       }
+      // Bug fix: do NOT increment retryCountRef here.
+      // retryCountRef is only incremented in onerror for actual network failures.
+      // Natural browser-side timeouts (Chromium stops continuous recognition after
+      // a period of silence) must restart silently without consuming retry budget —
+      // otherwise the component enters error state after ~30 s of silence.
       setTimeout(() => {
         if (!isRecordingRef.current || recognitionRef.current !== recognition) return
-        retryCountRef.current++
         try { recognition.start() } catch {
           isRecordingRef.current = false
           recognitionRef.current = null
           setState('idle')
           onRecordingChange?.(false)
         }
-      }, RESTART_DELAY_MS)
+      }, VOICE_RECORDER_RESTART_DELAY_MS)
     }
 
     recognitionRef.current = recognition
@@ -281,14 +311,14 @@ export function VoiceRecorder({
 
   // ── Unified stop / start ───────────────────────────────────────────────────
   const stopRecording = useCallback(() => {
-    if (useWhisper) stopWhisperRecording()
+    if (useMediaRecorder) stopMediaRecording()
     else stopSpeechRecording()
-  }, [useWhisper, stopWhisperRecording, stopSpeechRecording])
+  }, [useMediaRecorder, stopMediaRecording, stopSpeechRecording])
 
   const startRecording = useCallback(() => {
-    if (useWhisper) startWhisperRecording()
+    if (useMediaRecorder) startMediaRecording()
     else startSpeechRecording()
-  }, [useWhisper, startWhisperRecording, startSpeechRecording])
+  }, [useMediaRecorder, startMediaRecording, startSpeechRecording])
 
   // Keep sourceLangRef in sync; stop if language changes while recording
   useEffect(() => {
@@ -367,7 +397,7 @@ export function VoiceRecorder({
           {labelTranscribing}
         </span>
       )}
-      {isRecording && useWhisper && (
+      {isRecording && useMediaRecorder && (
         <span className="text-xs text-red-500 dark:text-red-400 animate-pulse whitespace-nowrap">
           {labelRecording}
         </span>

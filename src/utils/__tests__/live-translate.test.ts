@@ -2,15 +2,24 @@
  * Unit tests for src/utils/live-translate.ts
  *
  * Tests cover all 3 exported pure functions:
- *   1. isHallucination   — Whisper hallucination filter
+ *   1. isHallucination   — Whisper hallucination filter (structural-only)
  *   2. jaccardSimilarity — Word-bag Jaccard similarity
  *   3. extractCompleteSentences — Sentence boundary splitter
+ *
+ * DESIGN NOTE — content-based phrase blocking was intentionally removed:
+ *   Any phrase ("Thanks for watching", "ありがとうございます", "감사합니다",
+ *   "Cảm ơn") CAN be genuine speech in context.  Blocking it silently drops
+ *   real words.  isHallucination() only blocks STRUCTURAL anomalies that are
+ *   impossible in real speech; common "YouTube-closing" phrases are filtered
+ *   upstream by Whisper's verbose_json confidence metrics (no_speech_prob,
+ *   avg_logprob, compressionRatio) inside processChunk / useLiveTranslate.
  */
 import { describe, expect, it } from 'vitest'
 import {
   extractCompleteSentences,
   isHallucination,
   jaccardSimilarity,
+  splitSentences,
 } from '../live-translate'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -39,39 +48,45 @@ describe('isHallucination', () => {
     })
   })
 
-  // ── Check 2: known hallucination patterns ────────────────────────────────
-  describe('English hallucination phrases', () => {
-    it('returns true for "thanks for watching"', () => {
-      expect(isHallucination('thanks for watching')).toBe(true)
-    })
-
-    it('returns true for "Thank you for watching" (case-insensitive)', () => {
-      expect(isHallucination('Thank you for watching')).toBe(true)
-    })
-
-    it('returns true for "Please like and subscribe"', () => {
-      expect(isHallucination('Please like and subscribe')).toBe(true)
-    })
-
-    it('returns true for "subtitles by auto-generated"', () => {
-      expect(isHallucination('subtitles by auto-generated')).toBe(true)
-    })
-
-    it('returns true for lone punctuation "..."', () => {
+  // ── Check 2: structural anomalies ────────────────────────────────────────
+  //
+  // Only TWO structural patterns are blocked — these are IMPOSSIBLE in real speech:
+  //   Pattern A: lone punctuation / whitespace  → Whisper emits on near-silent audio
+  //   Pattern B: bracketed annotation labels    → [Music], (音楽), 【BGM】, etc.
+  //
+  // Content-based phrase blocking ("thanks for watching", "ありがとうございます",
+  // "감사합니다", "cảm ơn") was deliberately removed — any such phrase can be
+  // genuine speech. Those are filtered by Whisper's verbose_json confidence
+  // metrics upstream in processChunk.
+  describe('structural: lone punctuation / whitespace only (Pattern A)', () => {
+    it('returns true for "..." — 3 chars, caught by check 1 (< 4)', () => {
       expect(isHallucination('...')).toBe(true)
     })
 
-    it('returns true for lone dashes "---"', () => {
+    it('returns true for "----" — 4 dashes, matches lone-punctuation pattern', () => {
       expect(isHallucination('----')).toBe(true)
+    })
+
+    it('returns true for a string of only spaces and commas', () => {
+      expect(isHallucination('   ,   ')).toBe(true)
+    })
+
+    it('returns true for a string of only ellipsis characters "…"', () => {
+      expect(isHallucination('……')).toBe(true)
+    })
+
+    it('returns false for real content with trailing punctuation "Hello!"', () => {
+      // Has non-punctuation content → NOT lone punctuation
+      expect(isHallucination('Hello!')).toBe(false)
     })
   })
 
-  describe('bracketed / parenthesised sound effects', () => {
+  describe('structural: Whisper bracketed annotation labels (Pattern B)', () => {
     it('returns true for "[Music]"', () => {
       expect(isHallucination('[Music]')).toBe(true)
     })
 
-    it('returns true for "(music)" (case-insensitive)', () => {
+    it('returns true for "(music)"', () => {
       expect(isHallucination('(music)')).toBe(true)
     })
 
@@ -102,63 +117,31 @@ describe('isHallucination', () => {
     it('returns true for "[tiếng vỗ tay]"', () => {
       expect(isHallucination('[tiếng vỗ tay]')).toBe(true)
     })
-  })
 
-  describe('Japanese hallucination phrases', () => {
-    it('returns true for "ご視聴ありがとうございました"', () => {
-      expect(isHallucination('ご視聴ありがとうございました')).toBe(true)
-    })
-
-    it('returns true for "チャンネル登録をお願いします"', () => {
-      expect(isHallucination('チャンネル登録をお願いします')).toBe(true)
-    })
-
-    it('returns true for standalone "ありがとうございます。"', () => {
-      expect(isHallucination('ありがとうございます。')).toBe(true)
-    })
-
-    it('returns true for standalone "ありがとう！"', () => {
-      expect(isHallucination('ありがとう！')).toBe(true)
+    it('returns false for real sentence containing brackets in the middle', () => {
+      // Not ENTIRELY enclosed in brackets → not filtered
+      expect(isHallucination('The result (see below) was positive')).toBe(false)
     })
   })
 
-  describe('Korean hallucination phrases', () => {
-    it('returns true for "시청해 주셔서 감사합니다"', () => {
-      expect(isHallucination('시청해 주셔서 감사합니다')).toBe(true)
+  // ── Design verification: common phrases pass through (filtered upstream) ──
+  // These tests document intentional behaviour: isHallucination() should NOT
+  // block common phrases — Whisper confidence gates handle them.
+  describe('common phrases are NOT blocked (by design)', () => {
+    it('returns false for "thanks for watching" — filtered upstream by confidence', () => {
+      expect(isHallucination('thanks for watching')).toBe(false)
     })
 
-    it('returns true for "구독 좋아요 눌러주세요"', () => {
-      expect(isHallucination('구독 좋아요 눌러주세요')).toBe(true)
+    it('returns false for "ありがとうございます。"', () => {
+      expect(isHallucination('ありがとうございます。')).toBe(false)
     })
 
-    it('returns true for standalone "감사합니다"', () => {
-      expect(isHallucination('감사합니다')).toBe(true)
-    })
-  })
-
-  describe('Vietnamese hallucination phrases', () => {
-    it('returns true for "cảm ơn các bạn đã xem"', () => {
-      expect(isHallucination('cảm ơn các bạn đã xem')).toBe(true)
+    it('returns false for "감사합니다" (Korean "thank you")', () => {
+      expect(isHallucination('감사합니다')).toBe(false)
     })
 
-    it('returns true for "Cảm ơn bạn đã xem video này" (case-insensitive)', () => {
-      expect(isHallucination('Cảm ơn bạn đã xem video này')).toBe(true)
-    })
-
-    it('returns true for "đăng ký kênh ngay nhé"', () => {
-      expect(isHallucination('đăng ký kênh ngay nhé')).toBe(true)
-    })
-
-    it('returns true for "like và đăng ký ủng hộ mình nhé"', () => {
-      expect(isHallucination('like và đăng ký ủng hộ mình nhé')).toBe(true)
-    })
-
-    it('returns true for standalone "cảm ơn."', () => {
-      expect(isHallucination('cảm ơn.')).toBe(true)
-    })
-
-    it('returns true for standalone "vâng,"', () => {
-      expect(isHallucination('vâng,')).toBe(true)
+    it('returns false for "Cảm ơn bạn"', () => {
+      expect(isHallucination('Cảm ơn bạn')).toBe(false)
     })
   })
 
@@ -417,5 +400,39 @@ describe('extractCompleteSentences', () => {
     const result = extractCompleteSentences('Really?! Pending here')
     expect(result.complete).toBe('Really?!')
     expect(result.pending).toBe('Pending here')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('splitSentences', () => {
+
+  it('splits on "." followed by space', () => {
+    const result = splitSentences('First. Second. Third.')
+    expect(result).toEqual(['First.', 'Second.', 'Third.'])
+  })
+
+  it('splits CJK sentences on "。"', () => {
+    const result = splitSentences('A。B。')
+    expect(result).toEqual(['A。', 'B。'])
+  })
+
+  it('returns the whole string as one element when there is no boundary', () => {
+    const result = splitSentences('no punctuation here')
+    expect(result).toEqual(['no punctuation here'])
+  })
+
+  it('returns empty array for empty string', () => {
+    const result = splitSentences('')
+    expect(result).toEqual([])
+  })
+
+  it('handles mixed punctuation "A! B? C."', () => {
+    const result = splitSentences('A! B? C.')
+    expect(result).toEqual(['A!', 'B?', 'C.'])
+  })
+
+  it('returns single element for text with no trailing boundary (accumulating chunk)', () => {
+    const result = splitSentences('This is still being spoken')
+    expect(result).toEqual(['This is still being spoken'])
   })
 })

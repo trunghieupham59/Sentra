@@ -57,7 +57,7 @@ export function TranslationHistoryTab() {
             {history.map((item) => {
               const isExpanded = expandedId === item.id
               return (
-                <li key={item.id} className="group bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                <li key={item.id} className="group hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors duration-150">
                   <button
                     type="button"
                     className="w-full text-left px-4 pt-3 pb-2"

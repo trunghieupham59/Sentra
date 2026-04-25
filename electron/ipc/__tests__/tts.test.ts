@@ -8,7 +8,7 @@
  *
  * No real network calls are made. Provider functions are mocked.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ── Mock Electron ─────────────────────────────────────────────────────────────
 vi.mock('electron', () => ({ IpcMain: class {} }))
@@ -37,23 +37,9 @@ vi.mock('ws', () => ({
   },
 }))
 
-import { registerTtsHandlers } from '../tts'
 import { getStoredApiKey } from '../storage'
-
-// ─── Mock IpcMain helper ──────────────────────────────────────────────────────
-function buildMockIpcMain() {
-  // biome-ignore lint/suspicious/noExplicitAny: mock helper
-  const handlers: Record<string, Function> = {}
-  const ipcMain = {
-    // biome-ignore lint/suspicious/noExplicitAny: mock helper
-    handle: (channel: string, handler: Function) => {
-      handlers[channel] = handler
-    },
-  }
-  const invoke = (channel: string, ...args: unknown[]) =>
-    handlers[channel]?.({} /* fake _event */, ...args)
-  return { ipcMain, invoke }
-}
+import { registerTtsHandlers } from '../tts'
+import { buildMockIpcMain } from './helpers/mockIpcMain'
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('registerTtsHandlers — input validation', () => {

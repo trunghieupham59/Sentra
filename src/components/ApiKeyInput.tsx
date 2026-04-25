@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { VERIFY_STATUS_RESET_DELAY_MS } from '../constants/ui'
 import { useT } from '../store/useAppStore'
 import type { ProviderConfig } from '../types'
 import { tpl } from '../utils/tpl'
@@ -41,7 +42,7 @@ export function ApiKeyInput({ provider, onSave, onDelete, hasKey, maskedKey }: A
         setVerifyStatus(result.valid ? 'rate_limited' : 'valid')
         setVerifyMessage(result.valid ? t.settings_msg_rate_limited : t.settings_msg_valid)
         setInputValue('')
-        setTimeout(() => setVerifyStatus('idle'), 5000)
+        setTimeout(() => setVerifyStatus('idle'), VERIFY_STATUS_RESET_DELAY_MS)
       } else {
         switch (result.errorCode) {
           case 'RATE_LIMIT':
@@ -49,7 +50,7 @@ export function ApiKeyInput({ provider, onSave, onDelete, hasKey, maskedKey }: A
             setVerifyStatus('rate_limited')
             setVerifyMessage(t.settings_msg_rate_limited)
             setInputValue('')
-            setTimeout(() => setVerifyStatus('idle'), 5000)
+            setTimeout(() => setVerifyStatus('idle'), VERIFY_STATUS_RESET_DELAY_MS)
             break
           case 'INVALID_KEY':
             setVerifyStatus('invalid')
@@ -116,7 +117,7 @@ export function ApiKeyInput({ provider, onSave, onDelete, hasKey, maskedKey }: A
   }
 
   return (
-    <div className={`card p-4 space-y-3 border-l-4 ${colors.border}`}>
+    <div className={`card p-4 space-y-3 border-2 ${colors.borderActive}`}>
       {/* Provider header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -243,10 +244,6 @@ export function ApiKeyInput({ provider, onSave, onDelete, hasKey, maskedKey }: A
         </div>
       )}
 
-      {/* Hint — only shown when idle and no key yet */}
-      {verifyStatus === 'idle' && !verifyMessage && !showMasked && (
-        <p className="text-xs text-gray-400 dark:text-gray-500">{t.settings_hint_verify}</p>
-      )}
     </div>
   )
 }

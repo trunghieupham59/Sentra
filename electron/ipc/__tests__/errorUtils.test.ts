@@ -6,7 +6,7 @@
  *   1. classifyProviderError() — maps error message strings to typed IPC error responses
  *   2. noApiKeyResponse()      — generates the standard NO_API_KEY response for a provider
  */
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { classifyProviderError, noApiKeyResponse } from '../errorUtils'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -86,6 +86,14 @@ describe('classifyProviderError', () => {
     it('classifies "FetchError" as NETWORK', () => {
       const result = classifyProviderError('FetchError: request to https://... failed')
       expect(result.errorCode).toBe('NETWORK')
+    })
+
+    it('classifies OpenAI "Connection error." as NETWORK', () => {
+      // OpenAI Node SDK throws APIConnectionError with this exact message string.
+      const result = classifyProviderError('Connection error.')
+      expect(result.success).toBe(false)
+      expect(result.errorCode).toBe('NETWORK')
+      expect(result.error).toContain('internet')
     })
   })
 

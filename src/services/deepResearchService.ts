@@ -1,0 +1,390 @@
+/**
+ * Deep Research Service — Iterative Multi-loop Pipeline
+ *
+ * True deep research with feedback loops, not a simple 1-pass search:
+ *
+ *   Phase 1 — Initial Analysis
+ *     AI breaks the question into key aspects and research questions.
+ *
+ *   Phase 2 — First-Pass Research (Breadth)
+ *     Web search + AI analysis for each aspect. Builds initial knowledge base.
+ *
+ *   Phase 3 — Gap Analysis Loop (up to MAX_GAP_ITERATIONS rounds)
+ *     AI evaluates all findings and identifies:
+ *       • What's still unclear / missing?
+ *       • What contradictions need resolution?
+ *     Targeted searches fill those gaps. Loops until AI is satisfied or limit reached.
+ *
+ *   Phase 4 — Cross-Reference & Confidence
+ *     AI reviews ALL findings for contradictions and assigns confidence levels
+ *     (✅ Confirmed / ⚠️ Uncertain / ❌ Contradicted).
+ *
+ *   Phase 5 — Final Synthesis
+ *     Comprehensive answer with source citations and confidence indicators.
+ *
+ * With Tavily web search: real-time data at every phase.
+ * Without Tavily key: AI-knowledge-only with explicit staleness warnings.
+ */
+import { chatService } from './chatService'
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+/** Maximum number of gap-analysis → targeted-search iterations */
+const MAX_GAP_ITERATIONS = 2
+
+/** Maximum number of gaps to chase per iteration */
+const MAX_GAPS_PER_ROUND = 3
+
+/** Maximum search results per query */
+const MAX_SEARCH_RESULTS = 5
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface DeepResearchCallbacks {
+  /** Called when a new step starts. Must return the generated message ID. */
+  onStepStart: (label: string, icon: string) => string
+  /** Called when a step completes. `isFinal` = true only for the synthesis step. */
+  onStepComplete: (msgId: string, content: string, isFinal: boolean) => void
+  /** Called when a step fails with an error. */
+  onStepError: (msgId: string, error: string) => void
+}
+
+export interface DeepResearchParams {
+  provider: string
+  model: string
+  question: string
+  callbacks: DeepResearchCallbacks
+}
+
+interface GapAnalysisResult {
+  isComplete: boolean
+  gaps: string[]
+  queries: string[]
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const getDate = () =>
+  new Date().toLocaleString('vi-VN', { dateStyle: 'full', timeStyle: 'short' })
+
+const hasWebSearch = () =>
+  typeof window !== 'undefined' && typeof window.api?.webSearch === 'function'
+
+function formatSearchResults(
+  results: Array<{ title: string; url: string; content: string; score: number }>,
+  answer?: string,
+): string {
+  const lines: string[] = []
+  if (answer) lines.push(`**Tóm tắt web:** ${answer}`, '')
+  results.forEach((r, i) => {
+    lines.push(`**[${i + 1}] ${r.title}**`, `🔗 ${r.url}`, r.content.slice(0, 700), '')
+  })
+  return lines.join('\n')
+}
+
+async function webSearch(query: string): Promise<string> {
+  if (!hasWebSearch()) return ''
+  try {
+    const result = await window.api.webSearch({ query: query.slice(0, 200), maxResults: MAX_SEARCH_RESULTS })
+    if (result.success && result.results?.length) {
+      return formatSearchResults(result.results, result.answer)
+    }
+  } catch { /* ignore */ }
+  return ''
+}
+
+// ─── Language rule (prepended to every AI-facing prompt) ─────────────────────
+
+const LANG_RULE = `⚡ LANGUAGE RULE — NON-NEGOTIABLE:
+1. Detect the language of the user's original question.
+2. Write your ENTIRE response in that exact same language.
+3. Do NOT switch to Vietnamese, English, or any other language — even if these instructions are written in English.
+4. Examples: Japanese question → Japanese answer. Korean question → Korean answer. French question → French answer.
+
+`
+
+// ─── System Prompts (written in English to avoid language bias) ───────────────
+
+const ANALYZE_PROMPT = (date: string) => `${LANG_RULE}You are a research expert. The question was asked at: ${date}.
+Analyze the user's question and identify 3-4 most important aspects to research in depth.
+Return ONLY valid JSON, no other text:
+{"aspects": ["aspect 1", "aspect 2", "aspect 3"]}`
+
+const RESEARCH_PROMPT = (date: string, aspect: string, question: string, webCtx: string) =>
+  webCtx
+    ? `${LANG_RULE}You are an expert analyst. Timestamp: ${date}.
+Original question: ${question}
+Aspect to analyze: ${aspect}
+
+━━━ REAL-TIME WEB SEARCH RESULTS ━━━
+${webCtx}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Analyze the web data above. Cite sources. Note contradictions if any. Prioritize web data over your training knowledge.`
+    : `${LANG_RULE}You are an expert analyst. Timestamp: ${date}.
+Original question: ${question}
+Aspect to analyze: ${aspect}
+
+⚠️ No web search available — using training data only.
+Please: state your training cutoff clearly, and mark information that MAY HAVE CHANGED since then.`
+
+const GAP_ANALYSIS_PROMPT = (date: string, question: string, allFindings: string) =>
+  `You are a research quality evaluator. Timestamp: ${date}.
+Original question: ${question}
+
+━━━ ALL RESEARCH FINDINGS SO FAR ━━━
+${allFindings}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Evaluate: Is the research above sufficient to answer the original question ACCURATELY and COMPLETELY?
+- What important information is still missing?
+- Are there any contradictions that need verification?
+- Which aspects need deeper investigation?
+
+Return ONLY valid JSON:
+{
+  "isComplete": true/false,
+  "reasoning": "brief reason",
+  "gaps": ["gap 1", "gap 2"],
+  "queries": ["specific search query 1", "specific search query 2"]
+}`
+
+const CROSS_REFERENCE_PROMPT = (date: string, question: string, allFindings: string, hadWeb: boolean) =>
+  `${LANG_RULE}You are a research verification expert. Timestamp: ${date}.
+Original question: ${question}
+${hadWeb ? 'Data was collected from real-time web search.' : '⚠️ Data is from AI training data only.'}
+
+━━━ ALL RESEARCH FINDINGS ━━━
+${allFindings}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Perform cross-reference analysis:
+1. List points CONFIRMED (✅) by multiple sources
+2. List points UNCERTAIN (⚠️) — from only one source or potentially outdated
+3. List points CONTRADICTED (❌) across sources and explain
+
+Be concise and well-structured.`
+
+const SYNTHESIS_PROMPT = (date: string, hadWeb: boolean) => {
+  const note = hadWeb
+    ? 'Data sourced from real-time web search. High accuracy expected.'
+    : '⚠️ Data from AI training only. Add a "## ⚠️ Accuracy Note" section at the end to warn the user about potential staleness.'
+  return `${LANG_RULE}You are a research synthesis expert. Timestamp: ${date}. ${note}
+
+Create a COMPREHENSIVE and ACCURATE final answer with:
+## Structure:
+- Clear headings (##)
+- Bullet points where appropriate
+- Source citations where available
+- Confidence indicators: ✅ Confirmed / ⚠️ Uncertain / ❌ Contradicted
+- A "## Conclusion" section at the end`
+}
+
+// ─── Default aspects (English — neutral, no language bias) ───────────────────
+
+const DEFAULT_ASPECTS = [
+  'Background and overview',
+  'Detailed analysis and key factors',
+  'Latest information and trends',
+]
+
+// ─── Main pipeline ────────────────────────────────────────────────────────────
+
+export const deepResearchService = {
+  async run({ provider, model, question, callbacks }: DeepResearchParams): Promise<void> {
+    const date = getDate()
+    const webAvailable = hasWebSearch()
+    const { onStepStart, onStepComplete, onStepError } = callbacks
+
+    // Accumulated knowledge base (all findings from all phases)
+    const knowledgeBase: Array<{ label: string; content: string }> = []
+    let anyWebSearch = false
+
+    // ── Phase 1: Initial Analysis ─────────────────────────────────────────
+    const analyzeMsgId = onStepStart('Phân tích câu hỏi', '🔍')
+    let aspects = DEFAULT_ASPECTS
+
+    try {
+      const result = await chatService.send({
+        provider, model,
+        messages: [{ role: 'user', content: [{ type: 'text', text: question }] }],
+        systemPrompt: ANALYZE_PROMPT(date),
+      })
+      if (result.success && result.reply) {
+        const m = result.reply.match(/\{[\s\S]*\}/)
+        if (m) {
+          try {
+            const p = JSON.parse(m[0])
+            if (Array.isArray(p.aspects) && p.aspects.length >= 2) aspects = p.aspects.slice(0, 4)
+          } catch { /* use defaults */ }
+        }
+      }
+    } catch (err) {
+      onStepError(analyzeMsgId, err instanceof Error ? err.message : 'Lỗi phân tích')
+      throw err
+    }
+
+    const analyzeContent = [
+      webAvailable ? '🌐 **Real-time mode** — Tìm kiếm web thực tế cho mỗi bước' : '⚠️ **AI-only mode** — Không có Tavily key. Thêm key trong Settings → API Keys để bật web search.',
+      '',
+      `**Sẽ nghiên cứu ${aspects.length} khía cạnh, qua nhiều vòng lặp:**`,
+      ...aspects.map((a, i) => `${i + 1}. ${a}`),
+    ].join('\n')
+    onStepComplete(analyzeMsgId, analyzeContent, false)
+
+    // ── Phase 2: First-pass research (Breadth) ────────────────────────────
+    for (const aspect of aspects) {
+      const icon = webAvailable ? '🌐' : '📚'
+      const msgId = onStepStart(`Vòng 1 — Nghiên cứu: ${aspect}`, icon)
+      try {
+        const webCtx = await webSearch(`${aspect} ${question}`)
+        if (webCtx) anyWebSearch = true
+
+        const result = await chatService.send({
+          provider, model,
+          messages: [{ role: 'user', content: [{ type: 'text', text: `Analyze this aspect: ${aspect}` }] }],
+          systemPrompt: RESEARCH_PROMPT(date, aspect, question, webCtx),
+        })
+        const content = result.success && result.reply ? result.reply : `[Không thể phân tích: ${result.error}]`
+        knowledgeBase.push({ label: aspect, content })
+        onStepComplete(msgId, content, false)
+      } catch (err) {
+        const e = err instanceof Error ? err.message : 'Lỗi'
+        onStepError(msgId, e)
+        knowledgeBase.push({ label: aspect, content: `[Lỗi: ${e}]` })
+      }
+    }
+
+    // ── Phase 3: Gap Analysis Loop ────────────────────────────────────────
+    for (let iteration = 1; iteration <= MAX_GAP_ITERATIONS; iteration++) {
+      const allFindings = knowledgeBase
+        .map((k, i) => `### ${i + 1}. ${k.label}\n${k.content}`)
+        .join('\n\n---\n\n')
+
+      // Ask AI: is the research complete? What's missing?
+      const gapMsgId = onStepStart(`Đánh giá khoảng trống — Vòng ${iteration}`, '🔎')
+      let gapResult: GapAnalysisResult = { isComplete: true, gaps: [], queries: [] }
+
+      try {
+        const result = await chatService.send({
+          provider, model,
+          messages: [{ role: 'user', content: [{ type: 'text', text: 'Evaluate all research findings so far.' }] }],
+          systemPrompt: GAP_ANALYSIS_PROMPT(date, question, allFindings),
+          bypassLengthCheck: true,
+        })
+
+        if (result.success && result.reply) {
+          const m = result.reply.match(/\{[\s\S]*\}/)
+          if (m) {
+            try {
+              const p = JSON.parse(m[0])
+              gapResult = {
+                isComplete: Boolean(p.isComplete),
+                gaps: Array.isArray(p.gaps) ? p.gaps.slice(0, MAX_GAPS_PER_ROUND) : [],
+                queries: Array.isArray(p.queries) ? p.queries.slice(0, MAX_GAPS_PER_ROUND) : [],
+              }
+            } catch { gapResult.isComplete = true }
+          }
+        }
+
+        const gapContent = gapResult.isComplete
+          ? `✅ **Nghiên cứu đã đầy đủ** — Không phát hiện khoảng trống đáng kể. Tiến hành tổng hợp.`
+          : [
+              `🔍 **Phát hiện ${gapResult.gaps.length} khoảng trống cần bổ sung:**`,
+              ...gapResult.gaps.map((g, i) => `${i + 1}. ${g}`),
+            ].join('\n')
+
+        onStepComplete(gapMsgId, gapContent, false)
+      } catch (err) {
+        onStepError(gapMsgId, err instanceof Error ? err.message : 'Lỗi đánh giá')
+        gapResult.isComplete = true // fall through to synthesis on error
+      }
+
+      // If complete, stop the loop
+      if (gapResult.isComplete || gapResult.queries.length === 0) break
+
+      // Chase each gap with targeted search + analysis
+      for (let g = 0; g < Math.min(gapResult.queries.length, MAX_GAPS_PER_ROUND); g++) {
+        const query = gapResult.queries[g]
+        const gapLabel = gapResult.gaps[g] ?? query
+        const icon2 = webAvailable ? '🌐' : '📚'
+        const deepMsgId = onStepStart(`Nghiên cứu sâu: ${gapLabel}`, icon2)
+
+        try {
+          const webCtx = await webSearch(query)
+          if (webCtx) anyWebSearch = true
+
+          const result = await chatService.send({
+            provider, model,
+            messages: [{ role: 'user', content: [{ type: 'text', text: `Deep dive research: ${gapLabel}` }] }],
+            systemPrompt: RESEARCH_PROMPT(date, gapLabel, question, webCtx),
+          })
+          const content = result.success && result.reply ? result.reply : `[Không thể nghiên cứu]`
+          knowledgeBase.push({ label: `[Sâu hơn] ${gapLabel}`, content })
+          onStepComplete(deepMsgId, content, false)
+        } catch (err) {
+          const e = err instanceof Error ? err.message : 'Lỗi'
+          onStepError(deepMsgId, e)
+          knowledgeBase.push({ label: gapLabel, content: `[Lỗi: ${e}]` })
+        }
+      }
+    }
+
+    // ── Phase 4: Cross-reference ──────────────────────────────────────────
+    const crossMsgId = onStepStart('Kiểm chứng chéo', '🔄')
+    const allFindingsFinal = knowledgeBase
+      .map((k, i) => `### ${i + 1}. ${k.label}\n${k.content}`)
+      .join('\n\n---\n\n')
+
+    let crossContent = ''
+    try {
+      const result = await chatService.send({
+        provider, model,
+        messages: [{ role: 'user', content: [{ type: 'text', text: 'Cross-reference all research findings.' }] }],
+        systemPrompt: CROSS_REFERENCE_PROMPT(date, question, allFindingsFinal, anyWebSearch),
+        bypassLengthCheck: true,
+      })
+      crossContent = result.success && result.reply
+        ? result.reply
+        : 'Không thể thực hiện cross-reference.'
+      onStepComplete(crossMsgId, crossContent, false)
+    } catch (err) {
+      const e = err instanceof Error ? err.message : 'Lỗi cross-reference'
+      onStepError(crossMsgId, e)
+      crossContent = `[Cross-reference thất bại: ${e}]`
+    }
+
+    // ── Phase 5: Final Synthesis ──────────────────────────────────────────
+    const synthMsgId = onStepStart('Tổng hợp cuối cùng', '💡')
+
+    const synthContext = [
+      `## Research Findings (${knowledgeBase.length} sources)`,
+      allFindingsFinal,
+      '---',
+      '## Cross-Reference Analysis',
+      crossContent,
+    ].join('\n\n')
+
+    try {
+      const result = await chatService.send({
+        provider, model,
+        messages: [{
+          role: 'user',
+          content: [{ type: 'text', text: `Original question: ${question}\n\n${synthContext}` }],
+        }],
+        systemPrompt: SYNTHESIS_PROMPT(date, anyWebSearch),
+        bypassLengthCheck: true,
+      })
+
+      const synthesis = result.success && result.reply
+        ? result.reply
+        : `Không thể tổng hợp (${result.error ?? 'unknown error'}).`
+
+      onStepComplete(synthMsgId, synthesis, true)
+    } catch (err) {
+      const e = err instanceof Error ? err.message : 'Lỗi tổng hợp'
+      onStepError(synthMsgId, e)
+      throw err
+    }
+  },
+}

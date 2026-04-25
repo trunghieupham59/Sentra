@@ -8,7 +8,7 @@
 import type { StateCreator } from 'zustand'
 import { DEFAULT_SETTINGS, PROVIDERS } from '../../constants/providers'
 import type { AppLocale } from '../../i18n'
-import type { FetchedModel, Provider, TranslationStyle, TtsVoice } from '../../types'
+import type { FetchedModel, PhoneticMode, Provider, SttProvider, TranslationStyle, TtsVoice } from '../../types'
 
 export interface SettingsSlice {
   // Locale
@@ -19,10 +19,22 @@ export interface SettingsSlice {
   // UI preferences
   autoTranslate: boolean
   autoTranslateDelay: number
-  showFurigana: boolean
+  /**
+   * Phonetic annotation mode for the translation result:
+   *  - 'off'      — no phonetic annotations
+   *  - 'standard' — ruby/furigana annotations above original characters ({word|reading} format)
+   *  - 'phonetic' — replace script with pure phonetics (hiragana-only, pinyin-only, romanization-only, IPA)
+   */
+  phoneticMode: PhoneticMode
   translationStyle: TranslationStyle
   ttsVoice: TtsVoice
   fontSize: 'small' | 'medium' | 'large'
+  /**
+   * Preferred STT provider. Default 'auto' tries Whisper first then falls back
+   * to Google Cloud STT (using the Gemini key), keeping voice input resilient
+   * even when the OpenAI API is unavailable or out of credits.
+   */
+  sttProvider: SttProvider
 
   // Provider / key status
   keyStatus: Record<Provider, boolean>
@@ -42,16 +54,24 @@ export interface SettingsSlice {
   // Actions — preferences
   setAutoTranslate: (v: boolean) => void
   setAutoTranslateDelay: (ms: number) => void
-  setShowFurigana: (v: boolean) => void
+  setPhoneticMode: (mode: PhoneticMode) => void
   setTranslationStyle: (style: TranslationStyle) => void
   setTtsVoice: (voice: TtsVoice) => void
   setFontSize: (size: 'small' | 'medium' | 'large') => void
+  setSttProvider: (provider: SttProvider) => void
+
+  /** Whether a Tavily API key is stored (used for Deep Research web search) */
+  hasTavilyKey: boolean
+  /** Whether a Brave Search API key is stored (Deep Research fallback) */
+  hasBraveKey: boolean
 
   // Actions — provider state
   setKeyStatus: (provider: Provider, hasKey: boolean) => void
   setDynamicModels: (provider: Provider, models: FetchedModel[]) => void
   setModelsLoading: (provider: Provider, loading: boolean) => void
   setModelsError: (provider: Provider, error: string | null) => void
+  setHasTavilyKey: (v: boolean) => void
+  setHasBraveKey: (v: boolean) => void
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: StateCreator full-state generic omitted to avoid circular deps — full AppState is assembled in useAppStore.ts
@@ -60,16 +80,19 @@ export const createSettingsSlice: StateCreator<any, [], [], SettingsSlice> = (se
   localeAuto: true,
   autoTranslate: DEFAULT_SETTINGS.autoTranslate,
   autoTranslateDelay: DEFAULT_SETTINGS.autoTranslateDelay,
-  showFurigana: false,
-  translationStyle: 'neutral' as TranslationStyle,
+  phoneticMode: 'off' as PhoneticMode,
+  translationStyle: 'general' as TranslationStyle,
   ttsVoice: 'nova' as TtsVoice,
   fontSize: 'medium' as const,
+  sttProvider: 'auto' as SttProvider,
   // Build initial provider maps from PROVIDERS registry — adding a new provider only requires
   // updating constants/providers.ts; no need to touch this slice.
   keyStatus: Object.fromEntries(PROVIDERS.map((p) => [p.id, false])) as Record<Provider, boolean>,
   dynamicModels: Object.fromEntries(PROVIDERS.map((p): [string, FetchedModel[]] => [p.id, []])) as Record<Provider, FetchedModel[]>,
   modelsLoading: Object.fromEntries(PROVIDERS.map((p) => [p.id, false])) as Record<Provider, boolean>,
   modelsError: Object.fromEntries(PROVIDERS.map((p): [string, string | null] => [p.id, null])) as Record<Provider, string | null>,
+  hasTavilyKey: false,
+  hasBraveKey: false,
 
   // Locale — explicit user choice turns off auto-follow
   setLocale: (locale) => set({ locale, localeAuto: false }),
@@ -79,10 +102,11 @@ export const createSettingsSlice: StateCreator<any, [], [], SettingsSlice> = (se
 
   setAutoTranslate: (v) => set({ autoTranslate: v }),
   setAutoTranslateDelay: (ms) => set({ autoTranslateDelay: ms }),
-  setShowFurigana: (v) => set({ showFurigana: v }),
+  setPhoneticMode: (mode) => set({ phoneticMode: mode }),
   setTranslationStyle: (style) => set({ translationStyle: style }),
   setTtsVoice: (voice) => set({ ttsVoice: voice }),
   setFontSize: (size) => set({ fontSize: size }),
+  setSttProvider: (provider) => set({ sttProvider: provider }),
 
   setKeyStatus: (provider, hasKey) =>
     set((state: SettingsSlice) => ({ keyStatus: { ...state.keyStatus, [provider]: hasKey } })),
@@ -92,4 +116,6 @@ export const createSettingsSlice: StateCreator<any, [], [], SettingsSlice> = (se
     set((state: SettingsSlice) => ({ modelsLoading: { ...state.modelsLoading, [provider]: loading } })),
   setModelsError: (provider, error) =>
     set((state: SettingsSlice) => ({ modelsError: { ...state.modelsError, [provider]: error } })),
+  setHasTavilyKey: (v) => set({ hasTavilyKey: v }),
+  setHasBraveKey: (v) => set({ hasBraveKey: v }),
 })

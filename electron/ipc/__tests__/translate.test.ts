@@ -13,7 +13,7 @@
  *
  * Provider SDKs are NOT imported — no real API calls made.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ── Mock Electron before importing translate.ts ───────────────────────────────
 vi.mock('electron', () => ({
@@ -25,31 +25,16 @@ vi.mock('../storage', () => ({
   getStoredApiKey: vi.fn(),
 }))
 
-import {
-  splitIntoChunks,
-  buildPrompt,
-  withTimeout,
-  promisePool,
-  normalizeDetectedLang,
-  registerTranslateHandlers,
-} from '../translate'
 import { getStoredApiKey } from '../storage'
-
-// ─── Mock IpcMain helper ──────────────────────────────────────────────────────
-function buildMockIpcMain() {
-  // biome-ignore lint/suspicious/noExplicitAny: Function type needed for flexible IPC mock
-  const handlers: Record<string, Function> = {}
-  const ipcMain = {
-    // biome-ignore lint/suspicious/noExplicitAny: Function type needed for flexible IPC mock
-    handle: (channel: string, handler: Function) => {
-      handlers[channel] = handler
-    },
-  }
-  // Invoke handler with fake event + rest args; returns any (intentional in tests)
-  const invoke = (channel: string, ...args: unknown[]) =>
-    handlers[channel]?.({} /* fake _event */, ...args)
-  return { ipcMain, invoke }
-}
+import {
+  buildPrompt,
+  normalizeDetectedLang,
+  promisePool,
+  registerTranslateHandlers,
+  splitIntoChunks,
+  withTimeout,
+} from '../translate'
+import { buildMockIpcMain } from './helpers/mockIpcMain'
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('splitIntoChunks', () => {
@@ -115,47 +100,47 @@ describe('splitIntoChunks', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('buildPrompt', () => {
   it('plain translate: includes target language and source text', () => {
-    const prompt = buildPrompt('Hello world', 'en', 'vi', false, 'neutral', false)
+    const prompt = buildPrompt('Hello world', 'en', 'vi', false, 'general', false)
     expect(prompt).toContain('vi')
     expect(prompt).toContain('Hello world')
     expect(prompt).not.toContain('phonetic')
   })
 
   it('phoneticOnly+furigana for Japanese: adds furigana instruction, NOT translate', () => {
-    const prompt = buildPrompt('東京', 'en', 'ja', true, 'neutral', true)
+    const prompt = buildPrompt('東京', 'en', 'ja', true, 'general', true)
     expect(prompt).toContain('furigana')
     expect(prompt).not.toContain('Translate into')
   })
 
   it('phoneticOnly+furigana for Chinese: adds pinyin instruction', () => {
-    const prompt = buildPrompt('北京', 'en', 'zh', true, 'neutral', true)
+    const prompt = buildPrompt('北京', 'en', 'zh', true, 'general', true)
     expect(prompt).toContain('pinyin')
     expect(prompt).not.toContain('Translate into')
   })
 
   it('phoneticOnly+furigana for Korean: adds romanization instruction', () => {
-    const prompt = buildPrompt('서울', 'en', 'ko', true, 'neutral', true)
+    const prompt = buildPrompt('서울', 'en', 'ko', true, 'general', true)
     expect(prompt).toContain('romanization')
   })
 
   it('furigana mode (not phoneticOnly): includes furigana instruction alongside translation', () => {
-    const prompt = buildPrompt('Hello', 'en', 'ja', true, 'neutral', false)
+    const prompt = buildPrompt('Hello', 'en', 'ja', true, 'general', false)
     expect(prompt).toContain('furigana')
     expect(prompt).toContain('Translate into')
   })
 
   it('different styles produce different prompts', () => {
-    const neutral = buildPrompt('text', 'en', 'vi', false, 'neutral', false)
-    const friendly = buildPrompt('text', 'en', 'vi', false, 'friendly', false)
+    const general = buildPrompt('text', 'en', 'vi', false, 'general', false)
+    const casual = buildPrompt('text', 'en', 'vi', false, 'casual', false)
     const technical = buildPrompt('text', 'en', 'vi', false, 'technical', false)
-    expect(neutral).not.toBe(friendly)
-    expect(neutral).not.toBe(technical)
-    expect(friendly).not.toBe(technical)
+    expect(general).not.toBe(casual)
+    expect(general).not.toBe(technical)
+    expect(casual).not.toBe(technical)
   })
 
   it('phoneticOnly without showFurigana: no annotation instruction', () => {
     // phoneticOnly=true but showFurigana=false → condition (phoneticOnly && showFurigana) is false
-    const prompt = buildPrompt('Hello', 'en', 'vi', false, 'neutral', true)
+    const prompt = buildPrompt('Hello', 'en', 'vi', false, 'general', true)
     expect(prompt).not.toContain('furigana')
     // Falls into the normal translate path
     expect(prompt).toContain('Translate into')

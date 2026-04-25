@@ -1,6 +1,6 @@
-import { IpcMain } from 'electron'
+import type { IpcMain } from 'electron'
+import { ANTHROPIC_API_BASE, ANTHROPIC_API_VERSION, GEMINI_API_BASE, GEMINI_MODELS_PAGE_SIZE } from './ipcConstants'
 import { getStoredApiKey } from './storage'
-import { GEMINI_API_BASE, GEMINI_MODELS_PAGE_SIZE, ANTHROPIC_API_VERSION } from './ipcConstants'
 
 // DUP-02: Removed local `getApiKey` wrapper — call getStoredApiKey directly.
 // HC-06: Gemini base URL now uses GEMINI_API_BASE constant.
@@ -62,7 +62,7 @@ function scoreModelForTranslation(provider: string, modelId: string): number {
     if (ver) score += parseFloat(`${ver[1]}.${ver[2] || 0}`) * 15
     // Date bonus: newer release date = higher score
     const date = id.match(/(\d{8})$/)
-    if (date) score += parseInt(date[1]) / 2000000
+    if (date) score += parseInt(date[1], 10) / 2000000
   } else if (provider === 'openai') {
     // Mini models: fast + good translation quality
     if (id.includes('mini')) score += OPENAI_SCORE_MINI
@@ -130,7 +130,7 @@ async function fetchGeminiModels(apiKey: string): Promise<FetchedModel[]> {
 
 // ─── Claude: REST API ──────────────────────────────────────────────────────────
 async function fetchClaudeModels(apiKey: string): Promise<FetchedModel[]> {
-  const res = await fetch('https://api.anthropic.com/v1/models?limit=20', {
+  const res = await fetch(`${ANTHROPIC_API_BASE}/v1/models?limit=20`, {
     headers: {
       'x-api-key': apiKey,
       'anthropic-version': ANTHROPIC_API_VERSION,  // HC-07

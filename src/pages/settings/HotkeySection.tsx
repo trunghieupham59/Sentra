@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { HotkeyRecordButton } from '../../components/ui/HotkeyRecordButton'
 import { SpinnerIcon, XIcon } from '../../components/ui/icons'
 import { ToggleSwitch } from '../../components/ui/ToggleSwitch'
+import { STATUS_RESET_DELAY_MS, STATUS_RESET_LONG_MS } from '../../constants/ui'
 import { useAppStore, useT } from '../../store/useAppStore'
 
 const DEFAULT_HOTKEY = 'Alt+Shift+T'
@@ -53,12 +54,12 @@ export function HotkeySection() {
     const unsub2 = window.api.hotkey.onTranslated(() => {
       setHotkeyStatus('done')
       setHotkeyStatusMsg(t.settings_hotkey_status_done)
-      setTimeout(() => setHotkeyStatus('idle'), 3000)
+      setTimeout(() => setHotkeyStatus('idle'), STATUS_RESET_DELAY_MS)
     })
     const unsub3 = window.api.hotkey.onError((data: { error: string }) => {
       setHotkeyStatus('error')
       setHotkeyStatusMsg(data?.error ?? t.settings_hotkey_status_error)
-      setTimeout(() => setHotkeyStatus('idle'), 5000)
+      setTimeout(() => setHotkeyStatus('idle'), STATUS_RESET_LONG_MS)
     })
     return () => { unsub1(); unsub2(); unsub3() }
   }, [t])

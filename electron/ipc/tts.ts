@@ -11,30 +11,31 @@
  * All providers return base64-encoded audio so the renderer can decode it with
  * Web Audio API regardless of format (MP3, WAV, PCM).
  */
+
+import * as crypto from 'node:crypto'
 import type { IpcMain } from 'electron'
-import * as crypto from 'crypto'
 import WebSocket from 'ws'
-import { getStoredApiKey } from './storage'
 import {
-  EDGE_TTS_WS_URL,
-  EDGE_TTS_TRUSTED_TOKEN,
   EDGE_TTS_CHROMIUM_FULL,
   EDGE_TTS_CHROMIUM_MAJOR,
-  EDGE_TTS_WIN_EPOCH,
-  EDGE_TTS_DEFAULT_VOICE,
   EDGE_TTS_DEFAULT_RATE,
+  EDGE_TTS_DEFAULT_VOICE,
   EDGE_TTS_TIMEOUT_MS,
+  EDGE_TTS_TRUSTED_TOKEN,
+  EDGE_TTS_WIN_EPOCH,
+  EDGE_TTS_WS_URL,
   ELEVENLABS_API_BASE,
-  ELEVENLABS_TTS_MODEL,
   ELEVENLABS_DEFAULT_VOICE_ID,
-  ELEVENLABS_STABILITY,
   ELEVENLABS_SIMILARITY_BOOST,
+  ELEVENLABS_STABILITY,
   ELEVENLABS_STYLE,
+  ELEVENLABS_TTS_MODEL,
   GEMINI_API_BASE,
   GEMINI_TTS_MODEL,
   GEMINI_TTS_VOICE_NAME,
   OPENAI_TTS_MODEL,
 } from './ipcConstants'
+import { getStoredApiKey } from './storage'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

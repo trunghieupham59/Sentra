@@ -16,18 +16,19 @@ export function RewriteIcon({ className = 'w-4 h-4' }: IconProps) {
   )
 }
 
-/** Clipboard copy icon — two overlapping rectangles. */
-export function CopyIcon({ className = 'w-3.5 h-3.5' }: IconProps) {
+/** Copy icon — two overlapping squares (Lucide-style). */
+export function CopyIcon({ className = 'w-4 h-4' }: IconProps) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-        d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
     </svg>
   )
 }
 
 /** Checkmark icon — used to confirm a completed action (e.g. "Copied!"). */
-export function CheckIcon({ className = 'w-3.5 h-3.5' }: IconProps) {
+export function CheckIcon({ className = 'w-4 h-4' }: IconProps) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -36,7 +37,7 @@ export function CheckIcon({ className = 'w-3.5 h-3.5' }: IconProps) {
 }
 
 /** Trash / delete icon — used on clear / delete buttons. */
-export function TrashIcon({ className = 'w-3.5 h-3.5' }: IconProps) {
+export function TrashIcon({ className = 'w-4 h-4' }: IconProps) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}

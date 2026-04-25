@@ -1,12 +1,12 @@
-import { IpcMain } from 'electron'
-import type { Part, Content } from '@google/generative-ai'
-import type { TextBlockParam, ImageBlockParam } from '@anthropic-ai/sdk/resources/messages'
-import type { ChatCompletionMessageParam, ChatCompletionContentPartText, ChatCompletionContentPartImage } from 'openai/resources/chat/completions'
-import { getStoredApiKey } from './storage'
+import type { ImageBlockParam, TextBlockParam } from '@anthropic-ai/sdk/resources/messages'
+import type { Content, Part } from '@google/generative-ai'
+import type { IpcMain } from 'electron'
+import type { ChatCompletionContentPartImage, ChatCompletionContentPartText, ChatCompletionMessageParam } from 'openai/resources/chat/completions'
 import { classifyProviderError, noApiKeyResponse } from './errorUtils'
+import { MAX_CHAT_OUTPUT_TOKENS, MAX_CHAT_REQUEST_CHARS } from './ipcConstants'
 import { unknownProviderError } from './providers/types'
 import { withRetry } from './retry'
-import { MAX_CHAT_OUTPUT_TOKENS, MAX_CHAT_REQUEST_CHARS } from './ipcConstants'
+import { getStoredApiKey } from './storage'
 
 // DUP-02: Removed local `getApiKey` wrapper — call getStoredApiKey directly.
 

@@ -34,7 +34,7 @@ export function AutoTranslateToggle({
       onClick={() => onChange(!autoTranslate)}
       title={autoTranslate ? titleAuto : titleManual}
       className={[
-        'flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium',
+        'flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[13px] font-medium',
         'border transition-all duration-200 select-none cursor-pointer',
         'w-[112px] justify-start',
         autoTranslate

@@ -7,15 +7,35 @@ import { registerKeychainHandlers } from './ipc/keychain'
 import { initLegacyAssistant, setLocalServerAccessors } from './ipc/legacyAssistant'
 import { getServerToken, LOCAL_SERVER_PORT, startLocalServer, stopLocalServer } from './ipc/localServer'
 import { registerModelsHandlers } from './ipc/models'
-import { registerTranscribeHandlers } from './ipc/transcribe'
-import { registerTranslateHandlers } from './ipc/translate'
 import { registerSubtitleHandlers } from './ipc/subtitle'
 import { registerSystemHandlers } from './ipc/system'
+import { registerTranscribeHandlers } from './ipc/transcribe'
+import { registerTranslateHandlers } from './ipc/translate'
 import { registerTtsHandlers } from './ipc/tts'
 import { registerUpdaterHandlers } from './ipc/updater'
+import { registerWebSearchHandlers } from './ipc/webSearch'
 
 // Allow audio autoplay after async operations (TTS API calls lose user-gesture context)
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
+
+// Suppress macOS Metal overlay mailbox errors (SharedImageManager / Skia buffer queue bug in Chromium)
+if (process.platform === 'darwin') {
+  app.commandLine.appendSwitch('disable-features', 'UseSkiaRenderer')
+}
+
+// ── Single-instance guard ─────────────────────────────────────────────────────
+// Prevent a second launch from binding the same local-server port (EADDRINUSE).
+// If another instance is already running, focus its window and quit immediately.
+if (!app.requestSingleInstanceLock()) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+    }
+  })
+}
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 
@@ -33,8 +53,8 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 700,
-    minWidth: 780,
-    minHeight: 520,
+    minWidth: 1200,
+    minHeight: 700,
     title: 'Viezan',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 16, y: 14 },
@@ -184,6 +204,7 @@ app.whenReady().then(() => {
   registerTtsHandlers(ipcMain)
   registerImageTranslateHandlers(ipcMain)
   registerChatHandlers(ipcMain)
+  registerWebSearchHandlers(ipcMain)
 
   // Global hotkey — translate selected text in any OS application
   initGlobalHotkey(ipcMain, () => mainWindow)
