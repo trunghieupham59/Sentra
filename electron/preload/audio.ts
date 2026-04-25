@@ -9,7 +9,26 @@
  * webkitSpeechRecognition — it never reaches IPC.
  */
 import { ipcRenderer } from 'electron'
-import type { SttProvider, SttProviderCheckResult, TranscribeResult } from '../../src/types'
+
+// ── Types (mirrored from src/types to keep electron code self-contained) ──────
+type SttProvider = 'auto' | 'whisper' | 'google' | 'groq' | 'webSpeech'
+type SttBackend = 'whisper' | 'gemini' | 'groq'
+
+interface SttProviderCheckResult {
+  primary: SttBackend | 'none'
+  available: SttBackend[]
+}
+
+interface TranscribeResult {
+  success: boolean
+  text?: string
+  error?: string
+  errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | string
+  noSpeechProb?: number
+  avgLogprob?: number
+  compressionRatio?: number
+  provider?: string
+}
 
 export const audioSection = {
   /**
