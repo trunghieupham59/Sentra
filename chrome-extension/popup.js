@@ -15,7 +15,7 @@ async function getSettings () {
       resolve({
         token: data.treToken || '',
         targetLang: data.treTargetLang || 'en',
-        translationStyle: data.treTranslationStyle || 'neutral',
+        translationStyle: data.treTranslationStyle || 'general',
       })
     })
   })
@@ -211,7 +211,7 @@ $('btn-translate').addEventListener('click', async () => {
         targetLang,
         provider: appConfig.provider,
         model: appConfig.model,
-        translationStyle: $('translation-style').value || 'neutral',
+        translationStyle: $('translation-style').value || 'general',
       }),
     })
 

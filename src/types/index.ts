@@ -1,6 +1,6 @@
 export type Provider = 'gemini' | 'claude' | 'openai'
 
-export type TranslationStyle = 'friendly' | 'neutral' | 'professional' | 'business' | 'slack' | 'polite' | 'technical'
+export type TranslationStyle = 'general' | 'formal' | 'casual' | 'business' | 'technical' | 'natural'
 
 /**
  * Phonetic annotation mode:
@@ -11,6 +11,15 @@ export type TranslationStyle = 'friendly' | 'neutral' | 'professional' | 'busine
 export type PhoneticMode = 'off' | 'standard' | 'phonetic'
 
 export type TtsVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
+
+/**
+ * STT provider preference:
+ *  - 'auto'      — try Whisper first, fallback to Google STT, then surface error
+ *  - 'whisper'   — OpenAI Whisper only (highest accuracy, requires OpenAI key)
+ *  - 'google'    — Google Cloud STT only (uses Gemini API key, very reliable)
+ *  - 'webSpeech' — Browser Web Speech API (free, real-time, no key needed, Chrome-based)
+ */
+export type SttProvider = 'auto' | 'whisper' | 'google' | 'webSpeech'
 
 export interface ProviderConfig {
   id: Provider
@@ -281,6 +290,11 @@ export interface WindowApi {
     language?: string
     /** Last transcript text, forwarded to Whisper as prompt context. */
     previousText?: string
+    /**
+     * Which STT backend to use. Defaults to 'auto' (Whisper → Google fallback).
+     * 'webSpeech' is handled entirely in the renderer — never sent via IPC.
+     */
+    sttProvider?: SttProvider
   }) => Promise<TranscribeResult>
   speakText: (params: {
     text: string
@@ -329,6 +343,8 @@ export interface WindowApi {
     sourceLang: string
     targetLang: string
     translationStyle?: string
+    /** Segment ID — used by subtitle window to correlate streaming tokens */
+    segId?: string
   }) => Promise<TranslateResult>
   /** Floating subtitle overlay — runs in a separate always-on-top OS window */
   subtitle: {
@@ -336,8 +352,37 @@ export interface WindowApi {
     hide: () => Promise<void>
     update: (text: string, isTranslating: boolean) => Promise<void>
     setStyle: (style: SubtitleSettings) => Promise<void>
+    /** Push the latest raw (source) text to show above the translation */
+    setSourceText: (text: string, segId?: string) => Promise<void>
+    /** Push current session state to subtitle window */
+    pushState: (state: {
+      selectedProvider: string
+      selectedModel: string
+      isActive: boolean
+      isTranscribing: boolean
+      isTranslating: boolean
+      availableModels: { id: string; name: string }[]
+      audioMode: string
+      targetLang: string
+    }) => Promise<void>
     /** Returns a cleanup function that removes the listener */
     onClosed: (callback: () => void) => () => void
+    /** Listen for Start action from subtitle window. Returns cleanup fn. */
+    onStart: (callback: () => void) => () => void
+    /** Listen for Stop action from subtitle window. Returns cleanup fn. */
+    onStop: (callback: () => void) => () => void
+    /** Listen for provider change from subtitle window. Returns cleanup fn. */
+    onSetProvider: (callback: (provider: string) => void) => () => void
+    /** Listen for model change from subtitle window. Returns cleanup fn. */
+    onSetModel: (callback: (model: string) => void) => () => void
+    /** Listen for audio mode change from subtitle window. Returns cleanup fn. */
+    onSetAudioMode: (callback: (mode: string) => void) => () => void
+    /** Listen for target language change from subtitle window. Returns cleanup fn. */
+    onSetTargetLang: (callback: (lang: string) => void) => () => void
+    /** Listen for style changes from subtitle window. Returns cleanup fn. */
+    onStyleUpdate: (callback: (style: SubtitleSettings) => void) => () => void
+    /** Listen for "new session / clear" action from subtitle window. Returns cleanup fn. */
+    onClear: (callback: () => void) => () => void
   }
   platform: string
   version: string

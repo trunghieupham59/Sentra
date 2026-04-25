@@ -19,7 +19,7 @@ import {
 
 // DUP-02: Removed local `getApiKey` wrapper — call getStoredApiKey directly.
 
-type TranslationStyle = 'friendly' | 'neutral' | 'professional' | 'business' | 'slack' | 'polite' | 'technical'
+type TranslationStyle = 'general' | 'formal' | 'casual' | 'business' | 'technical' | 'natural'
 
 type PhoneticMode = 'off' | 'standard' | 'phonetic'
 
@@ -50,13 +50,12 @@ interface RewriteParams {
 }
 
 const STYLE_TONE: Record<TranslationStyle, string> = {
-  friendly: 'friendly, warm, casual — like chatting with a close friend or family member; use informal language, contractions, and expressive wording',
-  neutral: 'neutral, clear, natural — well-balanced register suitable for general everyday use; neither overly formal nor overly casual',
-  professional: 'professional, polished, confident — appropriate for interactions with colleagues, clients, or business partners',
-  business: 'formal business register — highly concise, precise, and objective; appropriate for official corporate communication',
-  slack: 'concise workplace chat style — informal yet professional; direct and efficient as in instant messaging',
-  polite: 'polite, respectful, considerate — suitable for addressing someone of higher status or unfamiliar parties; uses appropriate honorifics',
-  technical: 'precise, technical, domain-specific — use accurate industry-standard terminology; sentences are clear, unambiguous, and logically structured; suitable for documentation, specs, or expert-to-expert communication; prioritizes exactness; avoid casual language, metaphors, and any imprecision',
+  general:   'clear, natural, well-balanced — suitable for general everyday use; neither overly formal nor overly casual; reads naturally to any native speaker',
+  formal:    'formal, polished, and respectful — appropriate for official correspondence, letters, reports, or interactions with superiors and unfamiliar parties; uses proper honorifics where applicable; avoids contractions and casual expressions',
+  casual:    'casual, relaxed, conversational — like chatting with a close friend; uses informal language, contractions, colloquialisms, and expressive wording; feels natural in everyday conversation, texting, or social media',
+  business:  'formal business register — highly concise, precise, and objective; appropriate for corporate emails, executive communication, and business documents; avoids unnecessary words; maintains a professional and authoritative tone',
+  technical: 'precise, technical, and domain-specific — uses accurate industry-standard terminology; sentences are clear, unambiguous, and logically structured; suitable for documentation, specs, or expert-to-expert communication; prioritizes exactness; avoids casual language, metaphors, and any imprecision',
+  natural:   'authentic, idiomatic, and naturally fluent — as if a confident native speaker originally wrote it in the target language; uses natural collocations, real idioms, and native rhythm; eliminates any trace of translation or foreignness; prioritizes how a real native would genuinely express the idea',
 }
 
 const SYSTEM_PROMPT = `You are an expert translator and linguist with deep knowledge of cultural nuance. Your translations sound completely natural to native speakers of the target language.
@@ -83,7 +82,7 @@ function buildPrompt(
   sourceLang: string,
   targetLang: string,
   showFurigana = false,
-  style: TranslationStyle = 'neutral',
+  style: TranslationStyle = 'general',
   phoneticOnly = false,
   phoneticMode: PhoneticMode = 'standard',
 ): string {
@@ -142,7 +141,7 @@ function buildPrompt(
   }
 
   // ── Normal translation (with optional inline standard annotations) ──────────
-  const tone = STYLE_TONE[style] ?? STYLE_TONE.neutral
+  const tone = STYLE_TONE[style] ?? STYLE_TONE.general
   let phoneticInstruction = ''
   if (showFurigana) {
     if (targetLang === 'ja') {
@@ -159,8 +158,8 @@ function buildPrompt(
 }
 
 function buildRewritePrompt(text: string, lang: string, style?: TranslationStyle): string {
-  const styleName = style ?? 'neutral'
-  const toneDesc = STYLE_TONE[styleName] ?? STYLE_TONE.neutral
+  const styleName = style ?? 'general'
+  const toneDesc = STYLE_TONE[styleName] ?? STYLE_TONE.general
 
   return `Make the text below indistinguishable from something a confident, articulate native speaker of ${lang} would genuinely write or say — not a polished translation, but authentic original expression.
 
@@ -695,7 +694,7 @@ export async function streamTranslation(
   sourceText: string,
   sourceLang: string,
   targetLang: string,
-  style: TranslationStyle = 'neutral',
+  style: TranslationStyle = 'general',
   onToken: (token: string) => void
 ): Promise<string> {
   const prompt = buildPrompt(sourceText, sourceLang, targetLang, false, style, false)
@@ -800,11 +799,11 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
       // Chunked translation has its own per-chunk timeout (CHUNK_TIMEOUT_MS) so retry isn't applied there.
       translatedText = needsChunking
         ? await translateChunked(
-            (text) => translateFn(apiKey, model, text, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', false, effectivePhoneticMode),
+            (text) => translateFn(apiKey, model, text, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'general', false, effectivePhoneticMode),
             sourceText,
           )
         : await withRetry(() =>
-            translateFn(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'neutral', !!phoneticOnly, effectivePhoneticMode)
+            translateFn(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'general', !!phoneticOnly, effectivePhoneticMode)
           )
 
       return { success: true, translatedText }

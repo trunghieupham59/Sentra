@@ -87,6 +87,14 @@ describe('classifyProviderError', () => {
       const result = classifyProviderError('FetchError: request to https://... failed')
       expect(result.errorCode).toBe('NETWORK')
     })
+
+    it('classifies OpenAI "Connection error." as NETWORK', () => {
+      // OpenAI Node SDK throws APIConnectionError with this exact message string.
+      const result = classifyProviderError('Connection error.')
+      expect(result.success).toBe(false)
+      expect(result.errorCode).toBe('NETWORK')
+      expect(result.error).toContain('internet')
+    })
   })
 
   // ── Unknown errors — pass through ─────────────────────────────────────────

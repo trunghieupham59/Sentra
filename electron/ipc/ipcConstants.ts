@@ -174,6 +174,15 @@ export const OPENAI_TTS_MODEL = 'tts-1'
 /** OpenAI Whisper STT model — supports 99 languages, used for voice input and live transcription. */
 export const WHISPER_MODEL = 'whisper-1'
 
+// ── Gemini STT (audio transcription via Gemini multimodal API) ────────────────
+/**
+ * Gemini model used for audio transcription (STT fallback when Whisper is unavailable).
+ * Uses the Gemini generateContent API with audio inline_data — same API key as translation,
+ * no additional Google Cloud APIs or GCP Console setup required.
+ * gemini-2.0-flash: fast, accurate, supports 100+ languages, handles all common audio formats.
+ */
+export const GEMINI_STT_MODEL = 'gemini-2.0-flash'
+
 // ── Lightweight translate default models (used when no model is specified) ────
 /**
  * Default OpenAI model for lightweight translation (global hotkey, bookmarklet).

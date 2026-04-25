@@ -7,16 +7,15 @@ import {
 } from './ipcConstants'
 import { getStoredApiKey } from './storage'
 
-type TranslationStyle = 'friendly' | 'neutral' | 'professional' | 'business' | 'slack' | 'polite' | 'technical'
+type TranslationStyle = 'general' | 'formal' | 'casual' | 'business' | 'technical' | 'natural'
 
 const STYLE_TONE: Record<TranslationStyle, string> = {
-  friendly: 'friendly, warm, casual — like chatting with a close friend or family member; use informal language, contractions, and expressive wording',
-  neutral: 'neutral, clear, natural — well-balanced register suitable for general everyday use; neither overly formal nor overly casual',
-  professional: 'professional, polished, confident — appropriate for interactions with colleagues, clients, or business partners',
-  business: 'formal business register — highly concise, precise, and objective; appropriate for official corporate communication',
-  slack: 'concise workplace chat style — informal yet professional; direct and efficient as in instant messaging',
-  polite: 'polite, respectful, considerate — suitable for addressing someone of higher status or unfamiliar parties; uses appropriate honorifics',
-  technical: 'technical, precise, domain-specific — uses accurate, industry-standard technical terminology; clear and unambiguous',
+  general:   'clear, natural, well-balanced — suitable for general everyday use; neither overly formal nor overly casual; reads naturally to any native speaker',
+  formal:    'formal, polished, and respectful — appropriate for official correspondence, letters, reports, or interactions with superiors and unfamiliar parties; uses proper honorifics where applicable; avoids contractions and casual expressions',
+  casual:    'casual, relaxed, conversational — like chatting with a close friend; uses informal language, contractions, colloquialisms, and expressive wording; feels natural in everyday conversation, texting, or social media',
+  business:  'formal business register — highly concise, precise, and objective; appropriate for corporate emails, executive communication, and business documents; avoids unnecessary words; maintains a professional and authoritative tone',
+  technical: 'precise, technical, and domain-specific — uses accurate industry-standard terminology; sentences are clear, unambiguous, and logically structured; suitable for documentation, specs, or expert-to-expert communication; prioritizes exactness; avoids casual language, metaphors, and any imprecision',
+  natural:   'authentic, idiomatic, and naturally fluent — as if a confident native speaker originally wrote it in the target language; uses natural collocations, real idioms, and native rhythm; eliminates any trace of translation or foreignness; prioritizes how a real native would genuinely express the idea',
 }
 
 export interface LightweightTranslateParams {
@@ -36,7 +35,7 @@ export async function lightweightTranslate({
   targetLang,
   provider = 'gemini',
   model,
-  translationStyle = 'neutral',
+  translationStyle = 'general',
 }: LightweightTranslateParams): Promise<{ success: boolean; translatedText?: string; error?: string }> {
   if (!text?.trim()) return { success: false, error: 'Text is empty' }
 
@@ -49,7 +48,7 @@ export async function lightweightTranslate({
   const apiKey = await getStoredApiKey(provider)
   if (!apiKey) return { success: false, error: `No API key configured for ${provider}` }
 
-  const tone = STYLE_TONE[translationStyle] ?? STYLE_TONE.neutral
+  const tone = STYLE_TONE[translationStyle] ?? STYLE_TONE.general
   const prompt = `Translate into ${targetLang}. Tone: ${tone}. Output only the translation.\n\n${text}`
 
   try {

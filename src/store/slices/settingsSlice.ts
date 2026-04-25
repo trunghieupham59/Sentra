@@ -8,7 +8,7 @@
 import type { StateCreator } from 'zustand'
 import { DEFAULT_SETTINGS, PROVIDERS } from '../../constants/providers'
 import type { AppLocale } from '../../i18n'
-import type { FetchedModel, PhoneticMode, Provider, TranslationStyle, TtsVoice } from '../../types'
+import type { FetchedModel, PhoneticMode, Provider, SttProvider, TranslationStyle, TtsVoice } from '../../types'
 
 export interface SettingsSlice {
   // Locale
@@ -29,6 +29,12 @@ export interface SettingsSlice {
   translationStyle: TranslationStyle
   ttsVoice: TtsVoice
   fontSize: 'small' | 'medium' | 'large'
+  /**
+   * Preferred STT provider. Default 'auto' tries Whisper first then falls back
+   * to Google Cloud STT (using the Gemini key), keeping voice input resilient
+   * even when the OpenAI API is unavailable or out of credits.
+   */
+  sttProvider: SttProvider
 
   // Provider / key status
   keyStatus: Record<Provider, boolean>
@@ -52,6 +58,7 @@ export interface SettingsSlice {
   setTranslationStyle: (style: TranslationStyle) => void
   setTtsVoice: (voice: TtsVoice) => void
   setFontSize: (size: 'small' | 'medium' | 'large') => void
+  setSttProvider: (provider: SttProvider) => void
 
   // Actions — provider state
   setKeyStatus: (provider: Provider, hasKey: boolean) => void
@@ -67,9 +74,10 @@ export const createSettingsSlice: StateCreator<any, [], [], SettingsSlice> = (se
   autoTranslate: DEFAULT_SETTINGS.autoTranslate,
   autoTranslateDelay: DEFAULT_SETTINGS.autoTranslateDelay,
   phoneticMode: 'off' as PhoneticMode,
-  translationStyle: 'neutral' as TranslationStyle,
+  translationStyle: 'general' as TranslationStyle,
   ttsVoice: 'nova' as TtsVoice,
   fontSize: 'medium' as const,
+  sttProvider: 'auto' as SttProvider,
   // Build initial provider maps from PROVIDERS registry — adding a new provider only requires
   // updating constants/providers.ts; no need to touch this slice.
   keyStatus: Object.fromEntries(PROVIDERS.map((p) => [p.id, false])) as Record<Provider, boolean>,
@@ -89,6 +97,7 @@ export const createSettingsSlice: StateCreator<any, [], [], SettingsSlice> = (se
   setTranslationStyle: (style) => set({ translationStyle: style }),
   setTtsVoice: (voice) => set({ ttsVoice: voice }),
   setFontSize: (size) => set({ fontSize: size }),
+  setSttProvider: (provider) => set({ sttProvider: provider }),
 
   setKeyStatus: (provider, hasKey) =>
     set((state: SettingsSlice) => ({ keyStatus: { ...state.keyStatus, [provider]: hasKey } })),

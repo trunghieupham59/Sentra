@@ -39,13 +39,12 @@ export interface Translations {
   /** Phonetic mode dropdown — full phonetic transcription */
   translate_phonetic_transcription: string
   translate_style_label: string
-  translate_style_neutral: string
-  translate_style_friendly: string
-  translate_style_professional: string
+  translate_style_general: string
+  translate_style_formal: string
+  translate_style_casual: string
   translate_style_business: string
-  translate_style_slack: string
-  translate_style_polite: string
   translate_style_technical: string
+  translate_style_natural: string
   translate_speak: string
   translate_speak_stop: string
   translate_rewrite: string
@@ -139,6 +138,32 @@ export interface Translations {
   settings_stt_usage: string
   settings_stt_feature_voice: string
   settings_stt_feature_live: string
+  // STT provider selector
+  settings_stt_select_provider: string
+  /** Auto mode option label */
+  settings_stt_auto: string
+  /** Auto mode description */
+  settings_stt_auto_desc: string
+  /** OpenAI Whisper option label */
+  settings_stt_whisper: string
+  /** OpenAI Whisper description */
+  settings_stt_whisper_desc: string
+  /** Google Cloud STT option label */
+  settings_stt_google: string
+  /** Google Cloud STT description */
+  settings_stt_google_desc: string
+  /** Note about enabling Speech API in GCP console */
+  settings_stt_google_note: string
+  /** Browser Web Speech API option label */
+  settings_stt_webspeech: string
+  /** Browser Web Speech API description */
+  settings_stt_webspeech_desc: string
+  /** Status badge: always available (no API key needed) */
+  settings_stt_always_available: string
+  /** Status badge: needs Gemini API key */
+  settings_stt_needs_gemini: string
+  /** Shown below provider selector in auto mode */
+  settings_stt_auto_note: string
 
   settings_tts_section: string
   /** Short description of TTS provider priority order */

@@ -68,6 +68,7 @@ export const useAppStore = create<AppState>()(
         translationStyle: state.translationStyle,
         ttsVoice: state.ttsVoice,
         fontSize: state.fontSize,
+        sttProvider: state.sttProvider,
         locale: state.locale,
         localeAuto: state.localeAuto,
         history: state.history,

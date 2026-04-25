@@ -18,7 +18,7 @@ beforeEach(() => {
       autoTranslate: false,
       autoTranslateDelay: 500,
       phoneticMode: 'off',
-      translationStyle: 'neutral',
+      translationStyle: 'general',
       ttsVoice: 'nova',
       fontSize: 'medium',
       keyStatus: { gemini: false, claude: false, openai: false } as Record<string, boolean>,
@@ -123,9 +123,9 @@ describe('setPhoneticMode', () => {
 })
 
 describe('setTranslationStyle', () => {
-  it('sets style to friendly', () => {
-    act(() => useAppStore.getState().setTranslationStyle('friendly'))
-    expect(useAppStore.getState().translationStyle).toBe('friendly')
+  it('sets style to casual', () => {
+    act(() => useAppStore.getState().setTranslationStyle('casual'))
+    expect(useAppStore.getState().translationStyle).toBe('casual')
   })
 
   it('sets style to technical', () => {
@@ -133,9 +133,9 @@ describe('setTranslationStyle', () => {
     expect(useAppStore.getState().translationStyle).toBe('technical')
   })
 
-  it('sets style to professional', () => {
-    act(() => useAppStore.getState().setTranslationStyle('professional'))
-    expect(useAppStore.getState().translationStyle).toBe('professional')
+  it('sets style to formal', () => {
+    act(() => useAppStore.getState().setTranslationStyle('formal'))
+    expect(useAppStore.getState().translationStyle).toBe('formal')
   })
 })
 

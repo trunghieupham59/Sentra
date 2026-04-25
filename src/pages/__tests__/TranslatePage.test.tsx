@@ -19,7 +19,7 @@ beforeEach(() => {
       selectedProvider: 'gemini',
       selectedModels: { gemini: 'gemini-2.0-flash', claude: 'claude-3-5-haiku-20241022', openai: 'gpt-4o' },
       phoneticMode: 'off',
-      translationStyle: 'neutral',
+      translationStyle: 'general',
     })
   })
 })

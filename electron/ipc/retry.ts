@@ -65,6 +65,7 @@ export function isRetriableError(err: Error): boolean {
     msg.includes('network socket disconnected') ||
     msg.includes('socket hang up') ||
     msg.includes('connection reset') ||
+    msg.includes('connection error') ||
     msg.includes('timeout')
   )
 }

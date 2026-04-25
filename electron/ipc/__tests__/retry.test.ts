@@ -48,6 +48,16 @@ describe('isRetriableError', () => {
     expect(isRetriableError(new Error('connection reset by peer'))).toBe(true)
   })
 
+  it('returns true for OpenAI APIConnectionError "Connection error."', () => {
+    // OpenAI Node SDK throws APIConnectionError with this exact message on
+    // DNS failures, TCP resets, or proxy issues.
+    expect(isRetriableError(new Error('Connection error.'))).toBe(true)
+  })
+
+  it('returns true for lowercase "connection error"', () => {
+    expect(isRetriableError(new Error('connection error occurred'))).toBe(true)
+  })
+
   // ── Non-retriable (hard) errors ───────────────────────────────────────────
   it('returns false for 401 Unauthorized (invalid API key)', () => {
     expect(isRetriableError(new Error('401 Unauthorized'))).toBe(false)

@@ -151,7 +151,7 @@ export function registerSubtitleHandlers(
       const fullText = await streamTranslation(
         provider, apiKey, model,
         sourceText, sourceLang, targetLang,
-        (translationStyle ?? 'neutral') as 'friendly' | 'neutral' | 'professional' | 'business' | 'slack' | 'polite' | 'technical',
+        (translationStyle ?? 'general') as 'general' | 'formal' | 'casual' | 'business' | 'technical' | 'natural',
         (token) => sendToSubtitle('subtitle:stream:token', token)
       )
       sendToSubtitle('subtitle:stream:end', { segId })

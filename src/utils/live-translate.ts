@@ -32,10 +32,11 @@ const HALLUCINATION_PATTERNS: RegExp[] = [
 
   // ── Whisper bracketed annotation labels ──────────────────────────────────
   // When Whisper encounters non-speech audio (music, applause, silence) it
-  // outputs labels like [Music], (拍手), 【BGM】.  These are structural
-  // annotations, not transcribed speech — safe to discard.
+  // outputs labels like [Music], (music), (拍手), 【BGM】.  These are
+  // structural annotations, not transcribed speech — safe to discard.
   // Matches any utterance that is ENTIRELY enclosed in brackets/parentheses.
-  /^\s*[[(（【].*[\]）】]\s*$/,
+  // Closing class includes both ASCII ) and full-width ）】].
+  /^\s*[[(（【].*[)\]）】]\s*$/,
 ]
 
 /**

@@ -759,7 +759,7 @@ export function useLiveTranslate() {
             sourceText: capturedSourceText,
             sourceLang,
             targetLang,
-            translationStyle: 'neutral' as const,
+            translationStyle: 'general' as const,
             showFurigana: false,
           }
 
@@ -774,7 +774,7 @@ export function useLiveTranslate() {
                 sourceText: capturedSourceText,
                 sourceLang,
                 targetLang,
-                translationStyle: 'neutral',
+                translationStyle: 'general',
                 segId: capturedSegId,
               })
               usedStreaming = txResult.success

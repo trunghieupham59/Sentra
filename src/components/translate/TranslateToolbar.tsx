@@ -14,13 +14,12 @@ interface TranslateToolbarProps {
   isPhoneticLoading: boolean
   // i18n
   labelStyleLabel: string
-  labelStyleNeutral: string
-  labelStyleFriendly: string
-  labelStyleProfessional: string
+  labelStyleGeneral: string
+  labelStyleFormal: string
+  labelStyleCasual: string
   labelStyleBusiness: string
-  labelStyleSlack: string
-  labelStylePolite: string
   labelStyleTechnical: string
+  labelStyleNatural: string
   labelPhoneticOff: string
   labelPhoneticStandard: string
   labelPhoneticTranscription: string
@@ -39,8 +38,8 @@ export function TranslateToolbar({
   autoTranslate, onAutoTranslateChange,
   phoneticMode, onPhoneticModeChange, isPhoneticLoading,
   labelStyleLabel,
-  labelStyleNeutral, labelStyleFriendly, labelStyleProfessional,
-  labelStyleBusiness, labelStyleSlack, labelStylePolite, labelStyleTechnical,
+  labelStyleGeneral, labelStyleFormal, labelStyleCasual,
+  labelStyleBusiness, labelStyleTechnical, labelStyleNatural,
   labelPhoneticOff, labelPhoneticStandard, labelPhoneticTranscription,
   labelPhoneticSection, labelAutoSection,
   titleAutoMode, titleManualMode, labelAutoMode, labelManualMode,
@@ -63,18 +62,17 @@ export function TranslateToolbar({
               onChange={(e) => onStyleChange(e.target.value as TranslationStyle)}
               className={`text-[13px] font-medium px-2.5 py-1.5 pr-6 rounded-full border appearance-none cursor-pointer
                           transition-colors duration-200 outline-none w-36
-                          ${translationStyle !== 'neutral'
+                          ${translationStyle !== 'general'
                             ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-400'
                             : 'bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'
                           }`}
             >
-              <option value="neutral">{labelStyleNeutral}</option>
-              <option value="friendly">{labelStyleFriendly}</option>
-              <option value="professional">{labelStyleProfessional}</option>
+              <option value="general">{labelStyleGeneral}</option>
+              <option value="formal">{labelStyleFormal}</option>
+              <option value="casual">{labelStyleCasual}</option>
               <option value="business">{labelStyleBusiness}</option>
-              <option value="slack">{labelStyleSlack}</option>
-              <option value="polite">{labelStylePolite}</option>
               <option value="technical">{labelStyleTechnical}</option>
+              <option value="natural">{labelStyleNatural}</option>
             </select>
             <div className="pointer-events-none absolute right-2 inset-y-0 flex items-center">
               <ChevronDownIcon className="w-3 h-3 text-gray-400" />

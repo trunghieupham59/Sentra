@@ -119,13 +119,12 @@ export function TranslatePage() {
               (isTranslating || (!!translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL))
             }
             labelStyleLabel={t.translate_style_label}
-            labelStyleNeutral={t.translate_style_neutral}
-            labelStyleFriendly={t.translate_style_friendly}
-            labelStyleProfessional={t.translate_style_professional}
+            labelStyleGeneral={t.translate_style_general}
+            labelStyleFormal={t.translate_style_formal}
+            labelStyleCasual={t.translate_style_casual}
             labelStyleBusiness={t.translate_style_business}
-            labelStyleSlack={t.translate_style_slack}
-            labelStylePolite={t.translate_style_polite}
             labelStyleTechnical={t.translate_style_technical}
+            labelStyleNatural={t.translate_style_natural}
             labelPhoneticSection={t.translate_phonetic}
             labelPhoneticOff={t.translate_phonetic_off}
             labelPhoneticStandard={t.translate_phonetic_standard}
