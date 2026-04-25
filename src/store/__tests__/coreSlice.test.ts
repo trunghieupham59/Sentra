@@ -169,11 +169,18 @@ describe('setActivePage', () => {
   })
 
   it('navigates to all valid pages', () => {
-    const pages = ['translate', 'history', 'settings', 'chat', 'live'] as const
+    const pages = ['translate', 'history', 'chat', 'live'] as const
     for (const page of pages) {
       act(() => useAppStore.getState().setActivePage(page))
       expect(useAppStore.getState().activePage).toBe(page)
     }
+  })
+
+  it('opens and closes settings modal', () => {
+    act(() => useAppStore.getState().openSettings())
+    expect(useAppStore.getState().settingsOpen).toBe(true)
+    act(() => useAppStore.getState().closeSettings())
+    expect(useAppStore.getState().settingsOpen).toBe(false)
   })
 })
 

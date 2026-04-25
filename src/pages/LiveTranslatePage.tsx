@@ -1,13 +1,11 @@
 import { useState } from 'react'
-import { LanguageSelector } from '../components/LanguageSelector'
 import { SegmentRow } from '../components/live/SegmentRow'
 import { TranslationRow } from '../components/live/TranslationRow'
 import { MarkdownText } from '../components/MarkdownText'
 import { ModelSelector } from '../components/ModelSelector'
+import { TranslateLanguageBar } from '../components/translate/TranslateLanguageBar'
 import {
   AlertTriangleIcon,
-  ArrowRightIcon,
-  AutoDetectIcon,
   CheckIcon,
   DownloadIcon,
   GearIcon,
@@ -52,7 +50,7 @@ type PostTab = 'summary' | 'actions' | 'decisions'
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function LiveTranslatePage() {
-  const { targetLang, setTargetLang, setActivePage } = useAppStore()
+  const { targetLang, setTargetLang, setActivePage, openSettings } = useAppStore()
   const t = useT()
 
   const {
@@ -353,18 +351,18 @@ export function LiveTranslatePage() {
             </div>
 
             {/* Row 2: Language selector */}
-            <div className="flex items-center gap-3">
-              <div className="flex-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg
-                              bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700
-                              text-sm text-gray-500 dark:text-gray-400 select-none overflow-hidden">
-                <AutoDetectIcon className="w-3.5 h-3.5 flex-shrink-0 text-blue-400" />
-                <span className="truncate">{t.lang_auto}</span>
-              </div>
-              <ArrowRightIcon className="flex-shrink-0 w-4 h-4 text-gray-300 dark:text-gray-600" />
-              <div className="flex-1">
-                <LanguageSelector value={targetLang} onChange={setTargetLang} includeAuto={false} />
-              </div>
-            </div>
+            <TranslateLanguageBar
+              sourceLang="auto"
+              onSourceLangChange={() => {}}
+              targetLang={targetLang}
+              onTargetLangChange={setTargetLang}
+              detectedSourceLang={null}
+              canSwap={false}
+              isDetectingLang={false}
+              onSwap={() => {}}
+              langNames={t.lang_names}
+              swapTitle=""
+            />
 
             {/* Row 3: Actions — Clear | Export TXT/SRT →  Word count */}
             {(rawTranscript || wordCount > 0) && (
@@ -421,7 +419,7 @@ export function LiveTranslatePage() {
           {!hasOpenAIKey && (
             <Notice>
               {t.live_no_openai_key}{' '}
-              <button type="button" onClick={() => setActivePage('settings')} className="underline font-medium cursor-pointer">
+              <button type="button" onClick={() => openSettings()} className="underline font-medium cursor-pointer">
                 {t.translate_error_open_settings}
               </button>
             </Notice>

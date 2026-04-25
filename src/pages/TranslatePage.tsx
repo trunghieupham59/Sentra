@@ -19,7 +19,7 @@ import { useAppStore, useT } from '../store/useAppStore'
 
 export function TranslatePage() {
   const t = useT()
-  const { setSourceLang } = useAppStore()
+  const { setSourceLang, openSettings } = useAppStore()
   const {
     // Store state
     sourceText, translatedText, phoneticText, sourceLang, targetLang,
@@ -95,11 +95,6 @@ export function TranslatePage() {
       {/* Centered content — fills remaining height */}
       <div className="flex-1 flex flex-col min-h-0">
         <div className="px-6 pt-6 pb-4 flex flex-col gap-4 flex-1 min-h-0 min-w-0">
-
-          {/* Page title */}
-          <h1 className="text-2xl font-bold text-center text-gray-800 dark:text-gray-100 flex-shrink-0">
-            Dịch Thuật Với AI
-          </h1>
 
           {/* Toolbar + Language bar — combined in a single gray card */}
           <div className="rounded-2xl bg-gray-50 dark:bg-gray-900/60 border border-gray-100 dark:border-gray-800 px-5 py-4 flex flex-col gap-4 flex-shrink-0">
@@ -284,7 +279,7 @@ export function TranslatePage() {
                     canRetry={!!(sourceText.trim() || imageAttachment)}
                     onRetry={handleTranslate}
                     onDismiss={handleDismissError}
-                    onOpenSettings={() => setActivePage('settings')}
+                    onOpenSettings={() => openSettings()}
                     labelRetry={t.translate_error_retry}
                     labelOpenSettings={t.translate_error_open_settings}
                     labelDismiss={t.translate_error_dismiss}

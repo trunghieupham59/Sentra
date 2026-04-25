@@ -59,7 +59,7 @@ export function ChatPage() {
     selectedProvider, selectedModels, keyStatus,
     chatSessions, activeChatSessionId, chatSystemPrompt, systemPromptPresets,
     createChatSession, setActiveChatSession, addChatMessage, updateChatMessage,
-    clearChatSession, setChatSystemPrompt, setActivePage, addSystemPromptPreset,
+    clearChatSession, setChatSystemPrompt, setActivePage, addSystemPromptPreset, openSettings,
   } = useAppStore()
   const t = useT()
 
@@ -350,7 +350,7 @@ export function ChatPage() {
             systemPromptPresets={systemPromptPresets}
             activePreset={activePreset}
             onSetChatSystemPrompt={setChatSystemPrompt}
-            onNavigateSettings={() => setActivePage('settings')}
+            onNavigateSettings={() => openSettings()}
             onAddPreset={addSystemPromptPreset}
             t={t}
           />
@@ -402,7 +402,7 @@ export function ChatPage() {
                 <p className="text-xs text-orange-500 dark:text-orange-400">{t.chat_error_no_key}</p>
                 <button
                   type="button"
-                  onClick={() => setActivePage('settings')}
+                  onClick={() => openSettings()}
                   className="btn-primary text-xs py-1.5 px-3"
                 >
                   {t.chat_error_open_settings}

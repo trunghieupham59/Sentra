@@ -1,5 +1,5 @@
 import { LanguageSelector } from '../LanguageSelector'
-import { SpinnerIcon, SwapIcon } from '../ui/icons'
+import { AutoDetectIcon, SpinnerIcon, SwapIcon } from '../ui/icons'
 
 interface TranslateLanguageBarProps {
   sourceLang: string
@@ -38,8 +38,16 @@ export function TranslateLanguageBar({
           value={sourceLang}
           onChange={onSourceLangChange}
           includeAuto={true}
-          selectClassName={PILL_SELECT_CLS}
+          selectClassName={sourceLang === 'auto'
+            ? `${PILL_SELECT_CLS} pl-7`
+            : PILL_SELECT_CLS}
         />
+        {/* Auto-detect icon shown on the left when auto is selected */}
+        {sourceLang === 'auto' && (
+          <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center">
+            <AutoDetectIcon className="w-3.5 h-3.5 text-blue-400" />
+          </span>
+        )}
         {/* Detected language badge shown when auto is selected */}
         {sourceLang === 'auto' && detectedSourceLang && (
           <span className="absolute right-9 top-1/2 -translate-y-1/2 text-xs font-medium text-blue-500 dark:text-blue-400 pointer-events-none pr-1">
