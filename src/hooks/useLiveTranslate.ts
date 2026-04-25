@@ -16,6 +16,7 @@ import { MicVAD } from '@ricky0123/vad-web'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getSupportedAudioMimeType } from '../constants/audio'
 import { LANG_NAMES_FOR_AI } from '../constants/langNames'
+import { MIN_AUDIO_BLOB_BYTES } from '../constants/ui'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { Provider, SubtitleSettings } from '../types'
 import { extractCompleteSentences, isHallucination, jaccardSimilarity, splitSentences } from '../utils/live-translate'
@@ -467,7 +468,7 @@ export function useLiveTranslate() {
 
   // ── Core pipeline ───────────────────────────────────────────────────────────
   const processChunk = useCallback(async (blob: Blob, mimeType: string) => {
-    if (blob.size < 1000) return
+    if (blob.size < MIN_AUDIO_BLOB_BYTES) return
 
     // ── Adaptive VAD: count chunk in rolling evaluation window ────────────
     adaptiveChunksRef.current += 1
@@ -817,7 +818,7 @@ export function useLiveTranslate() {
         }
       })(segId, sourceText)
     }
-  }, [])
+  }, [t])
 
   // ── Recorder cycling with VAD ─────────────────────────────────────────────────
   const startChunk = useCallback(() => {
@@ -1198,7 +1199,7 @@ export function useLiveTranslate() {
         setMicError(msg)
       }
     }
-  }, [startChunk, audioMode, setViewingLiveSession, processChunk])
+  }, [startChunk, audioMode, setViewingLiveSession, processChunk, t])
 
   const handleStop = useCallback(() => {
     activeRef.current = false

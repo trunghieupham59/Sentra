@@ -1,5 +1,5 @@
 import type { IpcMain } from 'electron'
-import { ANTHROPIC_API_VERSION, GEMINI_API_BASE, GEMINI_MODELS_PAGE_SIZE } from './ipcConstants'
+import { ANTHROPIC_API_BASE, ANTHROPIC_API_VERSION, GEMINI_API_BASE, GEMINI_MODELS_PAGE_SIZE } from './ipcConstants'
 import { getStoredApiKey } from './storage'
 
 // DUP-02: Removed local `getApiKey` wrapper — call getStoredApiKey directly.
@@ -130,7 +130,7 @@ async function fetchGeminiModels(apiKey: string): Promise<FetchedModel[]> {
 
 // ─── Claude: REST API ──────────────────────────────────────────────────────────
 async function fetchClaudeModels(apiKey: string): Promise<FetchedModel[]> {
-  const res = await fetch('https://api.anthropic.com/v1/models?limit=20', {
+  const res = await fetch(`${ANTHROPIC_API_BASE}/v1/models?limit=20`, {
     headers: {
       'x-api-key': apiKey,
       'anthropic-version': ANTHROPIC_API_VERSION,  // HC-07

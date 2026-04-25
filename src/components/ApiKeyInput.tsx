@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { VERIFY_STATUS_RESET_DELAY_MS } from '../constants/ui'
 import { useT } from '../store/useAppStore'
 import type { ProviderConfig } from '../types'
 import { tpl } from '../utils/tpl'
@@ -41,7 +42,7 @@ export function ApiKeyInput({ provider, onSave, onDelete, hasKey, maskedKey }: A
         setVerifyStatus(result.valid ? 'rate_limited' : 'valid')
         setVerifyMessage(result.valid ? t.settings_msg_rate_limited : t.settings_msg_valid)
         setInputValue('')
-        setTimeout(() => setVerifyStatus('idle'), 5000)
+        setTimeout(() => setVerifyStatus('idle'), VERIFY_STATUS_RESET_DELAY_MS)
       } else {
         switch (result.errorCode) {
           case 'RATE_LIMIT':
@@ -49,7 +50,7 @@ export function ApiKeyInput({ provider, onSave, onDelete, hasKey, maskedKey }: A
             setVerifyStatus('rate_limited')
             setVerifyMessage(t.settings_msg_rate_limited)
             setInputValue('')
-            setTimeout(() => setVerifyStatus('idle'), 5000)
+            setTimeout(() => setVerifyStatus('idle'), VERIFY_STATUS_RESET_DELAY_MS)
             break
           case 'INVALID_KEY':
             setVerifyStatus('invalid')

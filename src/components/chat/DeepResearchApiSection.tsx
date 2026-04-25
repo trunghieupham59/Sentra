@@ -8,7 +8,7 @@
  *   2. Brave    — Good quality, requires key (api.search.brave.com)
  *   3. Jina AI  — Free forever, no key needed (default fallback)
  */
-import { useEffect, useState, type ReactNode } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { useAppStore, useT } from '../../store/useAppStore'
 import { BraveSearchIcon, CheckCircleIcon, CheckIcon, SpinnerIcon, TavilyIcon, TrashIcon } from '../ui/icons'
 

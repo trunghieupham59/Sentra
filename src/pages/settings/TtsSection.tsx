@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { CheckCircleIcon, ChevronDownIcon, SpinnerIcon, TrashIcon } from '../../components/ui/icons'
 import { TtsVoicePicker } from '../../components/ui/TtsVoicePicker'
+import { TOAST_DISMISS_DELAY_MS } from '../../constants/ui'
 import { useAppStore, useT } from '../../store/useAppStore'
 import type { TtsVoice } from '../../types'
 
@@ -35,7 +36,7 @@ export function TtsSection() {
         setElKey({ exists: updated.exists ?? false, masked: updated.masked ?? null })
         setElInput('')
         setElMsg({ text: t.settings_tts_el_saved, ok: true })
-        setTimeout(() => setElMsg(null), 4000)
+        setTimeout(() => setElMsg(null), TOAST_DISMISS_DELAY_MS)
       } else {
         setElMsg({ text: `✗ ${result.error ?? t.settings_tts_el_failed}`, ok: false })
       }

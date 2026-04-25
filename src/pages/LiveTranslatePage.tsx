@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { DEFAULT_SEGMENT_DURATION_MS, MIN_SEGMENT_DURATION_MS } from '../constants/ui'
 import { LiveSourceLangBar } from '../components/live/LiveSourceLangBar'
 import { LiveTargetLangBar } from '../components/live/LiveTargetLangBar'
 import { SegmentRow } from '../components/live/SegmentRow'
@@ -134,8 +135,8 @@ export function LiveTranslatePage() {
     const base = sessionStartTime || (segments[0]?.timestamp ?? Date.now())
     segments.forEach((seg, i) => {
       const startMs = Math.max(0, seg.timestamp - base)
-      const nextMs  = i < segments.length - 1 ? segments[i + 1].timestamp - base : startMs + 3000
-      const endMs   = Math.max(startMs + 500, nextMs)
+      const nextMs  = i < segments.length - 1 ? segments[i + 1].timestamp - base : startMs + DEFAULT_SEGMENT_DURATION_MS
+      const endMs   = Math.max(startMs + MIN_SEGMENT_DURATION_MS, nextMs)
       const displayName = speakerNameMap[seg.speaker] || seg.speaker
       lines.push(
         String(i + 1),

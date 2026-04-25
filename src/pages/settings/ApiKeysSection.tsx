@@ -3,6 +3,7 @@ import { ApiKeyInput } from '../../components/ApiKeyInput'
 import { DeepResearchApiSection } from '../../components/chat/DeepResearchApiSection'
 import { LockIcon } from '../../components/ui/icons'
 import { PROVIDERS } from '../../constants/providers'
+import { JINA_DOCS_URL } from '../../constants/urls'
 import { useAppStore, useT } from '../../store/useAppStore'
 import type { Provider } from '../../types'
 
@@ -110,7 +111,7 @@ export function ApiKeysSection() {
               {t.settings_web_search_desc_prefix}{' '}
               <button
                 type="button"
-                onClick={() => window.api?.openExternal('https://jina.ai')}
+                onClick={() => window.api?.openExternal(JINA_DOCS_URL)}
                 className="underline cursor-pointer hover:text-indigo-800 dark:hover:text-indigo-200"
               >
                 Jina AI
