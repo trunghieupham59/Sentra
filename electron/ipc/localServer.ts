@@ -19,8 +19,8 @@ import * as fs from 'node:fs'
 import * as http from 'node:http'
 import * as path from 'node:path'
 import { app } from 'electron'
-import { hasStoredApiKey } from './storage'
 import { lightweightTranslate } from './lightweightTranslate'
+import { hasStoredApiKey } from './storage'
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -53,7 +53,7 @@ let server: http.Server | null = null
  * Updated via IPC `localServer:syncConfig` whenever the user changes provider/model.
  * Used by /api/config so the extension always mirrors the app's current selection.
  */
-let cachedConfig: { provider: string; model: string } = {
+const cachedConfig: { provider: string; model: string } = {
   provider: 'gemini',
   model: 'gemini-2.0-flash',
 }

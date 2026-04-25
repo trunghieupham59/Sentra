@@ -1,7 +1,7 @@
 import type { IpcMain } from 'electron'
-import { getStoredApiKey } from './storage'
 import { GEMINI_API_BASE, GEMINI_STT_MODEL, WHISPER_MODEL } from './ipcConstants'
 import { withRetry } from './retry'
+import { getStoredApiKey } from './storage'
 
 // ─── Session-level Whisper availability cache ─────────────────────────────────
 //
@@ -221,7 +221,6 @@ async function transcribeWithWhisper(
       prompt: buildWhisperPrompt(whisperLang, previousText),
     })
 
-    // biome-ignore lint/suspicious/noExplicitAny: SDK type varies by response_format overload
     const rawResponse = await ((useRetry ? withRetry(createCall) : createCall()) as unknown) as VerboseResponse
 
     const text = rawResponse.text?.trim() ?? ''

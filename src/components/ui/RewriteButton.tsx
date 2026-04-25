@@ -32,7 +32,7 @@ export function RewriteButton({
   isRewriting,
   onRewrite,
   labelRewrite,
-  labelRewriting,
+  labelRewriting: _labelRewriting,
 }: RewriteButtonProps) {
   const isThisPanel = isRewriting === panel
   const isAnyRewriting = isRewriting !== null
@@ -53,13 +53,9 @@ export function RewriteButton({
       ].join(' ')}
     >
       {isThisPanel ? (
-        <>
-          <SpinnerIcon className="w-4 h-4 animate-spin" />
-        </>
+        <SpinnerIcon className="w-4 h-4 animate-spin" />
       ) : (
-        <>
-          <RewriteIcon />
-        </>
+        <RewriteIcon />
       )}
     </button>
   )

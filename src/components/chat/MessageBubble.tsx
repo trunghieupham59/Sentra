@@ -5,18 +5,19 @@ import { MarkdownText } from '../MarkdownText'
 import { ClipboardIcon, RefreshIcon, SpinnerIcon, UserIcon } from '../ui/icons'
 
 // HC-11: Named constant for loading dot animation stagger
-const DOT_ANIM_DELAY_STEP_S = 0.15  // s between each loading dot's bounce start
+const DOT_ANIM_DELAY_STEP_S = 0.15   // s between each loading dot's bounce start
+const DOT_BOUNCE_INTERVAL_MS = 400   // ms interval for dots 1→2→3→1 cycle
 
 /** Animated "Thinking..." label — dots cycle 1 → 2 → 3 → 1 every 400 ms */
 function ThinkingLabel() {
   const [dots, setDots] = useState(1)
   useEffect(() => {
-    const t = setInterval(() => setDots((d) => (d >= 3 ? 1 : d + 1)), 400)
+    const t = setInterval(() => setDots((d) => (d >= 3 ? 1 : d + 1)), DOT_BOUNCE_INTERVAL_MS)
     return () => clearInterval(t)
   }, [])
   return (
     <span className="text-gray-400 dark:text-gray-500 italic select-none">
-      {'Thinking' + '.'.repeat(dots)}
+      {`Thinking${'.'.repeat(dots)}`}
     </span>
   )
 }

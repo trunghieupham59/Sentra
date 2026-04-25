@@ -63,7 +63,7 @@ export function ChatPage() {
     selectedProvider, selectedModels, keyStatus,
     chatSessions, activeChatSessionId, chatSystemPrompt, systemPromptPresets,
     createChatSession, setActiveChatSession, addChatMessage, updateChatMessage,
-    clearChatSession, setChatSystemPrompt, setActivePage, addSystemPromptPreset, openSettings,
+    clearChatSession, setChatSystemPrompt, addSystemPromptPreset, openSettings,
   } = useAppStore()
   const t = useT()
 

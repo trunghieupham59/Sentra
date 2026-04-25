@@ -6,7 +6,7 @@
  *   1. isRetriableError() — classifies errors as retriable or non-retriable
  *   2. withRetry()        — retry count, backoff, success on retry, non-retriable passthrough
  */
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { isRetriableError, withRetry } from '../retry'
 
 // ─────────────────────────────────────────────────────────────────────────────

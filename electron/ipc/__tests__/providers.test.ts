@@ -7,10 +7,10 @@
  *   2. isValidProvider()   — type guard validation
  *   3. unknownProviderError() — standardized error response shape
  */
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
-  SUPPORTED_PROVIDERS,
   isValidProvider,
+  SUPPORTED_PROVIDERS,
   unknownProviderError,
 } from '../providers/types'
 

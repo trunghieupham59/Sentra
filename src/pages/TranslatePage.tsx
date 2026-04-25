@@ -1,14 +1,14 @@
 import { type MutableRefObject, useEffect, useRef, useState } from 'react'
-import { FuriganaText } from '../components/FuriganaText'
 import { MarkdownText } from '../components/MarkdownText'
 import { ModelSelector } from '../components/ModelSelector'
+import { FuriganaText } from '../components/translate/FuriganaText'
 import { ImageAttachmentPreview } from '../components/translate/ImageAttachmentPreview'
 import { ImageSwitchToast } from '../components/translate/ImageSwitchToast'
 import { ResultPanelActions } from '../components/translate/ResultPanelActions'
-import { SourcePanelActions } from '../components/translate/SourcePanelActions'
-import { TranslateError } from '../components/translate/TranslateError'
 import { SourceLanguageSelector } from '../components/translate/SourceLanguageSelector'
+import { SourcePanelActions } from '../components/translate/SourcePanelActions'
 import { TargetLanguageSelector } from '../components/translate/TargetLanguageSelector'
+import { TranslateError } from '../components/translate/TranslateError'
 import { TranslateToolbar } from '../components/translate/TranslateToolbar'
 import { VoiceOverlay } from '../components/translate/VoiceOverlay'
 import { DragOverlay } from '../components/ui/DragOverlay'
@@ -26,9 +26,9 @@ export function TranslatePage() {
     // Store state
     sourceText, translatedText, phoneticText, sourceLang, targetLang,
     isTranslating, translateError, autoTranslate, phoneticMode, translationStyle,
-    keyStatus, selectedProvider,
+    selectedProvider,
     // Store setters
-    setTargetLang, setActivePage, setPhoneticMode, setTranslationStyle, setAutoTranslate,
+    setTargetLang, setPhoneticMode, setTranslationStyle, setAutoTranslate,
     // Local state
     copied, isRewriting, imageSwitchNotice, detectedSourceLang, isDetectingLang,
     imageAttachment, imageRegions, editedImageUrl, isDraggingOver,

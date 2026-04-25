@@ -1,5 +1,5 @@
-import { shell, systemPreferences } from 'electron'
 import type { IpcMain } from 'electron'
+import { shell, systemPreferences } from 'electron'
 
 export function registerSystemHandlers(ipc: IpcMain) {
   // ── Check Screen Recording permission (macOS) ───────────────────────────

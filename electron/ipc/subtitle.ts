@@ -1,4 +1,4 @@
-import type { IpcMain, BrowserWindow } from 'electron'
+import type { BrowserWindow, IpcMain } from 'electron'
 import { getStoredApiKey } from './storage'
 import { streamTranslation } from './translate'
 

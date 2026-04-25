@@ -1,19 +1,19 @@
 import path from 'node:path'
 import { app, BrowserWindow, desktopCapturer, ipcMain, nativeImage, nativeTheme, screen, shell } from 'electron'
 import { registerChatHandlers } from './ipc/chat'
-import { registerWebSearchHandlers } from './ipc/webSearch'
 import { initGlobalHotkey } from './ipc/globalHotkey'
 import { registerImageTranslateHandlers } from './ipc/imageTranslate'
 import { registerKeychainHandlers } from './ipc/keychain'
 import { initLegacyAssistant, setLocalServerAccessors } from './ipc/legacyAssistant'
 import { getServerToken, LOCAL_SERVER_PORT, startLocalServer, stopLocalServer } from './ipc/localServer'
 import { registerModelsHandlers } from './ipc/models'
-import { registerTranscribeHandlers } from './ipc/transcribe'
-import { registerTranslateHandlers } from './ipc/translate'
 import { registerSubtitleHandlers } from './ipc/subtitle'
 import { registerSystemHandlers } from './ipc/system'
+import { registerTranscribeHandlers } from './ipc/transcribe'
+import { registerTranslateHandlers } from './ipc/translate'
 import { registerTtsHandlers } from './ipc/tts'
 import { registerUpdaterHandlers } from './ipc/updater'
+import { registerWebSearchHandlers } from './ipc/webSearch'
 
 // Allow audio autoplay after async operations (TTS API calls lose user-gesture context)
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')

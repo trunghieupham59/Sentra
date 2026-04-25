@@ -23,13 +23,9 @@ export function CopyButton({ copied, onClick, labelCopy, labelCopied }: CopyButt
       className={`btn-ghost py-1 px-2 text-xs transition-all ${copied ? 'text-green-600' : ''}`}
     >
       {copied ? (
-        <>
-          <CheckIcon />
-        </>
+        <CheckIcon />
       ) : (
-        <>
-          <CopyIcon />
-        </>
+        <CopyIcon />
       )}
     </button>
   )

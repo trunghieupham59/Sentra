@@ -1,11 +1,11 @@
 // @vitest-environment node
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
-  MAX_CHAT_REQUEST_CHARS,
   DETECT_LANG_MAX_CHARS as MAIN_DETECT_LANG_MAX_CHARS,
+  MAX_CHAT_REQUEST_CHARS,
   TRANSLATE_CHUNK_CHAR_LIMIT,
-  TRANSLATE_CHUNK_TIMEOUT_MS,
   TRANSLATE_CHUNK_CONCURRENCY,
+  TRANSLATE_CHUNK_TIMEOUT_MS,
   TRANSLATE_CONTEXT_TAIL_CHARS,
 } from '../ipcConstants'
 

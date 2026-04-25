@@ -1,5 +1,5 @@
-import { IpcMain } from 'electron'
-import { getStoredApiKey, setStoredApiKey, deleteStoredApiKey, hasStoredApiKey } from './storage'
+import type { IpcMain } from 'electron'
+import { deleteStoredApiKey, getStoredApiKey, hasStoredApiKey, setStoredApiKey } from './storage'
 
 export function registerKeychainHandlers(ipcMain: IpcMain) {
   // Save API key to OS Keychain

@@ -62,19 +62,13 @@ export function SpeakButton({
     >
       {isLoading ? (
         /* Loading spinner */
-        <>
-          <SpinnerIcon className="w-4 h-4 animate-spin" />
-        </>
+        <SpinnerIcon className="w-4 h-4 animate-spin" />
       ) : isThisPanel ? (
         /* Stop icon */
-        <>
-          <StopIcon />
-        </>
+        <StopIcon />
       ) : (
         /* Speaker icon */
-        <>
-          <SpeakerIcon />
-        </>
+        <SpeakerIcon />
       )}
     </button>
   )

@@ -5,8 +5,7 @@ import { SegmentRow } from '../components/live/SegmentRow'
 import { TranslationRow } from '../components/live/TranslationRow'
 import { MarkdownText } from '../components/MarkdownText'
 import { ModelSelector } from '../components/ModelSelector'
-import { SwapIcon } from '../components/ui/icons'
-import {
+import { 
   AlertTriangleIcon,
   CheckIcon,
   CopyIcon,
@@ -18,11 +17,10 @@ import {
   MonitorIcon,
   SpinnerIcon,
   StopIcon,
-  SubtitlesIcon,
+  SubtitlesIcon,SwapIcon, 
   TranslateIcon,
   TrashIcon,
-  XIcon,
-} from '../components/ui/icons'
+  XIcon,} from '../components/ui/icons'
 import { COPY_FEEDBACK_DURATION_MS } from '../constants/ui'
 import { MACOS_SCREEN_RECORDING_PREFS } from '../constants/urls'
 import { DEFAULT_SUBTITLE_SETTINGS, useLiveTranslate } from '../hooks/useLiveTranslate'
@@ -54,12 +52,12 @@ type PostTab = 'summary' | 'actions' | 'decisions'
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function LiveTranslatePage() {
-  const { targetLang, setTargetLang, setActivePage, openSettings } = useAppStore()
+  const { targetLang, setTargetLang, openSettings } = useAppStore()
   const t = useT()
 
   const {
     audioMode, setAudioMode, screenPermission,
-    isActive, rawTranscript, translation, isTranscribing, isTranslating, micError,
+    isActive, rawTranscript, translation, isTranscribing, isTranslating,
     pipelineError,
     showSubtitles, setShowSubtitles,
     showSubtitleConfig, setShowSubtitleConfig, subtitleSettings, setSubtitleSettings,
@@ -75,7 +73,6 @@ export function LiveTranslatePage() {
   const [copiedRaw,     setCopiedRaw]     = useState(false)
   const [copiedTx,      setCopiedTx]      = useState(false)
   const [copiedSummary, setCopiedSummary] = useState(false)
-  const [copiedAll,     setCopiedAll]     = useState(false)
   const [postTab, setPostTab] = useState<PostTab>('summary')
   const [showScreenPermModal, setShowScreenPermModal] = useState(false)
   const [showSummaryPopup, setShowSummaryPopup] = useState(false)
@@ -166,17 +163,6 @@ export function LiveTranslatePage() {
     if (!isSummarizing && !summary) {
       handleSummarize()
     }
-  }
-
-  // ── Copy all transcript + translation ─────────────────────────────────────
-  const handleCopyAll = async () => {
-    const parts: string[] = []
-    if (rawTranscript) parts.push(`=== Nguyên bản ===\n${rawTranscript}`)
-    if (translation)   parts.push(`=== Bản dịch ===\n${translation}`)
-    if (!parts.length) return
-    await navigator.clipboard.writeText(parts.join('\n\n'))
-    setCopiedAll(true)
-    setTimeout(() => setCopiedAll(false), COPY_FEEDBACK_DURATION_MS)
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -710,14 +696,19 @@ export function LiveTranslatePage() {
 
       {/* ── Summary popup ── */}
       {showSummaryPopup && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: backdrop div — keyboard Escape handled by onKeyDown
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
           onClick={() => setShowSummaryPopup(false)}
+          onKeyDown={(e) => e.key === 'Escape' && setShowSummaryPopup(false)}
         >
           <div
             className="relative w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden"
+            role="dialog"
+            aria-modal="true"
             style={{ maxHeight: '80vh' }}
             onClick={e => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
           >
             {/* Popup header */}
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
@@ -887,13 +878,18 @@ export function LiveTranslatePage() {
 
       {/* Screen Recording permission modal */}
       {showScreenPermModal && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: backdrop div — keyboard Escape handled by onKeyDown
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
           onClick={() => setShowScreenPermModal(false)}
+          onKeyDown={(e) => e.key === 'Escape' && setShowScreenPermModal(false)}
         >
           <div
             className="relative mx-4 w-full max-w-sm bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 flex flex-col gap-4"
+            role="dialog"
+            aria-modal="true"
             onClick={e => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-start gap-3">
@@ -976,21 +972,25 @@ function Notice({ children, variant = 'warning' }: { children: React.ReactNode; 
 }
 
 function EmptyPanel({ children, icon, onClick }: { children: React.ReactNode; icon: 'mic' | 'translate'; onClick?: () => void }) {
+  const iconEl = icon === 'mic'
+    ? <MicrophoneIcon className="w-6 h-6 text-gray-400" />
+    : <TranslateIcon className="w-6 h-6 text-blue-300 dark:text-blue-700" />
+
   return (
     <div className="h-full flex flex-col items-center justify-center gap-3 select-none">
-      <div
-        onClick={onClick}
-        className={[
-          'w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center transition-all duration-150',
-          onClick ? 'cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 hover:scale-105 active:scale-95' : '',
-        ].join(' ')}
-      >
-        {icon === 'mic' ? (
-          <MicrophoneIcon className="w-6 h-6 text-gray-400" />
-        ) : (
-          <TranslateIcon className="w-6 h-6 text-blue-300 dark:text-blue-700" />
-        )}
-      </div>
+      {onClick ? (
+        <button
+          type="button"
+          onClick={onClick}
+          className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center transition-all duration-150 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 hover:scale-105 active:scale-95"
+        >
+          {iconEl}
+        </button>
+      ) : (
+        <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center transition-all duration-150">
+          {iconEl}
+        </div>
+      )}
       <p className="text-xs text-gray-400 dark:text-gray-600 text-center max-w-[160px]">{children}</p>
     </div>
   )

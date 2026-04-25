@@ -771,7 +771,7 @@ export function useLiveTranslate() {
           }
 
           let txResult: { success: boolean; translatedText?: string }
-          let usedStreaming = false
+          let _usedStreaming = false
 
           if (showSubtitlesRef.current) {
             try {
@@ -784,7 +784,7 @@ export function useLiveTranslate() {
                 translationStyle: 'general',
                 segId: capturedSegId,
               })
-              usedStreaming = txResult.success
+              _usedStreaming = txResult.success
             } catch {
               txResult = { success: false }
             }

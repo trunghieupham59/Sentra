@@ -1,14 +1,14 @@
-import { IpcMain } from 'electron'
-import { getStoredApiKey } from './storage'
+import type { IpcMain } from 'electron'
 import { classifyProviderError, noApiKeyResponse } from './errorUtils'
 import {
+  ANTHROPIC_API_BASE, ANTHROPIC_API_VERSION,ANTHROPIC_MODELS_LIMIT, 
   GEMINI_API_BASE, GEMINI_IMAGE_EDIT_MODEL,
-  ANTHROPIC_API_BASE, ANTHROPIC_API_VERSION,
-  GEMINI_MODELS_PAGE_SIZE, ANTHROPIC_MODELS_LIMIT, VISION_DISCOVERY_TIMEOUT_MS,
-  VISION_SCORE_CHEAP, VISION_SCORE_MID, VISION_SCORE_CAPABLE, VISION_SCORE_BASIC,
-  VISION_SCORE_SLOW, VISION_SCORE_GEN_WEIGHT, VISION_SCORE_LITE_PENALTY,
-  MAX_CHAT_OUTPUT_TOKENS,
+  GEMINI_MODELS_PAGE_SIZE, 
+  MAX_CHAT_OUTPUT_TOKENS,VISION_DISCOVERY_TIMEOUT_MS,VISION_SCORE_BASIC,VISION_SCORE_CAPABLE, 
+  VISION_SCORE_CHEAP, VISION_SCORE_GEN_WEIGHT, VISION_SCORE_LITE_PENALTY,VISION_SCORE_MID, 
+  VISION_SCORE_SLOW, 
 } from './ipcConstants'
+import { getStoredApiKey } from './storage'
 
 /** Allowed image MIME types for Gemini image-edit (whitelist prevents injection via IPC). */
 const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
@@ -414,11 +414,11 @@ async function translateImageWithOpenAI(
 // ── Exported for unit testing ─────────────────────────────────────────────────
 /** @internal — exported for unit tests only */
 export {
-  langName,
   buildPrompt as buildImageTranslatePrompt,
-  scoreModelForVision,
-  isVisionUnsupportedError,
   isModelNotFoundError,
+  isVisionUnsupportedError,
+  langName,
+  scoreModelForVision,
 }
 
 // ── Provider registry — DUP-04 / DUP-06 ──────────────────────────────────────
@@ -482,7 +482,7 @@ export function registerImageTranslateHandlers(ipcMain: IpcMain) {
       // Start with just the user's model; fallback candidates are fetched lazily on first failure
       const triedModels = new Set<string>()
       let fallbacksFetched = false
-      let candidates: Array<{ p: string; m: string }> = [{ p: provider, m: model }]
+      const candidates: Array<{ p: string; m: string }> = [{ p: provider, m: model }]
 
       let regions: TextRegion[] = []
       let usedModel = model

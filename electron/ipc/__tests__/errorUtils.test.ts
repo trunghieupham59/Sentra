@@ -6,7 +6,7 @@
  *   1. classifyProviderError() — maps error message strings to typed IPC error responses
  *   2. noApiKeyResponse()      — generates the standard NO_API_KEY response for a provider
  */
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { classifyProviderError, noApiKeyResponse } from '../errorUtils'
 
 // ─────────────────────────────────────────────────────────────────────────────

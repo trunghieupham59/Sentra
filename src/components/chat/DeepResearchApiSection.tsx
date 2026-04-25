@@ -8,8 +8,7 @@
  *   2. Brave    — Good quality, requires key (api.search.brave.com)
  *   3. Jina AI  — Free forever, no key needed (default fallback)
  */
-import { useState } from 'react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useAppStore } from '../../store/useAppStore'
 import { CheckCircleIcon, CheckIcon, SpinnerIcon, TrashIcon } from '../ui/icons'
 
@@ -89,7 +88,7 @@ function KeyCard({ provider, onStatusChange }: KeyCardProps) {
       onStatusChange(e)
     }).catch(() => {})
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provider.id])
+  }, [provider.id, onStatusChange])
 
   const handleVerify = async () => {
     const key = inputValue.trim()
@@ -134,7 +133,8 @@ function KeyCard({ provider, onStatusChange }: KeyCardProps) {
       setVerifyStatus('valid')
       setVerifyMessage('API key đã được xác minh và lưu thành công!')
       setInputValue('')
-      setTimeout(() => setVerifyStatus('idle'), 5000)
+      const VERIFY_STATUS_RESET_MS = 5_000  // Reset verify badge after 5s
+      setTimeout(() => setVerifyStatus('idle'), VERIFY_STATUS_RESET_MS)
     } catch (err) {
       setVerifyStatus('invalid')
       setVerifyMessage(err instanceof Error ? err.message : 'Không thể lưu key')

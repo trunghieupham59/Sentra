@@ -165,7 +165,7 @@ async function searchJina(
     'Accept': 'application/json',
     'X-Retain-Images': 'none',
   }
-  if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`
+  if (apiKey) headers.Authorization = `Bearer ${apiKey}`
 
   const response = await fetch(`${JINA_SEARCH_URL}${encodeURIComponent(query)}`, {
     method: 'GET',

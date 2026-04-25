@@ -3,6 +3,12 @@ import { getSupportedAudioMimeType, LANG_TO_BCP47 } from '../constants/audio'
 import { useAppStore, useT } from '../store/useAppStore'
 import { MicrophoneIcon, SpinnerIcon, StopSquareIcon } from './ui/icons'
 
+// ─── SpeechRecognition retry config ──────────────────────────────────────────
+/** Max reconnect attempts before giving up on SpeechRecognition (network errors) */
+const VOICE_RECORDER_MAX_RETRIES = 3
+/** Delay (ms) before restarting SpeechRecognition after a transient failure */
+const VOICE_RECORDER_RESTART_DELAY_MS = 600
+
 // ─── Local type definitions for cross-browser Speech Recognition ──────────────
 interface SpeechRecResult {
   readonly isFinal: boolean
@@ -94,8 +100,6 @@ export function VoiceRecorder({
   const recognitionRef = useRef<SpeechRec | null>(null)
   const finalRef = useRef<string>('')
   const retryCountRef = useRef(0)
-  const MAX_RETRIES = 3
-  const RESTART_DELAY_MS = 600
 
   /**
    * Determine which recording path to use:
@@ -276,7 +280,7 @@ export function VoiceRecorder({
 
     recognition.onend = () => {
       if (!isRecordingRef.current || recognitionRef.current !== recognition) return
-      if (retryCountRef.current >= MAX_RETRIES) {
+      if (retryCountRef.current >= VOICE_RECORDER_MAX_RETRIES) {
         isRecordingRef.current = false
         recognitionRef.current = null
         setState('error')
@@ -293,7 +297,7 @@ export function VoiceRecorder({
           setState('idle')
           onRecordingChange?.(false)
         }
-      }, RESTART_DELAY_MS)
+      }, VOICE_RECORDER_RESTART_DELAY_MS)
     }
 
     recognitionRef.current = recognition

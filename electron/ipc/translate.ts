@@ -1,21 +1,21 @@
-import { IpcMain } from 'electron'
-import { getStoredApiKey } from './storage'
+import type { IpcMain } from 'electron'
 import { classifyProviderError, noApiKeyResponse } from './errorUtils'
-import { unknownProviderError, isValidProvider } from './providers/types'
-import { withRetry } from './retry'
 import {
+  DETECT_LANG_MAX_CHARS,
   MAX_OUTPUT_TOKENS_CLAUDE,
   MAX_OUTPUT_TOKENS_OPENAI,
-  VERIFY_MODEL_GEMINI,
-  VERIFY_MODEL_CLAUDE,
-  VERIFY_MODEL_OPENAI,
-  VERIFY_MAX_TOKENS,
-  DETECT_LANG_MAX_CHARS,
   TRANSLATE_CHUNK_CHAR_LIMIT,
-  TRANSLATE_CHUNK_TIMEOUT_MS,
   TRANSLATE_CHUNK_CONCURRENCY,
+  TRANSLATE_CHUNK_TIMEOUT_MS,
   TRANSLATE_CONTEXT_TAIL_CHARS,
+  VERIFY_MAX_TOKENS,
+  VERIFY_MODEL_CLAUDE,
+  VERIFY_MODEL_GEMINI,
+  VERIFY_MODEL_OPENAI,
 } from './ipcConstants'
+import { isValidProvider, unknownProviderError } from './providers/types'
+import { withRetry } from './retry'
+import { getStoredApiKey } from './storage'
 
 // DUP-02: Removed local `getApiKey` wrapper — call getStoredApiKey directly.
 
@@ -79,7 +79,7 @@ You restructure sentences, choose authentic collocations, apply real idioms, and
 
 function buildPrompt(
   sourceText: string,
-  sourceLang: string,
+  _sourceLang: string,
   targetLang: string,
   showFurigana = false,
   style: TranslationStyle = 'general',
@@ -573,7 +573,7 @@ const DETECT_PROVIDERS: Record<string, DetectFn> = {
 
 // ── Exported for unit testing ─────────────────────────────────────────────────
 /** @internal — exported for unit tests only */
-export { splitIntoChunks, buildPrompt, withTimeout, promisePool, normalizeDetectedLang }
+export { buildPrompt, normalizeDetectedLang, promisePool, splitIntoChunks, withTimeout }
 
 // ── Language detection — known BCP-47 codes this app supports ─────────────────
 const KNOWN_LANG_CODES = ['vi', 'en', 'zh', 'zh-tw', 'ja', 'ko', 'fr', 'de', 'es', 'pt', 'ru', 'ar', 'th', 'id', 'it', 'nl', 'pl', 'tr', 'hi']

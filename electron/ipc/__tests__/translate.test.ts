@@ -13,7 +13,7 @@
  *
  * Provider SDKs are NOT imported — no real API calls made.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ── Mock Electron before importing translate.ts ───────────────────────────────
 vi.mock('electron', () => ({
@@ -25,31 +25,16 @@ vi.mock('../storage', () => ({
   getStoredApiKey: vi.fn(),
 }))
 
-import {
-  splitIntoChunks,
-  buildPrompt,
-  withTimeout,
-  promisePool,
-  normalizeDetectedLang,
-  registerTranslateHandlers,
-} from '../translate'
 import { getStoredApiKey } from '../storage'
-
-// ─── Mock IpcMain helper ──────────────────────────────────────────────────────
-function buildMockIpcMain() {
-  // biome-ignore lint/suspicious/noExplicitAny: Function type needed for flexible IPC mock
-  const handlers: Record<string, Function> = {}
-  const ipcMain = {
-    // biome-ignore lint/suspicious/noExplicitAny: Function type needed for flexible IPC mock
-    handle: (channel: string, handler: Function) => {
-      handlers[channel] = handler
-    },
-  }
-  // Invoke handler with fake event + rest args; returns any (intentional in tests)
-  const invoke = (channel: string, ...args: unknown[]) =>
-    handlers[channel]?.({} /* fake _event */, ...args)
-  return { ipcMain, invoke }
-}
+import {
+  buildPrompt,
+  normalizeDetectedLang,
+  promisePool,
+  registerTranslateHandlers,
+  splitIntoChunks,
+  withTimeout,
+} from '../translate'
+import { buildMockIpcMain } from './helpers/mockIpcMain'
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('splitIntoChunks', () => {

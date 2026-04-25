@@ -3,9 +3,10 @@
  * Replaces keytar — no native module compilation required.
  * Data is encrypted with OS-level encryption and stored in the app's userData directory.
  */
+
+import * as fs from 'node:fs'
+import * as path from 'node:path'
 import { app, safeStorage } from 'electron'
-import * as fs from 'fs'
-import * as path from 'path'
 
 const KEYS_FILE_NAME = 'api-keys.enc'
 const KEYCHAIN_SERVICE = 'TranslateApp'
