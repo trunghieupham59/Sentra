@@ -1,16 +1,18 @@
-import { type MutableRefObject, useEffect, useRef } from 'react'
+import { type MutableRefObject, useEffect, useRef, useState } from 'react'
 import { FuriganaText } from '../components/FuriganaText'
 import { MarkdownText } from '../components/MarkdownText'
+import { ModelSelector } from '../components/ModelSelector'
 import { ImageAttachmentPreview } from '../components/translate/ImageAttachmentPreview'
 import { ImageSwitchToast } from '../components/translate/ImageSwitchToast'
 import { ResultPanelActions } from '../components/translate/ResultPanelActions'
 import { SourcePanelActions } from '../components/translate/SourcePanelActions'
 import { TranslateError } from '../components/translate/TranslateError'
-import { TranslateLanguageBar } from '../components/translate/TranslateLanguageBar'
+import { SourceLanguageSelector } from '../components/translate/SourceLanguageSelector'
+import { TargetLanguageSelector } from '../components/translate/TargetLanguageSelector'
 import { TranslateToolbar } from '../components/translate/TranslateToolbar'
 import { VoiceOverlay } from '../components/translate/VoiceOverlay'
 import { DragOverlay } from '../components/ui/DragOverlay'
-import { AlertTriangleIcon, SpinnerIcon } from '../components/ui/icons'
+import { AlertTriangleIcon, GearIcon, SpinnerIcon, SwapIcon } from '../components/ui/icons'
 import { TranslateButton } from '../components/ui/TranslateButton'
 import { ACCEPTED_IMAGE_MIME_TYPES } from '../constants/image'
 import { MAX_INPUT_CHARS } from '../constants/providers'
@@ -84,6 +86,23 @@ export function TranslatePage() {
     }
   }, [])
 
+  /** Controls visibility of the AI config popup */
+  const [showAIConfig, setShowAIConfig] = useState(false)
+  /** Ref for AI config popup — used for click-outside detection */
+  const aiConfigRef = useRef<HTMLDivElement>(null)
+
+  // ── Close AI config popup on outside click ──
+  useEffect(() => {
+    if (!showAIConfig) return
+    const handleOutside = (e: MouseEvent) => {
+      if (aiConfigRef.current && !aiConfigRef.current.contains(e.target as Node)) {
+        setShowAIConfig(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [showAIConfig])
+
   /** Shared Tailwind classes for panel footer bars (inside cards) */
   const PANEL_FOOTER_CLS =
     'flex-shrink-0 flex items-center justify-between px-4 h-12 ' +
@@ -96,63 +115,117 @@ export function TranslatePage() {
       <div className="flex-1 flex flex-col min-h-0">
         <div className="px-6 pt-6 pb-4 flex flex-col gap-4 flex-1 min-h-0 min-w-0">
 
-          {/* Toolbar + Language bar — combined in a single gray card */}
-          <div className="rounded-2xl bg-gray-50 dark:bg-gray-900/60 border border-gray-100 dark:border-gray-800 px-5 py-4 flex flex-col gap-4 flex-shrink-0">
-            <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-              Cấu hình AI Nâng Cao
-            </h2>
-          <TranslateToolbar
-            translationStyle={translationStyle}
-            onStyleChange={setTranslationStyle}
-            autoTranslate={autoTranslate}
-            onAutoTranslateChange={setAutoTranslate}
-            phoneticMode={phoneticMode}
-            onPhoneticModeChange={setPhoneticMode}
-            isPhoneticLoading={
-              phoneticMode !== 'off' &&
-              !phoneticText &&
-              (isTranslating || (!!translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL))
-            }
-            labelStyleLabel={t.translate_style_label}
-            labelStyleGeneral={t.translate_style_general}
-            labelStyleFormal={t.translate_style_formal}
-            labelStyleCasual={t.translate_style_casual}
-            labelStyleBusiness={t.translate_style_business}
-            labelStyleTechnical={t.translate_style_technical}
-            labelStyleNatural={t.translate_style_natural}
-            labelPhoneticSection={t.translate_phonetic}
-            labelPhoneticOff={t.translate_phonetic_off}
-            labelPhoneticStandard={t.translate_phonetic_standard}
-            labelPhoneticTranscription={t.translate_phonetic_transcription}
-            labelAutoSection={t.settings_auto_translate}
-            titleAutoMode={t.translate_mode_auto_title}
-            titleManualMode={t.translate_mode_manual_title}
-            labelAutoMode={t.translate_mode_auto}
-            labelManualMode={t.translate_mode_manual}
-          />
+          {/* ── Top action bar: Language selectors + settings icon ── */}
+          <div className="flex items-center flex-shrink-0">
+            {/* Source language selector — left half, overflow-hidden prevents pills from bleeding right */}
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <SourceLanguageSelector
+                sourceLang={sourceLang}
+                onSourceLangChange={setSourceLang}
+                detectedSourceLang={detectedSourceLang}
+                isDetectingLang={isDetectingLang}
+                langNames={t.lang_names}
+              />
+            </div>
 
-          {/* Language bar — above the panels */}
-          <TranslateLanguageBar
-            sourceLang={sourceLang}
-            onSourceLangChange={setSourceLang}
-            targetLang={targetLang}
-            onTargetLangChange={setTargetLang}
-            detectedSourceLang={detectedSourceLang}
-            canSwap={!!(translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL && !imageAttachment)}
-            isDetectingLang={isDetectingLang}
-            onSwap={handleSwapLanguages}
-            langNames={t.lang_names}
-            swapTitle={t.translate_swap}
-          />
+            {/* Swap button — inline between the two selectors */}
+            <button
+              type="button"
+              onClick={handleSwapLanguages}
+              disabled={!(translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL && !imageAttachment)}
+              title={t.translate_swap}
+              className={`flex-shrink-0 flex items-center justify-center w-8 h-8 transition-all duration-200
+                          ${!(translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL && !imageAttachment)
+                            ? 'text-gray-200 dark:text-gray-700 cursor-not-allowed'
+                            : 'cursor-pointer text-gray-400 hover:text-blue-500 dark:hover:text-blue-400'}`}
+            >
+              <SwapIcon className="w-5 h-5" />
+            </button>
+
+            {/* Target language selector + settings icon — right half */}
+            <div className="flex-1 min-w-0 flex items-center gap-3">
+              {/* overflow-hidden only on selector, NOT the whole div (gear popup must not be clipped) */}
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <TargetLanguageSelector
+                  targetLang={targetLang}
+                  onTargetLangChange={setTargetLang}
+                  langNames={t.lang_names}
+                />
+              </div>
+
+              {/* AI Config settings icon + popup */}
+              <div className="relative flex-shrink-0" ref={aiConfigRef}>
+              <button
+                type="button"
+                onClick={() => setShowAIConfig((v) => !v)}
+                title="Cấu hình AI Nâng Cao"
+                className={`flex items-center justify-center w-8 h-8 rounded-full border transition-all duration-200 cursor-pointer
+                            ${showAIConfig
+                              ? 'bg-blue-50 border-blue-200 text-blue-500 dark:bg-blue-950/40 dark:border-blue-700 dark:text-blue-400'
+                              : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700'}`}
+              >
+                <GearIcon className="w-3.5 h-3.5" />
+              </button>
+
+                {/* Settings popup */}
+                {showAIConfig && (
+                <div className="absolute top-full right-0 mt-2 z-50 w-[520px]
+                                bg-white dark:bg-gray-900
+                                border border-gray-200 dark:border-gray-700
+                                rounded-2xl shadow-xl p-4 flex flex-col gap-4">
+                    <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                      Cấu hình AI Nâng Cao
+                    </h2>
+                    {/* Row 1: Provider + Model selector */}
+                    <ModelSelector />
+
+                    {/* Divider */}
+                    <div className="border-t border-gray-100 dark:border-gray-800" />
+
+                    {/* Row 2: Style + Phonetic + Auto-translate */}
+                    <TranslateToolbar
+                    hideModelSelector
+                    translationStyle={translationStyle}
+                    onStyleChange={setTranslationStyle}
+                    autoTranslate={autoTranslate}
+                    onAutoTranslateChange={setAutoTranslate}
+                    phoneticMode={phoneticMode}
+                    onPhoneticModeChange={setPhoneticMode}
+                    isPhoneticLoading={
+                      phoneticMode !== 'off' &&
+                      !phoneticText &&
+                      (isTranslating || (!!translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL))
+                    }
+                    labelStyleLabel={t.translate_style_label}
+                    labelStyleGeneral={t.translate_style_general}
+                    labelStyleFormal={t.translate_style_formal}
+                    labelStyleCasual={t.translate_style_casual}
+                    labelStyleBusiness={t.translate_style_business}
+                    labelStyleTechnical={t.translate_style_technical}
+                    labelStyleNatural={t.translate_style_natural}
+                    labelPhoneticSection={t.translate_phonetic}
+                    labelPhoneticOff={t.translate_phonetic_off}
+                    labelPhoneticStandard={t.translate_phonetic_standard}
+                    labelPhoneticTranscription={t.translate_phonetic_transcription}
+                    labelAutoSection={t.settings_auto_translate}
+                    titleAutoMode={t.translate_mode_auto_title}
+                    titleManualMode={t.translate_mode_manual_title}
+                    labelAutoMode={t.translate_mode_auto}
+                      labelManualMode={t.translate_mode_manual}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* Text panels — smaller gap than language bar so panels sit closer together */}
+          {/* Text panels */}
           <div className="grid grid-cols-2 gap-4 flex-1 min-h-0">
 
             {/* ── Source panel card ── */}
             <section
               aria-label={t.image_translate_title}
-              className={`flex-1 flex flex-col rounded-2xl border bg-white dark:bg-gray-900 shadow-sm overflow-hidden relative transition-all duration-150
+              className={`flex flex-col h-full rounded-2xl border bg-white dark:bg-gray-900 shadow-sm overflow-hidden relative transition-all duration-150
                           ${isDraggingOver
                             ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/20 ring-2 ring-inset ring-emerald-300 dark:ring-emerald-700'
                             : 'border-gray-200 dark:border-gray-700 focus-within:border-blue-300 dark:focus-within:border-blue-600 focus-within:shadow-md focus-within:shadow-blue-100/50 dark:focus-within:shadow-blue-900/20'}`}
@@ -186,18 +259,18 @@ export function TranslatePage() {
               {/* Plain text input */}
               <div
                 ref={sourceScrollRef}
-                className="flex-1 overflow-auto p-4"
+                className="flex-1 min-h-0 overflow-auto p-4 flex flex-col"
               >
                 <textarea
                   value={sourceText}
                   onChange={(e) => handleSourceChange(e.target.value)}
                   placeholder={t.translate_placeholder}
-                  className={`w-full h-full bg-transparent outline-none resize-none text-[15px] leading-relaxed text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-600 ${isVoiceInterim ? 'opacity-50 italic' : ''}`}
+                  className={`flex-1 min-h-0 w-full bg-transparent outline-none resize-none text-[15px] leading-relaxed text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-600 ${isVoiceInterim ? 'opacity-50 italic' : ''}`}
                 />
               </div>
 
               {/* Source panel footer — LEFT: icons | RIGHT: char count + translate button */}
-              <div className="flex-shrink-0 flex items-center justify-between px-4 h-12 border-t border-gray-200 dark:border-gray-800 relative z-20">
+              <div className={`${PANEL_FOOTER_CLS} relative z-20`}>
                 {/* LEFT: mic, image, (clear, rewrite, speak when content present) */}
                 <SourcePanelActions
                   isVoiceActive={isVoiceActive}
@@ -263,8 +336,8 @@ export function TranslatePage() {
             </section>
 
             {/* ── Result panel card ── */}
-            <div className="flex-1 flex flex-col rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-              <div ref={translatedScrollRef} className="flex-1 p-4 overflow-auto relative">
+            <div className="flex flex-col h-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+              <div ref={translatedScrollRef} className="flex-1 min-h-0 overflow-auto p-4 relative">
                 {isTranslating ? (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="flex flex-col items-center gap-3">

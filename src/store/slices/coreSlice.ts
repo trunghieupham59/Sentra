@@ -33,6 +33,10 @@ export interface CoreSlice {
   // Settings modal
   settingsOpen: boolean
 
+  // Language usage tracking (for smart top-3 pills in language bar)
+  langUsage: Record<string, { count: number; lastUsed: number }>
+  recordLangUsage: (lang: string) => void
+
   // Core actions
   setSourceText: (text: string) => void
   setTranslatedText: (text: string) => void
@@ -69,6 +73,7 @@ export const createCoreSlice: StateCreator<any, [], [], CoreSlice> = (set, get) 
   selectedModels: DEFAULT_SETTINGS.defaultModels,
   activePage: 'translate',
   settingsOpen: false,
+  langUsage: {},
 
   // Computed getter — reads locale from SettingsSlice at access time.
   // NOTE: Zustand's shallow-merge on set() means this getter lives on the
@@ -87,6 +92,19 @@ export const createCoreSlice: StateCreator<any, [], [], CoreSlice> = (set, get) 
   setPhoneticText: (text) => set({ phoneticText: text }),
   setSourceLang: (lang) => set({ sourceLang: lang }),
   setTargetLang: (lang) => set({ targetLang: lang }),
+
+  recordLangUsage: (lang) => {
+    if (!lang || lang === 'auto') return
+    set((state: CoreSlice) => ({
+      langUsage: {
+        ...state.langUsage,
+        [lang]: {
+          count: (state.langUsage[lang]?.count ?? 0) + 1,
+          lastUsed: Date.now(),
+        },
+      },
+    }))
+  },
 
   swapLanguages: (detectedLang?: string) =>
     set((state: CoreSlice) => {

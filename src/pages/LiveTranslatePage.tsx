@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { LiveSourceLangBar } from '../components/live/LiveSourceLangBar'
+import { LiveTargetLangBar } from '../components/live/LiveTargetLangBar'
 import { SegmentRow } from '../components/live/SegmentRow'
 import { TranslationRow } from '../components/live/TranslationRow'
 import { MarkdownText } from '../components/MarkdownText'
 import { ModelSelector } from '../components/ModelSelector'
-import { TranslateLanguageBar } from '../components/translate/TranslateLanguageBar'
+import { SwapIcon } from '../components/ui/icons'
 import {
   AlertTriangleIcon,
   CheckIcon,
@@ -72,6 +74,24 @@ export function LiveTranslatePage() {
   const [copiedTx,      setCopiedTx]      = useState(false)
   const [copiedSummary, setCopiedSummary] = useState(false)
   const [postTab, setPostTab] = useState<PostTab>('summary')
+  const [showScreenPermModal, setShowScreenPermModal] = useState(false)
+
+  /** CẤU HÌNH AI NÂNG CAO popup — contains Model + Nguồn + Phụ Đề + Transcript */
+  const [showAIConfig, setShowAIConfig] = useState(false)
+  const aiConfigRef = useRef<HTMLDivElement>(null)
+
+  // ── Close popup on outside click ──
+  useEffect(() => {
+    if (!showAIConfig) return
+    const handleOutside = (e: MouseEvent) => {
+      if (aiConfigRef.current && !aiConfigRef.current.contains(e.target as Node)) {
+        setShowAIConfig(false)
+        setShowSubtitleConfig(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [showAIConfig, setShowSubtitleConfig])
 
   const handleCopy = async (text: string, setFlag: (v: boolean) => void) => {
     if (!text) return
@@ -147,273 +167,329 @@ export function LiveTranslatePage() {
       <div className="flex-1 flex flex-col min-h-0">
         <div className="px-6 pt-6 pb-4 flex flex-col gap-4 flex-1 min-h-0 min-w-0">
 
-          {/* ── Gray card: CẤU HÌNH AI NÂNG CAO ── */}
-          <div className="rounded-2xl bg-gray-50 dark:bg-gray-900/60 border border-gray-100 dark:border-gray-800 px-5 py-4 flex flex-col gap-4 flex-shrink-0">
-            <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-              Cấu hình AI Nâng Cao
-            </h2>
+          {/* ── Row 1: [Source (flex-1)] [⇄] [Target (flex-1)] [▶ Start/Stop] [⚙️] ── */}
+          <div className="flex items-center flex-shrink-0">
 
-            {/* Row 1: Provider | Model ← left   Mic|Hệ Thống|Cả Hai | Phụ Đề | Bắt Đầu → right */}
-            <div className="flex items-center gap-3">
-              {/* Left: ModelSelector (Provider | Model) */}
-              <div className="flex-1 min-w-0 overflow-hidden">
-                <ModelSelector />
-              </div>
-
-              {/* Right: Audio toggle + Phụ Đề + Start/Stop */}
-              <div className="flex items-end gap-3 flex-shrink-0">
-
-                {/* Audio source toggle: Mic | Hệ Thống | Cả Hai */}
-                <div className="flex flex-col gap-1">
-                  <span className="text-[0.65rem] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide whitespace-nowrap select-none">Nguồn</span>
-                  <div className="flex items-center rounded-full border border-gray-200 dark:border-gray-700
-                                  bg-white dark:bg-gray-800 p-0.5 gap-0.5 select-none">
-                    <button
-                      type="button" disabled={isActive} onClick={() => setAudioMode('mic')}
-                      title={t.live_audio_mode_mic_title}
-                      className={[
-                        'flex items-center justify-center px-2 py-1.5 rounded-full text-xs font-medium transition-all duration-150',
-                        audioMode === 'mic'
-                          ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 shadow-sm'
-                          : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400',
-                        isActive ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
-                      ].join(' ')}
-                    >
-                      <MicrophoneIcon className="w-3 h-3" />
-                    </button>
-                    <button
-                      type="button" disabled={isActive} onClick={() => setAudioMode('system')}
-                      title={t.live_audio_mode_system_title}
-                      className={[
-                        'flex items-center justify-center px-2 py-1.5 rounded-full text-xs font-medium transition-all duration-150',
-                        audioMode === 'system'
-                          ? 'bg-gray-100 dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                          : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400',
-                        isActive ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
-                      ].join(' ')}
-                    >
-                      <MonitorIcon className="w-3 h-3" />
-                    </button>
-                    <button
-                      type="button" disabled={isActive} onClick={() => setAudioMode('both')}
-                      title={t.live_audio_mode_both_title}
-                      className={[
-                        'flex items-center justify-center px-2 py-1.5 rounded-full text-xs font-medium transition-all duration-150',
-                        audioMode === 'both'
-                          ? 'bg-gray-100 dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
-                          : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400',
-                        isActive ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
-                      ].join(' ')}
-                    >
-                      <span className="relative inline-flex items-center w-4 h-3 flex-shrink-0">
-                        <MicrophoneIcon className="w-2.5 h-2.5 absolute left-0" />
-                        <MonitorIcon className="w-2.5 h-2.5 absolute right-0" />
-                      </span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Separator */}
-                <span className="text-gray-200 dark:text-gray-700 text-base font-thin select-none flex-shrink-0 pb-1">|</span>
-
-                {/* Phụ Đề toggle + settings popup */}
-                <div className="flex flex-col gap-1 relative">
-                  <span className="text-[0.65rem] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide whitespace-nowrap select-none">Phụ đề</span>
-                  <div className="flex items-center rounded-full border border-gray-200 dark:border-gray-700
-                                  bg-white dark:bg-gray-800 p-0.5 gap-0.5 select-none">
-                    {/* On/off toggle */}
-                    <button
-                      type="button"
-                      onClick={() => setShowSubtitles(v => !v)}
-                      title={showSubtitles ? t.live_subtitles_hide_title : t.live_subtitles_show_title}
-                      className={[
-                        'flex items-center justify-center px-2 py-1.5 rounded-full text-xs font-medium transition-all duration-150 cursor-pointer',
-                        showSubtitles
-                          ? 'bg-blue-500 text-white shadow-sm'
-                          : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400',
-                      ].join(' ')}
-                    >
-                      <SubtitlesIcon className="w-3.5 h-3.5" />
-                    </button>
-                    {/* Settings button */}
-                    <button
-                      type="button"
-                      onClick={() => setShowSubtitleConfig(v => !v)}
-                      title={t.live_subtitle_config_title}
-                      className={[
-                        'flex items-center justify-center px-2 py-1.5 rounded-full text-xs font-medium transition-all duration-150 cursor-pointer',
-                        showSubtitleConfig
-                          ? 'bg-gray-100 dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                          : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400',
-                      ].join(' ')}
-                    >
-                      <GearIcon className="w-3 h-3" />
-                    </button>
-                  </div>
-
-                  {/* Settings popup */}
-                  {showSubtitleConfig && (
-                    <div className="absolute top-full mt-2 right-0 z-50 w-64
-                                    bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700
-                                    rounded-xl shadow-xl p-3 flex flex-col gap-3 select-none">
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">
-                          {t.live_subtitle_text_color}
-                        </p>
-                        <div className="flex gap-2 flex-wrap">
-                          {subtitleColors.map(({ label, value }) => (
-                            <button
-                              key={value} type="button" title={label}
-                              onClick={() => setSubtitleSettings(s => ({ ...s, textColor: value }))}
-                              className={[
-                                'w-6 h-6 rounded-full border-2 cursor-pointer transition-all duration-100',
-                                subtitleSettings.textColor === value
-                                  ? 'border-blue-500 scale-110 shadow-sm'
-                                  : 'border-gray-200 dark:border-gray-700 hover:scale-110',
-                              ].join(' ')}
-                              style={{ background: value }}
-                              aria-label={label}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">
-                          {t.live_subtitle_font_size} — {subtitleSettings.fontSize}px
-                        </p>
-                        <div className="flex gap-1">
-                          {SUBTITLE_FONT_SIZES.map(({ size, label }) => (
-                            <button
-                              key={size} type="button"
-                              onClick={() => setSubtitleSettings(s => ({ ...s, fontSize: size }))}
-                              className={[
-                                'flex-1 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all duration-100',
-                                subtitleSettings.fontSize === size
-                                  ? 'bg-blue-500 text-white'
-                                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-blue-50 dark:hover:bg-blue-950/30',
-                              ].join(' ')}
-                            >
-                              {label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">
-                          {t.live_subtitle_bg_opacity} — {subtitleSettings.bgOpacity}%
-                        </p>
-                        <input
-                          type="range" min={0} max={100} step={5}
-                          value={subtitleSettings.bgOpacity}
-                          onChange={e => setSubtitleSettings(s => ({ ...s, bgOpacity: Number(e.target.value) }))}
-                          className="w-full accent-blue-500 cursor-pointer"
-                        />
-                        <div className="flex justify-between text-[9px] text-gray-300 dark:text-gray-600 mt-0.5">
-                          <span>{t.live_subtitle_transparent}</span>
-                          <span>{t.live_subtitle_opaque}</span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setSubtitleSettings({ ...DEFAULT_SUBTITLE_SETTINGS })}
-                        className="text-[10px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer text-center transition-colors"
-                      >
-                        {t.live_subtitle_reset}
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Separator */}
-                <span className="text-gray-200 dark:text-gray-700 text-base font-thin select-none flex-shrink-0 pb-1">|</span>
-
-                {/* Bắt Đầu / Dừng button */}
-                <button
-                  type="button"
-                  onClick={isActive ? handleStop : handleStart}
-                  disabled={!hasOpenAIKey || !hasAnyKey}
-                  className={[
-                    'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold flex-shrink-0 transition-all duration-200 select-none',
-                    isActive
-                      ? 'bg-red-500 hover:bg-red-600 text-white shadow-sm cursor-pointer'
-                      : (!hasOpenAIKey || !hasAnyKey)
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600'
-                        : 'bg-blue-500 hover:bg-blue-600 text-white shadow-sm cursor-pointer',
-                  ].join(' ')}
-                >
-                  {isActive ? (
-                    <><StopIcon className="w-3.5 h-3.5" />{t.live_stop}</>
-                  ) : (
-                    <><MicrophoneIcon className="w-3.5 h-3.5" />{t.live_start}</>
-                  )}
-                </button>
-              </div>
+            {/* Source language — always auto-detect */}
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <LiveSourceLangBar
+                sourceLang="auto"
+                onSourceLangChange={() => {}}
+                detectedSourceLang={null}
+                isDetectingLang={false}
+                langNames={t.lang_names}
+              />
             </div>
 
-            {/* Row 2: Language selector */}
-            <TranslateLanguageBar
-              sourceLang="auto"
-              onSourceLangChange={() => {}}
-              targetLang={targetLang}
-              onTargetLangChange={setTargetLang}
-              detectedSourceLang={null}
-              canSwap={false}
-              isDetectingLang={false}
-              onSwap={() => {}}
-              langNames={t.lang_names}
-              swapTitle=""
-            />
+            {/* Swap button — always disabled for live translate */}
+            <button
+              type="button"
+              disabled
+              className="flex-shrink-0 flex items-center justify-center w-8 h-8 text-gray-200 dark:text-gray-700 cursor-not-allowed"
+            >
+              <SwapIcon className="w-5 h-5" />
+            </button>
 
-            {/* Row 3: Actions — Clear | Export TXT/SRT →  Word count */}
-            {(rawTranscript || wordCount > 0) && (
-              <div className="flex items-center gap-1 pt-1 border-t border-gray-200 dark:border-gray-700">
-                {rawTranscript && (
-                  <button
-                    type="button" onClick={handleClear}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium
-                               text-gray-500 hover:text-red-500 hover:bg-red-50
-                               dark:text-gray-500 dark:hover:text-red-400 dark:hover:bg-red-950/30
-                               transition-colors duration-150 cursor-pointer"
-                  >
-                    <TrashIcon className="w-3.5 h-3.5" />
-                    {t.live_clear}
-                  </button>
-                )}
-                {rawTranscript && (
-                  <>
-                    <button
-                      type="button" onClick={handleExportTxt}
-                      title={t.live_export_txt}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium
-                                 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800
-                                 transition-colors duration-150 cursor-pointer"
-                    >
-                      <DownloadIcon className="w-3.5 h-3.5" />
-                      TXT
-                    </button>
-                    {segments.length > 0 && (
+            {/* Target language selector + Start/Stop + Gear */}
+            <div className="flex-1 min-w-0 flex items-center gap-3">
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <LiveTargetLangBar
+                  targetLang={targetLang}
+                  onTargetLangChange={setTargetLang}
+                  langNames={t.lang_names}
+                />
+              </div>
+
+            {/* ▶ Bắt Đầu / ■ Dừng */}
+            <button
+              type="button"
+              onClick={isActive ? handleStop : () => {
+                if ((audioMode === 'system' || audioMode === 'both') && isMac && screenPermission !== 'granted') {
+                  setShowScreenPermModal(true)
+                } else {
+                  handleStart()
+                }
+              }}
+              disabled={!hasOpenAIKey || !hasAnyKey}
+              className={[
+                'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold flex-shrink-0 transition-all duration-200 select-none',
+                isActive
+                  ? 'bg-red-500 hover:bg-red-600 text-white shadow-sm cursor-pointer'
+                  : (!hasOpenAIKey || !hasAnyKey)
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600'
+                    : 'bg-blue-500 hover:bg-blue-600 text-white shadow-sm cursor-pointer',
+              ].join(' ')}
+            >
+              {isActive ? (
+                <><StopIcon className="w-3.5 h-3.5" />{t.live_stop}</>
+              ) : (
+                <><MicrophoneIcon className="w-3.5 h-3.5" />{t.live_start}</>
+              )}
+            </button>
+
+            {/* ⚙️ CẤU HÌNH AI NÂNG CAO popup */}
+            <div className="relative flex-shrink-0" ref={aiConfigRef}>
+              <button
+                type="button"
+                onClick={() => setShowAIConfig((v) => !v)}
+                title="Cấu hình AI Nâng Cao"
+                className={`flex items-center justify-center w-8 h-8 rounded-full border transition-all duration-200 cursor-pointer
+                            ${showAIConfig
+                              ? 'bg-blue-50 border-blue-200 text-blue-500 dark:bg-blue-950/40 dark:border-blue-700 dark:text-blue-400'
+                              : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700'}`}
+              >
+                <GearIcon className="w-3.5 h-3.5" />
+              </button>
+
+              {showAIConfig && (
+                <div className="absolute top-full right-0 mt-2 z-50 w-[380px]
+                                bg-white dark:bg-gray-900
+                                border border-gray-200 dark:border-gray-700
+                                rounded-2xl shadow-xl p-4 flex flex-col gap-4">
+                  <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                    Cấu hình AI Nâng Cao
+                  </h2>
+
+                  {/* Model */}
+                  <ModelSelector />
+
+                  {/* Divider */}
+                  <div className="border-t border-gray-100 dark:border-gray-800" />
+
+                  {/* Nguồn âm thanh */}
+                  <div className="flex flex-col gap-2">
+                    <span className="text-[0.65rem] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+                      Nguồn âm thanh
+                    </span>
+                    <div className="flex items-center rounded-full border border-gray-200 dark:border-gray-700
+                                    bg-gray-50 dark:bg-gray-800 p-0.5 gap-0.5 select-none w-fit">
                       <button
-                        type="button" onClick={handleExportSrt}
+                        type="button" disabled={isActive} onClick={() => setAudioMode('mic')}
+                        title={t.live_audio_mode_mic_title}
+                        className={[
+                          'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150',
+                          audioMode === 'mic'
+                            ? 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 shadow-sm'
+                            : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400',
+                          isActive ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+                        ].join(' ')}
+                      >
+                        <MicrophoneIcon className="w-3 h-3" />
+                        <span>Mic</span>
+                      </button>
+                      <button
+                        type="button" disabled={isActive} onClick={() => setAudioMode('system')}
+                        title={t.live_audio_mode_system_title}
+                        className={[
+                          'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150',
+                          audioMode === 'system'
+                            ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                            : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400',
+                          isActive ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+                        ].join(' ')}
+                      >
+                        <MonitorIcon className="w-3 h-3" />
+                        <span>Hệ thống</span>
+                      </button>
+                      <button
+                        type="button" disabled={isActive} onClick={() => setAudioMode('both')}
+                        title={t.live_audio_mode_both_title}
+                        className={[
+                          'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150',
+                          audioMode === 'both'
+                            ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                            : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400',
+                          isActive ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+                        ].join(' ')}
+                      >
+                        <span className="relative inline-flex items-center w-4 h-3 flex-shrink-0">
+                          <MicrophoneIcon className="w-2.5 h-2.5 absolute left-0" />
+                          <MonitorIcon className="w-2.5 h-2.5 absolute right-0" />
+                        </span>
+                        <span>Cả hai</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="border-t border-gray-100 dark:border-gray-800" />
+
+                  {/* Phụ đề */}
+                  <div className="flex flex-col gap-2">
+                    <span className="text-[0.65rem] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+                      Phụ đề
+                    </span>
+                    <div className="flex items-center gap-2 relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowSubtitles(v => !v)}
+                        title={showSubtitles ? t.live_subtitles_hide_title : t.live_subtitles_show_title}
+                        className={[
+                          'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150 cursor-pointer border',
+                          showSubtitles
+                            ? 'bg-blue-500 border-blue-500 text-white shadow-sm'
+                            : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300',
+                        ].join(' ')}
+                      >
+                        <SubtitlesIcon className="w-3.5 h-3.5" />
+                        <span>{showSubtitles ? 'Đang bật' : 'Tắt'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowSubtitleConfig(v => !v)}
+                        title={t.live_subtitle_config_title}
+                        className={[
+                          'flex items-center justify-center w-8 h-8 rounded-full border text-xs font-medium transition-all duration-150 cursor-pointer',
+                          showSubtitleConfig
+                            ? 'bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-950/40 dark:border-blue-700 dark:text-blue-400 shadow-sm'
+                            : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400',
+                        ].join(' ')}
+                      >
+                        <GearIcon className="w-3 h-3" />
+                      </button>
+
+                      {/* Subtitle settings nested popup */}
+                      {showSubtitleConfig && (
+                        <div className="absolute top-full mt-2 left-0 z-50 w-64
+                                        bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700
+                                        rounded-xl shadow-xl p-3 flex flex-col gap-3 select-none">
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">
+                              {t.live_subtitle_text_color}
+                            </p>
+                            <div className="flex gap-2 flex-wrap">
+                              {subtitleColors.map(({ label, value }) => (
+                                <button
+                                  key={value} type="button" title={label}
+                                  onClick={() => setSubtitleSettings(s => ({ ...s, textColor: value }))}
+                                  className={[
+                                    'w-6 h-6 rounded-full border-2 cursor-pointer transition-all duration-100',
+                                    subtitleSettings.textColor === value
+                                      ? 'border-blue-500 scale-110 shadow-sm'
+                                      : 'border-gray-200 dark:border-gray-700 hover:scale-110',
+                                  ].join(' ')}
+                                  style={{ background: value }}
+                                  aria-label={label}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">
+                              {t.live_subtitle_font_size} — {subtitleSettings.fontSize}px
+                            </p>
+                            <div className="flex gap-1">
+                              {SUBTITLE_FONT_SIZES.map(({ size, label }) => (
+                                <button
+                                  key={size} type="button"
+                                  onClick={() => setSubtitleSettings(s => ({ ...s, fontSize: size }))}
+                                  className={[
+                                    'flex-1 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all duration-100',
+                                    subtitleSettings.fontSize === size
+                                      ? 'bg-blue-500 text-white'
+                                      : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-blue-50 dark:hover:bg-blue-950/30',
+                                  ].join(' ')}
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">
+                              {t.live_subtitle_bg_opacity} — {subtitleSettings.bgOpacity}%
+                            </p>
+                            <input
+                              type="range" min={0} max={100} step={5}
+                              value={subtitleSettings.bgOpacity}
+                              onChange={e => setSubtitleSettings(s => ({ ...s, bgOpacity: Number(e.target.value) }))}
+                              className="w-full accent-blue-500 cursor-pointer"
+                            />
+                            <div className="flex justify-between text-[9px] text-gray-300 dark:text-gray-600 mt-0.5">
+                              <span>{t.live_subtitle_transparent}</span>
+                              <span>{t.live_subtitle_opaque}</span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSubtitleSettings({ ...DEFAULT_SUBTITLE_SETTINGS })}
+                            className="text-[10px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer text-center transition-colors"
+                          >
+                            {t.live_subtitle_reset}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="border-t border-gray-100 dark:border-gray-800" />
+
+                  {/* Transcript actions */}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[0.65rem] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+                        Transcript
+                      </span>
+                      {wordCount > 0 && (
+                        <span className="text-xs text-gray-400 tabular-nums">
+                          {wordCount.toLocaleString()} {t.live_words}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        disabled={!rawTranscript}
+                        onClick={() => { handleClear(); setShowAIConfig(false) }}
+                        className={[
+                          'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150',
+                          rawTranscript
+                            ? 'text-gray-500 hover:text-red-500 hover:bg-red-50 dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-red-950/30 cursor-pointer'
+                            : 'text-gray-300 dark:text-gray-600 cursor-not-allowed',
+                        ].join(' ')}
+                      >
+                        <TrashIcon className="w-3.5 h-3.5" />
+                        {t.live_clear}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!rawTranscript}
+                        onClick={handleExportTxt}
+                        title={t.live_export_txt}
+                        className={[
+                          'flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150',
+                          rawTranscript
+                            ? 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer'
+                            : 'text-gray-300 dark:text-gray-600 cursor-not-allowed',
+                        ].join(' ')}
+                      >
+                        <DownloadIcon className="w-3.5 h-3.5" />
+                        TXT
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!segments.length}
+                        onClick={handleExportSrt}
                         title={t.live_export_srt}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium
-                                   text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800
-                                   transition-colors duration-150 cursor-pointer"
+                        className={[
+                          'flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150',
+                          segments.length
+                            ? 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer'
+                            : 'text-gray-300 dark:text-gray-600 cursor-not-allowed',
+                        ].join(' ')}
                       >
                         <DownloadIcon className="w-3.5 h-3.5" />
                         SRT
                       </button>
-                    )}
-                  </>
-                )}
-                {wordCount > 0 && (
-                  <span className="ml-auto text-xs text-gray-400 tabular-nums">
-                    {wordCount.toLocaleString()} {t.live_words}
-                  </span>
-                )}
-              </div>
-            )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            </div>
           </div>
-          {/* ── End gray card ── */}
+          {/* ── End Row 1 ── */}
 
           {/* Notices */}
           {!hasOpenAIKey && (
@@ -425,48 +501,12 @@ export function LiveTranslatePage() {
             </Notice>
           )}
 
-          {/* System audio hint */}
-          {(audioMode === 'system' || audioMode === 'both') && !isActive && isMac && screenPermission !== 'granted' && (
-            <div className="flex items-center gap-2 px-4 py-2
-                            bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 rounded-xl">
-              <InfoCircleIcon className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
-              <span className="text-xs text-blue-600 dark:text-blue-400 flex-1">
-                {t.live_screen_recording_hint.split(/(<strong>.*?<\/strong>)/g).map((part, i) => {
-                  const m = part.match(/^<strong>(.*?)<\/strong>$/)
-                  // biome-ignore lint/suspicious/noArrayIndexKey: stable index for locale string segments
-                  return m ? <strong key={i}>{m[1]}</strong> : part
-                })}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  if (typeof window.api?.openExternal === 'function') {
-                    window.api.openExternal(MACOS_SCREEN_RECORDING_PREFS)
-                  } else {
-                    window.open(MACOS_SCREEN_RECORDING_PREFS)
-                  }
-                }}
-                className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium
-                           bg-blue-500 hover:bg-blue-600 text-white transition-colors duration-150 cursor-pointer"
-              >
-                <GearIcon className="w-3 h-3" />
-                {t.live_open_system_settings}
-              </button>
-            </div>
-          )}
-
-          {micError && <Notice variant="error">{micError}</Notice>}
-
-          {/* ── Two panels: Nguyên Bản | Bản Dịch — bo góc rounded-2xl ── */}
+          {/* ── Two panels: Nguyên Bản | Bản Dịch ── */}
           <div className="grid grid-cols-2 gap-4 flex-1 min-h-0">
 
             {/* Left: Nguyên Bản */}
-            <div className="flex flex-col rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
-              <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 border-b border-gray-100 dark:border-gray-800">
-                <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600 select-none">
-                  {t.live_panel_original}
-                </span>
-                {/* Right side: status indicator + copy button */}
+            <div className="flex flex-col h-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+              <div className="flex-shrink-0 flex items-center justify-between px-4 pt-2 pb-1">
                 <div className="flex items-center gap-2">
                   {isActive && (
                     <span className="flex items-center gap-1.5 select-none">
@@ -507,7 +547,7 @@ export function LiveTranslatePage() {
                   )}
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
+              <div className="flex-1 overflow-y-auto p-4 space-y-1.5">
                 {segments.length > 0 || (isActive && pendingText) ? (
                   <>
                     {segments.map((seg) => (
@@ -545,18 +585,21 @@ export function LiveTranslatePage() {
                     {isActive && <span className="inline-block ml-0.5 w-0.5 h-4 bg-gray-400 dark:bg-gray-600 animate-pulse align-middle" />}
                   </p>
                 ) : (
-                  <EmptyPanel icon="mic">{t.live_empty}</EmptyPanel>
+                  <EmptyPanel icon="mic" onClick={hasOpenAIKey && hasAnyKey ? () => {
+                    if ((audioMode === 'system' || audioMode === 'both') && isMac && screenPermission !== 'granted') {
+                      setShowScreenPermModal(true)
+                    } else {
+                      handleStart()
+                    }
+                  } : undefined}>{t.live_empty}</EmptyPanel>
                 )}
                 <div ref={rawEndRef} />
               </div>
             </div>
 
             {/* Right: Bản Dịch */}
-            <div className="flex flex-col rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 shadow-sm overflow-hidden">
-              <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-                <span className="text-[11px] font-semibold uppercase tracking-widest text-blue-400 dark:text-blue-600 select-none">
-                  {t.live_panel_translation}
-                </span>
+            <div className="flex flex-col h-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+              <div className="flex-shrink-0 flex items-center justify-between px-4 pt-2 pb-1">
                 {translation && (
                   <button type="button" onClick={() => handleCopy(translation, setCopiedTx)}
                     className={`btn-ghost py-0.5 px-2 text-xs ${copiedTx ? 'text-green-600' : ''}`}>
@@ -564,7 +607,7 @@ export function LiveTranslatePage() {
                   </button>
                 )}
               </div>
-              <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
+              <div className="flex-1 overflow-y-auto p-4 space-y-1.5">
                 {segments.length > 0 ? (
                   <>
                     {segments.map((seg) => (
@@ -733,6 +776,64 @@ export function LiveTranslatePage() {
         </div>
       )}
 
+      {/* Screen Recording permission modal */}
+      {showScreenPermModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setShowScreenPermModal(false)}
+        >
+          <div
+            className="relative mx-4 w-full max-w-sm bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 flex flex-col gap-4"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center">
+                <InfoCircleIcon className="w-5 h-5 text-blue-500" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                  Cần cấp quyền Screen Recording
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
+                  {t.live_screen_recording_hint.split(/(<strong>.*?<\/strong>)/g).map((part, i) => {
+                    const m = part.match(/^<strong>(.*?)<\/strong>$/)
+                    // biome-ignore lint/suspicious/noArrayIndexKey: stable index for locale string segments
+                    return m ? <strong key={i} className="text-gray-700 dark:text-gray-200">{m[1]}</strong> : part
+                  })}
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowScreenPermModal(false)}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-150 cursor-pointer"
+              >
+                Đóng
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window.api?.openExternal === 'function') {
+                    window.api.openExternal(MACOS_SCREEN_RECORDING_PREFS)
+                  } else {
+                    window.open(MACOS_SCREEN_RECORDING_PREFS)
+                  }
+                  setShowScreenPermModal(false)
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium bg-blue-500 hover:bg-blue-600 text-white transition-colors duration-150 cursor-pointer shadow-sm"
+              >
+                <GearIcon className="w-3.5 h-3.5" />
+                {t.live_open_system_settings}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Pipeline error toast */}
       {pipelineError && (
         <div className="pointer-events-none absolute bottom-14 inset-x-0 flex justify-center px-4 z-50">
@@ -765,10 +866,16 @@ function Notice({ children, variant = 'warning' }: { children: React.ReactNode; 
   )
 }
 
-function EmptyPanel({ children, icon }: { children: React.ReactNode; icon: 'mic' | 'translate' }) {
+function EmptyPanel({ children, icon, onClick }: { children: React.ReactNode; icon: 'mic' | 'translate'; onClick?: () => void }) {
   return (
     <div className="h-full flex flex-col items-center justify-center gap-3 select-none">
-      <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+      <div
+        onClick={onClick}
+        className={[
+          'w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center transition-all duration-150',
+          onClick ? 'cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 hover:scale-105 active:scale-95' : '',
+        ].join(' ')}
+      >
         {icon === 'mic' ? (
           <MicrophoneIcon className="w-6 h-6 text-gray-400" />
         ) : (

@@ -34,8 +34,8 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 700,
-    minWidth: 960,
-    minHeight: 580,
+    minWidth: 1200,
+    minHeight: 700,
     title: 'Viezan',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 16, y: 14 },

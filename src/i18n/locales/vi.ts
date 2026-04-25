@@ -223,7 +223,7 @@ const vi: Translations = {
   live_no_openai_key: 'Cần OpenAI API key để nhận dạng giọng nói (Whisper).',
   live_no_translate_key: 'Chưa cấu hình API key để dịch.',
   live_status_translating: 'Đang dịch…',
-  live_panel_original: 'Nguyên bản',
+  live_panel_original: 'Bản gốc',
   live_panel_translation: 'Bản dịch',
   live_words: 'từ',
   settings_tts_priority_desc: 'OpenAI → Gemini → Edge TTS (miễn phí) → ElevenLabs',

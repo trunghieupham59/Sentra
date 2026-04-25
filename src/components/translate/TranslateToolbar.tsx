@@ -12,6 +12,8 @@ interface TranslateToolbarProps {
   phoneticMode: PhoneticMode
   onPhoneticModeChange: (mode: PhoneticMode) => void
   isPhoneticLoading: boolean
+  /** When true, hides the embedded ModelSelector (useful when parent renders it separately) */
+  hideModelSelector?: boolean
   // i18n
   labelStyleLabel: string
   labelStyleGeneral: string
@@ -37,6 +39,7 @@ export function TranslateToolbar({
   translationStyle, onStyleChange,
   autoTranslate, onAutoTranslateChange,
   phoneticMode, onPhoneticModeChange, isPhoneticLoading,
+  hideModelSelector = false,
   labelStyleLabel,
   labelStyleGeneral, labelStyleFormal, labelStyleCasual,
   labelStyleBusiness, labelStyleTechnical, labelStyleNatural,
@@ -46,9 +49,11 @@ export function TranslateToolbar({
 }: TranslateToolbarProps) {
   return (
     <div className="flex items-end gap-3 overflow-hidden flex-wrap">
-      <div className="flex-1 min-w-0 overflow-hidden">
-        <ModelSelector />
-      </div>
+      {!hideModelSelector && (
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <ModelSelector />
+        </div>
+      )}
 
       <div className="flex items-end gap-3 flex-shrink-0">
         {/* Style dropdown with label above */}
