@@ -22,7 +22,24 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'sans-serif'],
+        // System font stack — căn chỉnh với body CSS, tự động dùng font native của từng OS
+        sans: [
+          '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto',
+          'Helvetica', 'Arial', 'sans-serif',
+          '"Apple Color Emoji"', '"Segoe UI Emoji"', '"Segoe UI Symbol"',
+        ],
+      },
+      fontSize: {
+        // Typography scale chuẩn cho Electron Desktop App (đơn vị px tuyệt đối)
+        // Tham khảo: macOS HIG (~13pt body), Windows Fluent (14px body), Linux GNOME (14-15px)
+        'xs':   ['12px', { lineHeight: '1.4' }],  // Caption, annotation, badge text
+        'sm':   ['13px', { lineHeight: '1.4' }],  // Sidebar, menu, UI label, control text
+        'base': ['14px', { lineHeight: '1.5' }],  // Body text — "con số vàng" cho Desktop
+        'lg':   ['15px', { lineHeight: '1.5' }],  // Content area (textarea, transcript...)
+        'xl':   ['18px', { lineHeight: '1.2' }],  // H3 — Block/Panel title
+        '2xl':  ['22px', { lineHeight: '1.2' }],  // H2 — Section title
+        '3xl':  ['28px', { lineHeight: '1.1' }],  // H1 — Page title
+        '4xl':  ['28px', { lineHeight: '1.1' }],  // Alias cho H1 (tương thích)
       },
       animation: {
         'spin-slow': 'spin 2s linear infinite',
