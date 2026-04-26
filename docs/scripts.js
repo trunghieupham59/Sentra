@@ -13,9 +13,10 @@ const TRANSLATIONS = {
       btn_download: '⬇ Download Free',
       btn_screenshots: '🖼 View Screenshots',
       btn_github: '★ GitHub',
-      platform_mac: '🍎 macOS',
-      platform_win: '🪟 Windows',
-      platform_ext: '🧩 Chrome Extension',
+      platform_mac: 'macOS',
+      platform_win: 'Windows',
+      platform_linux: 'Linux',
+      platform_ext: 'Chrome Extension',
     },
     providers: { label: 'Powered by world-class AI providers' },
     features: {
@@ -27,12 +28,15 @@ const TRANSLATIONS = {
       { title: 'Text Translation',   desc: 'Translate with 7 tone styles — Neutral, Friendly, Professional, Business, Slack, Polite, Technical. Auto or manual mode. 19 languages supported.', tag: 'Core' },
       { title: 'Live Translation',   desc: 'Real-time subtitles from microphone or system audio. Floating overlay with custom font size, color, and opacity. AI session summary after each call.', tag: 'Real-time' },
       { title: 'Image Translation',  desc: 'Drag-and-drop or paste any image. AI Vision extracts and translates all text — documents, screenshots, menus, slides — and lets you download the result.', tag: 'AI Vision' },
-      { title: 'AI Chat',            desc: 'Full-featured AI chat with image attachments, voice input, custom System Prompts, preset templates, and complete searchable chat history.', tag: 'Assistant' },
-      { title: 'Voice I/O',          desc: 'Voice Input via Web Speech API and OpenAI Whisper. Text-to-Speech with 6 premium OpenAI voices: Alloy, Echo, Fable, Onyx, Nova, Shimmer.', tag: 'Audio' },
+      { title: 'AI Chat',            desc: 'Full-featured AI chat with image attachments, voice input, custom System Prompts, preset templates, web search, and complete searchable chat history.', tag: 'Assistant' },
+      { title: 'Voice I/O',          desc: 'Voice Input via Web Speech API, OpenAI Whisper, and Groq as fallback. Text-to-Speech with 6 premium OpenAI voices: Alloy, Echo, Fable, Onyx, Nova, Shimmer.', tag: 'Audio' },
       { title: 'Furigana Support',   desc: 'Automatic furigana overlay on Japanese translations. Essential for learners, BrSE, and anyone working daily with Japanese text.', tag: 'Japanese' },
-      { title: 'Chrome Extension',   desc: 'Translate selected text directly in your browser without switching windows. Works alongside the desktop app via local server.', tag: 'Browser' },
+      { title: 'Chrome Extension',   desc: 'Translate selected text in your browser with Alt+T shortcut, platform-aware hints, and a redesigned two-column popup UI. Works via local server.', tag: 'Browser' },
       { title: 'Global Hotkey',      desc: 'Summon Viezan from any application with a global keyboard shortcut. No need to switch apps mid-workflow.', tag: 'Productivity' },
       { title: 'Privacy First',      desc: 'API keys encrypted via Electron safeStorage — Keychain on macOS, Credential Manager on Windows. No file writes. Zero servers. 100% local.', tag: 'Security' },
+      { title: 'Settings Modal',     desc: 'Settings redesigned as a clean popup overlay — access API keys, model preferences and extension settings instantly from any tab without losing context.', tag: 'UX' },
+      { title: 'Phonetic Mode',      desc: 'Pure phonetic transcription mode — get romanization or phonetics instead of a full translation. Perfect for pronunciation learning and language study.', tag: 'Translate' },
+      { title: 'Web Search in Chat', desc: 'AI Chat with real-time web search powered by Brave, DuckDuckGo or Google — automatic fallback ensures you always get results.', tag: 'Chat' },
       { title: 'Local AI Support',   desc: 'Run AI models directly on your machine — no API key required. Free for everyone, fully offline. No cloud, no cost, complete privacy.', tag: 'Coming Soon' },
     ],
     screenshots: { label: 'Screenshots', title: 'See it in action', sub: 'Click any card to zoom in. Navigate with arrow keys or swipe on mobile.' },
@@ -52,8 +56,8 @@ const TRANSLATIONS = {
     ],
     download: {
       label: 'Download', title: 'Get Viezan for free',
-      sub: 'Available for macOS and Windows. No account required. Start translating in minutes.',
-      mac_btn: '⬇ Download .dmg', win_btn: '⬇ Download .exe', ext_btn: '⬇ Download .crx',
+      sub: 'Available for macOS, Windows and Linux. No account required. Start translating in minutes.',
+      mac_btn: '⬇ Download .dmg', win_btn: '⬇ Download .exe', linux_btn: '⬇ Download .AppImage', ext_btn: '⬇ Download .crx',
       warning: '⚠️ macOS may show a security warning since the app isn\'t code-signed yet. Right-click → Open to bypass. <a href="https://github.com/trunghieupham59/Viezan#readme" style="color:var(--accent)" target="_blank">See instructions →</a>',
     },
     support: {
@@ -77,9 +81,10 @@ const TRANSLATIONS = {
       btn_download: '⬇ Tải miễn phí',
       btn_screenshots: '🖼 Xem ảnh chụp',
       btn_github: '★ GitHub',
-      platform_mac: '🍎 macOS',
-      platform_win: '🪟 Windows',
-      platform_ext: '🧩 Tiện ích Chrome',
+      platform_mac: 'macOS',
+      platform_win: 'Windows',
+      platform_linux: 'Linux',
+      platform_ext: 'Tiện ích Chrome',
     },
     providers: { label: 'Được hỗ trợ bởi các nhà cung cấp AI hàng đầu' },
     features: {
@@ -88,16 +93,19 @@ const TRANSLATIONS = {
       sub: 'Viezan tích hợp đầy đủ bộ công cụ dịch thuật trong một ứng dụng desktop tinh gọn — không đăng ký, không theo dõi, chỉ là công cụ hoạt động tốt.',
     },
     feat: [
-      { title: 'Dịch văn bản',       desc: 'Dịch với 7 phong cách — Trung lập, Thân thiện, Chuyên nghiệp, Kinh doanh, Slack, Lịch sự, Kỹ thuật. Chế độ tự động hoặc thủ công. Hỗ trợ 19 ngôn ngữ.', tag: 'Cốt lõi' },
-      { title: 'Dịch trực tiếp',     desc: 'Phụ đề thời gian thực từ microphone hoặc âm thanh hệ thống. Overlay nổi với cỡ chữ, màu sắc và độ trong suốt tùy chỉnh. Tóm tắt phiên bằng AI sau mỗi cuộc họp.', tag: 'Thời gian thực' },
-      { title: 'Dịch ảnh',           desc: 'Kéo thả hoặc dán bất kỳ ảnh nào. AI Vision trích xuất và dịch toàn bộ văn bản — tài liệu, ảnh chụp màn hình, menu, slide — và cho phép tải kết quả về.', tag: 'AI Vision' },
-      { title: 'Chat AI',            desc: 'Chat AI đầy đủ tính năng với đính kèm ảnh, nhập liệu bằng giọng nói, System Prompts tùy chỉnh, mẫu sẵn có và lịch sử chat có thể tìm kiếm.', tag: 'Trợ lý' },
-      { title: 'Giọng nói I/O',      desc: 'Nhập liệu bằng giọng nói qua Web Speech API và OpenAI Whisper. Text-to-Speech với 6 giọng đọc cao cấp: Alloy, Echo, Fable, Onyx, Nova, Shimmer.', tag: 'Âm thanh' },
-      { title: 'Hỗ trợ Furigana',    desc: 'Overlay furigana tự động trên bản dịch tiếng Nhật. Không thể thiếu cho người học, BrSE và những ai làm việc hàng ngày với văn bản tiếng Nhật.', tag: 'Tiếng Nhật' },
-      { title: 'Tiện ích Chrome',    desc: 'Dịch văn bản đã chọn trực tiếp trong trình duyệt mà không cần chuyển cửa sổ. Hoạt động cùng ứng dụng desktop qua máy chủ cục bộ.', tag: 'Trình duyệt' },
-      { title: 'Phím tắt toàn cục',  desc: 'Gọi Viezan từ bất kỳ ứng dụng nào bằng phím tắt toàn cục. Không cần chuyển ứng dụng giữa chừng công việc.', tag: 'Năng suất' },
-      { title: 'Bảo mật trước tiên', desc: 'API key được mã hóa qua Electron safeStorage — Keychain trên macOS, Credential Manager trên Windows. Không ghi file. Không máy chủ. 100% cục bộ.', tag: 'Bảo mật' },
-      { title: 'Hỗ trợ AI cục bộ',   desc: 'Chạy mô hình AI trực tiếp trên máy — không cần API key. Miễn phí cho tất cả, hoàn toàn offline. Không cloud, không chi phí, hoàn toàn riêng tư.', tag: 'Sắp ra mắt' },
+      { title: 'Dịch văn bản',         desc: 'Dịch với 7 phong cách — Trung lập, Thân thiện, Chuyên nghiệp, Kinh doanh, Slack, Lịch sự, Kỹ thuật. Chế độ tự động hoặc thủ công. Hỗ trợ 19 ngôn ngữ.', tag: 'Cốt lõi' },
+      { title: 'Dịch trực tiếp',       desc: 'Phụ đề thời gian thực từ microphone hoặc âm thanh hệ thống. Overlay nổi với cỡ chữ, màu sắc và độ trong suốt tùy chỉnh. Tóm tắt phiên bằng AI sau mỗi cuộc họp.', tag: 'Thời gian thực' },
+      { title: 'Dịch ảnh',             desc: 'Kéo thả hoặc dán bất kỳ ảnh nào. AI Vision trích xuất và dịch toàn bộ văn bản — tài liệu, ảnh chụp màn hình, menu, slide — và cho phép tải kết quả về.', tag: 'AI Vision' },
+      { title: 'Chat AI',              desc: 'Chat AI đầy đủ tính năng với đính kèm ảnh, nhập liệu bằng giọng nói, System Prompts tùy chỉnh, mẫu sẵn có, tìm kiếm web và lịch sử chat có thể tìm kiếm.', tag: 'Trợ lý' },
+      { title: 'Giọng nói I/O',        desc: 'Nhập liệu bằng giọng nói qua Web Speech API, OpenAI Whisper và Groq làm dự phòng. Text-to-Speech với 6 giọng đọc cao cấp: Alloy, Echo, Fable, Onyx, Nova, Shimmer.', tag: 'Âm thanh' },
+      { title: 'Hỗ trợ Furigana',      desc: 'Overlay furigana tự động trên bản dịch tiếng Nhật. Không thể thiếu cho người học, BrSE và những ai làm việc hàng ngày với văn bản tiếng Nhật.', tag: 'Tiếng Nhật' },
+      { title: 'Tiện ích Chrome',      desc: 'Dịch văn bản bằng phím tắt Alt+T, gợi ý phím theo nền tảng, giao diện popup 2 cột thiết kế lại. Hoạt động cùng ứng dụng desktop qua máy chủ cục bộ.', tag: 'Trình duyệt' },
+      { title: 'Phím tắt toàn cục',    desc: 'Gọi Viezan từ bất kỳ ứng dụng nào bằng phím tắt toàn cục. Không cần chuyển ứng dụng giữa chừng công việc.', tag: 'Năng suất' },
+      { title: 'Bảo mật trước tiên',   desc: 'API key được mã hóa qua Electron safeStorage — Keychain trên macOS, Credential Manager trên Windows. Không ghi file. Không máy chủ. 100% cục bộ.', tag: 'Bảo mật' },
+      { title: 'Cài đặt dạng Modal',   desc: 'Cài đặt được thiết kế lại thành popup overlay — truy cập API key, tùy chọn mô hình và cài đặt tiện ích ngay lập tức từ bất kỳ tab nào mà không mất ngữ cảnh.', tag: 'UX' },
+      { title: 'Chế độ Phiên âm',      desc: 'Chế độ phiên âm thuần tuý — nhận phiên âm/romanization thay vì bản dịch đầy đủ. Hoàn hảo cho việc học phát âm và nghiên cứu ngôn ngữ.', tag: 'Dịch thuật' },
+      { title: 'Tìm kiếm Web trong Chat', desc: 'Chat AI với tìm kiếm web thời gian thực qua Brave, DuckDuckGo hoặc Google — tự động chuyển đổi dự phòng để luôn có kết quả.', tag: 'Chat' },
+      { title: 'Hỗ trợ AI cục bộ',     desc: 'Chạy mô hình AI trực tiếp trên máy — không cần API key. Miễn phí cho tất cả, hoàn toàn offline. Không cloud, không chi phí, hoàn toàn riêng tư.', tag: 'Sắp ra mắt' },
     ],
     screenshots: { label: 'Ảnh chụp', title: 'Xem thực tế', sub: 'Nhấp vào bất kỳ ảnh nào để phóng to. Điều hướng bằng phím mũi tên hoặc vuốt trên di động.' },
     story: {
@@ -116,8 +124,8 @@ const TRANSLATIONS = {
     ],
     download: {
       label: 'Tải xuống', title: 'Tải Viezan miễn phí',
-      sub: 'Có sẵn cho macOS và Windows. Không cần tài khoản. Bắt đầu dịch trong vài phút.',
-      mac_btn: '⬇ Tải .dmg', win_btn: '⬇ Tải .exe', ext_btn: '⬇ Tải .crx',
+      sub: 'Có sẵn cho macOS, Windows và Linux. Không cần tài khoản. Bắt đầu dịch trong vài phút.',
+      mac_btn: '⬇ Tải .dmg', win_btn: '⬇ Tải .exe', linux_btn: '⬇ Tải .AppImage', ext_btn: '⬇ Tải .crx',
       warning: '⚠️ macOS có thể hiển thị cảnh báo bảo mật vì ứng dụng chưa được ký mã. Nhấp chuột phải → Mở để bỏ qua. <a href="https://github.com/trunghieupham59/Viezan#readme" style="color:var(--accent)" target="_blank">Xem hướng dẫn →</a>',
     },
     support: {
@@ -141,9 +149,10 @@ const TRANSLATIONS = {
       btn_download: '⬇ 免费下载',
       btn_screenshots: '🖼 查看截图',
       btn_github: '★ GitHub',
-      platform_mac: '🍎 macOS',
-      platform_win: '🪟 Windows',
-      platform_ext: '🧩 Chrome 扩展',
+      platform_mac: 'macOS',
+      platform_win: 'Windows',
+      platform_linux: 'Linux',
+      platform_ext: 'Chrome 扩展',
     },
     providers: { label: '由世界一流 AI 提供商驱动' },
     features: {
@@ -152,16 +161,19 @@ const TRANSLATIONS = {
       sub: 'Viezan 将完整的翻译套件集成到一个优雅的桌面应用中 — 无需订阅，无需追踪，工具即用即效。',
     },
     feat: [
-      { title: '文本翻译',     desc: '支持 7 种语气风格 — 中立、友好、专业、商务、Slack、礼貌、技术。自动或手动模式。支持 19 种语言。', tag: '核心' },
-      { title: '实时翻译',     desc: '来自麦克风或系统音频的实时字幕。可自定义字体大小、颜色和透明度的浮动叠加层。每次通话后 AI 会话总结。', tag: '实时' },
-      { title: '图片翻译',     desc: '拖放或粘贴任意图片。AI 视觉提取并翻译所有文字 — 文档、截图、菜单、幻灯片 — 并支持下载结果。', tag: 'AI 视觉' },
-      { title: 'AI 聊天',      desc: '功能齐全的 AI 聊天，支持图片附件、语音输入、自定义系统提示、预设模板和完整可搜索的聊天历史。', tag: '助手' },
-      { title: '语音输入/输出', desc: '通过 Web Speech API 和 OpenAI Whisper 进行语音输入。支持 6 种高级 OpenAI 声音：Alloy、Echo、Fable、Onyx、Nova、Shimmer。', tag: '音频' },
-      { title: '假名支持',     desc: '日语翻译自动添加假名注音。对日语学习者、BrSE 以及日常使用日文的人来说必不可少。', tag: '日语' },
-      { title: 'Chrome 扩展',  desc: '直接在浏览器中翻译选中文本，无需切换窗口。通过本地服务器与桌面应用协同工作。', tag: '浏览器' },
-      { title: '全局快捷键',   desc: '使用全局键盘快捷键从任何应用程序中呼出 Viezan。工作流程中途无需切换应用。', tag: '效率' },
-      { title: '隐私优先',     desc: 'API 密钥通过 Electron safeStorage 加密 — macOS 上使用 Keychain，Windows 上使用凭据管理器。不写文件。零服务器。100% 本地。', tag: '安全' },
-      { title: '本地 AI 支持', desc: '直接在您的机器上运行 AI 模型 — 无需 API 密钥。对所有人免费，完全离线。无云端，无成本，完全私密。', tag: '即将推出' },
+      { title: '文本翻译',       desc: '支持 7 种语气风格 — 中立、友好、专业、商务、Slack、礼貌、技术。自动或手动模式。支持 19 种语言。', tag: '核心' },
+      { title: '实时翻译',       desc: '来自麦克风或系统音频的实时字幕。可自定义字体大小、颜色和透明度的浮动叠加层。每次通话后 AI 会话总结。', tag: '实时' },
+      { title: '图片翻译',       desc: '拖放或粘贴任意图片。AI 视觉提取并翻译所有文字 — 文档、截图、菜单、幻灯片 — 并支持下载结果。', tag: 'AI 视觉' },
+      { title: 'AI 聊天',        desc: '功能齐全的 AI 聊天，支持图片附件、语音输入、自定义系统提示、预设模板、网页搜索和完整可搜索的聊天历史。', tag: '助手' },
+      { title: '语音输入/输出',  desc: '通过 Web Speech API、OpenAI Whisper 和 Groq 备用进行语音输入。支持 6 种高级 OpenAI 声音：Alloy、Echo、Fable、Onyx、Nova、Shimmer。', tag: '音频' },
+      { title: '假名支持',       desc: '日语翻译自动添加假名注音。对日语学习者、BrSE 以及日常使用日文的人来说必不可少。', tag: '日语' },
+      { title: 'Chrome 扩展',    desc: '使用 Alt+T 快捷键在浏览器中翻译选中文本，平台感知提示，全新两列弹出界面。通过本地服务器协同工作。', tag: '浏览器' },
+      { title: '全局快捷键',     desc: '使用全局键盘快捷键从任何应用程序中呼出 Viezan。工作流程中途无需切换应用。', tag: '效率' },
+      { title: '隐私优先',       desc: 'API 密钥通过 Electron safeStorage 加密 — macOS 上使用 Keychain，Windows 上使用凭据管理器。不写文件。零服务器。100% 本地。', tag: '安全' },
+      { title: '设置弹窗',       desc: '设置重新设计为简洁弹出层 — 可从任何标签页即时访问 API 密钥、模型偏好和扩展设置，无需离开当前页面。', tag: 'UX' },
+      { title: '音标模式',       desc: '纯音标转录模式 — 获取罗马音或音标而非完整翻译。非常适合发音学习和语言研究。', tag: '翻译' },
+      { title: 'Chat 网页搜索',  desc: 'AI 聊天集成实时网页搜索，由 Brave、DuckDuckGo 或 Google 提供支持 — 自动切换备用以确保始终获得结果。', tag: '聊天' },
+      { title: '本地 AI 支持',   desc: '直接在您的机器上运行 AI 模型 — 无需 API 密钥。对所有人免费，完全离线。无云端，无成本，完全私密。', tag: '即将推出' },
     ],
     screenshots: { label: '截图', title: '实际效果一览', sub: '点击任意卡片放大查看。使用方向键导航或在移动端滑动。' },
     story: {
@@ -180,8 +192,8 @@ const TRANSLATIONS = {
     ],
     download: {
       label: '下载', title: '免费获取 Viezan',
-      sub: '适用于 macOS 和 Windows。无需账户。几分钟内开始翻译。',
-      mac_btn: '⬇ 下载 .dmg', win_btn: '⬇ 下载 .exe', ext_btn: '⬇ 下载 .crx',
+      sub: '适用于 macOS、Windows 和 Linux。无需账户。几分钟内开始翻译。',
+      mac_btn: '⬇ 下载 .dmg', win_btn: '⬇ 下载 .exe', linux_btn: '⬇ 下载 .AppImage', ext_btn: '⬇ 下载 .crx',
       warning: '⚠️ 由于应用尚未进行代码签名，macOS 可能会显示安全警告。右键点击 → 打开 即可绕过。<a href="https://github.com/trunghieupham59/Viezan#readme" style="color:var(--accent)" target="_blank">查看说明 →</a>',
     },
     support: {
@@ -205,9 +217,10 @@ const TRANSLATIONS = {
       btn_download: '⬇ 無料ダウンロード',
       btn_screenshots: '🖼 スクリーンショット',
       btn_github: '★ GitHub',
-      platform_mac: '🍎 macOS',
-      platform_win: '🪟 Windows',
-      platform_ext: '🧩 Chrome 拡張機能',
+      platform_mac: 'macOS',
+      platform_win: 'Windows',
+      platform_linux: 'Linux',
+      platform_ext: 'Chrome 拡張機能',
     },
     providers: { label: '世界トップクラスの AI プロバイダーを搭載' },
     features: {
@@ -219,12 +232,15 @@ const TRANSLATIONS = {
       { title: 'テキスト翻訳',          desc: '7 つのトーンスタイル — ニュートラル、フレンドリー、プロフェッショナル、ビジネス、Slack、丁寧、テクニカル。自動または手動モード。19 言語対応。', tag: 'コア' },
       { title: 'ライブ翻訳',            desc: 'マイクまたはシステムオーディオからのリアルタイム字幕。カスタムフォントサイズ、色、透明度のフローティングオーバーレイ。各通話後の AI セッションサマリー。', tag: 'リアルタイム' },
       { title: '画像翻訳',              desc: '任意の画像をドラッグ＆ドロップまたは貼り付け。AI Vision がすべてのテキストを抽出・翻訳 — ドキュメント、スクリーンショット、メニュー、スライド。', tag: 'AI Vision' },
-      { title: 'AI チャット',           desc: '画像添付、音声入力、カスタムシステムプロンプト、プリセットテンプレート、検索可能な完全なチャット履歴を備えたフル機能 AI チャット。', tag: 'アシスタント' },
-      { title: '音声 I/O',              desc: 'Web Speech API と OpenAI Whisper による音声入力。6 つのプレミアム OpenAI ボイスによる Text-to-Speech：Alloy、Echo、Fable、Onyx、Nova、Shimmer。', tag: 'オーディオ' },
+      { title: 'AI チャット',           desc: '画像添付、音声入力、カスタムシステムプロンプト、プリセットテンプレート、ウェブ検索、検索可能な完全なチャット履歴を備えたフル機能 AI チャット。', tag: 'アシスタント' },
+      { title: '音声 I/O',              desc: 'Web Speech API、OpenAI Whisper および Groq フォールバックによる音声入力。6 つのプレミアム OpenAI ボイスによる Text-to-Speech：Alloy、Echo、Fable、Onyx、Nova、Shimmer。', tag: 'オーディオ' },
       { title: 'ふりがなサポート',       desc: '日本語翻訳に自動ふりがなオーバーレイ。学習者、BrSE、日本語テキストを日常的に扱う方に必須。', tag: '日本語' },
-      { title: 'Chrome 拡張機能',       desc: 'ウィンドウを切り替えずにブラウザで選択したテキストを直接翻訳。ローカルサーバーを介してデスクトップアプリと連携。', tag: 'ブラウザ' },
+      { title: 'Chrome 拡張機能',       desc: 'Alt+T ショートカットでブラウザ内のテキストを即翻訳。プラットフォーム対応ヒント、リデザインされた 2 列ポップアップ UI。', tag: 'ブラウザ' },
       { title: 'グローバルホットキー',   desc: 'グローバルキーボードショートカットで任意のアプリから Viezan を呼び出し。ワークフロー中にアプリを切り替える必要なし。', tag: '生産性' },
       { title: 'プライバシー第一',       desc: 'API キーは Electron safeStorage で暗号化 — macOS では Keychain、Windows では資格情報マネージャー。ファイル書き込みなし。サーバーなし。100% ローカル。', tag: 'セキュリティ' },
+      { title: '設定モーダル',          desc: '設定をクリーンなポップアップオーバーレイに刷新 — どのタブからでも即座に API キー、モデル設定、拡張機能設定にアクセス。コンテキストを失わない。', tag: 'UX' },
+      { title: 'フォネティックモード',   desc: '純粋な音声転写モード — 完全な翻訳の代わりにローマ字や音声表記を取得。発音学習や語学研究に最適。', tag: '翻訳' },
+      { title: 'チャットでウェブ検索',   desc: 'Brave、DuckDuckGo、Google によるリアルタイムウェブ検索付き AI チャット — 自動フォールバックで常に結果を取得。', tag: 'チャット' },
       { title: 'ローカル AI サポート',   desc: 'マシン上で直接 AI モデルを実行 — API キー不要。すべての人に無料、完全オフライン。クラウドなし、コストなし、完全なプライバシー。', tag: '近日公開' },
     ],
     screenshots: { label: 'スクリーンショット', title: '実際の動作を見る', sub: 'カードをクリックしてズームイン。矢印キーでナビゲートまたはモバイルでスワイプ。' },
@@ -244,8 +260,8 @@ const TRANSLATIONS = {
     ],
     download: {
       label: 'ダウンロード', title: 'Viezan を無料で入手',
-      sub: 'macOS と Windows で利用可能。アカウント不要。数分で翻訳開始。',
-      mac_btn: '⬇ .dmg をダウンロード', win_btn: '⬇ .exe をダウンロード', ext_btn: '⬇ .crx をダウンロード',
+      sub: 'macOS、Windows および Linux で利用可能。アカウント不要。数分で翻訳開始。',
+      mac_btn: '⬇ .dmg をダウンロード', win_btn: '⬇ .exe をダウンロード', linux_btn: '⬇ .AppImage をダウンロード', ext_btn: '⬇ .crx をダウンロード',
       warning: '⚠️ アプリはまだコード署名されていないため、macOS でセキュリティ警告が表示される場合があります。右クリック → 開く でバイパスできます。<a href="https://github.com/trunghieupham59/Viezan#readme" style="color:var(--accent)" target="_blank">手順を見る →</a>',
     },
     support: {
@@ -269,9 +285,10 @@ const TRANSLATIONS = {
       btn_download: '⬇ Télécharger gratuitement',
       btn_screenshots: '🖼 Voir les captures',
       btn_github: '★ GitHub',
-      platform_mac: '🍎 macOS',
-      platform_win: '🪟 Windows',
-      platform_ext: '🧩 Extension Chrome',
+      platform_mac: 'macOS',
+      platform_win: 'Windows',
+      platform_linux: 'Linux',
+      platform_ext: 'Extension Chrome',
     },
     providers: { label: 'Propulsé par des fournisseurs IA de classe mondiale' },
     features: {
@@ -280,16 +297,19 @@ const TRANSLATIONS = {
       sub: 'Viezan regroupe une suite de traduction complète dans une application desktop élégante — sans abonnement, sans suivi, juste des outils qui fonctionnent.',
     },
     feat: [
-      { title: 'Traduction de texte',      desc: 'Traduisez avec 7 styles de ton — Neutre, Amical, Professionnel, Business, Slack, Poli, Technique. Mode automatique ou manuel. 19 langues supportées.', tag: 'Essentiel' },
-      { title: 'Traduction en direct',     desc: 'Sous-titres en temps réel depuis le microphone ou l\'audio système. Overlay flottant avec taille de police, couleur et opacité personnalisables. Résumé de session IA après chaque appel.', tag: 'Temps réel' },
-      { title: 'Traduction d\'images',     desc: 'Glissez-déposez ou collez n\'importe quelle image. L\'IA Vision extrait et traduit tout le texte — documents, captures, menus, diapositives — et permet de télécharger le résultat.', tag: 'IA Vision' },
-      { title: 'Chat IA',                  desc: 'Chat IA complet avec pièces jointes d\'images, saisie vocale, Prompts Système personnalisés, modèles prédéfinis et historique de chat complet et consultable.', tag: 'Assistant' },
-      { title: 'E/S vocale',               desc: 'Saisie vocale via Web Speech API et OpenAI Whisper. Synthèse vocale avec 6 voix premium OpenAI : Alloy, Echo, Fable, Onyx, Nova, Shimmer.', tag: 'Audio' },
-      { title: 'Support Furigana',         desc: 'Overlay furigana automatique sur les traductions japonaises. Indispensable pour les apprenants, BrSE et tous ceux qui travaillent quotidiennement avec du texte japonais.', tag: 'Japonais' },
-      { title: 'Extension Chrome',         desc: 'Traduisez le texte sélectionné directement dans votre navigateur sans changer de fenêtre. Fonctionne avec l\'application desktop via un serveur local.', tag: 'Navigateur' },
-      { title: 'Raccourci global',         desc: 'Invoquez Viezan depuis n\'importe quelle application avec un raccourci clavier global. Pas besoin de changer d\'application en plein travail.', tag: 'Productivité' },
+      { title: 'Traduction de texte',        desc: 'Traduisez avec 7 styles de ton — Neutre, Amical, Professionnel, Business, Slack, Poli, Technique. Mode automatique ou manuel. 19 langues supportées.', tag: 'Essentiel' },
+      { title: 'Traduction en direct',       desc: 'Sous-titres en temps réel depuis le microphone ou l\'audio système. Overlay flottant avec taille de police, couleur et opacité personnalisables. Résumé de session IA après chaque appel.', tag: 'Temps réel' },
+      { title: 'Traduction d\'images',       desc: 'Glissez-déposez ou collez n\'importe quelle image. L\'IA Vision extrait et traduit tout le texte — documents, captures, menus, diapositives — et permet de télécharger le résultat.', tag: 'IA Vision' },
+      { title: 'Chat IA',                    desc: 'Chat IA complet avec pièces jointes d\'images, saisie vocale, Prompts Système personnalisés, modèles prédéfinis, recherche web et historique de chat complet et consultable.', tag: 'Assistant' },
+      { title: 'E/S vocale',                 desc: 'Saisie vocale via Web Speech API, OpenAI Whisper et Groq en fallback. Synthèse vocale avec 6 voix premium OpenAI : Alloy, Echo, Fable, Onyx, Nova, Shimmer.', tag: 'Audio' },
+      { title: 'Support Furigana',           desc: 'Overlay furigana automatique sur les traductions japonaises. Indispensable pour les apprenants, BrSE et tous ceux qui travaillent quotidiennement avec du texte japonais.', tag: 'Japonais' },
+      { title: 'Extension Chrome',           desc: 'Traduisez le texte sélectionné avec le raccourci Alt+T, des indices adaptés à la plateforme et une nouvelle UI popup à deux colonnes. Fonctionne via un serveur local.', tag: 'Navigateur' },
+      { title: 'Raccourci global',           desc: 'Invoquez Viezan depuis n\'importe quelle application avec un raccourci clavier global. Pas besoin de changer d\'application en plein travail.', tag: 'Productivité' },
       { title: 'Confidentialité avant tout', desc: 'Clés API cryptées via Electron safeStorage — Keychain sur macOS, Gestionnaire d\'informations d\'identification sur Windows. Aucune écriture de fichier. Zéro serveur. 100% local.', tag: 'Sécurité' },
-      { title: 'Support IA local',         desc: 'Exécutez des modèles IA directement sur votre machine — aucune clé API requise. Gratuit pour tous, entièrement hors ligne. Aucun cloud, aucun coût, confidentialité totale.', tag: 'Bientôt' },
+      { title: 'Fenêtre Paramètres',         desc: 'Les paramètres redessinés en popup overlay — accédez aux clés API, préférences de modèle et paramètres d\'extension instantanément depuis n\'importe quel onglet.', tag: 'UX' },
+      { title: 'Mode Phonétique',            desc: 'Mode de transcription phonétique pure — obtenez la romanisation ou la phonétique au lieu d\'une traduction complète. Parfait pour l\'apprentissage de la prononciation.', tag: 'Traduction' },
+      { title: 'Recherche Web dans le Chat', desc: 'Chat IA avec recherche web en temps réel via Brave, DuckDuckGo ou Google — basculement automatique pour toujours obtenir des résultats.', tag: 'Chat' },
+      { title: 'Support IA local',           desc: 'Exécutez des modèles IA directement sur votre machine — aucune clé API requise. Gratuit pour tous, entièrement hors ligne. Aucun cloud, aucun coût, confidentialité totale.', tag: 'Bientôt' },
     ],
     screenshots: { label: 'Captures d\'écran', title: 'Voyez-le en action', sub: 'Cliquez sur une carte pour zoomer. Naviguez avec les touches directionnelles ou glissez sur mobile.' },
     story: {
@@ -308,8 +328,8 @@ const TRANSLATIONS = {
     ],
     download: {
       label: 'Télécharger', title: 'Obtenez Viezan gratuitement',
-      sub: 'Disponible pour macOS et Windows. Aucun compte requis. Commencez à traduire en quelques minutes.',
-      mac_btn: '⬇ Télécharger .dmg', win_btn: '⬇ Télécharger .exe', ext_btn: '⬇ Télécharger .crx',
+      sub: 'Disponible pour macOS, Windows et Linux. Aucun compte requis. Commencez à traduire en quelques minutes.',
+      mac_btn: '⬇ Télécharger .dmg', win_btn: '⬇ Télécharger .exe', linux_btn: '⬇ Télécharger .AppImage', ext_btn: '⬇ Télécharger .crx',
       warning: '⚠️ macOS peut afficher un avertissement de sécurité car l\'application n\'est pas encore signée. Clic droit → Ouvrir pour contourner. <a href="https://github.com/trunghieupham59/Viezan#readme" style="color:var(--accent)" target="_blank">Voir les instructions →</a>',
     },
     support: {
@@ -333,9 +353,10 @@ const TRANSLATIONS = {
       btn_download: '⬇ 무료 다운로드',
       btn_screenshots: '🖼 스크린샷 보기',
       btn_github: '★ GitHub',
-      platform_mac: '🍎 macOS',
-      platform_win: '🪟 Windows',
-      platform_ext: '🧩 Chrome 확장',
+      platform_mac: 'macOS',
+      platform_win: 'Windows',
+      platform_linux: 'Linux',
+      platform_ext: 'Chrome 확장',
     },
     providers: { label: '세계 최고 수준의 AI 제공업체가 지원' },
     features: {
@@ -344,16 +365,19 @@ const TRANSLATIONS = {
       sub: 'Viezan은 완전한 번역 스위트를 하나의 세련된 데스크톱 앱에 담았습니다 — 구독 없음, 추적 없음, 잘 작동하는 도구만.',
     },
     feat: [
-      { title: '텍스트 번역',    desc: '7가지 톤 스타일로 번역 — 중립, 친근, 전문, 비즈니스, Slack, 정중, 기술. 자동 또는 수동 모드. 19개 언어 지원.', tag: '핵심' },
-      { title: '실시간 번역',    desc: '마이크 또는 시스템 오디오에서 실시간 자막. 사용자 정의 글꼴 크기, 색상 및 투명도의 플로팅 오버레이. 각 통화 후 AI 세션 요약.', tag: '실시간' },
-      { title: '이미지 번역',    desc: '이미지를 드래그 앤 드롭하거나 붙여넣기. AI Vision이 모든 텍스트를 추출하고 번역 — 문서, 스크린샷, 메뉴, 슬라이드 — 결과 다운로드 가능.', tag: 'AI Vision' },
-      { title: 'AI 채팅',        desc: '이미지 첨부, 음성 입력, 사용자 정의 시스템 프롬프트, 프리셋 템플릿, 완전한 검색 가능한 채팅 기록을 갖춘 완전한 AI 채팅.', tag: '어시스턴트' },
-      { title: '음성 I/O',       desc: 'Web Speech API와 OpenAI Whisper를 통한 음성 입력. 6가지 프리미엄 OpenAI 목소리로 텍스트 음성 변환: Alloy, Echo, Fable, Onyx, Nova, Shimmer.', tag: '오디오' },
-      { title: '후리가나 지원',   desc: '일본어 번역에 자동 후리가나 오버레이. 학습자, BrSE, 일본어 텍스트를 매일 다루는 모든 분에게 필수.', tag: '일본어' },
-      { title: 'Chrome 확장',    desc: '창을 전환하지 않고 브라우저에서 선택한 텍스트를 직접 번역. 로컬 서버를 통해 데스크톱 앱과 연동.', tag: '브라우저' },
-      { title: '글로벌 단축키',  desc: '글로벌 키보드 단축키로 모든 애플리케이션에서 Viezan 호출. 작업 중 앱 전환 불필요.', tag: '생산성' },
-      { title: '개인정보 우선',  desc: 'Electron safeStorage를 통한 API 키 암호화 — macOS의 Keychain, Windows의 자격 증명 관리자. 파일 쓰기 없음. 서버 없음. 100% 로컬.', tag: '보안' },
-      { title: '로컬 AI 지원',   desc: '머신에서 직접 AI 모델 실행 — API 키 불필요. 모든 사람에게 무료, 완전 오프라인. 클라우드 없음, 비용 없음, 완전한 프라이버시.', tag: '출시 예정' },
+      { title: '텍스트 번역',        desc: '7가지 톤 스타일로 번역 — 중립, 친근, 전문, 비즈니스, Slack, 정중, 기술. 자동 또는 수동 모드. 19개 언어 지원.', tag: '핵심' },
+      { title: '실시간 번역',        desc: '마이크 또는 시스템 오디오에서 실시간 자막. 사용자 정의 글꼴 크기, 색상 및 투명도의 플로팅 오버레이. 각 통화 후 AI 세션 요약.', tag: '실시간' },
+      { title: '이미지 번역',        desc: '이미지를 드래그 앤 드롭하거나 붙여넣기. AI Vision이 모든 텍스트를 추출하고 번역 — 문서, 스크린샷, 메뉴, 슬라이드 — 결과 다운로드 가능.', tag: 'AI Vision' },
+      { title: 'AI 채팅',            desc: '이미지 첨부, 음성 입력, 사용자 정의 시스템 프롬프트, 프리셋 템플릿, 웹 검색, 완전한 검색 가능한 채팅 기록을 갖춘 완전한 AI 채팅.', tag: '어시스턴트' },
+      { title: '음성 I/O',           desc: 'Web Speech API, OpenAI Whisper 및 Groq 폴백을 통한 음성 입력. 6가지 프리미엄 OpenAI 목소리로 텍스트 음성 변환: Alloy, Echo, Fable, Onyx, Nova, Shimmer.', tag: '오디오' },
+      { title: '후리가나 지원',       desc: '일본어 번역에 자동 후리가나 오버레이. 학습자, BrSE, 일본어 텍스트를 매일 다루는 모든 분에게 필수.', tag: '일본어' },
+      { title: 'Chrome 확장',        desc: 'Alt+T 단축키로 브라우저에서 선택한 텍스트를 즉시 번역. 플랫폼 인식 힌트, 새로 디자인된 2열 팝업 UI. 로컬 서버로 연동.', tag: '브라우저' },
+      { title: '글로벌 단축키',      desc: '글로벌 키보드 단축키로 모든 애플리케이션에서 Viezan 호출. 작업 중 앱 전환 불필요.', tag: '생산성' },
+      { title: '개인정보 우선',      desc: 'Electron safeStorage를 통한 API 키 암호화 — macOS의 Keychain, Windows의 자격 증명 관리자. 파일 쓰기 없음. 서버 없음. 100% 로컬.', tag: '보안' },
+      { title: '설정 모달',          desc: '설정이 깔끔한 팝업 오버레이로 재설계 — 어떤 탭에서든 API 키, 모델 기본 설정 및 확장 설정에 즉시 접근. 컨텍스트 유지.', tag: 'UX' },
+      { title: '발음 표기 모드',      desc: '순수 음성 전사 모드 — 완전한 번역 대신 로마자나 발음 기호를 받아보세요. 발음 학습과 언어 연구에 완벽합니다.', tag: '번역' },
+      { title: 'Chat 웹 검색',       desc: 'Brave, DuckDuckGo 또는 Google로 구동되는 실시간 웹 검색 AI 채팅 — 자동 폴백으로 항상 결과를 보장합니다.', tag: '채팅' },
+      { title: '로컬 AI 지원',       desc: '머신에서 직접 AI 모델 실행 — API 키 불필요. 모든 사람에게 무료, 완전 오프라인. 클라우드 없음, 비용 없음, 완전한 프라이버시.', tag: '출시 예정' },
     ],
     screenshots: { label: '스크린샷', title: '실제 작동 모습', sub: '카드를 클릭하면 확대됩니다. 화살표 키로 탐색하거나 모바일에서 스와이프하세요.' },
     story: {
@@ -372,8 +396,8 @@ const TRANSLATIONS = {
     ],
     download: {
       label: '다운로드', title: '무료로 Viezan 받기',
-      sub: 'macOS와 Windows에서 사용 가능. 계정 불필요. 몇 분 안에 번역 시작.',
-      mac_btn: '⬇ .dmg 다운로드', win_btn: '⬇ .exe 다운로드', ext_btn: '⬇ .crx 다운로드',
+      sub: 'macOS, Windows 및 Linux에서 사용 가능. 계정 불필요. 몇 분 안에 번역 시작.',
+      mac_btn: '⬇ .dmg 다운로드', win_btn: '⬇ .exe 다운로드', linux_btn: '⬇ .AppImage 다운로드', ext_btn: '⬇ .crx 다운로드',
       warning: '⚠️ 앱이 아직 코드 서명되지 않아 macOS에서 보안 경고가 표시될 수 있습니다. 우클릭 → 열기로 우회하세요. <a href="https://github.com/trunghieupham59/Viezan#readme" style="color:var(--accent)" target="_blank">안내 보기 →</a>',
     },
     support: {
@@ -438,12 +462,14 @@ function setLang(lang) {
   });
 
   /* download buttons */
-  const dlMac = document.getElementById('dl-mac');
-  const dlWin = document.getElementById('dl-win');
-  const dlExt = document.getElementById('dl-ext');
-  if (dlMac) dlMac.textContent = t.download.mac_btn;
-  if (dlWin) dlWin.textContent = t.download.win_btn;
-  if (dlExt) dlExt.textContent = t.download.ext_btn;
+  const dlMac   = document.getElementById('dl-mac');
+  const dlWin   = document.getElementById('dl-win');
+  const dlLinux = document.getElementById('dl-linux');
+  const dlExt   = document.getElementById('dl-ext');
+  if (dlMac)   dlMac.textContent   = t.download.mac_btn;
+  if (dlWin)   dlWin.textContent   = t.download.win_btn;
+  if (dlLinux) dlLinux.textContent = t.download.linux_btn;
+  if (dlExt)   dlExt.textContent   = t.download.ext_btn;
 
   /* active lang button */
   document.querySelectorAll('.lang-btn').forEach(btn => {
@@ -457,7 +483,20 @@ function setLang(lang) {
 /* ══════════════════════════════════════════════════════════════
    CAROUSEL
 ══════════════════════════════════════════════════════════════ */
-const IMAGES = Array.from({ length: 10 }, (_, i) => `screenshots/${i + 1}.png`);
+const IMAGES = [
+  'screenshots/1.png',
+  'screenshots/1.1.png',
+  'screenshots/2.png',
+  'screenshots/2.1.png',
+  'screenshots/3.png',
+  'screenshots/3.1.png',
+  'screenshots/3.2.png',
+  'screenshots/4.png',
+  'screenshots/5.png',
+  'screenshots/5.1.png',
+  'screenshots/5.2.png',
+  'screenshots/5.3.png',
+];
 const COUNT  = IMAGES.length;
 
 const sliderEl  = document.getElementById('slider');
@@ -589,3 +628,33 @@ document.querySelectorAll('.lang-btn').forEach(btn => {
   const map = { vi: 'vi', zh: 'cn', ja: 'jp', fr: 'fr', ko: 'kr' };
   setLang(map[browser] || 'en');
 })();
+
+/* ══════════════════════════════════════════════════════════════
+   THEME TOGGLE (Dark / Light)
+══════════════════════════════════════════════════════════════ */
+const themeToggleBtn = document.getElementById('themeToggle');
+const htmlEl = document.documentElement;
+
+function setTheme(theme) {
+  htmlEl.setAttribute('data-theme', theme);
+  if (themeToggleBtn) {
+    themeToggleBtn.textContent = theme === 'light' ? '🌙' : '☀️';
+    themeToggleBtn.title = theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode';
+  }
+  try { localStorage.setItem('viezan-theme', theme); } catch (_) {}
+}
+
+(function initTheme() {
+  let saved;
+  try { saved = localStorage.getItem('viezan-theme'); } catch (_) {}
+  if (saved === 'light' || saved === 'dark') { setTheme(saved); return; }
+  /* default: dark */
+  setTheme('dark');
+})();
+
+if (themeToggleBtn) {
+  themeToggleBtn.addEventListener('click', () => {
+    const current = htmlEl.getAttribute('data-theme') || 'dark';
+    setTheme(current === 'dark' ? 'light' : 'dark');
+  });
+}

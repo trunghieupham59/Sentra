@@ -45,12 +45,38 @@
 
 | Platform | Installer |
 |----------|-----------|
-|  macOS (Apple Silicon) | [Viezan-1.1.0-arm64.dmg](https://github.com/trunghieupham59/Viezan/releases/download/v1.1.0/Viezan-1.1.0-arm64.dmg) |
-|  macOS (Intel x64) | [Viezan-1.1.0-x64.dmg](https://github.com/trunghieupham59/Viezan/releases/download/v1.1.0/Viezan-1.1.0-x64.dmg) |
-| ⊞ Windows (x64) | [Viezan-Setup-1.1.0-x64.exe](https://github.com/trunghieupham59/Viezan/releases/download/v1.1.0/Viezan-Setup-1.1.0-x64.exe) |
-| 🐧 Linux (x64) | [Viezan-1.1.0-x64.AppImage](https://github.com/trunghieupham59/Viezan/releases/download/v1.1.0/Viezan-1.1.0-x64.AppImage) |
+|  macOS (Apple Silicon) | [Viezan-1.1.2-arm64.dmg](https://github.com/trunghieupham59/Viezan/releases/download/v1.1.2/Viezan-1.1.2-arm64.dmg) |
+|  macOS (Intel x64) | [Viezan-1.1.2-x64.dmg](https://github.com/trunghieupham59/Viezan/releases/download/v1.1.2/Viezan-1.1.2-x64.dmg) |
+| ⊞ Windows (x64) | [Viezan-Setup-1.1.2-x64.exe](https://github.com/trunghieupham59/Viezan/releases/download/v1.1.2/Viezan-Setup-1.1.2-x64.exe) |
+| 🐧 Linux (x64) | [Viezan-1.1.2-x64.AppImage](https://github.com/trunghieupham59/Viezan/releases/download/v1.1.2/Viezan-1.1.2-x64.AppImage) |
 
 > View all releases: [github.com/trunghieupham59/Viezan/releases](https://github.com/trunghieupham59/Viezan/releases)
+
+---
+
+## 🆕 What's New in v1.1.2
+
+### ✨ New Features
+
+| Feature | Details |
+|---------|---------|
+| ⚙️ **Settings Modal** | Settings redesigned from a dedicated page into a clean popup overlay — access instantly from any tab without losing context |
+| 🔤 **Phonetic Mode** | New phonetic transcription mode in Translate — get pure romanization/phonetics instead of a full translation |
+| 🔍 **Multi-provider Web Search** | AI Chat now supports multi-provider web search (Brave, DuckDuckGo, Google fallback) with automatic failover |
+| 🎙️ **Groq STT Fallback** | Groq added as a third Speech-to-Text provider fallback after Whisper, improving transcription reliability |
+| 🧩 **Chrome Extension Redesign** | Wider two-column popup layout, Alt+T global shortcut for selected-text translation, platform-aware keyboard hints |
+| 📡 **Subtitle Locale Support** | Floating subtitle window now respects the app UI language setting |
+
+### 🛠️ Improvements & Fixes
+
+- **Live Translate UI** — Language selectors extracted into reusable components; cleaner, more responsive layout
+- **Translation Styles** — Style options clarified and simplified for better discoverability
+- **Typography System** — Unified desktop typography across all pages for consistent reading experience
+- **Single-instance Guard** — App now enforces single-instance + auto-retries local server port binding on conflict
+- **Web Search Chat UI** — Web search provider selection redesigned as a card-based layout in Chat settings
+- **VoiceRecorder Fix** — Fixed retry budget drain caused by silence-timeout events
+- **Extension Tooltip Fix** — Excessive newlines in tooltip panels normalized; line breaks preserved correctly
+- **Chrome Extension CI** — Extension now released as `.zip` for easy manual install (replaced `.crx`)
 
 ---
 
@@ -60,14 +86,16 @@
 |---------|-------------|
 | 🤖 **Multiple AI Providers** | Google Gemini, Anthropic Claude, OpenAI GPT — switch anytime |
 | 🔤 **7 Translation Styles** | Neutral, Friendly, Professional, Business, Slack, Polite, Technical — fits every context |
+| 📢 **Phonetic Mode** | Pure phonetic/romanization transcription mode for any language |
 | ⚡ **Live Translation** | Real-time translation & floating subtitles from microphone or system audio, with customizable color/size/opacity |
 | 🖼️ **Image Translation (AI Vision)** | Drag & drop or paste an image — AI extracts and translates all text |
-| 🎙️ **Voice Input** | Supports Web Speech API and OpenAI Whisper |
+| 🎙️ **Voice Input** | Supports Web Speech API, OpenAI Whisper, and Groq as fallback |
 | 🔊 **Text-to-Speech** | 6 high-quality OpenAI voices: Alloy, Echo, Fable, Onyx, Nova, Shimmer |
 | 💬 **AI Chat** | Full chat with image attachment, voice input, System Prompt with saved presets |
+| 🔍 **Web Search in Chat** | Multi-provider web search (Brave / DuckDuckGo / Google) with auto-fallback |
 | 🇯🇵 **Japanese Furigana** | Automatically renders furigana on Japanese translation output |
 | 📜 **History** | Separate history for Translate, Chat and Live sessions — search & reuse anytime |
-| 🌐 **Chrome Extension** | Translate directly in the browser (floating button, popup, right-click menu) |
+| 🌐 **Chrome Extension** | Translate directly in the browser (floating button, popup, right-click menu, Alt+T shortcut) |
 | 🔖 **Bookmarklet** | Quick translate on any browser without an extension |
 | ⌨️ **Global Hotkey** | Activate Viezan from any application |
 | 🌍 **19 Languages** | Vietnamese, English, Japanese, Korean, Chinese, French, German, Spanish, and more |
@@ -89,17 +117,17 @@ Download the installer for your platform from the [Download](#-download) section
 ### 2. Add your API Key
 
 1. Open **Viezan**
-2. Go to the **Settings** tab
+2. Click the **⚙ Settings** button (top-right, any tab)
 3. Select a provider (Gemini / Claude / OpenAI), paste your API key → **Save Key**
 
 Your key is stored securely in the OS Keychain and never leaves your device.
 
 ### 3. Start Translating
 
-- **Translate** — Type or paste text, choose source/target language and style
+- **Translate** — Type or paste text, choose source/target language, style, or enable Phonetic Mode
 - **Live** — Real-time translation from microphone/system audio with floating subtitles
 - **Image** — Drag & drop or paste an image to extract and translate text
-- **Chat** — Chat freely with AI, attach images, voice input and system prompts
+- **Chat** — Chat freely with AI, attach images, voice input, system prompts and web search
 - **History** — Revisit all past translations, chats and live sessions
 
 ---
@@ -113,6 +141,7 @@ Get your API keys from the respective dashboards:
 | Google Gemini | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
 | Anthropic Claude | [console.anthropic.com](https://console.anthropic.com) |
 | OpenAI GPT | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
+| Groq (STT) | [console.groq.com](https://console.groq.com) |
 
 > API keys are only used in the Electron main process to call the provider API directly — never written to disk, never sent through any intermediate server, never exposed to any third party.
 
@@ -131,9 +160,15 @@ The Chrome Extension lets you translate directly in the browser without switchin
 
 **Connect to the Viezan app:**
 
-1. Open **Viezan** → **Settings → Browser Extension**
+1. Open **Viezan** → click ⚙ **Settings → Browser Extension**
 2. Copy the **Connection Token**
 3. Click the Viezan icon in Chrome → **⚙ Options** → Paste the token → **Save Settings**
+
+**Keyboard Shortcuts:**
+
+| Shortcut | Action |
+|----------|--------|
+| `Alt+T` (Windows/Linux) / `Option+T` (macOS) | Translate selected text |
 
 > See [chrome-extension/README.md](chrome-extension/README.md) for details.
 
@@ -193,22 +228,25 @@ Viezan/
 │       ├── keychain.ts         # Secure API key storage
 │       ├── translate.ts        # Text translation
 │       ├── imageTranslate.ts   # Image/vision translation
-│       ├── transcribe.ts       # Speech-to-text (Whisper)
+│       ├── transcribe.ts       # Speech-to-text (Whisper / Groq)
 │       ├── tts.ts              # Text-to-speech
 │       ├── chat.ts             # AI chat
 │       ├── subtitle.ts         # Live translation subtitles
 │       ├── localServer.ts      # Local HTTP server (Chrome Extension)
 │       ├── globalHotkey.ts     # Global hotkey registration
+│       ├── webSearch.ts        # Multi-provider web search
 │       ├── models.ts           # Available model listing
 │       └── storage.ts          # Local data persistence
 ├── src/                        # Renderer process (React)
 │   ├── pages/
-│   │   ├── TranslatePage.tsx   # Main translation UI
+│   │   ├── TranslatePage.tsx   # Main translation UI (+ Phonetic Mode)
 │   │   ├── LiveTranslatePage.tsx # Real-time translation
-│   │   ├── ChatPage.tsx        # AI chat interface
+│   │   ├── ChatPage.tsx        # AI chat interface (+ Web Search)
 │   │   ├── HistoryPage.tsx     # Translation history
 │   │   └── SettingsPage.tsx    # API keys & preferences
-│   ├── components/             # Reusable UI components
+│   ├── components/
+│   │   ├── SettingsModal.tsx   # Settings popup overlay
+│   │   └── ...                 # Other reusable UI components
 │   ├── store/                  # Zustand global state
 │   ├── i18n/                   # UI translations (VI/EN/JA)
 │   ├── types/                  # TypeScript type definitions
@@ -261,7 +299,7 @@ If you find Viezan useful, consider buying me a coffee via MoMo to keep the proj
 
 ## ⚠️ Disclaimer
 
-Viezan is an independent desktop application and is not affiliated with Google, Anthropic, or OpenAI. You are responsible for your own API usage and any associated costs.
+Viezan is an independent desktop application and is not affiliated with Google, Anthropic, OpenAI, or Groq. You are responsible for your own API usage and any associated costs.
 
 ---
 
