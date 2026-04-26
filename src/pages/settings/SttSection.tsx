@@ -11,9 +11,11 @@
  * The Groq API key is stored in the OS keychain — add it in the card below the selector.
  */
 import { useEffect, useState } from 'react'
-import { MicrophoneIcon } from '../../components/ui/icons'
+import { CheckCircleIcon, MicrophoneIcon, SpinnerIcon, TrashIcon } from '../../components/ui/icons'
+import { GROQ_CONSOLE_URL } from '../../constants/urls'
 import { useAppStore, useT } from '../../store/useAppStore'
 import type { SttProvider } from '../../types'
+import { tpl } from '../../utils/tpl'
 
 // ─── Provider card definitions ────────────────────────────────────────────────
 
@@ -64,9 +66,11 @@ function ProviderCard({ id: _id, label, description, statusBadge, note, selected
           ].join(' ')}>
             {label}
           </p>
-          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 leading-relaxed">
-            {description}
-          </p>
+          {description && (
+            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 leading-relaxed">
+              {description}
+            </p>
+          )}
           {note && (
             <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 leading-relaxed">
               ⚠ {note}
@@ -119,6 +123,7 @@ export function SttSection() {
   const [groqInput,      setGroqInput]      = useState('')
   const [groqSaveMsg,    setGroqSaveMsg]    = useState<string | null>(null)
   const [groqSaving,     setGroqSaving]     = useState(false)
+  const [groqDeleting,   setGroqDeleting]   = useState(false)
 
   // Load Groq key status on mount
   useEffect(() => {
@@ -151,20 +156,25 @@ export function SttSection() {
   }
 
   const handleDeleteGroq = async () => {
+    setGroqDeleting(true)
     try {
       await window.api.keychain.delete('groq')
       setGroqKeyExists(false)
       setGroqMasked(null)
       setGroqInput('')
       setGroqSaveMsg(null)
-    } catch {/* ignore */}
+    } catch {/* ignore */} finally {
+      setGroqDeleting(false)
+    }
   }
+
+  const showGroqMasked = groqKeyExists && groqInput === ''
 
   const providers: Omit<ProviderCardProps, 'selected' | 'onSelect'>[] = [
     {
       id: 'auto',
       label: t.settings_stt_auto,
-      description: t.settings_stt_auto_desc,
+      description: '',
       statusBadge: (
         hasOpenAIKey || hasGeminiKey || groqKeyExists
           ? <BadgeReady label={t.settings_stt_ready} />
@@ -208,10 +218,20 @@ export function SttSection() {
     <section className="space-y-3">
       <h2 className="section-label">{t.settings_stt_section}</h2>
 
-      {/* Section description */}
-      <p className="text-xs text-gray-400 dark:text-gray-500 px-0.5">
-        {t.settings_stt_provider_desc}
-      </p>
+      {/* Section info banner */}
+      <div className="flex items-start gap-3 px-4 py-3
+                      bg-blue-50 dark:bg-blue-950/30
+                      border border-blue-100 dark:border-blue-900 rounded-xl">
+        <span className="text-base flex-shrink-0">🎤</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+            {t.settings_stt_section}
+          </p>
+          <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+            {t.settings_stt_provider_desc}
+          </p>
+        </div>
+      </div>
 
       {/* Provider selector card */}
       <div className="card overflow-hidden divide-y divide-gray-100 dark:divide-gray-700/60">
@@ -231,90 +251,104 @@ export function SttSection() {
             onSelect={() => setSttProvider(p.id)}
           />
         ))}
-      </div>
 
-      {/* ── Groq API Key (optional free STT fallback) ─────────────────────────── */}
-      {/* Groq uses the same Whisper model API format (OpenAI-compatible) at no cost.
-          When configured, it becomes the 3rd fallback in 'auto' mode:
-          OpenAI Whisper → Gemini STT → Groq Whisper */}
-      <div className="card px-4 py-3 space-y-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-              {t.settings_stt_groq_key}
-            </p>
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 leading-relaxed">
-              {t.settings_stt_groq_key_desc}
-            </p>
+        {/* ── Groq API Key — inline inside the card ── */}
+        <div className="px-4 py-3.5 space-y-3">
+          {/* Header: title + link on left, badge on right */}
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                {t.settings_stt_groq_key}
+              </h3>
+              <button
+                type="button"
+                onClick={() => window.api?.openExternal(GROQ_CONSOLE_URL)}
+                className="text-xs text-blue-500 hover:text-blue-700 hover:underline"
+              >
+                {t.settings_get_key}
+              </button>
+            </div>
+            {groqKeyExists ? (
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 flex-shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
+                {t.settings_key_saved}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 flex-shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
+                {t.settings_no_key}
+              </span>
+            )}
           </div>
-          {groqKeyExists && (
-            <BadgeReady label={t.settings_stt_ready} />
+
+          {/* Input row */}
+          <div className="flex gap-2">
+            <div className="flex-1 relative">
+              <input
+                type="password"
+                value={showGroqMasked ? (groqMasked ?? '••••••••••••••••••••••••••••••••') : groqInput}
+                readOnly={showGroqMasked}
+                onChange={showGroqMasked ? undefined : (e) => {
+                  setGroqInput(e.target.value)
+                  if (groqSaveMsg) setGroqSaveMsg(null)
+                }}
+                onClick={showGroqMasked ? () => setGroqInput('') : undefined}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !showGroqMasked) handleSaveGroq() }}
+                placeholder={tpl(t.settings_key_placeholder_paste, { name: 'Groq' })}
+                className={[
+                  'w-full px-3 py-2 border rounded-lg text-sm font-mono',
+                  'focus:outline-none focus:ring-2 focus:ring-blue-500',
+                  'text-gray-800 dark:text-gray-200 placeholder-gray-400 transition-colors',
+                  showGroqMasked
+                    ? 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 text-gray-400 cursor-pointer pr-9'
+                    : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600',
+                ].join(' ')}
+                autoComplete="off"
+                spellCheck={false}
+              />
+              {showGroqMasked && groqKeyExists && (
+                <button
+                  type="button"
+                  onClick={handleDeleteGroq}
+                  disabled={groqDeleting}
+                  title={t.settings_remove}
+                  className="absolute right-2 inset-y-0 flex items-center text-gray-300 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
+                >
+                  {groqDeleting
+                    ? <SpinnerIcon className="w-4 h-4 animate-spin" />
+                    : <TrashIcon className="w-4 h-4" />
+                  }
+                </button>
+              )}
+            </div>
+            {!showGroqMasked && (
+              <button
+                type="button"
+                onClick={handleSaveGroq}
+                disabled={!groqInput.trim() || groqSaving}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800"
+              >
+                {groqSaving ? (
+                  <><SpinnerIcon className="w-4 h-4 animate-spin" />{t.settings_verifying}</>
+                ) : (
+                  <><CheckCircleIcon className="w-4 h-4" />{t.settings_verify_save}</>
+                )}
+              </button>
+            )}
+          </div>
+
+          {groqSaveMsg && (
+            <div className={[
+              'px-3 py-2 rounded-lg text-xs font-medium',
+              groqSaveMsg.startsWith('✓')
+                ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300 border border-green-200 dark:border-green-800'
+                : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300 border border-red-200 dark:border-red-800',
+            ].join(' ')}>
+              {groqSaveMsg}
+            </div>
           )}
         </div>
 
-        {/* Masked existing key / input row */}
-        <div className="flex items-center gap-2">
-          <input
-            type="password"
-            value={groqInput}
-            onChange={(e) => setGroqInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleSaveGroq() }}
-            placeholder={groqMasked ?? t.settings_stt_groq_key_placeholder}
-            className="flex-1 min-w-0 px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700
-                       bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200
-                       placeholder-gray-300 dark:placeholder-gray-600
-                       focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400
-                       transition-colors duration-150"
-          />
-          <button
-            type="button"
-            disabled={!groqInput.trim() || groqSaving}
-            onClick={handleSaveGroq}
-            className={[
-              'flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150',
-              groqInput.trim() && !groqSaving
-                ? 'bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600',
-            ].join(' ')}
-          >
-            {groqSaving ? '…' : t.settings_verify_save}
-          </button>
-          {groqKeyExists && (
-            <button
-              type="button"
-              onClick={handleDeleteGroq}
-              className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium text-red-500
-                         hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30
-                         transition-colors duration-150 cursor-pointer"
-            >
-              {t.settings_remove}
-            </button>
-          )}
-        </div>
-
-        {/* Save feedback message */}
-        {groqSaveMsg && (
-          <p className={[
-            'text-[11px] font-medium',
-            groqSaveMsg.startsWith('✓')
-              ? 'text-emerald-600 dark:text-emerald-400'
-              : 'text-red-500 dark:text-red-400',
-          ].join(' ')}>
-            {groqSaveMsg}
-          </p>
-        )}
-      </div>
-
-      {/* Feature tags */}
-      <div className="flex flex-wrap gap-1.5 px-0.5">
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium
-                         bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-          <MicrophoneIcon className="w-3 h-3" /> {t.settings_stt_feature_voice}
-        </span>
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium
-                         bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-          <MicrophoneIcon className="w-3 h-3" /> {t.settings_stt_feature_live}
-        </span>
       </div>
     </section>
   )

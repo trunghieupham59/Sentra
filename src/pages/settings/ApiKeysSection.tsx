@@ -100,19 +100,19 @@ export function ApiKeysSection() {
 
         {/* Info card */}
         <div className="flex items-start gap-3 px-4 py-3
-                        bg-indigo-50 dark:bg-indigo-950/20
-                        border border-indigo-100 dark:border-indigo-900/40 rounded-xl">
+                        bg-blue-50 dark:bg-blue-950/30
+                        border border-blue-100 dark:border-blue-900 rounded-xl">
           <span className="text-base flex-shrink-0">🌐</span>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+            <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">
               {t.settings_web_search_title}
             </p>
-            <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-0.5">
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
               {t.settings_web_search_desc_prefix}{' '}
               <button
                 type="button"
                 onClick={() => window.api?.openExternal(JINA_DOCS_URL)}
-                className="underline cursor-pointer hover:text-indigo-800 dark:hover:text-indigo-200"
+                className="underline cursor-pointer hover:text-blue-800 dark:hover:text-blue-200"
               >
                 Jina AI
               </button>
