@@ -392,8 +392,7 @@ export function ChatPage() {
   }
 
   const handleNewChat = () => {
-    const id = createChatSession(selectedProvider, selectedModels[selectedProvider])
-    setActiveChatSession(id)
+    setActiveChatSession(null)
   }
 
   const handleClear = () => {
@@ -462,7 +461,7 @@ export function ChatPage() {
       )}
 
       {/* Textarea + buttons */}
-      <div className="flex items-center gap-2 px-3 py-3">
+      <div className="flex items-center gap-2 px-3 py-2">
         <div className="flex items-center gap-1 flex-shrink-0">
           <VoiceRecorder
             sourceLang="auto"
