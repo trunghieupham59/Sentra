@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppLogoIcon } from '../components/AppLogo'
-import { DeepResearchApiSection } from '../components/chat/DeepResearchApiSection'
 import { MessageBubble } from '../components/chat/MessageBubble'
 import { SystemPromptDropdown } from '../components/chat/SystemPromptDropdown'
 import { ModelSelector } from '../components/ModelSelector'
@@ -393,8 +392,7 @@ export function ChatPage() {
   }
 
   const handleNewChat = () => {
-    const id = createChatSession(selectedProvider, selectedModels[selectedProvider])
-    setActiveChatSession(id)
+    setActiveChatSession(null)
   }
 
   const handleClear = () => {
@@ -463,7 +461,7 @@ export function ChatPage() {
       )}
 
       {/* Textarea + buttons */}
-      <div className="flex items-center gap-2 px-3 py-3">
+      <div className="flex items-center gap-2 px-3 py-2">
         <div className="flex items-center gap-1 flex-shrink-0">
           <VoiceRecorder
             sourceLang="auto"
@@ -637,13 +635,6 @@ export function ChatPage() {
                     />
                   </div>
 
-                  {/* Deep Research API keys */}
-                  <div className="border-t border-gray-100 dark:border-gray-800 pt-3 flex flex-col gap-2">
-                    <h3 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-                      {t.chat_deep_research_api}
-                    </h3>
-                    <DeepResearchApiSection />
-                  </div>
                 </div>
               )}
             </div>

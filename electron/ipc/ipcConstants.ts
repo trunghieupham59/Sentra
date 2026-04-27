@@ -207,6 +207,60 @@ export const GROQ_STT_MODEL = 'whisper-large-v3-turbo'
  */
 export const WHISPER_RATE_LIMIT_BAN_MS = 90_000
 
+/**
+ * Timeout (ms) per Whisper API call in 'auto' mode.
+ * If the OpenAI transcription endpoint does not respond within this window,
+ * the call is aborted and falls back immediately to the next STT provider.
+ *
+ * Set to 3 s — slightly above CHUNK_DURATION_MS (2 s audio) to tolerate small
+ * network fluctuations without false timeouts.  Because the hedge fires Gemini
+ * at STT_HEDGE_DELAY_MS (1 s), Gemini serves as a parallel backup so the actual
+ * result latency stays near 1–2 s even when Whisper uses the full 3 s.
+ */
+export const WHISPER_TIMEOUT_MS = 3_000
+
+/**
+ * Hedge delay (ms) in 'auto' mode — how long to wait for Whisper before
+ * firing Gemini in parallel ("hedged request" pattern).
+ *
+ * At t=0  : Whisper call starts.
+ * At t=1s : if Whisper hasn't responded yet, Gemini starts simultaneously.
+ * Whichever responds first wins; the other is ignored.
+ *
+ * This guarantees that a slow Whisper endpoint never blocks the pipeline
+ * for more than ~1–2 s, while still preferring Whisper when it is fast.
+ */
+export const STT_HEDGE_DELAY_MS = 1_000
+
+/**
+ * How long (ms) Whisper is temporarily banned after repeated consecutive failures
+ * with unknown errors (no recognised errorCode).
+ * After WHISPER_CONSECUTIVE_FAIL_LIMIT failures the session switches to
+ * Gemini/Groq for this many milliseconds, then retries Whisper once.
+ */
+export const WHISPER_CONSECUTIVE_FAIL_BAN_MS = 60_000
+
+/**
+ * How long (ms) a provider is banned after a CONNECTION_ERROR in 'auto' mode.
+ *
+ * CONNECTION_ERROR is typically a transient network issue but in a live meeting
+ * context there is no value in retrying the same endpoint on every chunk — the
+ * same failure will occur again within ~2 s and wastes the chunk's budget.
+ *
+ * 30 s gives the network/server time to recover while keeping the downtime short
+ * enough that Whisper/Gemini can be automatically restored mid-session.
+ * A background probe (scheduleRecoveryProbe) may reset the ban earlier if the
+ * provider comes back sooner.
+ */
+export const STT_CONNECTION_ERROR_BAN_MS = 30_000
+
+/**
+ * Delay (ms) between a provider ban and the first background recovery probe.
+ * 60 s is a reasonable interval for recovery checks in a live meeting — probing
+ * more frequently wastes API quota without meaningfully improving recovery speed.
+ */
+export const STT_RECOVERY_PROBE_DELAY_MS = 60_000
+
 // ── Lightweight translate default models (used when no model is specified) ────
 /**
  * Default OpenAI model for lightweight translation (global hotkey, bookmarklet).

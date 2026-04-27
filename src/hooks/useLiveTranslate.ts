@@ -181,8 +181,12 @@ const MAX_RAW_TRANSCRIPT_CHARS = 50_000
  * If the processing queue falls behind (e.g. slow API), chunks older than
  * this threshold are dropped to prevent latency stacking — the live
  * translation stays near real-time even under heavy load.
+ *
+ * Reduced from 10 s to 4 s: with the hedged STT strategy (Whisper timeout 2 s +
+ * Gemini hedge 1 s), a single chunk should resolve within 2–3 s.  Keeping chunks
+ * older than 4 s would deliver stale audio that is no longer meaningful in context.
  */
-const CHUNK_MAX_QUEUE_AGE_MS = 10_000 // 10 s
+const CHUNK_MAX_QUEUE_AGE_MS = 4_000 // 4 s
 
 
 /**
@@ -508,6 +512,35 @@ export function useLiveTranslate() {
       pipelineErrorTimerRef.current = setTimeout(() => setPipelineError(null), PIPELINE_ERROR_DISPLAY_MS)
     }
     finally { setIsTranscribing(false) }
+
+    // In 'auto' mode, update the badge to reflect the provider that actually
+    // handled this chunk — Whisper may have been skipped (session cache) or
+    // fallen back to Gemini/Groq due to an error.  usedProvider tells us
+    // the truth; without this the badge stays on the pre-flight default forever.
+    if (mountedRef.current && stt?.success && stt.usedProvider
+        && paramsRef.current.sttProvider === 'auto') {
+      setActiveSttProvider(stt.usedProvider as SttBackend)
+    }
+
+    // ── All-providers-exhausted guard ────────────────────────────────────────
+    // If every STT provider in the chain failed (Whisper → Gemini → Groq all
+    // down or misconfigured), continue transcribing is impossible.  Stop the
+    // session immediately and surface a persistent error so the user knows
+    // why recording halted — silent audio drops with no feedback are confusing.
+    if (stt?.errorCode === 'ALL_PROVIDERS_EXHAUSTED') {
+      if (mountedRef.current) {
+        // Stop the live pipeline without waiting for the user to click Stop.
+        // activeRef = false prevents startChunk() from restarting the recorder.
+        activeRef.current = false
+        setIsActive(false)
+        setIsTranscribing(false)
+        setIsTranslating(false)
+        // Show a persistent error (micError, not pipelineError) — it doesn't
+        // auto-dismiss so the user must acknowledge before retrying.
+        setMicError(t.live_error_all_stt_exhausted)
+      }
+      return
+    }
 
     const newText = stt?.success && stt.text?.trim() ? stt.text.trim() : ''
     if (!newText || isHallucination(newText)) {
@@ -1823,7 +1856,15 @@ export function useLiveTranslate() {
     hasAnyKey,
     // Adaptive VAD mode — 'energy' (default) or 'silero' (auto-upgraded when noisy)
     vadMode,
-    // Active STT backend — pre-flight checked on mount, updates when keys change
-    activeSttProvider,
+    // Active STT backend for the UI badge.
+    // • 'auto' / 'webSpeech' → use the pre-flight-determined best provider
+    // • explicit choice       → always reflect exactly what the user selected
+    //   (store uses 'google' for Gemini STT; map to 'gemini' for display)
+    activeSttProvider: (
+      sttProvider === 'whisper' ? 'whisper' :
+      sttProvider === 'google'  ? 'gemini'  :
+      sttProvider === 'groq'    ? 'groq'    :
+      activeSttProvider  // 'auto' or 'webSpeech'
+    ) as typeof activeSttProvider,
   }
 }

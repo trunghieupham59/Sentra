@@ -16,3 +16,9 @@ export const MACOS_SCREEN_RECORDING_PREFS =
 
 /** Jina AI homepage — used in ApiKeysSection for the web search docs link. */
 export const JINA_DOCS_URL = 'https://jina.ai'
+
+/** ElevenLabs — used in TtsSection for the API key link. */
+export const ELEVENLABS_DOCS_URL = 'https://elevenlabs.io'
+
+/** Groq Console — used in SttSection for the API key link. */
+export const GROQ_CONSOLE_URL = 'https://console.groq.com'

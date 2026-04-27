@@ -556,6 +556,11 @@ export interface Translations {
   live_error_system_audio_unavailable: string
   live_error_screen_permission_denied: string
   live_error_mic_denied: string
+  /**
+   * Error shown when ALL STT providers (Whisper, Gemini, Groq) are unavailable or failed.
+   * The live session is stopped automatically when this occurs.
+   */
+  live_error_all_stt_exhausted: string
   /** Warning shown in Live Translate when the user has selected Browser Speech API
    *  (webSpeech) which is not supported in this pipeline — Whisper will be used instead. */
   live_webspeech_not_supported: string

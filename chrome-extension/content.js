@@ -678,7 +678,7 @@
     // Show loading spinner inside the round button
     btn.classList.add('tre-loading')
     btn.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5" style="animation:tre-spin 0.8s linear infinite;width:18px;height:18px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" style="animation:tre-spin 0.8s linear infinite;width:18px;height:18px;">
         <circle cx="12" cy="12" r="9" stroke-opacity="0.2"/>
         <path d="M12 3a9 9 0 0 1 9 9" />
       </svg>
