@@ -455,6 +455,7 @@ const vi: Translations = {
   live_error_system_audio_unavailable: 'Không có âm thanh hệ thống — vui lòng bật "Share audio" trong hộp thoại chia sẻ màn hình, rồi thử lại.',
   live_error_screen_permission_denied: 'Không có quyền Screen Recording. Bật trong System Settings → Privacy → Screen Recording.',
   live_error_mic_denied: 'Không có quyền truy cập microphone.',
+  live_error_all_stt_exhausted: 'Tất cả STT provider đều thất bại. Vui lòng kiểm tra kết nối mạng và API key trong Cài đặt, sau đó khởi động lại phiên.',
   live_webspeech_not_supported: 'Browser Speech API không được hỗ trợ trong Live Translate — sẽ dùng Whisper thay thế.',
   settings_stt_groq_key: 'Groq API Key (tuỳ chọn)',
   settings_stt_groq_key_desc: 'STT miễn phí · 28.800 giây/ngày · Không cần thẻ tín dụng · Lấy key tại console.groq.com',

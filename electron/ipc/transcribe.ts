@@ -2,7 +2,10 @@ import type { IpcMain } from 'electron'
 import {
   GEMINI_API_BASE, GEMINI_STT_MODEL,
   GROQ_API_BASE, GROQ_STT_MODEL,
-  WHISPER_MODEL, WHISPER_RATE_LIMIT_BAN_MS,
+  STT_CONNECTION_ERROR_BAN_MS, STT_HEDGE_DELAY_MS,
+  STT_RECOVERY_PROBE_DELAY_MS,
+  WHISPER_CONSECUTIVE_FAIL_BAN_MS, WHISPER_MODEL,
+  WHISPER_RATE_LIMIT_BAN_MS, WHISPER_TIMEOUT_MS,
 } from './ipcConstants'
 import { withRetry } from './retry'
 import { getStoredApiKey, hasStoredApiKey } from './storage'
@@ -10,22 +13,28 @@ import { getStoredApiKey, hasStoredApiKey } from './storage'
 // ─── Session-level availability cache ────────────────────────────────────────
 //
 // Problem: In live meetings, speech is continuous. If a provider is unavailable
-// (no key, rate-limited), the 'auto' fallback logic would waste seconds on
-// every chunk: withRetry delays + failed attempt + then next provider.
-// This adds noticeable gaps between spoken sentences.
+// (no key, rate-limited, connection error), the 'auto' fallback logic MUST skip
+// that provider immediately on every subsequent chunk — not retry it.
 //
-// Solution: Track each provider's availability in memory for the current session.
-//   - First chunk: try provider once (no retry) → if it fails, fallback to next
-//   - All subsequent chunks: skip provider if the session cache says it's down
-//   - Self-healing: when a provider returns a success, the cache resets
-//   - Rate-limit aware: RATE_LIMIT sets a WHISPER_RATE_LIMIT_BAN_MS ban (auto-expires),
-//     so Whisper is re-tried after the ban window without requiring an app restart
+// Design:
+//   • Each provider has its own session availability flag + expiry timestamp.
+//   • First failure → mark unavailable + ban for N seconds.
+//   • All subsequent chunks → cache hit → skip instantly (zero overhead).
+//   • Background probe → after STT_RECOVERY_PROBE_DELAY_MS, silently test the
+//     banned provider. Success → reset ban early so the next real chunk uses it.
+//   • Ban expiry → natural retry without background probe.
 //
-// Pre-flight (checkSttProviders) also pre-warms the cache on session open, so
-// the VERY FIRST chunk already goes to the best available backend — zero wasted attempts.
+// Pre-flight (checkSttProviders) pre-warms Whisper cache on session open.
 
+// ── Whisper cache ─────────────────────────────────────────────────────────────
 let whisperSessionAvailable = true
 let whisperUnavailableUntilMs = 0
+
+// Counts consecutive Whisper failures with unrecognised error codes (no errorCode).
+// After WHISPER_CONSECUTIVE_FAIL_LIMIT failures the session is switched away from
+// Whisper for WHISPER_CONSECUTIVE_FAIL_BAN_MS to stop hammering a broken endpoint.
+let whisperConsecutiveFailures = 0
+const WHISPER_CONSECUTIVE_FAIL_LIMIT = 3
 
 function isWhisperAvailableNow(): boolean {
   if (whisperSessionAvailable) return true
@@ -38,29 +47,142 @@ function isWhisperAvailableNow(): boolean {
 }
 
 /**
- * Mark Whisper as unavailable for this session.
+ * Mark Whisper as unavailable for this session (or a timed window).
  *
- *   NO_API_KEY / INVALID_KEY → permanent (until app restart or key change)
- *   RATE_LIMIT               → WHISPER_RATE_LIMIT_BAN_MS ban, then auto-retry
- *   CONNECTION_ERROR         → NOT cached; next chunk retries Whisper
- *                              (transient network issues should not skip Whisper permanently)
+ *   NO_API_KEY / INVALID_KEY → permanent until app restart or key change
+ *   RATE_LIMIT / TIMEOUT     → WHISPER_RATE_LIMIT_BAN_MS timed ban
+ *   CONNECTION_ERROR         → STT_CONNECTION_ERROR_BAN_MS short ban (30 s)
+ *   CONSECUTIVE_FAIL         → WHISPER_CONSECUTIVE_FAIL_BAN_MS short ban (60 s)
  */
 function markWhisperUnavailable(errorCode: string): void {
   whisperSessionAvailable = false
-  if (errorCode === 'RATE_LIMIT') {
-    whisperUnavailableUntilMs = Date.now() + WHISPER_RATE_LIMIT_BAN_MS
-    console.log(`[transcribe] Whisper marked unavailable for ${WHISPER_RATE_LIMIT_BAN_MS / 1000} s (RATE_LIMIT)`)
+  if (errorCode === 'RATE_LIMIT' || errorCode === 'TIMEOUT') {
+    const banMs = WHISPER_RATE_LIMIT_BAN_MS
+    whisperUnavailableUntilMs = Date.now() + banMs
+    console.log(`[transcribe] Whisper marked unavailable for ${banMs / 1000} s (${errorCode})`)
+  } else if (errorCode === 'CONNECTION_ERROR') {
+    whisperUnavailableUntilMs = Date.now() + STT_CONNECTION_ERROR_BAN_MS
+    console.log(`[transcribe] Whisper marked unavailable for ${STT_CONNECTION_ERROR_BAN_MS / 1000} s (CONNECTION_ERROR)`)
+  } else if (errorCode === 'CONSECUTIVE_FAIL') {
+    whisperUnavailableUntilMs = Date.now() + WHISPER_CONSECUTIVE_FAIL_BAN_MS
+    console.log(`[transcribe] Whisper marked unavailable for ${WHISPER_CONSECUTIVE_FAIL_BAN_MS / 1000} s (${errorCode})`)
   } else {
+    // NO_API_KEY, INVALID_KEY → permanent
     whisperUnavailableUntilMs = Number.MAX_SAFE_INTEGER
     console.log(`[transcribe] Whisper marked unavailable for session (${errorCode})`)
   }
 }
 
+// ── Gemini cache ──────────────────────────────────────────────────────────────
+// Mirrors Whisper's session cache so Gemini rate-limit / connection errors also
+// skip subsequent chunks instantly instead of retrying on every chunk.
+
+let geminiSessionAvailable = true
+let geminiUnavailableUntilMs = 0
+
+function isGeminiAvailableNow(): boolean {
+  if (geminiSessionAvailable) return true
+  if (Date.now() >= geminiUnavailableUntilMs) {
+    geminiSessionAvailable = true
+    geminiUnavailableUntilMs = 0
+    console.log('[transcribe] Gemini session ban expired — will retry Gemini on next chunk')
+  }
+  return geminiSessionAvailable
+}
+
+/**
+ * Mark Gemini STT as unavailable for this session (or a timed window).
+ *
+ *   NO_API_KEY / INVALID_KEY → permanent until key changes
+ *   RATE_LIMIT               → WHISPER_RATE_LIMIT_BAN_MS timed ban (same as Whisper)
+ *   CONNECTION_ERROR         → STT_CONNECTION_ERROR_BAN_MS short ban (30 s)
+ */
+function markGeminiUnavailable(errorCode: string): void {
+  geminiSessionAvailable = false
+  if (errorCode === 'RATE_LIMIT') {
+    geminiUnavailableUntilMs = Date.now() + WHISPER_RATE_LIMIT_BAN_MS
+    console.log(`[transcribe] Gemini marked unavailable for ${WHISPER_RATE_LIMIT_BAN_MS / 1000} s (RATE_LIMIT)`)
+  } else if (errorCode === 'CONNECTION_ERROR') {
+    geminiUnavailableUntilMs = Date.now() + STT_CONNECTION_ERROR_BAN_MS
+    console.log(`[transcribe] Gemini marked unavailable for ${STT_CONNECTION_ERROR_BAN_MS / 1000} s (CONNECTION_ERROR)`)
+  } else {
+    geminiUnavailableUntilMs = Number.MAX_SAFE_INTEGER
+    console.log(`[transcribe] Gemini marked unavailable for session (${errorCode})`)
+  }
+}
+
 // ─── Error codes that trigger fallback behaviour ──────────────────────────────
-// CONNECTION_ERROR is excluded from permanent codes: transient, next chunk retries.
-const PERMANENT_FALLBACK_CODES = new Set(['NO_API_KEY', 'INVALID_KEY', 'RATE_LIMIT'])
-// All codes that trigger next-provider fallback on this chunk (including transient)
-const FALLBACK_CODES = new Set(['NO_API_KEY', 'INVALID_KEY', 'RATE_LIMIT', 'CONNECTION_ERROR'])
+// CONNECTION_ERROR is now also a PERMANENT code (short timed ban) — in live meeting
+// context, retrying on every chunk is wasteful because the same network issue persists.
+const PERMANENT_FALLBACK_CODES = new Set(['NO_API_KEY', 'INVALID_KEY', 'RATE_LIMIT', 'TIMEOUT', 'CONNECTION_ERROR'])
+// All codes that trigger next-provider fallback on this chunk
+const FALLBACK_CODES = new Set(['NO_API_KEY', 'INVALID_KEY', 'RATE_LIMIT', 'CONNECTION_ERROR', 'TIMEOUT'])
+
+// ─── Background recovery probe ────────────────────────────────────────────────
+//
+// When a provider is banned, we schedule a silent background probe after
+// STT_RECOVERY_PROBE_DELAY_MS.  The probe sends a minimal silence WAV — cheap
+// enough that it won't consume significant API quota.
+//
+// If the probe succeeds (or returns any error other than the banning one) the
+// session cache is reset so the next real chunk uses that provider again.
+// This allows early recovery without blocking live transcription.
+
+/** Generate a minimal WAV buffer of 100 ms of silence at 16 kHz (mono 16-bit). */
+function createSilenceWav(): ArrayBuffer {
+  const sampleRate = 16_000
+  const numSamples = sampleRate / 10   // 100 ms
+  const dataSize   = numSamples * 2    // 16-bit PCM = 2 bytes per sample
+  const buf        = Buffer.alloc(44 + dataSize, 0)
+  buf.write('RIFF', 0); buf.writeUInt32LE(36 + dataSize, 4)
+  buf.write('WAVE', 8); buf.write('fmt ', 12)
+  buf.writeUInt32LE(16, 16)               // PCM chunk size
+  buf.writeUInt16LE(1, 20)                // format = PCM
+  buf.writeUInt16LE(1, 22)                // channels = 1
+  buf.writeUInt32LE(sampleRate, 24)
+  buf.writeUInt32LE(sampleRate * 2, 28)   // byte rate
+  buf.writeUInt16LE(2, 32)                // block align
+  buf.writeUInt16LE(16, 34)               // bits/sample
+  buf.write('data', 36); buf.writeUInt32LE(dataSize, 40)
+  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)
+}
+
+/**
+ * Schedule a background recovery probe for a banned provider.
+ *
+ * The probe runs in a setTimeout so it never blocks the calling audio chunk.
+ * If the provider responds (success OR any error ≠ the banning errorCode), the
+ * session cache is cleared so the very next real chunk can use that provider.
+ */
+function scheduleRecoveryProbe(provider: 'whisper' | 'gemini', afterMs: number): void {
+  setTimeout(async () => {
+    const silenceWav = createSilenceWav()
+    try {
+      if (provider === 'whisper') {
+        if (isWhisperAvailableNow()) return  // already recovered via natural expiry
+        const result = await transcribeWithWhisper(silenceWav, 'audio/wav', undefined, undefined, false)
+        // Treat success OR any non-connectivity error as "provider is back"
+        if (result.success || (result.errorCode !== 'CONNECTION_ERROR' && result.errorCode !== 'TIMEOUT')) {
+          whisperSessionAvailable   = true
+          whisperUnavailableUntilMs = 0
+          console.log('[transcribe] Background probe: Whisper recovered → session ban reset')
+        }
+      } else {
+        if (isGeminiAvailableNow()) return  // already recovered
+        const geminiKey = await getStoredApiKey('gemini')
+        if (!geminiKey) return
+        const result = await transcribeWithGeminiSTT(silenceWav, 'audio/wav', undefined, geminiKey)
+        if (result.success || (result.errorCode !== 'RATE_LIMIT' && result.errorCode !== 'CONNECTION_ERROR')) {
+          geminiSessionAvailable   = true
+          geminiUnavailableUntilMs = 0
+          console.log('[transcribe] Background probe: Gemini recovered → session ban reset')
+        }
+      }
+    } catch {
+      // Probe errors are silently swallowed — never block live transcription
+    }
+  }, afterMs)
+}
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
 
@@ -210,7 +332,21 @@ async function transcribeWithWhisper(
       prompt: buildWhisperPrompt(whisperLang, previousText),
     })
 
-    const rawResponse = await ((useRetry ? withRetry(createCall) : createCall()) as unknown) as VerboseResponse
+    // In 'auto' mode (useRetry=false) we race the Whisper call against a hard
+    // timeout so a stalled/slow endpoint never blocks the real-time pipeline.
+    // In explicit 'whisper' mode (useRetry=true) the retry wrapper manages
+    // timing, so we let it run without an outer timeout.
+    let apiCall: Promise<unknown>
+    if (useRetry) {
+      apiCall = withRetry(createCall) as Promise<unknown>
+    } else {
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Whisper request timed out')), WHISPER_TIMEOUT_MS),
+      )
+      apiCall = Promise.race([createCall() as Promise<unknown>, timeoutPromise])
+    }
+
+    const rawResponse = await (apiCall as unknown) as VerboseResponse
     const text = rawResponse.text?.trim() ?? ''
 
     if (!text || /^\s*$/.test(text)) {
@@ -235,6 +371,9 @@ async function transcribeWithWhisper(
       return { success: false, error: 'OpenAI rate limit exceeded.', errorCode: 'RATE_LIMIT' }
     if (msg.toLowerCase().includes('connection error') || msg.includes('ENOTFOUND') || msg.includes('ECONNREFUSED'))
       return { success: false, error: 'Connection error.', errorCode: 'CONNECTION_ERROR' }
+    // Catch the timeout we inject via Promise.race above
+    if (msg.toLowerCase().includes('timed out') || msg.toLowerCase().includes('timeout'))
+      return { success: false, error: 'Whisper request timed out — falling back to next STT provider.', errorCode: 'TIMEOUT' }
     return { success: false, error: msg }
   }
 }
@@ -397,22 +536,91 @@ async function transcribeWithGroq(
   }
 }
 
+// ─── Hedged request (Whisper + Gemini in parallel) ────────────────────────────
+//
+// "Hedged request" pattern: start Whisper immediately, then after STT_HEDGE_DELAY_MS
+// start Gemini in parallel if Whisper hasn't responded yet.  Use whichever succeeds
+// first.  If Whisper fails early, Gemini starts immediately without waiting for the
+// hedge timer.
+//
+// This guarantees that any single slow/failing provider cannot block the pipeline
+// for more than ~WHISPER_TIMEOUT_MS (2 s) even in the worst case.
+//
+// Returns { result, fromWhisper } so the caller can update caches appropriately.
+
+async function transcribeHedged(
+  audioData: ArrayBuffer,
+  mimeType: string,
+  language: string | undefined,
+  previousText: string | undefined,
+  geminiKey: string,
+): Promise<{ result: TranscribeResult; fromWhisper: boolean }> {
+
+  return new Promise(outerResolve => {
+    let settled = false
+    let geminiLaunched = false
+    let geminiResolve: (r: TranscribeResult) => void
+
+    // Deferred Gemini promise — launched on demand
+    const geminiDeferred = new Promise<TranscribeResult>(res => { geminiResolve = res })
+
+    const settle = (result: TranscribeResult, fromWhisper: boolean) => {
+      if (settled) return
+      settled = true
+      outerResolve({ result, fromWhisper })
+    }
+
+    const launchGemini = () => {
+      if (geminiLaunched) return
+      geminiLaunched = true
+      transcribeWithGeminiSTT(audioData, mimeType, language, geminiKey)
+        .then(r => geminiResolve(r))
+        .catch(() => geminiResolve({ success: false, error: 'Gemini hedge error', errorCode: 'CONNECTION_ERROR' }))
+    }
+
+    // Listen for Gemini result (resolves after launchGemini fires)
+    geminiDeferred.then(r => settle(r, false))
+
+    // Start Whisper immediately
+    const whisperPromise = transcribeWithWhisper(audioData, mimeType, language, previousText, false)
+
+    // Hedge timer: start Gemini if Whisper hasn't responded in time
+    const hedgeTimer = setTimeout(() => {
+      if (!settled) {
+        console.log('[transcribe] hedge: Whisper slow — starting Gemini in parallel')
+        launchGemini()
+      }
+    }, STT_HEDGE_DELAY_MS)
+
+    whisperPromise.then(r => {
+      clearTimeout(hedgeTimer)
+      if (r.success) {
+        settle(r, true)  // Whisper wins!
+      } else {
+        // Whisper failed — start Gemini now (hedge may not have fired yet)
+        launchGemini()
+        // Don't settle yet; wait for Gemini result
+        // (geminiDeferred.then(settle) is already registered above)
+      }
+    }).catch(() => {
+      clearTimeout(hedgeTimer)
+      launchGemini()
+    })
+  })
+}
+
 // ─── Auto mode: smart routing with session cache ───────────────────────────────
 
 /**
  * Smart routing for 'auto' mode: Whisper → Gemini STT → Groq STT.
  *
- * Session cache ensures the first chunk latency is minimal:
- *   - If pre-flight (checkSttProviders) already set whisperSessionAvailable = false,
- *     Gemini or Groq is tried directly without any Whisper attempt.
- *   - If Whisper fails mid-session, the cache is updated and subsequent chunks
- *     skip to the next available provider instantly.
+ * When both Whisper and Gemini are available, uses a hedged-request strategy:
+ *   • Whisper starts immediately.
+ *   • After STT_HEDGE_DELAY_MS, Gemini starts in parallel if Whisper is still pending.
+ *   • Whichever succeeds first wins — no sequential blocking.
  *
- * Meeting scenario (continuous speech):
- *   Chunk 1: Whisper unavailable → instant fail → Gemini (success)
- *            → cache: whisperSessionAvailable = false
- *   Chunks 2-N: cache hit → skip Whisper → Gemini directly (zero overhead)
- *   Later: Whisper recovers → next success resets cache
+ * When only one provider is available, falls through to that provider directly.
+ * Session caches ensure providers that failed previously are skipped instantly.
  */
 async function transcribeAuto(
   audioData: ArrayBuffer,
@@ -420,63 +628,146 @@ async function transcribeAuto(
   language?: string,
   previousText?: string,
 ): Promise<TranscribeResult> {
-  // ── Step 1: Whisper (with session cache) ─────────────────────────────────────
-  if (!isWhisperAvailableNow()) {
-    console.log('[transcribe] auto: Whisper session cache = unavailable → skip to Gemini')
-  } else {
-    const whisperResult = await transcribeWithWhisper(
-      audioData, mimeType, language, previousText,
-      /* useRetry = */ false,  // No retry — instant fallback to next provider on any error
+
+  const whisperAvail = isWhisperAvailableNow()
+  const geminiAvail  = isGeminiAvailableNow()
+  const geminiKey    = (geminiAvail) ? await getStoredApiKey('gemini') : null
+
+  // ── Hedged mode: both Whisper and Gemini are available ───────────────────────
+  //
+  // Fire them in a hedged race — fastest success wins.  This eliminates the
+  // sequential Whisper-timeout → fall-to-Gemini delay that breaks real-time
+  // performance when Whisper is slow or flaky.
+  if (whisperAvail && geminiAvail && geminiKey) {
+    const { result, fromWhisper } = await transcribeHedged(
+      audioData, mimeType, language, previousText, geminiKey,
     )
 
+    if (result.success) {
+      if (fromWhisper) {
+        // Whisper won the race → reset consecutive-fail counter + session recovery
+        whisperConsecutiveFailures = 0
+        if (!whisperSessionAvailable) {
+          whisperSessionAvailable   = true
+          whisperUnavailableUntilMs = 0
+          console.log('[transcribe] auto: Whisper recovered (hedged) — session cache reset')
+        }
+      } else {
+        // Gemini won the hedge race.
+        //
+        // Important: Gemini winning does NOT mean Whisper is broken — Whisper may
+        // simply have been slightly slower (e.g. 1.2 s vs Gemini's 1.0 s).  We must
+        // NOT ban Whisper here, otherwise a small latency variance causes Whisper to
+        // be excluded from the hedge for 90 s, which defeats the purpose of hedging.
+        //
+        // The hedge continues on every subsequent chunk and will naturally prefer
+        // whichever provider is faster.  Whisper is only banned when it actually
+        // returns an error (handled in the "Both failed" branch below).
+        console.log('[transcribe] auto: Gemini won hedge race (Whisper was slower) — keeping both in hedge')
+        if (!geminiSessionAvailable) {
+          geminiSessionAvailable   = true
+          geminiUnavailableUntilMs = 0
+          console.log('[transcribe] auto: Gemini recovered (hedged) — session cache reset')
+        }
+      }
+      return result
+    }
+
+    // Both Whisper and Gemini failed in the hedged race → ban both, fall to Groq
+    const code = result.errorCode ?? ''
+    console.log(`[transcribe] auto: Hedged race failed (${code}) → Groq STT`)
+    if (PERMANENT_FALLBACK_CODES.has(code)) {
+      markWhisperUnavailable(code)
+      markGeminiUnavailable(code)
+      whisperConsecutiveFailures = 0
+    }
+    // Fall through to Groq
+  }
+
+  // ── Single provider: Whisper only ────────────────────────────────────────────
+  else if (whisperAvail) {
+    const whisperResult = await transcribeWithWhisper(audioData, mimeType, language, previousText, false)
+
     if (whisperResult.success) {
-      // Whisper working → reset cache if it was previously marked down (recovery)
+      whisperConsecutiveFailures = 0
       if (!whisperSessionAvailable) {
-        whisperSessionAvailable = true
-        whisperUnavailableUntilMs = 0
+        whisperSessionAvailable = true; whisperUnavailableUntilMs = 0
         console.log('[transcribe] auto: Whisper recovered — session cache reset')
       }
       return whisperResult
     }
 
     const code = whisperResult.errorCode ?? ''
-    if (PERMANENT_FALLBACK_CODES.has(code)) markWhisperUnavailable(code)
-
-    // For unknown errors (e.g. corrupted audio), return Whisper's error directly
-    // rather than trying providers that won't help with corrupted data.
-    if (!FALLBACK_CODES.has(code)) return whisperResult
-
-    console.log(`[transcribe] auto: Whisper failed (${code}) → Gemini STT`)
+    if (PERMANENT_FALLBACK_CODES.has(code)) {
+      markWhisperUnavailable(code); whisperConsecutiveFailures = 0
+      if (code === 'CONNECTION_ERROR' || code === 'TIMEOUT') scheduleRecoveryProbe('whisper', STT_RECOVERY_PROBE_DELAY_MS)
+    } else if (!FALLBACK_CODES.has(code)) {
+      whisperConsecutiveFailures++
+      if (whisperConsecutiveFailures >= WHISPER_CONSECUTIVE_FAIL_LIMIT) {
+        markWhisperUnavailable('CONSECUTIVE_FAIL'); whisperConsecutiveFailures = 0
+        scheduleRecoveryProbe('whisper', STT_RECOVERY_PROBE_DELAY_MS)
+      }
+    }
+    console.log(`[transcribe] auto: Whisper-only failed (${code || 'unknown'}) → Groq STT`)
+    // Fall through to Groq (no Gemini key)
   }
 
-  // ── Step 2: Gemini STT ────────────────────────────────────────────────────────
-  const geminiKey = await getStoredApiKey('gemini')
-
-  if (geminiKey) {
+  // ── Single provider: Gemini only ─────────────────────────────────────────────
+  else if (geminiAvail && geminiKey) {
     const geminiResult = await transcribeWithGeminiSTT(audioData, mimeType, language, geminiKey)
-    if (geminiResult.success) return geminiResult
+
+    if (geminiResult.success) {
+      if (!geminiSessionAvailable) {
+        geminiSessionAvailable = true; geminiUnavailableUntilMs = 0
+        console.log('[transcribe] auto: Gemini recovered — session cache reset')
+      }
+      return geminiResult
+    }
 
     const geminiCode = geminiResult.errorCode ?? ''
     if (FALLBACK_CODES.has(geminiCode)) {
-      console.log(`[transcribe] auto: Gemini STT failed (${geminiCode}) → Groq STT`)
+      markGeminiUnavailable(geminiCode)
+      if (geminiCode === 'RATE_LIMIT' || geminiCode === 'CONNECTION_ERROR') scheduleRecoveryProbe('gemini', STT_RECOVERY_PROBE_DELAY_MS)
+      console.log(`[transcribe] auto: Gemini-only failed (${geminiCode}) → Groq STT`)
     } else {
-      return geminiResult  // non-recoverable error from Gemini
+      return geminiResult  // non-recoverable error
     }
-  } else {
-    console.log('[transcribe] auto: No Gemini key → skip to Groq STT')
+    // Fall through to Groq
+  }
+
+  // ── Neither Whisper nor Gemini: log and fall through ─────────────────────────
+  else {
+    console.log('[transcribe] auto: Whisper + Gemini both unavailable → Groq STT')
   }
 
   // ── Step 3: Groq STT (free fallback) ─────────────────────────────────────────
+  //
+  // Groq is the last resort.  If it is also unavailable or fails, there is no
+  // further fallback — the session cannot continue and should be stopped so the
+  // user sees a clear error rather than silent audio drops.
   const groqKey = await getStoredApiKey('groq')
 
   if (!groqKey) {
     return {
       success: false,
-      error: 'All STT providers exhausted. Add a Groq API key (free) in Settings → STT to enable the final fallback.',
+      errorCode: 'ALL_PROVIDERS_EXHAUSTED',
+      error: 'All STT providers exhausted. No Groq API key configured. Add one in Settings → STT (free, no credit card required).',
     }
   }
 
-  return transcribeWithGroq(audioData, mimeType, language, previousText)
+  const groqResult = await transcribeWithGroq(audioData, mimeType, language, previousText)
+
+  if (!groqResult.success) {
+    // Groq also failed → no more fallbacks → signal the UI to stop the session
+    console.error('[transcribe] auto: Groq STT also failed — all providers exhausted:', groqResult.error)
+    return {
+      success: false,
+      errorCode: 'ALL_PROVIDERS_EXHAUSTED',
+      error: `All STT providers failed. Last error (Groq): ${groqResult.error}`,
+    }
+  }
+
+  return groqResult
 }
 
 // ─── Pre-flight: check provider availability ──────────────────────────────────
@@ -506,18 +797,30 @@ async function checkSttProviders(): Promise<SttProviderCheckResult> {
 
   const primary = available[0] ?? 'none'
 
-  // ── Pre-warm session cache ────────────────────────────────────────────────
-  // If Whisper is not configured, mark it unavailable now so the first real
-  // audio chunk goes directly to Gemini/Groq without a wasted Whisper attempt.
+  // ── Pre-warm session caches ───────────────────────────────────────────────
+  // If a provider is not configured, mark it unavailable so the first real
+  // audio chunk goes directly to the next available provider.
+  // If a key was added since the last check, reset the ban so it is retried.
+
   if (!hasOpenAI && whisperSessionAvailable) {
     whisperSessionAvailable   = false
     whisperUnavailableUntilMs = Number.MAX_SAFE_INTEGER
     console.log('[transcribe] pre-flight: no OpenAI key → Whisper pre-marked unavailable for session')
   } else if (hasOpenAI && !whisperSessionAvailable) {
-    // Key was added since last check — reset cache so Whisper is retried
     whisperSessionAvailable   = true
     whisperUnavailableUntilMs = 0
     console.log('[transcribe] pre-flight: OpenAI key present → Whisper session cache reset to available')
+  }
+
+  if (!hasGemini && geminiSessionAvailable) {
+    geminiSessionAvailable   = false
+    geminiUnavailableUntilMs = Number.MAX_SAFE_INTEGER
+    console.log('[transcribe] pre-flight: no Gemini key → Gemini pre-marked unavailable for session')
+  } else if (hasGemini && !geminiSessionAvailable) {
+    // Key was added or a previous ban expired — reset so Gemini is tried next chunk
+    geminiSessionAvailable   = true
+    geminiUnavailableUntilMs = 0
+    console.log('[transcribe] pre-flight: Gemini key present → Gemini session cache reset to available')
   }
 
   console.log(`[transcribe] pre-flight: primary=${primary} available=[${available.join(', ')}]`)

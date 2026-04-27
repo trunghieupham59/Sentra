@@ -455,6 +455,7 @@ const ja: Translations = {
   live_error_system_audio_unavailable: 'システムオーディオが利用できません — 画面共有ダイアログで「オーディオを共有」を有効にしてから再試行してください。',
   live_error_screen_permission_denied: '画面録画の権限がありません。システム設定 → プライバシーとセキュリティ → 画面録画で有効にしてください。',
   live_error_mic_denied: 'マイクへのアクセスが拒否されました。',
+  live_error_all_stt_exhausted: 'すべてのSTTプロバイダーが失敗しました。ネットワーク接続とAPIキーを確認し、セッションを再起動してください。',
   live_webspeech_not_supported: 'ブラウザー音声APIはLive Translateでは使用できません — 代わりにWhisperが使用されます。',
   settings_stt_groq_key: 'Groq APIキー（オプション）',
   settings_stt_groq_key_desc: '無料STTフォールバック · 28,800秒/日 · クレジットカード不要 · console.groq.comでキーを取得',

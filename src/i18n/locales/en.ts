@@ -455,6 +455,7 @@ const en: Translations = {
   live_error_system_audio_unavailable: 'System audio not available — please check "Share audio" in the screen sharing dialog, then try again.',
   live_error_screen_permission_denied: 'Screen Recording permission denied. Enable it in System Settings → Privacy → Screen Recording.',
   live_error_mic_denied: 'Microphone access denied.',
+  live_error_all_stt_exhausted: 'All STT providers failed. Check your network connection and API keys in Settings, then restart the session.',
   live_webspeech_not_supported: 'Browser Speech API is not supported in Live Translate — Whisper will be used instead.',
   settings_stt_groq_key: 'Groq API Key (optional)',
   settings_stt_groq_key_desc: 'Free STT fallback · 28,800 sec/day · No credit card required · Get key at console.groq.com',

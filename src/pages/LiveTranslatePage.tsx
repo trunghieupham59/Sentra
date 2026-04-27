@@ -264,37 +264,6 @@ export function LiveTranslatePage() {
                   {/* Divider */}
                   <div className="border-t border-gray-100 dark:border-gray-800" />
 
-                  {/* Active STT backend indicator — shows which provider handles transcription */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-[0.65rem] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
-                      {t.live_stt_badge_label}
-                    </span>
-                    <span className={[
-                      'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold',
-                      activeSttProvider === 'whisper'
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
-                        : activeSttProvider === 'gemini'
-                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-                          : activeSttProvider === 'groq'
-                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
-                            : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
-                    ].join(' ')}>
-                      <span className={[
-                        'w-1.5 h-1.5 rounded-full flex-shrink-0',
-                        activeSttProvider === 'whisper' ? 'bg-emerald-500' :
-                        activeSttProvider === 'gemini'  ? 'bg-blue-500' :
-                        activeSttProvider === 'groq'    ? 'bg-purple-500' : 'bg-gray-400',
-                      ].join(' ')} />
-                      {activeSttProvider === 'whisper' ? 'Whisper' :
-                       activeSttProvider === 'gemini'  ? 'Gemini' :
-                       activeSttProvider === 'groq'    ? 'Groq (free)' :
-                       t.live_stt_backend_none}
-                    </span>
-                  </div>
-
-                  {/* Divider */}
-                  <div className="border-t border-gray-100 dark:border-gray-800" />
-
                   {/* Nguồn âm thanh */}
                   <div className="flex flex-col gap-2">
                     <span className="text-[0.65rem] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
@@ -656,6 +625,32 @@ export function LiveTranslatePage() {
 
             {/* Right: Bản Dịch */}
             <div className="flex flex-col h-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+              {/* STT provider badge — top-right, only when active */}
+              {isActive && (
+                <div className="flex-shrink-0 flex items-center justify-end px-4 pt-2 pb-1">
+                  <span className={[
+                    'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold select-none',
+                    activeSttProvider === 'whisper'
+                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                      : activeSttProvider === 'gemini'
+                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                        : activeSttProvider === 'groq'
+                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
+                          : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
+                  ].join(' ')}>
+                    <span className={[
+                      'w-1.5 h-1.5 rounded-full flex-shrink-0',
+                      activeSttProvider === 'whisper' ? 'bg-emerald-500' :
+                      activeSttProvider === 'gemini'  ? 'bg-blue-500' :
+                      activeSttProvider === 'groq'    ? 'bg-purple-500' : 'bg-gray-400',
+                    ].join(' ')} />
+                    {activeSttProvider === 'whisper' ? 'Whisper' :
+                     activeSttProvider === 'gemini'  ? 'Gemini' :
+                     activeSttProvider === 'groq'    ? 'Groq (free)' :
+                     t.live_stt_backend_none}
+                  </span>
+                </div>
+              )}
               <div className="flex-1 overflow-y-auto p-4 space-y-1.5">
                 {segments.length > 0 ? (
                   <>

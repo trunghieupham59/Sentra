@@ -81,13 +81,18 @@
     "productName": "Viezan",
     "copyright": "Copyright © 2024-2025 Viezan. All rights reserved.",
     "artifactName": "Viezan-${version}-${arch}.${ext}",
+    "asar": true,
+    "compression": "maximum",
+    "asarUnpack": [
+      "**/*.wasm",
+      "**/*.onnx"
+    ],
     "directories": {
       "output": "release"
     },
     "files": [
       "dist/**/*",
-      "dist-electron/**/*",
-      "node_modules/**/*"
+      "dist-electron/**/*"
     ],
     "mac": {
       "icon": "build/icon.icns",
