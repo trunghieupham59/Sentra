@@ -1,63 +1,104 @@
 import { useState } from 'react'
+import { ChatBubbleIcon, ClockIcon, MicrophoneIcon, SearchIcon, TranslateIcon, XIcon } from '../components/ui/icons'
 import { useAppStore, useT } from '../store/useAppStore'
+import { tpl } from '../utils/tpl'
 import { ChatHistoryTab } from './history/ChatHistoryTab'
 import { LiveHistoryTab } from './history/LiveHistoryTab'
 import { TranslationHistoryTab } from './history/TranslationHistoryTab'
+
+type HistoryTabId = 'translate' | 'chat' | 'live'
 
 // ─── Main HistoryPage ──────────────────────────────────────────────────────────
 export function HistoryPage() {
   const { history, chatSessions, liveSessions } = useAppStore()
   const t = useT()
-  const [activeTab, setActiveTab] = useState<'translate' | 'chat' | 'live'>('chat')
+  const [activeTab, setActiveTab] = useState<HistoryTabId>('chat')
+  const [query, setQuery] = useState('')
+  const totalCount = history.length + chatSessions.length + liveSessions.length
 
   const tabs = ([
-    ['chat',      t.history_tab_chat,      chatSessions.length],
-    ['translate', t.history_tab_translate, history.length],
-    ['live',      t.history_tab_live,      liveSessions.length],
-  ] as ['translate' | 'chat' | 'live', string, number][])
+    { id: 'chat', label: t.history_tab_chat, count: chatSessions.length, icon: ChatBubbleIcon },
+    { id: 'translate', label: t.history_tab_translate, count: history.length, icon: TranslateIcon },
+    { id: 'live', label: t.history_tab_live, count: liveSessions.length, icon: MicrophoneIcon },
+  ] satisfies Array<{ id: HistoryTabId; label: string; count: number; icon: typeof ClockIcon }>)
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-950">
-      <div className="px-6 pt-6 pb-4 flex flex-col gap-4 flex-1 min-h-0">
+      <div className="px-6 pt-6 pb-4 flex flex-col gap-4 flex-1 min-h-0 min-w-0">
 
-        {/* ── Title + segmented tab bar ── */}
-        <div className="flex items-center justify-between flex-shrink-0">
-          <h1 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-            {t.history_title}
-          </h1>
+        <div className="flex items-center justify-between gap-4 flex-shrink-0">
+          <div className="min-w-0">
+            <h1 className="text-base font-semibold text-gray-900 dark:text-gray-50">
+              {t.history_title}
+            </h1>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+              {tpl(t.history_total_count, { n: totalCount })}
+            </p>
+          </div>
 
-          {/* Segmented control — matches the pill / card language from other screens */}
-          <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-xl p-1 gap-0.5">
-            {tabs.map(([tab, label, count]) => (
+          <div className="relative w-full max-w-xs">
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300 dark:text-gray-600" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t.history_search_placeholder}
+              className="w-full h-9 rounded-lg border border-gray-200 dark:border-gray-800
+                         bg-gray-50 dark:bg-gray-900 pl-9 pr-9 text-sm text-gray-800 dark:text-gray-100
+                         placeholder:text-gray-400 dark:placeholder:text-gray-600
+                         focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400
+                         transition-colors select-text"
+            />
+            {query && (
               <button
-                key={tab}
                 type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer
-                            ${activeTab === tab
-                              ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 shadow-sm'
-                              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                onClick={() => setQuery('')}
+                title={t.history_search_clear}
+                className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6
+                           rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-200
+                           dark:text-gray-500 dark:hover:text-gray-200 dark:hover:bg-gray-800 transition-colors"
               >
-                {label}
-                {count > 0 && (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold
-                                    ${activeTab === tab
-                                      ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400'
-                                      : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-500'}`}>
-                    {count}
-                  </span>
-                )}
+                <XIcon className="w-3 h-3" />
               </button>
-            ))}
+            )}
           </div>
         </div>
 
-        {/* ── Content card — mirrors the card style used in TranslatePage / ChatPage ── */}
-        <div className="flex-1 min-h-0 rounded-2xl border border-gray-200 dark:border-gray-700
+        <div className="flex items-center gap-1 rounded-lg bg-gray-100 dark:bg-gray-900 p-1 flex-shrink-0">
+          {tabs.map(({ id, label, count, icon: Icon }) => {
+            const isActive = activeTab === id
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setActiveTab(id)}
+                className={[
+                  'flex-1 min-w-0 flex items-center justify-center gap-2 h-9 rounded-md px-3',
+                  'text-xs font-medium transition-all duration-150 cursor-pointer',
+                  isActive
+                    ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-50 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200',
+                ].join(' ')}
+              >
+                <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="truncate">{label}</span>
+                <span className={[
+                  'min-w-5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold leading-none',
+                  isActive
+                    ? 'bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-300'
+                    : 'bg-gray-200 text-gray-500 dark:bg-gray-800 dark:text-gray-500',
+                ].join(' ')}>
+                  {count}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="flex-1 min-h-0 rounded-lg border border-gray-200 dark:border-gray-800
                         bg-white dark:bg-gray-900 shadow-sm overflow-hidden flex flex-col">
-          {activeTab === 'translate' && <TranslationHistoryTab />}
-          {activeTab === 'chat'      && <ChatHistoryTab />}
-          {activeTab === 'live'      && <LiveHistoryTab />}
+          {activeTab === 'translate' && <TranslationHistoryTab query={query} />}
+          {activeTab === 'chat'      && <ChatHistoryTab query={query} />}
+          {activeTab === 'live'      && <LiveHistoryTab query={query} />}
         </div>
 
       </div>

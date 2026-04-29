@@ -1,21 +1,44 @@
 import { useState } from 'react'
 import { MarkdownText } from '../../components/MarkdownText'
-import { HistoryClearHeader } from '../../components/ui/HistoryClearHeader'
+import { HistoryBulkHeader } from '../../components/ui/HistoryBulkHeader'
 import { HistoryDeleteButton } from '../../components/ui/HistoryDeleteButton'
 import { HistoryEmptyState } from '../../components/ui/HistoryEmptyState'
-import { ChevronDownIcon, MicrophoneIcon } from '../../components/ui/icons'
+import { CheckIcon, ChevronDownIcon, MicrophoneIcon } from '../../components/ui/icons'
 import { useAppStore, useT } from '../../store/useAppStore'
 import { tpl } from '../../utils/tpl'
-import { formatTime, langLabel, ProviderBadge } from './historyUtils'
+import { formatTime, historyMatches, langLabel, normalizeHistoryQuery, ProviderBadge } from './historyUtils'
 
 /** Số ký tự preview hiển thị trong danh sách live session history */
 const LIVE_HISTORY_PREVIEW_CHARS = 120
 
-export function LiveHistoryTab() {
+interface LiveHistoryTabProps {
+  query: string
+}
+
+export function LiveHistoryTab({ query }: LiveHistoryTabProps) {
   const { liveSessions, deleteLiveSession, clearLiveSessions, setActivePage, setViewingLiveSession } = useAppStore()
   const t = useT()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [confirmClear, setConfirmClear] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const normalizedQuery = normalizeHistoryQuery(query)
+  const filteredSessions = liveSessions.filter((session) => historyMatches(normalizedQuery, [
+    session.rawTranscript,
+    session.translation,
+    session.summary,
+    session.actionItems,
+    session.decisions,
+    session.speakerAnalysis,
+    session.sourceLang,
+    session.targetLang,
+    langLabel(session.sourceLang),
+    langLabel(session.targetLang),
+    session.provider,
+    session.model,
+  ]))
+  const filteredIds = filteredSessions.map((session) => session.id)
+  const selectedVisibleIds = filteredIds.filter((id) => selectedIds.has(id))
+  const selectedCount = selectedVisibleIds.length
 
   // Open the live page and restore the selected session's content for viewing.
   const handleOpenLive = (sessionId: string) => {
@@ -27,19 +50,52 @@ export function LiveHistoryTab() {
     if (confirmClear) {
       clearLiveSessions()
       setConfirmClear(false)
+      setSelectedIds(new Set())
     } else {
       setConfirmClear(true)
     }
   }
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const handleSelectAll = () => {
+    if (filteredIds.length > 0 && filteredIds.every((id) => selectedIds.has(id))) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(filteredIds))
+    }
+  }
+
+  const handleDeleteSelected = () => {
+    if (selectedCount === 0) return
+    for (const id of selectedVisibleIds) {
+      deleteLiveSession(id)
+    }
+    setSelectedIds(new Set())
+  }
+
   return (
     <div className="flex flex-col h-full">
       {liveSessions.length > 0 && (
-        <HistoryClearHeader
-          countLabel={tpl(t.history_live_count, { n: liveSessions.length })}
+        <HistoryBulkHeader
+          countLabel={tpl(t.history_live_count, { n: filteredSessions.length })}
+          totalCount={filteredSessions.length}
+          selectedCount={selectedCount}
           confirmClear={confirmClear}
+          labelSelectAll={t.history_select_all}
+          labelSelected={tpl(t.history_selected_count, { n: selectedCount })}
+          labelDeleteSelected={t.history_delete_selected}
           labelClear={t.history_live_clear_all}
           labelConfirm={t.history_live_clear_confirm}
+          onSelectAll={handleSelectAll}
+          onDeleteSelected={handleDeleteSelected}
           onClear={handleClearAll}
           onBlur={() => setTimeout(() => setConfirmClear(false), 200)}
         />
@@ -51,55 +107,88 @@ export function LiveHistoryTab() {
             icon={<MicrophoneIcon className="w-7 h-7 text-purple-300 dark:text-purple-700" />}
             title={t.history_live_empty}
             desc={t.history_live_empty_desc}
+            tone="purple"
+          />
+        ) : filteredSessions.length === 0 ? (
+          <HistoryEmptyState
+            icon={<MicrophoneIcon className="w-7 h-7" />}
+            title={t.history_no_results}
+            desc={t.history_no_results_desc}
+            tone="purple"
           />
         ) : (
-          <ul className="divide-y divide-gray-100 dark:divide-gray-800/60">
-            {liveSessions.map((session) => {
+          <ul className="p-3 space-y-2">
+            {filteredSessions.map((session) => {
               const isExpanded = expandedId === session.id
+              const isSelected = selectedIds.has(session.id)
               const previewRaw = session.rawTranscript.slice(0, LIVE_HISTORY_PREVIEW_CHARS)
               const previewTx  = session.translation.slice(0, LIVE_HISTORY_PREVIEW_CHARS)
 
               return (
-                <li key={session.id} className="group hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors duration-150">
-                  <button
-                    type="button"
-                    className="w-full text-left px-4 pt-3 pb-2"
-                    onClick={() => setExpandedId(isExpanded ? null : session.id)}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-800 dark:text-gray-100 leading-snug line-clamp-2 font-medium">
-                          {previewRaw}{session.rawTranscript.length > LIVE_HISTORY_PREVIEW_CHARS ? '…' : ''}
-                        </p>
-                        {previewTx && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 leading-snug mt-1 line-clamp-1">
-                            {previewTx}{session.translation.length > LIVE_HISTORY_PREVIEW_CHARS ? '…' : ''}
+                <li
+                  key={session.id}
+                  className={[
+                    'group rounded-lg border transition-colors duration-150',
+                    isSelected
+                      ? 'border-purple-200 bg-purple-50 dark:border-purple-900 dark:bg-purple-950/20'
+                      : 'border-gray-100 bg-white hover:border-purple-100 hover:bg-purple-50/30 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-purple-950 dark:hover:bg-gray-800/50',
+                  ].join(' ')}
+                >
+                  <div className="flex items-start gap-3 px-4 py-3">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); toggleSelect(session.id) }}
+                      className="mt-0.5 flex-shrink-0"
+                    >
+                      <span className={[
+                        'w-4 h-4 rounded border-2 flex items-center justify-center transition-colors',
+                        isSelected
+                          ? 'bg-purple-500 border-purple-500'
+                          : 'border-gray-300 dark:border-gray-600 hover:border-purple-400',
+                      ].join(' ')}>
+                        {isSelected && <CheckIcon className="w-2.5 h-2.5 text-white" />}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="flex-1 min-w-0 text-left"
+                      onClick={() => setExpandedId(isExpanded ? null : session.id)}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-gray-800 dark:text-gray-100 leading-snug line-clamp-2 font-medium">
+                            {previewRaw}{session.rawTranscript.length > LIVE_HISTORY_PREVIEW_CHARS ? '…' : ''}
                           </p>
-                        )}
+                          {previewTx && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-snug mt-1 line-clamp-1">
+                              {previewTx}{session.translation.length > LIVE_HISTORY_PREVIEW_CHARS ? '…' : ''}
+                            </p>
+                          )}
+                        </div>
+                        <ChevronDownIcon
+                          className={`flex-shrink-0 w-4 h-4 text-gray-300 dark:text-gray-600 transition-transform duration-200 mt-0.5 ${isExpanded ? 'rotate-180' : ''}`}
+                        />
                       </div>
-                      <ChevronDownIcon
-                        className={`flex-shrink-0 w-4 h-4 text-gray-300 dark:text-gray-600 transition-transform duration-200 mt-0.5 ${isExpanded ? 'rotate-180' : ''}`}
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      <ProviderBadge provider={session.provider} />
-                      <span className="text-[10px] text-gray-400 dark:text-gray-600">
-                        {langLabel(session.sourceLang)} → {langLabel(session.targetLang)}
-                      </span>
-                      <span className="text-[10px] text-purple-400 dark:text-purple-600">
-                        {session.wordCount.toLocaleString()} {t.history_live_words}
-                      </span>
-                      <span className="text-[10px] text-gray-300 dark:text-gray-700 ml-auto">
-                        {formatTime(session.createdAt, t)}
-                      </span>
-                    </div>
-                  </button>
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                        <ProviderBadge provider={session.provider} />
+                        <span className="text-[10px] text-gray-400 dark:text-gray-600">
+                          {langLabel(session.sourceLang)} → {langLabel(session.targetLang)}
+                        </span>
+                        <span className="text-[10px] text-purple-400 dark:text-purple-600">
+                          {session.wordCount.toLocaleString()} {t.history_live_words}
+                        </span>
+                        <span className="text-[10px] text-gray-300 dark:text-gray-700 ml-auto">
+                          {formatTime(session.createdAt, t)}
+                        </span>
+                      </div>
+                    </button>
+                  </div>
 
                   {isExpanded && (
-                    <div className="px-4 pb-3 fade-in space-y-2">
-                      {/* Original transcript */}
-                      <div className="rounded-lg border border-gray-100 dark:border-gray-800 overflow-hidden text-xs">
-                        <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                    <div className="px-4 pb-3 pl-11 fade-in space-y-2">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs">
+                        <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 rounded-lg">
                           <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-1">
                             {langLabel(session.sourceLang)} · {t.live_panel_original}
                           </p>
@@ -107,7 +196,7 @@ export function LiveHistoryTab() {
                             {session.rawTranscript}
                           </p>
                         </div>
-                        <div className="px-3 py-2">
+                        <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 rounded-lg">
                           <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-1">
                             {langLabel(session.targetLang)} · {t.live_panel_translation}
                           </p>

@@ -232,6 +232,11 @@ export interface Translations {
 
   // History page
   history_title: string
+  history_total_count: string
+  history_search_placeholder: string
+  history_search_clear: string
+  history_no_results: string
+  history_no_results_desc: string
   time_just_now: string
   time_m_ago: string
   time_h_ago: string
@@ -255,6 +260,9 @@ export interface Translations {
   history_chat_role_ai: string
   history_chat_open: string
   history_chat_delete: string
+  history_select_all: string
+  history_selected_count: string
+  history_delete_selected: string
 
   // Live session history
   history_tab_live: string

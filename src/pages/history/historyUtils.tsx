@@ -4,6 +4,15 @@ import { PROVIDERS } from '../../constants/providers'
 import type { Provider } from '../../types'
 import { tpl } from '../../utils/tpl'
 
+export function normalizeHistoryQuery(query: string): string {
+  return query.trim().toLocaleLowerCase()
+}
+
+export function historyMatches(query: string, values: Array<string | number | undefined | null>): boolean {
+  if (!query) return true
+  return values.some((value) => String(value ?? '').toLocaleLowerCase().includes(query))
+}
+
 export function formatTime(ts: number, t: { time_just_now: string; time_m_ago: string; time_h_ago: string; time_d_ago: string }): string {
   const d = new Date(ts)
   const now = new Date()

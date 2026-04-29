@@ -19,9 +19,9 @@ export function HistoryClearHeader({
   countLabel, confirmClear, labelClear, labelConfirm, onClear, onBlur,
 }: HistoryClearHeaderProps) {
   return (
-    <div className="flex-shrink-0 flex items-center justify-between px-4 py-2
-                    border-b border-gray-100 dark:border-gray-800">
-      <span className="text-xs text-gray-400">{countLabel}</span>
+    <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-3
+                    border-b border-gray-100 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-900">
+      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{countLabel}</span>
       <button
         type="button"
         onClick={onClear}
