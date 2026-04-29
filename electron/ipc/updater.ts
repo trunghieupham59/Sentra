@@ -1,6 +1,7 @@
 import type { BrowserWindow, IpcMain } from 'electron'
 import { app, net, shell } from 'electron'
 import { autoUpdater } from 'electron-updater'
+import { isAllowedExternalUrl } from './externalUrl'
 
 // ─── GitHub repo for update checks (macOS fallback) ────────────────────────
 // On macOS we build with identity: null (unsigned). Squirrel.Mac — which
@@ -252,6 +253,9 @@ export function registerUpdaterHandlers(
    */
   ipc.handle('updater:openDownload', (_event, url?: string) => {
     const target = url ?? `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`
+    if (!isAllowedExternalUrl(target)) {
+      return { success: false, error: 'Blocked external URL' }
+    }
     shell.openExternal(target)
     return { success: true }
   })

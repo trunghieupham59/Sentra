@@ -4,7 +4,8 @@ import type { IpcMain } from 'electron'
 import type { ChatCompletionContentPartImage, ChatCompletionContentPartText, ChatCompletionMessageParam } from 'openai/resources/chat/completions'
 import { classifyProviderError, noApiKeyResponse } from './errorUtils'
 import { GEMINI_API_BASE, MAX_CHAT_OUTPUT_TOKENS, MAX_CHAT_REQUEST_CHARS } from './ipcConstants'
-import { unknownProviderError } from './providers/types'
+import { invalidIpcInput, isNonEmptyString, isRecord } from './ipcValidation'
+import { isValidProvider, unknownProviderError } from './providers/types'
 import { withRetry } from './retry'
 import { getStoredApiKey } from './storage'
 
@@ -114,6 +115,99 @@ interface ChatParams {
    * synthesis. Clamped in the IPC handler before reaching provider SDK calls.
    */
   maxOutputTokens?: MaxOutputTokensRequest
+}
+
+type ParsedChatParams =
+  | { ok: true; value: ChatParams }
+  | { ok: false; response: { success: false; error: string; errorCode?: string } }
+
+const CHAT_CONTENT_TYPES = new Set(['text', 'image'])
+const CHAT_ROLES = new Set(['user', 'assistant'])
+const CHAT_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+const MAX_CHAT_MODEL_ID_CHARS = 200
+const MAX_SYSTEM_PROMPT_CHARS = 20_000
+
+function parseChatParams(rawParams: unknown): ParsedChatParams {
+  if (!isRecord(rawParams)) {
+    return { ok: false, response: invalidIpcInput('Chat payload must be an object') }
+  }
+
+  if (!isNonEmptyString(rawParams.provider)) {
+    return { ok: false, response: invalidIpcInput('Provider is required') }
+  }
+  const provider = rawParams.provider.trim()
+  if (!isValidProvider(provider)) {
+    return { ok: false, response: unknownProviderError(provider) }
+  }
+
+  if (!isNonEmptyString(rawParams.model)) {
+    return { ok: false, response: invalidIpcInput('Model is required') }
+  }
+  const model = rawParams.model.trim()
+  if (model.length > MAX_CHAT_MODEL_ID_CHARS) {
+    return { ok: false, response: invalidIpcInput('Model is too long') }
+  }
+
+  if (!Array.isArray(rawParams.messages)) {
+    return { ok: false, response: invalidIpcInput('Messages are required') }
+  }
+  if (rawParams.messages.length === 0) {
+    return { ok: false, response: invalidIpcInput('No messages provided') }
+  }
+
+  const messages: ChatMessage[] = []
+  for (const message of rawParams.messages) {
+    if (!isRecord(message) || typeof message.role !== 'string' || !CHAT_ROLES.has(message.role) || !Array.isArray(message.content)) {
+      return { ok: false, response: invalidIpcInput('Invalid chat message') }
+    }
+
+    const content: ChatMessageContent[] = []
+    for (const item of message.content) {
+      if (!isRecord(item) || typeof item.type !== 'string' || !CHAT_CONTENT_TYPES.has(item.type)) {
+        return { ok: false, response: invalidIpcInput('Invalid chat message content') }
+      }
+
+      if (item.type === 'text') {
+        if (item.text !== undefined && typeof item.text !== 'string') {
+          return { ok: false, response: invalidIpcInput('Invalid chat text content') }
+        }
+        content.push({ type: 'text', text: item.text })
+      } else {
+        if (!isNonEmptyString(item.imageBase64) || !isNonEmptyString(item.imageMimeType) || !CHAT_IMAGE_MIME_TYPES.has(item.imageMimeType)) {
+          return { ok: false, response: invalidIpcInput('Invalid chat image content') }
+        }
+        content.push({ type: 'image', imageBase64: item.imageBase64, imageMimeType: item.imageMimeType })
+      }
+    }
+
+    messages.push({ role: message.role as ChatMessage['role'], content })
+  }
+
+  if (rawParams.systemPrompt !== undefined && (typeof rawParams.systemPrompt !== 'string' || rawParams.systemPrompt.length > MAX_SYSTEM_PROMPT_CHARS)) {
+    return { ok: false, response: invalidIpcInput('Invalid system prompt') }
+  }
+  if (rawParams.bypassLengthCheck !== undefined && typeof rawParams.bypassLengthCheck !== 'boolean') {
+    return { ok: false, response: invalidIpcInput('Invalid bypass flag') }
+  }
+  if (
+    rawParams.maxOutputTokens !== undefined &&
+    rawParams.maxOutputTokens !== 'model-max' &&
+    (typeof rawParams.maxOutputTokens !== 'number' || !Number.isFinite(rawParams.maxOutputTokens))
+  ) {
+    return { ok: false, response: invalidIpcInput('Invalid max output tokens') }
+  }
+
+  return {
+    ok: true,
+    value: {
+      provider,
+      model,
+      messages,
+      systemPrompt: rawParams.systemPrompt,
+      bypassLengthCheck: rawParams.bypassLengthCheck,
+      maxOutputTokens: rawParams.maxOutputTokens as MaxOutputTokensRequest | undefined,
+    },
+  }
 }
 
 // HC-08: MAX_CHAT_REQUEST_CHARS now imported from ipcConstants — stays in sync with
@@ -452,7 +546,10 @@ const CHAT_PROVIDERS: Record<string, ChatFn> = {
  * @param ipcMain - Electron's IpcMain instance (passed from main.ts at startup).
  */
 export function registerChatHandlers(ipcMain: IpcMain) {
-  ipcMain.handle('chat:send', async (_event, params: ChatParams) => {
+  ipcMain.handle('chat:send', async (_event, rawParams: unknown) => {
+    const parsed = parseChatParams(rawParams)
+    if (!parsed.ok) return parsed.response
+    const params = parsed.value
     const { provider, model, messages, systemPrompt, bypassLengthCheck } = params
 
     if (!messages || messages.length === 0) {

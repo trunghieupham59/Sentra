@@ -14,6 +14,7 @@ import { registerTranslateHandlers } from './ipc/translate'
 import { registerTtsHandlers } from './ipc/tts'
 import { registerUpdaterHandlers } from './ipc/updater'
 import { registerWebSearchHandlers } from './ipc/webSearch'
+import { isAllowedExternalUrl } from './ipc/externalUrl'
 
 // Allow audio autoplay after async operations (TTS API calls lose user-gesture context)
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
@@ -94,7 +95,9 @@ function createWindow() {
 
   // Open external links in browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url)
+    if (isAllowedExternalUrl(url)) {
+      shell.openExternal(url)
+    }
     return { action: 'deny' }
   })
 

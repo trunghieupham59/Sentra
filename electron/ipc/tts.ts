@@ -34,6 +34,7 @@ import {
   GEMINI_TTS_VOICE_NAME,
   OPENAI_TTS_MODEL,
 } from './ipcConstants'
+import { invalidIpcInput, isRecord, isSafeLanguageCode } from './ipcValidation'
 import { getStoredApiKey } from './storage'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -63,6 +64,45 @@ interface TtsCandidate {
 }
 
 export type TtsMode = 'free' | 'auto' | 'premium'
+
+type ParsedTtsParams =
+  | { ok: true; value: TtsParams }
+  | { ok: false; response: TtsResult }
+
+const TTS_VOICES = new Set(['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'])
+const TTS_MODES = new Set(['free', 'auto', 'premium'])
+const MAX_TTS_TEXT_CHARS = 5_000
+
+function parseTtsParams(rawParams: unknown): ParsedTtsParams {
+  if (!isRecord(rawParams)) {
+    return { ok: false, response: invalidIpcInput('TTS payload must be an object') }
+  }
+  if (typeof rawParams.text !== 'string' || !rawParams.text.trim()) {
+    return { ok: false, response: invalidIpcInput('Text is required') }
+  }
+  if (rawParams.text.length > MAX_TTS_TEXT_CHARS) {
+    return { ok: false, response: invalidIpcInput('Text is too long') }
+  }
+  if (rawParams.voice !== undefined && (typeof rawParams.voice !== 'string' || !TTS_VOICES.has(rawParams.voice))) {
+    return { ok: false, response: invalidIpcInput('Invalid TTS voice') }
+  }
+  if (rawParams.mode !== undefined && (typeof rawParams.mode !== 'string' || !TTS_MODES.has(rawParams.mode))) {
+    return { ok: false, response: invalidIpcInput('Invalid TTS mode') }
+  }
+  if (rawParams.lang !== undefined && !isSafeLanguageCode(rawParams.lang)) {
+    return { ok: false, response: invalidIpcInput('Invalid language') }
+  }
+
+  return {
+    ok: true,
+    value: {
+      text: rawParams.text,
+      voice: rawParams.voice as TtsParams['voice'],
+      mode: rawParams.mode as TtsParams['mode'],
+      lang: rawParams.lang,
+    },
+  }
+}
 
 function normalizeTtsMode(mode?: TtsMode): TtsMode {
   return mode === 'auto' || mode === 'premium' ? mode : 'free'
@@ -541,7 +581,9 @@ export async function synthesizeTts(params: TtsParams): Promise<TtsResult> {
  * Soft failures (network, temporary) fall through to the next provider.
  */
 export function registerTtsHandlers(ipcMain: IpcMain) {
-  ipcMain.handle('audio:tts', async (_event, params: TtsParams): Promise<TtsResult> => {
-    return synthesizeTts(params)
+  ipcMain.handle('audio:tts', async (_event, rawParams: unknown): Promise<TtsResult> => {
+    const parsed = parseTtsParams(rawParams)
+    if (!parsed.ok) return parsed.response
+    return synthesizeTts(parsed.value)
   })
 }

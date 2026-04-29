@@ -13,6 +13,7 @@ import {
   VERIFY_MODEL_GEMINI,
   VERIFY_MODEL_OPENAI,
 } from './ipcConstants'
+import { invalidIpcInput, isNonEmptyString, isOptionalBoolean, isRecord, isSafeLanguageCode } from './ipcValidation'
 import { isValidProvider, unknownProviderError } from './providers/types'
 import { withRetry } from './retry'
 import { getStoredApiKey } from './storage'
@@ -47,6 +48,148 @@ interface RewriteParams {
   text: string
   lang: string
   translationStyle?: TranslationStyle
+}
+
+type ParsedParams<T> =
+  | { ok: true; value: T }
+  | { ok: false; response: { success: false; error: string; errorCode?: string } }
+
+const TRANSLATION_STYLES = new Set<TranslationStyle>([
+  'general',
+  'formal',
+  'casual',
+  'business',
+  'technical',
+  'natural',
+])
+
+const PHONETIC_MODES = new Set<PhoneticMode>(['off', 'standard', 'phonetic'])
+const MAX_MODEL_ID_CHARS = 200
+
+function parseProvider(value: unknown): ParsedParams<string> {
+  if (!isNonEmptyString(value)) {
+    return { ok: false, response: invalidIpcInput('Provider is required') }
+  }
+  const provider = value.trim()
+  if (!isValidProvider(provider)) {
+    return { ok: false, response: unknownProviderError(provider) }
+  }
+  return { ok: true, value: provider }
+}
+
+function parseModel(value: unknown): ParsedParams<string> {
+  if (!isNonEmptyString(value)) {
+    return { ok: false, response: invalidIpcInput('Model is required') }
+  }
+  const model = value.trim()
+  if (model.length > MAX_MODEL_ID_CHARS) {
+    return { ok: false, response: invalidIpcInput('Model is too long') }
+  }
+  return { ok: true, value: model }
+}
+
+function parseTranslationStyle(value: unknown): ParsedParams<TranslationStyle | undefined> {
+  if (value === undefined) return { ok: true, value: undefined }
+  if (typeof value !== 'string' || !TRANSLATION_STYLES.has(value as TranslationStyle)) {
+    return { ok: false, response: invalidIpcInput('Invalid translation style') }
+  }
+  return { ok: true, value: value as TranslationStyle }
+}
+
+function parseTranslateParams(rawParams: unknown): ParsedParams<TranslateParams> {
+  if (!isRecord(rawParams)) {
+    return { ok: false, response: invalidIpcInput('Translate payload must be an object') }
+  }
+
+  const provider = parseProvider(rawParams.provider)
+  if (!provider.ok) return provider
+  const model = parseModel(rawParams.model)
+  if (!model.ok) return model
+  if (typeof rawParams.sourceText !== 'string') {
+    return { ok: false, response: invalidIpcInput('Source text is required') }
+  }
+  if (!isSafeLanguageCode(rawParams.sourceLang)) {
+    return { ok: false, response: invalidIpcInput('Invalid source language') }
+  }
+  if (!isSafeLanguageCode(rawParams.targetLang)) {
+    return { ok: false, response: invalidIpcInput('Invalid target language') }
+  }
+  if (!isOptionalBoolean(rawParams.showFurigana) || !isOptionalBoolean(rawParams.phoneticOnly)) {
+    return { ok: false, response: invalidIpcInput('Invalid boolean option') }
+  }
+  if (rawParams.phoneticMode !== undefined && (typeof rawParams.phoneticMode !== 'string' || !PHONETIC_MODES.has(rawParams.phoneticMode as PhoneticMode))) {
+    return { ok: false, response: invalidIpcInput('Invalid phonetic mode') }
+  }
+  const translationStyle = parseTranslationStyle(rawParams.translationStyle)
+  if (!translationStyle.ok) return translationStyle
+
+  return {
+    ok: true,
+    value: {
+      provider: provider.value,
+      model: model.value,
+      sourceText: rawParams.sourceText,
+      sourceLang: rawParams.sourceLang,
+      targetLang: rawParams.targetLang,
+      showFurigana: rawParams.showFurigana,
+      phoneticMode: rawParams.phoneticMode as PhoneticMode | undefined,
+      translationStyle: translationStyle.value,
+      phoneticOnly: rawParams.phoneticOnly,
+    },
+  }
+}
+
+function parseRewriteParams(rawParams: unknown): ParsedParams<RewriteParams> {
+  if (!isRecord(rawParams)) {
+    return { ok: false, response: invalidIpcInput('Rewrite payload must be an object') }
+  }
+
+  const provider = parseProvider(rawParams.provider)
+  if (!provider.ok) return provider
+  const model = parseModel(rawParams.model)
+  if (!model.ok) return model
+  if (typeof rawParams.text !== 'string') {
+    return { ok: false, response: invalidIpcInput('Text is required') }
+  }
+  if (!isSafeLanguageCode(rawParams.lang)) {
+    return { ok: false, response: invalidIpcInput('Invalid language') }
+  }
+  const translationStyle = parseTranslationStyle(rawParams.translationStyle)
+  if (!translationStyle.ok) return translationStyle
+
+  return {
+    ok: true,
+    value: {
+      provider: provider.value,
+      model: model.value,
+      text: rawParams.text,
+      lang: rawParams.lang,
+      translationStyle: translationStyle.value,
+    },
+  }
+}
+
+function parseDetectLanguageParams(rawParams: unknown): ParsedParams<{ provider: string; model: string; text: string }> {
+  if (!isRecord(rawParams)) {
+    return { ok: false, response: invalidIpcInput('Detect language payload must be an object') }
+  }
+
+  const provider = parseProvider(rawParams.provider)
+  if (!provider.ok) return provider
+  const model = parseModel(rawParams.model)
+  if (!model.ok) return model
+  if (typeof rawParams.text !== 'string') {
+    return { ok: false, response: invalidIpcInput('Text is required') }
+  }
+
+  return {
+    ok: true,
+    value: {
+      provider: provider.value,
+      model: model.value,
+      text: rawParams.text,
+    },
+  }
 }
 
 const STYLE_TONE: Record<TranslationStyle, string> = {
@@ -767,7 +910,10 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
     }
   })
 
-  ipcMain.handle('translate', async (_event, params: TranslateParams) => {
+  ipcMain.handle('translate', async (_event, rawParams: unknown) => {
+    const parsed = parseTranslateParams(rawParams)
+    if (!parsed.ok) return parsed.response
+    const params = parsed.value
     const { provider, model, sourceText, sourceLang, targetLang, showFurigana, translationStyle, phoneticOnly, phoneticMode } = params
     // Resolve effective phonetic mode: 'standard' is the default when showFurigana is true without an explicit mode
     const effectivePhoneticMode: PhoneticMode = phoneticMode ?? (showFurigana ? 'standard' : 'off')
@@ -817,7 +963,10 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
   })
 
   // Rewrite handler — make text more natural in its own language without changing meaning
-  ipcMain.handle('translate:rewrite', async (_event, params: RewriteParams) => {
+  ipcMain.handle('translate:rewrite', async (_event, rawParams: unknown) => {
+    const parsed = parseRewriteParams(rawParams)
+    if (!parsed.ok) return parsed.response
+    const params = parsed.value
     const { provider, model, text, lang, translationStyle } = params
 
     if (!text.trim()) {
@@ -855,7 +1004,10 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
 
   // Language detection handler — identify the language of source text so the swap button
   // can set the correct target language after switching source ↔ target panels.
-  ipcMain.handle('translate:detect-lang', async (_event, params: { provider: string; model: string; text: string }) => {
+  ipcMain.handle('translate:detect-lang', async (_event, rawParams: unknown) => {
+    const parsed = parseDetectLanguageParams(rawParams)
+    if (!parsed.ok) return parsed.response
+    const params = parsed.value
     const { provider, model, text } = params
     if (!text.trim()) return { success: false, error: 'Text is empty' }
 

@@ -7,6 +7,7 @@ import {
   WHISPER_CONSECUTIVE_FAIL_BAN_MS, WHISPER_MODEL,
   WHISPER_RATE_LIMIT_BAN_MS, WHISPER_TIMEOUT_MS,
 } from './ipcConstants'
+import { invalidIpcInput, isOptionalString, isRecord, isSafeLanguageCode } from './ipcValidation'
 import { withRetry } from './retry'
 import { getStoredApiKey, hasStoredApiKey } from './storage'
 
@@ -205,6 +206,46 @@ interface TranscribeParams {
    * Defaults to 'auto'.
    */
   sttProvider?: 'auto' | 'whisper' | 'google' | 'groq' | 'webSpeech'
+}
+
+type ParsedTranscribeParams =
+  | { ok: true; value: TranscribeParams }
+  | { ok: false; response: { success: false; error: string; errorCode?: string } }
+
+const STT_PROVIDERS = new Set(['auto', 'whisper', 'google', 'groq', 'webSpeech'])
+const MAX_PREVIOUS_TEXT_CHARS = 20_000
+
+function parseTranscribeParams(rawParams: unknown): ParsedTranscribeParams {
+  if (!isRecord(rawParams)) {
+    return { ok: false, response: invalidIpcInput('Transcribe payload must be an object') }
+  }
+
+  if (!(rawParams.audioData instanceof ArrayBuffer) || rawParams.audioData.byteLength === 0) {
+    return { ok: false, response: invalidIpcInput('Audio data is required') }
+  }
+  if (typeof rawParams.mimeType !== 'string' || !rawParams.mimeType.startsWith('audio/')) {
+    return { ok: false, response: invalidIpcInput('Invalid audio MIME type') }
+  }
+  if (rawParams.language !== undefined && !isSafeLanguageCode(rawParams.language)) {
+    return { ok: false, response: invalidIpcInput('Invalid language') }
+  }
+  if (!isOptionalString(rawParams.previousText) || (rawParams.previousText?.length ?? 0) > MAX_PREVIOUS_TEXT_CHARS) {
+    return { ok: false, response: invalidIpcInput('Invalid previous text') }
+  }
+  if (rawParams.sttProvider !== undefined && (typeof rawParams.sttProvider !== 'string' || !STT_PROVIDERS.has(rawParams.sttProvider))) {
+    return { ok: false, response: invalidIpcInput('Invalid STT provider') }
+  }
+
+  return {
+    ok: true,
+    value: {
+      audioData: rawParams.audioData,
+      mimeType: rawParams.mimeType,
+      language: rawParams.language,
+      previousText: rawParams.previousText,
+      sttProvider: rawParams.sttProvider as TranscribeParams['sttProvider'],
+    },
+  }
 }
 
 interface TranscribeResult {
@@ -830,7 +871,10 @@ async function checkSttProviders(): Promise<SttProviderCheckResult> {
 // ─── IPC handlers ─────────────────────────────────────────────────────────────
 
 export function registerTranscribeHandlers(ipcMain: IpcMain) {
-  ipcMain.handle('audio:transcribe', async (_event, params: TranscribeParams): Promise<TranscribeResult> => {
+  ipcMain.handle('audio:transcribe', async (_event, rawParams: unknown): Promise<TranscribeResult> => {
+    const parsed = parseTranscribeParams(rawParams)
+    if (!parsed.ok) return parsed.response
+    const params = parsed.value
     const { audioData, mimeType, language, previousText } = params
     const sttProvider = params.sttProvider ?? 'auto'
 

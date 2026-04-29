@@ -18,7 +18,7 @@ import { getSupportedAudioMimeType } from '../constants/audio'
 import { LANG_NAMES_FOR_AI } from '../constants/langNames'
 import { MIN_AUDIO_BLOB_BYTES } from '../constants/ui'
 import { useAppStore, useT } from '../store/useAppStore'
-import type { Provider, SttBackend, SubtitleSettings } from '../types'
+import type { LiveSession, Provider, SttBackend, SubtitleSettings, WindowApi } from '../types'
 import { extractCompleteSentences, isHallucination, jaccardSimilarity, splitSentences } from '../utils/live-translate'
 import { float32ToWav } from '../utils/wav-encoder'
 
@@ -240,6 +240,18 @@ export const DEFAULT_SUBTITLE_SETTINGS = {
  * Avoids token-limit errors on long sessions while giving the model enough context.
  */
 const MAX_SUMMARIZE_SECTION_CHARS = 10_000
+
+type LiveAiHistoryField = 'summary' | 'speakerAnalysis' | 'actionItems' | 'decisions'
+type LiveAiChatRequest = Parameters<WindowApi['chat']>[0]
+
+interface LiveAiActionConfig {
+  setLoading: (loading: boolean) => void
+  setOutput: (value: string | null) => void
+  historyField: LiveAiHistoryField
+  logLabel: string
+  fallbackError: string
+  request: LiveAiChatRequest
+}
 
 /** How long (ms) a pipeline error toast is shown before auto-dismissing. */
 const PIPELINE_ERROR_DISPLAY_MS = 4_000
@@ -1365,14 +1377,44 @@ export function useLiveTranslate() {
     handleClear()
   }, [handleStop, handleClear, addLiveSession])
 
+  const runLiveAiAction = useCallback(async ({
+    setLoading,
+    setOutput,
+    historyField,
+    logLabel,
+    fallbackError,
+    request,
+  }: LiveAiActionConfig) => {
+    setLoading(true)
+    setOutput(null)
+
+    try {
+      const result = await window.api.chat(request)
+
+      if (result.success && result.reply) {
+        setOutput(result.reply)
+        if (sessionIdRef.current) {
+          updateLiveSession(sessionIdRef.current, { [historyField]: result.reply } as Partial<LiveSession>)
+        }
+      } else {
+        const errMsg = result.error ?? fallbackError
+        console.error(`[${logLabel}] Backend error:`, errMsg)
+        setOutput(`Error: ${errMsg}`)
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error(`[${logLabel}] Exception:`, msg)
+      setOutput(`Error: ${msg}`)
+    } finally {
+      setLoading(false)
+    }
+  }, [updateLiveSession])
+
   // ── AI Summarize ────────────────────────────────────────────────────────────
   const handleSummarize = useCallback(async () => {
     let raw = fullRawForSummaryRef.current
     let tx  = fullTxForSummaryRef.current
     if (!raw) return
-
-    setIsSummarizing(true)
-    setSummary(null)
 
     const { targetLang, selectedProvider, selectedModels } = paramsRef.current
 
@@ -1389,8 +1431,13 @@ export function useLiveTranslate() {
       console.log('[summarize] Input truncated to last', MAX_SUMMARIZE_SECTION_CHARS, 'chars per section')
     }
 
-    try {
-      const result = await window.api.chat({
+    await runLiveAiAction({
+      setLoading: setIsSummarizing,
+      setOutput: setSummary,
+      historyField: 'summary',
+      logLabel: 'summarize',
+      fallbackError: 'Summarization failed. Please try again.',
+      request: {
         provider: selectedProvider,
         model: selectedModels[selectedProvider],
         // Bypass the chat UI 3k-char limit — summarize needs to send full transcripts.
@@ -1413,27 +1460,9 @@ export function useLiveTranslate() {
             ].join('\n'),
           }],
         }],
-      })
-
-      if (result.success && result.reply) {
-        setSummary(result.reply)
-        if (sessionIdRef.current) {
-          updateLiveSession(sessionIdRef.current, { summary: result.reply })
-        }
-      } else {
-        // Surface backend errors instead of silently failing
-        const errMsg = result.error ?? 'Summarization failed. Please try again.'
-        console.error('[summarize] Backend error:', errMsg)
-        setSummary(`❌ ${errMsg}`)
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      console.error('[summarize] Exception:', msg)
-      setSummary(`❌ ${msg}`)
-    } finally {
-      setIsSummarizing(false)
-    }
-  }, [updateLiveSession])
+      },
+    })
+  }, [runLiveAiAction])
 
   // ── AI Speaker Analysis ─────────────────────────────────────────────────────
   /**
@@ -1447,9 +1476,6 @@ export function useLiveTranslate() {
     let raw = fullRawForSummaryRef.current
     if (!raw) return
 
-    setIsAnalyzingSpeakers(true)
-    setSpeakerAnalysis(null)
-
     const { targetLang, selectedProvider, selectedModels } = paramsRef.current
 
     // Truncate to prevent token limit errors
@@ -1458,8 +1484,13 @@ export function useLiveTranslate() {
       raw = `[…truncated for length]\n${raw.slice(-MAX_SPEAKER_INPUT_CHARS)}`
     }
 
-    try {
-      const result = await window.api.chat({
+    await runLiveAiAction({
+      setLoading: setIsAnalyzingSpeakers,
+      setOutput: setSpeakerAnalysis,
+      historyField: 'speakerAnalysis',
+      logLabel: 'speaker-analysis',
+      fallbackError: 'Speaker analysis failed. Please try again.',
+      request: {
         provider: selectedProvider,
         model: selectedModels[selectedProvider],
         bypassLengthCheck: true,
@@ -1493,34 +1524,14 @@ export function useLiveTranslate() {
             ].join('\n'),
           }],
         }],
-      })
-
-      if (result.success && result.reply) {
-        setSpeakerAnalysis(result.reply)
-        if (sessionIdRef.current) {
-          updateLiveSession(sessionIdRef.current, { speakerAnalysis: result.reply })
-        }
-      } else {
-        const errMsg = result.error ?? 'Speaker analysis failed. Please try again.'
-        console.error('[speaker-analysis] Backend error:', errMsg)
-        setSpeakerAnalysis(`❌ ${errMsg}`)
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      console.error('[speaker-analysis] Exception:', msg)
-      setSpeakerAnalysis(`❌ ${msg}`)
-    } finally {
-      setIsAnalyzingSpeakers(false)
-    }
-  }, [updateLiveSession])
+      },
+    })
+  }, [runLiveAiAction])
 
   // ── AI Action Items extraction ──────────────────────────────────────────────
   const handleExtractActionItems = useCallback(async () => {
     let raw = fullRawForSummaryRef.current
     if (!raw) return
-
-    setIsExtractingActionItems(true)
-    setActionItems(null)
 
     const { targetLang, selectedProvider, selectedModels } = paramsRef.current
     const langName = LANG_NAMES_FOR_AI[targetLang] ?? targetLang
@@ -1530,8 +1541,13 @@ export function useLiveTranslate() {
       raw = `[…truncated]\n${raw.slice(-MAX_AI_INPUT_CHARS)}`
     }
 
-    try {
-      const result = await window.api.chat({
+    await runLiveAiAction({
+      setLoading: setIsExtractingActionItems,
+      setOutput: setActionItems,
+      historyField: 'actionItems',
+      logLabel: 'action-items',
+      fallbackError: 'Failed to extract action items.',
+      request: {
         provider: selectedProvider,
         model: selectedModels[selectedProvider],
         bypassLengthCheck: true,
@@ -1554,34 +1570,14 @@ export function useLiveTranslate() {
             ].join('\n'),
           }],
         }],
-      })
-
-      if (result.success && result.reply) {
-        setActionItems(result.reply)
-        if (sessionIdRef.current) {
-          updateLiveSession(sessionIdRef.current, { actionItems: result.reply })
-        }
-      } else {
-        const errMsg = result.error ?? 'Failed to extract action items.'
-        console.error('[action-items] Backend error:', errMsg)
-        setActionItems(`❌ ${errMsg}`)
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      console.error('[action-items] Exception:', msg)
-      setActionItems(`❌ ${msg}`)
-    } finally {
-      setIsExtractingActionItems(false)
-    }
-  }, [updateLiveSession])
+      },
+    })
+  }, [runLiveAiAction])
 
   // ── AI Decisions extraction ─────────────────────────────────────────────────
   const handleExtractDecisions = useCallback(async () => {
     let raw = fullRawForSummaryRef.current
     if (!raw) return
-
-    setIsExtractingDecisions(true)
-    setDecisions(null)
 
     const { targetLang, selectedProvider, selectedModels } = paramsRef.current
     const langName = LANG_NAMES_FOR_AI[targetLang] ?? targetLang
@@ -1591,8 +1587,13 @@ export function useLiveTranslate() {
       raw = `[…truncated]\n${raw.slice(-MAX_AI_INPUT_CHARS)}`
     }
 
-    try {
-      const result = await window.api.chat({
+    await runLiveAiAction({
+      setLoading: setIsExtractingDecisions,
+      setOutput: setDecisions,
+      historyField: 'decisions',
+      logLabel: 'decisions',
+      fallbackError: 'Failed to extract decisions.',
+      request: {
         provider: selectedProvider,
         model: selectedModels[selectedProvider],
         bypassLengthCheck: true,
@@ -1615,26 +1616,9 @@ export function useLiveTranslate() {
             ].join('\n'),
           }],
         }],
-      })
-
-      if (result.success && result.reply) {
-        setDecisions(result.reply)
-        if (sessionIdRef.current) {
-          updateLiveSession(sessionIdRef.current, { decisions: result.reply })
-        }
-      } else {
-        const errMsg = result.error ?? 'Failed to extract decisions.'
-        console.error('[decisions] Backend error:', errMsg)
-        setDecisions(`❌ ${errMsg}`)
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      console.error('[decisions] Exception:', msg)
-      setDecisions(`❌ ${msg}`)
-    } finally {
-      setIsExtractingDecisions(false)
-    }
-  }, [updateLiveSession])
+      },
+    })
+  }, [runLiveAiAction])
 
   // ── Speaker rename ─────────────────────────────────────────────────────────
   /** Maps a speaker's original label to a user-assigned display name. */
