@@ -10,12 +10,26 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const openaiMock = vi.hoisted(() => ({
+  speechCreate: vi.fn(),
+}))
+
 // ── Mock Electron ─────────────────────────────────────────────────────────────
 vi.mock('electron', () => ({ IpcMain: class {} }))
 
 // ── Mock storage ──────────────────────────────────────────────────────────────
 vi.mock('../storage', () => ({
   getStoredApiKey: vi.fn(),
+}))
+
+vi.mock('openai', () => ({
+  default: class MockOpenAI {
+    audio = {
+      speech: {
+        create: openaiMock.speechCreate,
+      },
+    }
+  },
 }))
 
 // ── Mock ws (WebSocket) — Edge TTS uses it ────────────────────────────────────
@@ -38,8 +52,36 @@ vi.mock('ws', () => ({
 }))
 
 import { getStoredApiKey } from '../storage'
-import { registerTtsHandlers } from '../tts'
+import { rankTtsCandidates, registerTtsHandlers } from '../tts'
 import { buildMockIpcMain } from './helpers/mockIpcMain'
+
+function providersOf(candidates: ReturnType<typeof rankTtsCandidates>) {
+  return candidates.map((candidate) => candidate.provider)
+}
+
+describe('rankTtsCandidates', () => {
+  it('uses Edge only in free mode, even when paid keys exist', () => {
+    expect(providersOf(rankTtsCandidates('openai-key', 'gemini-key', 'eleven-key', 'free'))).toEqual(['edge'])
+  })
+
+  it('uses free-first order in auto mode', () => {
+    expect(providersOf(rankTtsCandidates('openai-key', 'gemini-key', 'eleven-key', 'auto'))).toEqual([
+      'edge',
+      'openai',
+      'gemini',
+      'elevenlabs',
+    ])
+  })
+
+  it('uses paid-first order in premium mode', () => {
+    expect(providersOf(rankTtsCandidates('openai-key', 'gemini-key', 'eleven-key', 'premium'))).toEqual([
+      'openai',
+      'gemini',
+      'elevenlabs',
+      'edge',
+    ])
+  })
+})
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('registerTtsHandlers — input validation', () => {
@@ -47,6 +89,9 @@ describe('registerTtsHandlers — input validation', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    openaiMock.speechCreate.mockResolvedValue({
+      arrayBuffer: async () => new ArrayBuffer(8),
+    })
     const mock = buildMockIpcMain()
     // biome-ignore lint/suspicious/noExplicitAny: mock IpcMain
     registerTtsHandlers(mock.ipcMain as any)
@@ -78,34 +123,33 @@ describe('registerTtsHandlers — provider selection', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    openaiMock.speechCreate.mockResolvedValue({
+      arrayBuffer: async () => new ArrayBuffer(8),
+    })
     const mock = buildMockIpcMain()
     // biome-ignore lint/suspicious/noExplicitAny: mock IpcMain
     registerTtsHandlers(mock.ipcMain as any)
     invoke = mock.invoke
   })
 
-  it('attempts OpenAI first when OpenAI key is available', async () => {
-    // Mock getStoredApiKey to return key only for openai
+  it('does not attempt OpenAI in default free mode when an OpenAI key is available', async () => {
     vi.mocked(getStoredApiKey).mockImplementation((provider: string) =>
       provider === 'openai' ? 'fake-openai-key' : null
     )
 
-    // Mock OpenAI SDK to return success
-    vi.doMock('openai', () => ({
-      default: class MockOpenAI {
-        audio = {
-          speech: {
-            create: async () => ({
-              arrayBuffer: async () => new ArrayBuffer(8),
-            }),
-          },
-        }
-      },
-    }))
-
     const result = await invoke('audio:tts', { text: 'Hello' })
-    // Even if OpenAI mock doesn't load in time, result should be defined
     expect(result).toBeDefined()
+    expect(openaiMock.speechCreate).not.toHaveBeenCalled()
+  })
+
+  it('attempts OpenAI first in premium mode when OpenAI key is available', async () => {
+    vi.mocked(getStoredApiKey).mockImplementation((provider: string) =>
+      provider === 'openai' ? 'fake-openai-key' : null
+    )
+
+    const result = await invoke('audio:tts', { text: 'Hello', mode: 'premium' })
+    expect(result).toMatchObject({ success: true, provider: 'openai' })
+    expect(openaiMock.speechCreate).toHaveBeenCalledTimes(1)
   })
 
   it('handles provider with INVALID_KEY error code', async () => {
@@ -113,20 +157,11 @@ describe('registerTtsHandlers — provider selection', () => {
       provider === 'openai' ? 'invalid-key' : null
     )
 
-    // Mock OpenAI to throw 401
-    vi.doMock('openai', () => ({
-      default: class MockOpenAI {
-        audio = {
-          speech: {
-            create: async () => { throw new Error('401 Unauthorized - invalid_api_key') },
-          },
-        }
-      },
-    }))
+    openaiMock.speechCreate.mockRejectedValue(new Error('401 Unauthorized - invalid_api_key'))
 
-    const result = await invoke('audio:tts', { text: 'Hello' })
+    const result = await invoke('audio:tts', { text: 'Hello', mode: 'premium' })
     expect(result).toBeDefined()
-    expect(typeof result.success).toBe('boolean')
+    expect(result).toMatchObject({ success: false, errorCode: 'INVALID_KEY' })
   })
 })
 
@@ -136,6 +171,9 @@ describe('TTS response shape', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    openaiMock.speechCreate.mockResolvedValue({
+      arrayBuffer: async () => new ArrayBuffer(8),
+    })
     const mock = buildMockIpcMain()
     // biome-ignore lint/suspicious/noExplicitAny: mock IpcMain
     registerTtsHandlers(mock.ipcMain as any)

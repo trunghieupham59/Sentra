@@ -8,7 +8,7 @@
 import type { StateCreator } from 'zustand'
 import { DEFAULT_SETTINGS, PROVIDERS } from '../../constants/providers'
 import type { AppLocale } from '../../i18n'
-import type { FetchedModel, PhoneticMode, Provider, SttProvider, TranslationStyle, TtsVoice } from '../../types'
+import type { FetchedModel, PhoneticMode, Provider, SttProvider, TranslationStyle, TtsMode, TtsVoice } from '../../types'
 
 export interface SettingsSlice {
   // Locale
@@ -27,6 +27,7 @@ export interface SettingsSlice {
    */
   phoneticMode: PhoneticMode
   translationStyle: TranslationStyle
+  ttsMode: TtsMode
   ttsVoice: TtsVoice
   fontSize: 'small' | 'medium' | 'large'
   /**
@@ -56,6 +57,7 @@ export interface SettingsSlice {
   setAutoTranslateDelay: (ms: number) => void
   setPhoneticMode: (mode: PhoneticMode) => void
   setTranslationStyle: (style: TranslationStyle) => void
+  setTtsMode: (mode: TtsMode) => void
   setTtsVoice: (voice: TtsVoice) => void
   setFontSize: (size: 'small' | 'medium' | 'large') => void
   setSttProvider: (provider: SttProvider) => void
@@ -82,6 +84,7 @@ export const createSettingsSlice: StateCreator<any, [], [], SettingsSlice> = (se
   autoTranslateDelay: DEFAULT_SETTINGS.autoTranslateDelay,
   phoneticMode: 'off' as PhoneticMode,
   translationStyle: 'general' as TranslationStyle,
+  ttsMode: 'free' as TtsMode,
   ttsVoice: 'nova' as TtsVoice,
   fontSize: 'medium' as const,
   sttProvider: 'auto' as SttProvider,
@@ -104,6 +107,7 @@ export const createSettingsSlice: StateCreator<any, [], [], SettingsSlice> = (se
   setAutoTranslateDelay: (ms) => set({ autoTranslateDelay: ms }),
   setPhoneticMode: (mode) => set({ phoneticMode: mode }),
   setTranslationStyle: (style) => set({ translationStyle: style }),
+  setTtsMode: (mode) => set({ ttsMode: mode }),
   setTtsVoice: (voice) => set({ ttsVoice: voice }),
   setFontSize: (size) => set({ fontSize: size }),
   setSttProvider: (provider) => set({ sttProvider: provider }),

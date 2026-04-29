@@ -4,443 +4,120 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Viezan Translate</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0 }
-
-    body {
-      width: 540px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
-      font-size: 13px;
-      background: #ffffff;
-      color: #1e1b4b;
-    }
-
-    /* ══════════════════════════════════════
-       ROW 1 — Header
-    ══════════════════════════════════════ */
-    .header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 14px;
-      background: linear-gradient(135deg, #ede9fe 0%, #e0e7ff 100%);
-      border-bottom: 1px solid #ddd6fe;
-    }
-
-    .header-logo {
-      width: 22px;
-      height: 22px;
-      border-radius: 5px;
-      overflow: hidden;
-      flex-shrink: 0;
-    }
-    .header-logo img { width: 22px; height: 22px; display: block; }
-
-    /* Status badge */
-    .status-badge {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      background: rgba(255,255,255,0.6);
-      border: 1px solid #c4b5fd;
-      border-radius: 20px;
-      padding: 3px 10px;
-      font-size: 11px;
-      font-weight: 600;
-      color: #5b21b6;
-    }
-    .status-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #4ade80;
-      box-shadow: 0 0 5px rgba(74,222,128,0.7);
-    }
-    .status-dot.loading {
-      background: #fbbf24;
-      animation: pulse 1s ease-in-out infinite;
-    }
-    .status-dot.error {
-      background: #f87171;
-      box-shadow: none;
-    }
-    @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
-
-    .header-spacer { flex: 1; }
-
-    /* Settings button */
-    .btn-settings {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 10px;
-      background: rgba(255,255,255,0.55);
-      border: 1px solid #c4b5fd;
-      border-radius: 7px;
-      color: #5b21b6;
-      font-size: 11px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.13s;
-      font-family: inherit;
-    }
-    .btn-settings:hover { background: rgba(255,255,255,0.9); }
-
-    /* ══════════════════════════════════════
-       ROW 2 — Controls bar
-    ══════════════════════════════════════ */
-    .controls-bar {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 8px 14px;
-      background: #f8f7ff;
-      border-bottom: 1px solid #ede9fe;
-      flex-wrap: wrap;
-    }
-
-    /* Provider / Model display badges */
-    .ctrl-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 3px 9px;
-      border-radius: 8px;
-      font-size: 11px;
-      font-weight: 700;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .ctrl-badge-provider {
-      background: rgba(26,115,232,0.09);
-      border: 1px solid rgba(26,115,232,0.22);
-      color: #1A73E8;
-    }
-    .ctrl-badge-model {
-      background: #0d948810;
-      border: 1px solid #0d948830;
-      color: #0d9488;
-      font-family: 'SF Mono', 'Menlo', monospace;
-      max-width: 130px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    /* fallback loading state */
-    .ctrl-badge-loading {
-      background: #f0f0f0;
-      border: 1px solid #e0e0e0;
-      color: #9ca3af;
-    }
-
-    /* Divider between badges and selects */
-    .ctrl-divider {
-      width: 1px;
-      height: 18px;
-      background: #ddd6fe;
-      flex-shrink: 0;
-    }
-
-    /* Compact selects */
-    .ctrl-select {
-      appearance: none;
-      -webkit-appearance: none;
-      background: rgba(255,255,255,0.85);
-      border: 1px solid #c4b5fd;
-      border-radius: 6px;
-      color: #5b21b6;
-      font-family: inherit;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 3px 22px 3px 7px;
-      cursor: pointer;
-      outline: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235b21b6' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 5px center;
-      transition: border-color 0.13s, background-color 0.13s;
-      flex-shrink: 0;
-    }
-    .ctrl-select:hover { border-color: #7c3aed; background-color: #fff; }
-    .ctrl-select:focus { border-color: #7c3aed; box-shadow: 0 0 0 2px rgba(124,58,237,0.15); }
-    #ctrl-lang  { max-width: 130px; }
-    #ctrl-style { max-width: 110px; }
-
-    /* ══════════════════════════════════════
-       ROW 3 — Body (two columns)
-    ══════════════════════════════════════ */
-    .body {
-      display: flex;
-      flex-direction: row;
-      min-height: 160px;
-      max-height: 280px;
-    }
-
-    .panel {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      min-width: 0;
-    }
-    .panel-source { background: #fafafa; }
-    .panel-result { background: #ffffff; }
-
-    .panel-label {
-      font-size: 9px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.09em;
-      color: #a78bfa;
-      padding: 8px 12px 4px;
-      flex-shrink: 0;
-    }
-
-    .panel-divider {
-      width: 1px;
-      background: #e9e6fc;
-      flex-shrink: 0;
-      margin: 10px 0;
-    }
-
-    /* Source textarea */
-    .source-textarea {
-      flex: 1;
-      border: none;
-      outline: none;
-      background: transparent;
-      color: #374151;
-      font-family: inherit;
-      font-size: 12.5px;
-      line-height: 1.55;
-      padding: 0 12px 10px;
-      resize: none;
-      min-height: 0;
-    }
-    .source-textarea::placeholder { color: #c4b5fd; }
-
-    /* Translation result text */
-    .result-text {
-      flex: 1;
-      color: #1e1b4b;
-      padding: 0 12px 10px;
-      font-size: 13px;
-      line-height: 1.6;
-      overflow-y: auto;
-      white-space: pre-wrap;
-    }
-    .result-placeholder {
-      color: #c4b5fd;
-      font-style: italic;
-      font-size: 12px;
-    }
-
-    /* ══════════════════════════════════════
-       ROW 4 — Footer
-    ══════════════════════════════════════ */
-    .footer {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 9px 14px;
-      border-top: 1px solid #ede9fe;
-      background: #faf9ff;
-    }
-
-    .footer-left {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .footer-right {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-left: auto;
-      /* hidden until translation is done */
-    }
-
-    .footer-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 6px 14px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-family: inherit;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      transition: all 0.13s;
-      white-space: nowrap;
-    }
-
-    /* Clear */
-    .btn-clear {
-      background: transparent;
-      color: #6b7280;
-      border: 1px solid #e5e7eb;
-    }
-    .btn-clear:hover { background: #f3f4f6; border-color: #d1d5db; color: #374151; }
-
-    /* Dịch (Translate) */
-    .btn-translate {
-      background: linear-gradient(135deg, #4f46e5, #6d28d9);
-      color: #fff;
-      font-weight: 700;
-      box-shadow: 0 2px 8px rgba(79,70,229,0.28);
-    }
-    .btn-translate:hover { background: linear-gradient(135deg, #4338ca, #5b21b6); box-shadow: 0 3px 12px rgba(79,70,229,0.38); transform: translateY(-1px); }
-    .btn-translate:active { transform: translateY(0); }
-    .btn-translate:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
-
-    /* Copy */
-    .btn-copy {
-      background: #f0f4ff;
-      color: #4f46e5;
-      border: 1px solid #c7d2fe;
-    }
-    .btn-copy:hover { background: #e0e7ff; border-color: #a5b4fc; }
-
-    /* Replace */
-    .btn-replace {
-      background: #f0fdf4;
-      color: #0f766e;
-      border: 1px solid #a7f3d0;
-    }
-    .btn-replace:hover { background: #dcfce7; border-color: #6ee7b7; }
-
-    /* ══════════════════════════════════════
-       Status bar
-    ══════════════════════════════════════ */
-    .statusbar {
-      padding: 7px 14px;
-      font-size: 11.5px;
-      font-weight: 500;
-      text-align: center;
-      display: none;
-      border-top: 1px solid #ede9fe;
-    }
-    .statusbar.error   { color: #be123c; background: #fff1f2; }
-    .statusbar.success { color: #065f46; background: #f0fdf4; }
-    .statusbar.loading { color: #4f46e5; background: #eef2ff; }
-
-    /* ══════════════════════════════════════
-       Not connected state
-    ══════════════════════════════════════ */
-    .not-connected {
-      padding: 36px 24px;
-      text-align: center;
-      background: #fff;
-    }
-    .not-connected-icon { font-size: 40px; margin-bottom: 12px; }
-    .not-connected p {
-      color: #6366f1;
-      margin-bottom: 18px;
-      font-size: 13px;
-      line-height: 1.6;
-      font-weight: 500;
-    }
-    .btn-open-options {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 10px 24px;
-      background: linear-gradient(135deg, #4f46e5, #6d28d9);
-      color: #fff;
-      font-weight: 700;
-      border-radius: 10px;
-      box-shadow: 0 4px 14px rgba(79,70,229,0.30);
-      cursor: pointer;
-      border: none;
-      font-size: 13px;
-      font-family: inherit;
-    }
-    .btn-open-options:hover { background: linear-gradient(135deg, #4338ca, #5b21b6); }
-  </style>
+  <link rel="stylesheet" href="extension-ui.css" />
 </head>
-<body>
+<body class="popup-page">
 
-  <!-- ── Not connected ── -->
   <div class="not-connected" id="not-connected-state" style="display:none">
-    <div class="not-connected-icon">🔌</div>
-    <p>Not connected to Viezan app.<br>Set your token in Options first.</p>
-    <button type="button" class="btn-open-options" id="btn-go-options">⚙ Open Options</button>
+    <div class="not-connected-card">
+      <div class="not-connected-mark" aria-hidden="true">!</div>
+      <div>
+        <div class="not-connected-title">Viezan is not connected</div>
+        <p class="not-connected-text">Paste the connection token from the desktop app before translating in the browser.</p>
+      </div>
+      <button type="button" class="button button-primary" id="btn-go-options">
+        Open Options
+      </button>
+    </div>
   </div>
 
-  <!-- ── Connected ── -->
-  <div id="connected-state" style="display:none">
-
-    <!-- ROW 1: Header -->
-    <div class="header">
-      <div class="header-logo">
+  <div class="popup-shell" id="connected-state" style="display:none">
+    <header class="popup-header">
+      <div class="brand-mark">
         <img src="icons/icon128.png" alt="Viezan" />
       </div>
-      <div class="status-badge" id="status-badge">
+      <div class="brand-copy">
+        <div class="brand-title">Viezan</div>
+        <div class="brand-subtitle">Browser translate</div>
+      </div>
+      <div class="status-pill" id="status-badge">
         <span class="status-dot loading" id="status-dot"></span>
-        <span id="status-label">Connecting…</span>
+        <span id="status-label">Connecting...</span>
       </div>
       <div class="header-spacer"></div>
-      <button type="button" class="btn-settings" id="btn-options">⚙ Options</button>
-    </div>
+      <button type="button" class="button button-ghost" id="btn-options">
+        Options
+      </button>
+    </header>
 
-    <!-- ROW 2: Controls bar -->
-    <div class="controls-bar">
-      <span class="ctrl-badge ctrl-badge-loading" id="ctrl-provider">…</span>
-      <span class="ctrl-badge ctrl-badge-loading" id="ctrl-model">…</span>
-      <div class="ctrl-divider"></div>
-      <select class="ctrl-select" id="target-lang">
-        <option value="en">🇬🇧 English</option>
-        <option value="vi">🇻🇳 Vietnamese</option>
-        <option value="ja">🇯🇵 Japanese</option>
-        <option value="zh">🇨🇳 Chinese</option>
-        <option value="ko">🇰🇷 Korean</option>
-        <option value="fr">🇫🇷 French</option>
-        <option value="de">🇩🇪 German</option>
-        <option value="es">🇪🇸 Spanish</option>
-        <option value="pt">🇵🇹 Portuguese</option>
-        <option value="ru">🇷🇺 Russian</option>
-        <option value="ar">🇸🇦 Arabic</option>
-        <option value="th">🇹🇭 Thai</option>
-        <option value="id">🇮🇩 Indonesian</option>
-      </select>
-      <select class="ctrl-select" id="translation-style">
-        <option value="general">General</option>
-        <option value="formal">Formal</option>
-        <option value="casual">Casual</option>
-        <option value="business">Business</option>
-        <option value="technical">Technical</option>
-        <option value="natural">Natural</option>
-      </select>
-    </div>
-
-    <!-- ROW 3: Body (two-column) -->
-    <div class="body">
-      <div class="panel panel-source">
-        <div class="panel-label">Original</div>
-        <textarea class="source-textarea" id="input-text" placeholder="Paste or type text here…"></textarea>
+    <section class="popup-controls" aria-label="Translation controls">
+      <div class="model-stack">
+        <span class="meta-badge ctrl-badge-loading" id="ctrl-provider">Provider</span>
+        <span class="meta-badge ctrl-badge-model ctrl-badge-loading" id="ctrl-model">Model</span>
       </div>
-      <div class="panel-divider"></div>
-      <div class="panel panel-result">
-        <div class="panel-label">Translation</div>
+      <div class="select-field">
+        <label for="target-lang">To</label>
+        <select class="control-select" id="target-lang">
+          <option value="en">English</option>
+          <option value="vi">Vietnamese</option>
+          <option value="ja">Japanese</option>
+          <option value="zh">Chinese</option>
+          <option value="zh-TW">Chinese (Traditional)</option>
+          <option value="ko">Korean</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+          <option value="es">Spanish</option>
+          <option value="pt">Portuguese</option>
+          <option value="ru">Russian</option>
+          <option value="ar">Arabic</option>
+          <option value="th">Thai</option>
+          <option value="id">Indonesian</option>
+          <option value="it">Italian</option>
+          <option value="nl">Dutch</option>
+          <option value="tr">Turkish</option>
+          <option value="hi">Hindi</option>
+        </select>
+      </div>
+      <div class="select-field">
+        <label for="translation-style">Style</label>
+        <select class="control-select" id="translation-style">
+          <option value="general">General</option>
+          <option value="formal">Formal</option>
+          <option value="casual">Casual</option>
+          <option value="business">Business</option>
+          <option value="technical">Technical</option>
+          <option value="natural">Natural</option>
+        </select>
+      </div>
+    </section>
+
+    <main class="popup-body">
+      <section class="text-panel panel-source" aria-labelledby="source-label">
+        <div class="panel-label" id="source-label">Original</div>
+        <textarea class="source-textarea" id="input-text" placeholder="Paste or type text here..."></textarea>
+      </section>
+      <div class="panel-divider" aria-hidden="true"></div>
+      <section class="text-panel panel-result" aria-labelledby="result-label">
+        <div class="panel-label" id="result-label">Translation</div>
         <div class="result-text" id="result-text">
-          <span class="result-placeholder">Translation appears here…</span>
+          <span class="result-placeholder">Translation appears here...</span>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
 
-    <!-- ROW 4: Footer -->
-    <div class="footer">
+    <footer class="popup-footer">
       <div class="footer-left">
-        <button type="button" class="footer-btn btn-clear" id="btn-clear">✕ Clear</button>
-        <button type="button" class="footer-btn btn-translate" id="btn-translate">⚡ Translate</button>
+        <button type="button" class="button button-ghost" id="btn-clear">
+          <span class="button-glyph" aria-hidden="true">x</span>
+          Clear
+        </button>
+        <button type="button" class="button button-primary" id="btn-translate">
+          <span class="button-glyph" aria-hidden="true">></span>
+          Translate
+        </button>
       </div>
       <div class="footer-right" id="footer-result" style="display:none">
-        <button type="button" class="footer-btn btn-copy" id="btn-copy-result">📋 Copy</button>
-        <button type="button" class="footer-btn btn-replace" id="btn-replace">↩ Replace</button>
+        <button type="button" class="button button-media" id="btn-speak-result">
+          Listen
+        </button>
+        <button type="button" class="button button-soft" id="btn-copy-result">
+          Copy
+        </button>
+        <button type="button" class="button button-success" id="btn-replace">
+          Replace
+        </button>
       </div>
-    </div>
+    </footer>
 
     <div class="statusbar" id="status-msg"></div>
   </div>

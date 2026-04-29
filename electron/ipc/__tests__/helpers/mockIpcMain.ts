@@ -15,6 +15,7 @@ type IpcHandler = (...args: unknown[]) => unknown
  */
 export function buildMockIpcMain() {
   const handlers: Record<string, IpcHandler> = {}
+  const sentEvents: Array<{ channel: string; payload: unknown }> = []
 
   const ipcMain = {
     handle: (channel: string, handler: IpcHandler) => {
@@ -25,7 +26,13 @@ export function buildMockIpcMain() {
   /** Invoke a registered handler with a fake Electron event + any extra args. */
   // biome-ignore lint/suspicious/noExplicitAny: test helper — callers need to access result properties without explicit casting
   const invoke = (channel: string, ...args: unknown[]): any =>
-    handlers[channel]?.({} /* fake _event */, ...args)
+    handlers[channel]?.({
+      sender: {
+        send: (eventChannel: string, payload: unknown) => {
+          sentEvents.push({ channel: eventChannel, payload })
+        },
+      },
+    } /* fake _event */, ...args)
 
-  return { ipcMain, invoke }
+  return { ipcMain, invoke, sentEvents }
 }

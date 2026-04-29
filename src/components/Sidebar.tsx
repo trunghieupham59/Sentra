@@ -15,27 +15,31 @@ interface SidebarItemProps {
 
 function SidebarItem({ icon, label, active, badge, onClick }: SidebarItemProps) {
   return (
-    <div className="relative group">
+    <div className="relative group w-full">
       <button
         type="button"
         onClick={onClick}
         aria-label={label}
-        className={`relative w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-150 ${
+        aria-current={active ? 'page' : undefined}
+        className={`relative w-full h-10 flex items-center justify-center lg:justify-start gap-3 rounded-lg px-0 lg:px-3 transition-all duration-150 ${
           active
-            ? 'bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400'
-            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-800'
+            ? 'bg-blue-50 text-blue-700 shadow-sm shadow-blue-900/5 dark:bg-blue-950/45 dark:text-blue-300'
+            : 'text-gray-500 hover:text-gray-900 hover:bg-white/80 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-white/5'
         }`}
       >
-        {icon}
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg lg:h-auto lg:w-auto">
+          {icon}
+        </span>
+        <span className="hidden lg:block min-w-0 truncate text-sm font-semibold">{label}</span>
         {badge && (
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-400 rounded-full border-2 border-white dark:border-gray-900" />
+          <span className="absolute top-1.5 right-1.5 lg:right-2.5 w-2 h-2 bg-orange-400 rounded-full border-2 border-white dark:border-neutral-950" />
         )}
       </button>
       {/* Tooltip */}
       <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3
                        px-2 py-1 text-xs font-medium text-white bg-gray-800 dark:bg-gray-700
                        rounded-md whitespace-nowrap z-50
-                       opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                       opacity-0 group-hover:opacity-100 lg:hidden transition-opacity duration-150">
         {label}
       </span>
     </div>
@@ -54,16 +58,19 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex flex-col items-center w-[60px] pt-3 pb-3 gap-1.5 flex-shrink-0
-                      bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800">
+    <aside className="flex flex-col items-center lg:items-stretch w-[76px] lg:w-[188px] pt-3 pb-3 px-3 gap-2 flex-shrink-0
+                      border-r border-white/70 bg-white/70 backdrop-blur dark:border-white/10 dark:bg-neutral-950/55">
 
       {/* App icon */}
-      <div className="mb-1 flex items-center justify-center w-10 h-10">
-        <AppLogoIcon size={36} />
+      <div className="mb-1 flex h-11 items-center justify-center lg:justify-start gap-3 px-0 lg:px-2">
+        <AppLogoIcon size={34} />
+        <div className="hidden lg:block min-w-0">
+          <div className="truncate text-sm font-bold text-gray-950 dark:text-gray-50">Viezan</div>
+        </div>
       </div>
 
       {/* Divider */}
-      <div className="w-8 h-px bg-gray-100 dark:bg-gray-800 mb-0.5" />
+      <div className="mx-auto lg:mx-0 w-8 lg:w-full h-px bg-gray-200/80 dark:bg-white/10 mb-0.5" />
 
       {/* Chat with AI */}
       <SidebarItem
@@ -101,7 +108,7 @@ export function Sidebar() {
       <div className="flex-1" />
 
       {/* Divider */}
-      <div className="w-8 h-px bg-gray-100 dark:bg-gray-800 mb-0.5" />
+      <div className="mx-auto lg:mx-0 w-8 lg:w-full h-px bg-gray-200/80 dark:bg-white/10 mb-0.5" />
 
       {/* Settings */}
       <SidebarItem

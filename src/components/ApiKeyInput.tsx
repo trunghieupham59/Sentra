@@ -3,7 +3,7 @@ import { VERIFY_STATUS_RESET_DELAY_MS } from '../constants/ui'
 import { useT } from '../store/useAppStore'
 import type { ProviderConfig } from '../types'
 import { tpl } from '../utils/tpl'
-import { PROVIDER_COLORS, ProviderIcon } from './ProviderIcon'
+import { ProviderIcon } from './ProviderIcon'
 import { CheckCircleIcon, CheckIcon, SpinnerIcon, TrashIcon } from './ui/icons'
 
 interface ApiKeyInputProps {
@@ -23,7 +23,6 @@ export function ApiKeyInput({ provider, onSave, onDelete, hasKey, maskedKey }: A
   const [verifyStatus, setVerifyStatus] = useState<VerifyStatus>('idle')
   const [verifyMessage, setVerifyMessage] = useState('')
 
-  const colors = PROVIDER_COLORS[provider.id]
   const isVerifying = verifyStatus === 'verifying'
   const isSuccess = verifyStatus === 'valid' || verifyStatus === 'rate_limited'
   const isError = verifyStatus === 'invalid' || verifyStatus === 'network_error'
@@ -117,15 +116,15 @@ export function ApiKeyInput({ provider, onSave, onDelete, hasKey, maskedKey }: A
   }
 
   return (
-    <div className={`card p-4 space-y-3 border-2 ${colors.borderActive}`}>
+    <div className="card p-4 space-y-3 border border-gray-200 dark:border-gray-700">
       {/* Provider header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors.bg} flex-shrink-0`}>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-100 dark:bg-gray-700 flex-shrink-0">
             <ProviderIcon provider={provider.id} size={22} />
           </div>
           <div>
-            <h3 className={`font-semibold ${colors.text}`}>{provider.name}</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{provider.name}</h3>
             <a
               href={provider.docsUrl}
               target="_blank"

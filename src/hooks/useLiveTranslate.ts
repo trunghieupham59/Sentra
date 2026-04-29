@@ -19,8 +19,37 @@ import { LANG_NAMES_FOR_AI } from '../constants/langNames'
 import { MIN_AUDIO_BLOB_BYTES } from '../constants/ui'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { Provider, SttBackend, SubtitleSettings } from '../types'
-import { extractCompleteSentences, isHallucination, jaccardSimilarity, splitSentences } from '../utils/live-translate'
+import { isHallucination, jaccardSimilarity } from '../utils/live-translate'
 import { float32ToWav } from '../utils/wav-encoder'
+import {
+  DEFAULT_SPEAKER_DIARIZATION_POLICY,
+  INITIAL_SPEAKER_DIARIZATION_STATE,
+  resolveSpeakerForCompletedChunk,
+} from './live/speakerDiarization'
+import { appendRawTranscript, assembleCompletedSentences, getWhisperParts } from './live/transcriptAssembly'
+import { useLiveAiActions } from './live/useLiveAiActions'
+import {
+  ADAPTIVE_VAD_DISCARD_THRESHOLD,
+  ADAPTIVE_VAD_EVAL_WINDOW,
+  ADAPTIVE_VAD_MIN_CHUNKS,
+  AVG_LOGPROB_MIN,
+  CHUNK_MAX_QUEUE_AGE_MS,
+  COMPRESSION_RATIO_MAX,
+  getInitialVadPolicy,
+  MAX_RAW_TRANSCRIPT_CHARS,
+  MAX_WORDS_PER_CHUNK,
+  MAX_WORDS_PER_SEC,
+  MIC_GAIN,
+  MIN_CHUNK_RECORD_MS,
+  NO_SPEECH_PROB_MAX,
+  SILENCE_RESET_CHUNKS,
+  SYSTEM_AUD_GAIN,
+  VAD_FLIP_RATE_HIGH,
+  VAD_FLIP_RATE_LOW,
+  VAD_MAX_HANGOVER_SAMPLES,
+  VAD_SAMPLE_INTERVAL,
+  type VadParams,
+} from './live/vadPolicy'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -55,137 +84,6 @@ const MAX_PENDING_CHUNKS   = 2
 const CONTEXT_SENTENCES    = 2
 
 /**
- * VAD policy parameters — adapted per source type and online quality metrics.
- * All RMS thresholds are calibrated for the POST-gain signal.
- *
- * ── Audio signal levels AFTER software gain ──────────────────────────────
- *   MIC_GAIN = 4×:
- *     • Pure silence / AC hum  : ~0–16   → rejected by policy.speechRmsThreshold
- *     • Quiet speech           : ~32–60  → accepted
- *     • Normal speech          : ~60–127 → clearly accepted
- *   SYSTEM_AUD_GAIN = 2×:
- *     • Background noise       : ~0–8    → rejected
- *     • Media/music content    : ~8–30   → policy uses higher thresholds to filter
- *     • Speech in call         : ~20–60  → accepted
- *
- * ── State machine ──────────────────────────────────────────────────────────
- *   SILENCE ──(minSpeechSamples consecutive speech frames)──▶ SPEECH
- *   SPEECH  ──(hangoverSamples  consecutive silent  frames)──▶ SILENCE [early stop]
- *
- *   Both counters are RESET on the opposite event (consecutive, not cumulative).
- */
-interface VadParams {
-  speechRmsThreshold: number   // RMS floor — below this → silence frame
-  peakRmsThreshold:   number   // peak RMS that must fire at least once → rules out constant hum
-  minSpeechSamples:   number   // consecutive speech frames → start trigger
-  hangoverSamples:    number   // consecutive silent frames → end trigger (hangover)
-}
-
-/**
- * Source-aware initial VAD policy (Phase 1 of the policy engine).
- *
- * Each audio mode has a different software gain and expected content type:
- *
- *   mic    — 4× gain, real-time conversation → sensitive, low latency optimized.
- *   system — 2× gain, media/video content → more conservative; music/SFX can
- *            trigger VAD so we require more consecutive speech frames and a
- *            longer hangover to avoid spurious segments.
- *   both   — mixed gain/content → intermediate policy.
- */
-function getInitialVadPolicy(mode: 'mic' | 'system' | 'both'): VadParams {
-  switch (mode) {
-    case 'system':
-      // 2× gain; media audio often has music/SFX → require 3 consecutive
-      // speech frames (240 ms) and 480 ms hangover to reduce false triggers.
-      return { speechRmsThreshold: 10, peakRmsThreshold: 18, minSpeechSamples: 3, hangoverSamples: 6 }
-    case 'both':
-      // Mixed source → intermediate policy.
-      return { speechRmsThreshold: 9, peakRmsThreshold: 16, minSpeechSamples: 2, hangoverSamples: 5 }
-    default: // mic
-      // 4× gain, live conversation → 160 ms start trigger, 400 ms hangover.
-      return { speechRmsThreshold: 8, peakRmsThreshold: 15, minSpeechSamples: 2, hangoverSamples: 5 }
-  }
-}
-
-/**
- * Online VAD quality monitoring (Phase 2 — adaptive parameters).
- *
- * After each recorded chunk we measure the VAD flip rate — the number of
- * SPEECH ↔ SILENCE state transitions within that chunk.
- *
- * High flip rate signals instability (music, noise bursts, clipping) → we
- *   increase the hangover by 1 sample (up to VAD_MAX_HANGOVER_SAMPLES) so the
- *   state machine becomes less sensitive until conditions improve.
- *
- * Low flip rate after a period of instability signals the audio has settled
- *   back to normal → we relax the hangover by 1 sample toward the source default.
- *
- * This avoids the need to hard-code thresholds for every possible environment:
- * the policy self-tunes during the session.
- */
-const VAD_SAMPLE_INTERVAL      = 80   // ms per frame
-const VAD_MAX_HANGOVER_SAMPLES  = 8    // cap at 8 × 80 ms = 640 ms
-const VAD_FLIP_RATE_HIGH        = 10   // flips per chunk above this → increase hangover
-const VAD_FLIP_RATE_LOW         = 3    // flips per chunk below this → relax hangover
-
-/**
- * Minimum recording time before an early stop is allowed.
- * Prevents a single noise spike at the start of a chunk from immediately
- * ending the recording before any real speech has been captured.
- */
-const MIN_CHUNK_RECORD_MS = 300   // ms
-
-/**
- * Upper bound on words Whisper may return for a single CHUNK_DURATION_MS chunk.
- * Raised for languages with higher token density (Japanese, Chinese).
- */
-const MAX_WORDS_PER_CHUNK  = 60   // raised — Japanese/Chinese produce more tokens per second
-
-/**
- * Upper bound on word-per-second rate within a chunk.
- * Raised to accommodate fast speakers and high-token-density languages.
- */
-const MAX_WORDS_PER_SEC    = 15   // raised — accommodate fast/dense speech
-
-/**
- * Number of consecutive silent chunks before context reset.
- * Raised to 10 (= 30 s) to reduce over-eager context clearing.
- */
-const SILENCE_RESET_CHUNKS = 10   // raised — 30 s of silence before context reset
-
-/**
- * Whisper confidence gate thresholds (from verbose_json segment signals).
- * Relaxed to reduce false rejections — Whisper's own no_speech_prob is
- * the most reliable signal; the others are secondary guards.
- */
-const NO_SPEECH_PROB_MAX    = 0.90   // only reject if Whisper is ≥90% sure it's silence
-const AVG_LOGPROB_MIN       = -2.0   // accept lower-confidence transcriptions
-const COMPRESSION_RATIO_MAX = 3.5    // allow more repetitive output before discarding
-
-/**
- * Software gain applied to the microphone AND system audio signal.
- * Applied to boost quiet/distant speakers above the VAD threshold.
- */
-const MIC_GAIN        = 4.0   // mic boost — compensates for quiet/distant speakers
-const SYSTEM_AUD_GAIN = 2.0   // system audio boost — remote call audio is often quieter
-
-/**
- * Maximum number of characters to retain in the raw transcript ref for
- * long-running sessions. Keeping the last 50,000 chars (~10-15 minutes of speech)
- * is more than sufficient for AI summarization while preventing unbounded memory growth.
- */
-const MAX_RAW_TRANSCRIPT_CHARS = 50_000
-
-/**
- * Maximum age (ms) a queued audio chunk may wait before being discarded.
- * If the processing queue falls behind (e.g. slow API), chunks older than
- * this threshold are dropped to prevent latency stacking — the live
- * translation stays near real-time even under heavy load.
- */
-const CHUNK_MAX_QUEUE_AGE_MS = 10_000 // 10 s
-
-
-/**
  * A single translated segment with speaker label.
  * Segments are built in real-time as speech is transcribed + translated.
  * Speaker labels are inferred from silence pauses between speakers (VAD-based diarization).
@@ -197,31 +95,6 @@ export interface LiveSegment {
   speaker: string    // e.g. 'Speaker 1', 'Speaker 2'
   timestamp: number
 }
-
-/**
- * Speaker diarization — silence-gap heuristics.
- *
- * MIN_SILENCE_FOR_SPEAKER_CHANGE: raised to 2 chunks (~6 s) so brief pauses
- *   within a turn don't trigger a false speaker switch.
- *
- * MIN_SPEAKER_DURATION_MS: lowered to 2500 ms so rapid back-and-forth
- *   conversations (common in 1:1 calls) can be tracked accurately.
- *
- * LONG_SILENCE_CHUNKS: silence ≥ 4 chunks (~12 s) is a strong signal that
- *   a genuinely new participant started speaking rather than an existing one
- *   returning after a pause.
- *
- * MAX_SPEAKERS: hard cap on distinct speaker labels.  Once reached, the
- *   Least-Recently-Used speaker is recycled instead of creating new labels.
- *
- * SPEAKER_TURN_HISTORY_SIZE: number of past turns kept in memory so the
- *   cycle-back logic can identify the most likely "other" speaker.
- */
-const MIN_SILENCE_FOR_SPEAKER_CHANGE = 2     // raised: ~6 s of quiet before switching
-const MIN_SPEAKER_DURATION_MS        = 2_500 // lowered: allows faster turn-taking
-const LONG_SILENCE_CHUNKS            = 4     // ≥12 s → likely a genuinely new speaker
-const MAX_SPEAKERS                   = 6     // cap on distinct labels per session
-const SPEAKER_TURN_HISTORY_SIZE      = 10    // recent turns kept for cycle-back logic
 
 /** Default subtitle appearance settings — also used by reset button in LiveTranslatePage */
 export const DEFAULT_SUBTITLE_SETTINGS = {
@@ -239,21 +112,6 @@ const MAX_SUMMARIZE_SECTION_CHARS = 10_000
 
 /** How long (ms) a pipeline error toast is shown before auto-dismissing. */
 const PIPELINE_ERROR_DISPLAY_MS = 4_000
-
-/**
- * Adaptive VAD — upgrades automatically from energy-based → Silero (ML) VAD
- * when noise metrics indicate the mic environment is too loud for reliable detection.
- *
- * One-way upgrade (energy → Silero, never back) to prevent oscillation.
- * Only applies to mic mode — system/both audio must use the energy-based path.
- *
- * A "noise discard" = chunk where Whisper returned:
- *   • Empty / hallucinated text  (isHallucination = true), OR
- *   • High no-speech probability (noSpeechProb > NO_SPEECH_PROB_MAX)
- */
-const ADAPTIVE_VAD_MIN_CHUNKS        = 6     // min speech chunks before evaluating
-const ADAPTIVE_VAD_DISCARD_THRESHOLD = 0.40  // 40 % noise-discard rate → upgrade
-const ADAPTIVE_VAD_EVAL_WINDOW       = 12    // rolling 12-chunk window
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
@@ -305,17 +163,12 @@ export function useLiveTranslate() {
   // Interim text: accumulated but not yet sentence-complete (shown in gray)
   const [pendingText, setPendingText] = useState('')
 
-  // Speaker tracking refs — stable refs readable in processChunk useCallback
-  const currentSpeakerRef        = useRef('Speaker 1')
-  const speakerCountRef          = useRef(1)
+  // Speaker tracking refs — stable refs readable in processChunk useCallback.
+  const currentSpeakerRef        = useRef(INITIAL_SPEAKER_DIARIZATION_STATE.currentSpeaker)
+  const speakerCountRef          = useRef(INITIAL_SPEAKER_DIARIZATION_STATE.speakerCount)
   const silenceBeforeChunkRef    = useRef(0)   // silent chunks captured before last speech chunk
-  const lastSpeakerChangeTimeRef = useRef(0)
-  /**
-   * Ordered history of the last SPEAKER_TURN_HISTORY_SIZE speaker labels assigned.
-   * Used by the cycle-back algorithm to identify the most likely "other" speaker
-   * without ever incrementing past MAX_SPEAKERS.
-   */
-  const speakerTurnHistoryRef    = useRef<string[]>([])
+  const lastSpeakerChangeTimeRef = useRef(INITIAL_SPEAKER_DIARIZATION_STATE.lastSpeakerChangeTime)
+  const speakerTurnHistoryRef    = useRef<string[]>([...INITIAL_SPEAKER_DIARIZATION_STATE.turnHistory])
 
   // ── Summary + Speaker analysis state ──────────────────────────────────────
   const [showSummaryBtn,       setShowSummaryBtn]       = useState(false)
@@ -509,6 +362,35 @@ export function useLiveTranslate() {
     }
     finally { setIsTranscribing(false) }
 
+    // In 'auto' mode, update the badge to reflect the provider that actually
+    // handled this chunk — Whisper may have been skipped (session cache) or
+    // fallen back to Gemini/Groq due to an error.  usedProvider tells us
+    // the truth; without this the badge stays on the pre-flight default forever.
+    if (mountedRef.current && stt?.success && stt.usedProvider
+        && paramsRef.current.sttProvider === 'auto') {
+      setActiveSttProvider(stt.usedProvider as SttBackend)
+    }
+
+    // ── All-providers-exhausted guard ────────────────────────────────────────
+    // If every STT provider in the chain failed (Whisper → Gemini → Groq all
+    // down or misconfigured), continue transcribing is impossible.  Stop the
+    // session immediately and surface a persistent error so the user knows
+    // why recording halted — silent audio drops with no feedback are confusing.
+    if (stt?.errorCode === 'ALL_PROVIDERS_EXHAUSTED') {
+      if (mountedRef.current) {
+        // Stop the live pipeline without waiting for the user to click Stop.
+        // activeRef = false prevents startChunk() from restarting the recorder.
+        activeRef.current = false
+        setIsActive(false)
+        setIsTranscribing(false)
+        setIsTranslating(false)
+        // Show a persistent error (micError, not pipelineError) — it doesn't
+        // auto-dismiss so the user must acknowledge before retrying.
+        setMicError(t.live_error_all_stt_exhausted)
+      }
+      return
+    }
+
     const newText = stt?.success && stt.text?.trim() ? stt.text.trim() : ''
     if (!newText || isHallucination(newText)) {
       // ── Adaptive VAD: noise-discard (empty / hallucinated output) ────────
@@ -576,78 +458,26 @@ export function useLiveTranslate() {
     )) return
     lastChunkTextRef.current = newText
 
-    // Append new text and trim to MAX_RAW_TRANSCRIPT_CHARS to prevent unbounded growth
-    // for very long sessions (hours). The last N chars are kept — sufficient for summarization.
-    const updatedRaw = fullRawForSummaryRef.current
-      ? `${fullRawForSummaryRef.current} ${newText}`
-      : newText
-    fullRawForSummaryRef.current = updatedRaw.length > MAX_RAW_TRANSCRIPT_CHARS
-      ? updatedRaw.slice(-MAX_RAW_TRANSCRIPT_CHARS)
-      : updatedRaw
+    fullRawForSummaryRef.current = appendRawTranscript(
+      fullRawForSummaryRef.current,
+      newText,
+      MAX_RAW_TRANSCRIPT_CHARS,
+    )
     setRawTranscript(fullRawForSummaryRef.current)
 
-    // ── Language-agnostic sentence boundary detection ─────────────────────────
-    // Whisper's verbose_json response includes per-segment texts that reflect the
-    // model's own internal sentence/phrase segmentation — valid for ALL languages
-    // without any language-specific heuristics.
-    //
-    // Strategy:
-    //   • When Whisper returns 2+ segments, process each segment independently
-    //     through the pending buffer.  A segment that ends at a natural boundary
-    //     (with punctuation) will immediately complete, while a mid-sentence
-    //     segment accumulates as usual.
-    //   • When only one segment is returned (or segmentTexts is absent), fall back
-    //     to the previous single-text accumulation behaviour.
-    //
-    // This replaces the earlier approach of matching Japanese-only morphemes
-    // (よ/ね/ます/etc.) which was language-specific and therefore not optimal.
-    // segmentTexts is now properly typed in TranscribeResult — no cast needed.
-    const whisperParts: string[] = (stt?.segmentTexts?.length ?? 0) > 1
-      ? (stt?.segmentTexts ?? []).map((s: string) => s.trim()).filter(Boolean)
-      : [newText]
-
-    // Collect all complete sentences found across the Whisper parts in this chunk
-    const completedSentences: string[] = []
-
-    for (const part of whisperParts) {
-      const newBuffer = pendingBufferRef.current
-        ? `${pendingBufferRef.current} ${part}`
-        : part
-
-      // Show growing interim text so the transcript feels live as each part arrives
-      setPendingText(newBuffer)
-
-      const { complete: partComplete, pending: partPending } = extractCompleteSentences(newBuffer)
-
-      if (!partComplete) {
-        // No sentence boundary yet — accumulate and move to next part
-        pendingBufferRef.current = newBuffer
-        continue
-      }
-
-      // Sentence boundary found — capture complete text, update buffer to remainder
-      pendingBufferRef.current = partPending
-      setPendingText(partPending)
-      completedSentences.push(...splitSentences(partComplete))
-    }
-
-    // Handle no-complete-sentence case: increment pending counter, possibly force-flush
-    if (completedSentences.length === 0) {
-      pendingChunkCountRef.current += 1
-      if (pendingChunkCountRef.current >= MAX_PENDING_CHUNKS) {
-        // Force-flush: emit the entire accumulated buffer as a translation unit
-        const forceText = pendingBufferRef.current
-        if (forceText) {
-          pendingBufferRef.current = ''
-          pendingChunkCountRef.current = 0
-          setPendingText('')
-          completedSentences.push(...splitSentences(forceText))
-        }
-      }
-      if (completedSentences.length === 0) return
-    } else {
-      pendingChunkCountRef.current = 0
-    }
+    const assembly = assembleCompletedSentences(
+      getWhisperParts(newText, stt?.segmentTexts),
+      {
+        pendingBuffer: pendingBufferRef.current,
+        pendingChunkCount: pendingChunkCountRef.current,
+      },
+      MAX_PENDING_CHUNKS,
+    )
+    pendingBufferRef.current = assembly.pendingBuffer
+    pendingChunkCountRef.current = assembly.pendingChunkCount
+    setPendingText(assembly.pendingText)
+    const { completedSentences } = assembly
+    if (completedSentences.length === 0) return
 
     // ── VAD-based speaker diarization (smart cycling) ─────────────────────
     // Runs once per chunk — the same speaker label is assigned to all sentences
@@ -667,65 +497,22 @@ export function useLiveTranslate() {
     const silenceBefore = silenceBeforeChunkRef.current
     silenceBeforeChunkRef.current = 0  // consume once
 
-    if (
-      silenceBefore >= MIN_SILENCE_FOR_SPEAKER_CHANGE &&
-      Date.now() - lastSpeakerChangeTimeRef.current > MIN_SPEAKER_DURATION_MS
-    ) {
-      const prevSpeaker = currentSpeakerRef.current
-      const knownCount  = speakerCountRef.current
-      const history     = speakerTurnHistoryRef.current
-      let nextSpeaker   = prevSpeaker  // default: stay unless a better choice is found
-
-      if (knownCount === 1) {
-        // First speaker change ever: introduce Speaker 2
-        speakerCountRef.current = 2
-        nextSpeaker = 'Speaker 2'
-      } else if (knownCount === 2) {
-        if (silenceBefore >= LONG_SILENCE_CHUNKS && history.length >= 4) {
-          // Very long silence + established 2-speaker pattern → possible 3rd person
-          speakerCountRef.current = 3
-          nextSpeaker = 'Speaker 3'
-        } else {
-          // Most common 1:1 meeting pattern: simply alternate between the two speakers
-          nextSpeaker = prevSpeaker === 'Speaker 1' ? 'Speaker 2' : 'Speaker 1'
-        }
-      } else if (knownCount < MAX_SPEAKERS) {
-        // 3+ known speakers: prefer the most-recently-active other speaker for short
-        // gaps; only introduce a genuinely new label after a very long silence.
-        const recentOthers = [...history].reverse().filter(s => s !== prevSpeaker)
-        const mostRecentOther = recentOthers[0]
-        if (silenceBefore >= LONG_SILENCE_CHUNKS) {
-          // Long pause → likely a new participant entering the conversation
-          speakerCountRef.current += 1
-          nextSpeaker = `Speaker ${speakerCountRef.current}`
-        } else if (mostRecentOther) {
-          // Short/medium gap → return to the most recently active other speaker
-          nextSpeaker = mostRecentOther
-        } else {
-          speakerCountRef.current += 1
-          nextSpeaker = `Speaker ${speakerCountRef.current}`
-        }
-      } else {
-        // MAX_SPEAKERS reached — find and recycle the Least-Recently-Used label
-        // so the label pool stays bounded no matter how long the session runs.
-        const seen = new Set<string>()
-        const lruOrder: string[] = []
-        for (const s of [...history].reverse()) {
-          if (!seen.has(s)) { seen.add(s); lruOrder.push(s) }
-        }
-        const allLabels = Array.from({ length: MAX_SPEAKERS }, (_, i) => `Speaker ${i + 1}`)
-        // Prefer a label not seen at all in recent history; fall back to oldest in LRU order
-        nextSpeaker = allLabels.find(s => !seen.has(s)) ?? lruOrder[lruOrder.length - 1] ?? 'Speaker 1'
-      }
-
-      if (nextSpeaker !== prevSpeaker) {
-        currentSpeakerRef.current        = nextSpeaker
-        lastSpeakerChangeTimeRef.current = Date.now()
-      }
-    }
-    const currentSpeaker = currentSpeakerRef.current
-    // Record every finalized turn in the history so future decisions can cycle back correctly
-    speakerTurnHistoryRef.current = [...speakerTurnHistoryRef.current, currentSpeaker].slice(-SPEAKER_TURN_HISTORY_SIZE)
+    const speakerState = resolveSpeakerForCompletedChunk(
+      {
+        currentSpeaker: currentSpeakerRef.current,
+        speakerCount: speakerCountRef.current,
+        lastSpeakerChangeTime: lastSpeakerChangeTimeRef.current,
+        turnHistory: speakerTurnHistoryRef.current,
+      },
+      silenceBefore,
+      Date.now(),
+      DEFAULT_SPEAKER_DIARIZATION_POLICY,
+    )
+    currentSpeakerRef.current = speakerState.currentSpeaker
+    speakerCountRef.current = speakerState.speakerCount
+    lastSpeakerChangeTimeRef.current = speakerState.lastSpeakerChangeTime
+    speakerTurnHistoryRef.current = speakerState.turnHistory
+    const currentSpeaker = speakerState.currentSpeaker
 
     // ── Create one segment per completed sentence ─────────────────────────────
     // Each sentence from completedSentences gets its own row, segment ID, and
@@ -1018,11 +805,11 @@ export function useLiveTranslate() {
     setSpeakerNameMap({})
     setSegments([])
     setPendingText('')
-    currentSpeakerRef.current        = 'Speaker 1'
-    speakerCountRef.current          = 1
+    currentSpeakerRef.current        = INITIAL_SPEAKER_DIARIZATION_STATE.currentSpeaker
+    speakerCountRef.current          = INITIAL_SPEAKER_DIARIZATION_STATE.speakerCount
     silenceBeforeChunkRef.current    = 0
-    lastSpeakerChangeTimeRef.current = 0
-    speakerTurnHistoryRef.current    = []
+    lastSpeakerChangeTimeRef.current = INITIAL_SPEAKER_DIARIZATION_STATE.lastSpeakerChangeTime
+    speakerTurnHistoryRef.current    = [...INITIAL_SPEAKER_DIARIZATION_STATE.turnHistory]
     const now = Date.now()
     sessionIdRef.current    = `live-${now}-${Math.random().toString(36).slice(2, 8)}`
     sessionStartRef.current = now
@@ -1283,11 +1070,11 @@ export function useLiveTranslate() {
     setSpeakerNameMap({})
     setSegments([])
     setPendingText('')
-    currentSpeakerRef.current        = 'Speaker 1'
-    speakerCountRef.current          = 1
+    currentSpeakerRef.current        = INITIAL_SPEAKER_DIARIZATION_STATE.currentSpeaker
+    speakerCountRef.current          = INITIAL_SPEAKER_DIARIZATION_STATE.speakerCount
     silenceBeforeChunkRef.current    = 0
-    lastSpeakerChangeTimeRef.current = 0
-    speakerTurnHistoryRef.current    = []
+    lastSpeakerChangeTimeRef.current = INITIAL_SPEAKER_DIARIZATION_STATE.lastSpeakerChangeTime
+    speakerTurnHistoryRef.current    = [...INITIAL_SPEAKER_DIARIZATION_STATE.turnHistory]
   }, [])
 
   /**
@@ -1332,14 +1119,14 @@ export function useLiveTranslate() {
     handleClear()
   }, [handleStop, handleClear, addLiveSession])
 
+  const getCurrentSessionId = useCallback(() => sessionIdRef.current, [])
+  const runLiveAiAction = useLiveAiActions(updateLiveSession, getCurrentSessionId)
+
   // ── AI Summarize ────────────────────────────────────────────────────────────
   const handleSummarize = useCallback(async () => {
     let raw = fullRawForSummaryRef.current
     let tx  = fullTxForSummaryRef.current
     if (!raw) return
-
-    setIsSummarizing(true)
-    setSummary(null)
 
     const { targetLang, selectedProvider, selectedModels } = paramsRef.current
 
@@ -1356,8 +1143,13 @@ export function useLiveTranslate() {
       console.log('[summarize] Input truncated to last', MAX_SUMMARIZE_SECTION_CHARS, 'chars per section')
     }
 
-    try {
-      const result = await window.api.chat({
+    await runLiveAiAction({
+      setLoading: setIsSummarizing,
+      setOutput: setSummary,
+      historyField: 'summary',
+      logLabel: 'summarize',
+      fallbackError: 'Summarization failed. Please try again.',
+      request: {
         provider: selectedProvider,
         model: selectedModels[selectedProvider],
         // Bypass the chat UI 3k-char limit — summarize needs to send full transcripts.
@@ -1380,27 +1172,9 @@ export function useLiveTranslate() {
             ].join('\n'),
           }],
         }],
-      })
-
-      if (result.success && result.reply) {
-        setSummary(result.reply)
-        if (sessionIdRef.current) {
-          updateLiveSession(sessionIdRef.current, { summary: result.reply })
-        }
-      } else {
-        // Surface backend errors instead of silently failing
-        const errMsg = result.error ?? 'Summarization failed. Please try again.'
-        console.error('[summarize] Backend error:', errMsg)
-        setSummary(`❌ ${errMsg}`)
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      console.error('[summarize] Exception:', msg)
-      setSummary(`❌ ${msg}`)
-    } finally {
-      setIsSummarizing(false)
-    }
-  }, [updateLiveSession])
+      },
+    })
+  }, [runLiveAiAction])
 
   // ── AI Speaker Analysis ─────────────────────────────────────────────────────
   /**
@@ -1414,9 +1188,6 @@ export function useLiveTranslate() {
     let raw = fullRawForSummaryRef.current
     if (!raw) return
 
-    setIsAnalyzingSpeakers(true)
-    setSpeakerAnalysis(null)
-
     const { targetLang, selectedProvider, selectedModels } = paramsRef.current
 
     // Truncate to prevent token limit errors
@@ -1425,8 +1196,13 @@ export function useLiveTranslate() {
       raw = `[…truncated for length]\n${raw.slice(-MAX_SPEAKER_INPUT_CHARS)}`
     }
 
-    try {
-      const result = await window.api.chat({
+    await runLiveAiAction({
+      setLoading: setIsAnalyzingSpeakers,
+      setOutput: setSpeakerAnalysis,
+      historyField: 'speakerAnalysis',
+      logLabel: 'speaker-analysis',
+      fallbackError: 'Speaker analysis failed. Please try again.',
+      request: {
         provider: selectedProvider,
         model: selectedModels[selectedProvider],
         bypassLengthCheck: true,
@@ -1460,34 +1236,14 @@ export function useLiveTranslate() {
             ].join('\n'),
           }],
         }],
-      })
-
-      if (result.success && result.reply) {
-        setSpeakerAnalysis(result.reply)
-        if (sessionIdRef.current) {
-          updateLiveSession(sessionIdRef.current, { speakerAnalysis: result.reply })
-        }
-      } else {
-        const errMsg = result.error ?? 'Speaker analysis failed. Please try again.'
-        console.error('[speaker-analysis] Backend error:', errMsg)
-        setSpeakerAnalysis(`❌ ${errMsg}`)
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      console.error('[speaker-analysis] Exception:', msg)
-      setSpeakerAnalysis(`❌ ${msg}`)
-    } finally {
-      setIsAnalyzingSpeakers(false)
-    }
-  }, [updateLiveSession])
+      },
+    })
+  }, [runLiveAiAction])
 
   // ── AI Action Items extraction ──────────────────────────────────────────────
   const handleExtractActionItems = useCallback(async () => {
     let raw = fullRawForSummaryRef.current
     if (!raw) return
-
-    setIsExtractingActionItems(true)
-    setActionItems(null)
 
     const { targetLang, selectedProvider, selectedModels } = paramsRef.current
     const langName = LANG_NAMES_FOR_AI[targetLang] ?? targetLang
@@ -1497,8 +1253,13 @@ export function useLiveTranslate() {
       raw = `[…truncated]\n${raw.slice(-MAX_AI_INPUT_CHARS)}`
     }
 
-    try {
-      const result = await window.api.chat({
+    await runLiveAiAction({
+      setLoading: setIsExtractingActionItems,
+      setOutput: setActionItems,
+      historyField: 'actionItems',
+      logLabel: 'action-items',
+      fallbackError: 'Failed to extract action items.',
+      request: {
         provider: selectedProvider,
         model: selectedModels[selectedProvider],
         bypassLengthCheck: true,
@@ -1521,34 +1282,14 @@ export function useLiveTranslate() {
             ].join('\n'),
           }],
         }],
-      })
-
-      if (result.success && result.reply) {
-        setActionItems(result.reply)
-        if (sessionIdRef.current) {
-          updateLiveSession(sessionIdRef.current, { actionItems: result.reply })
-        }
-      } else {
-        const errMsg = result.error ?? 'Failed to extract action items.'
-        console.error('[action-items] Backend error:', errMsg)
-        setActionItems(`❌ ${errMsg}`)
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      console.error('[action-items] Exception:', msg)
-      setActionItems(`❌ ${msg}`)
-    } finally {
-      setIsExtractingActionItems(false)
-    }
-  }, [updateLiveSession])
+      },
+    })
+  }, [runLiveAiAction])
 
   // ── AI Decisions extraction ─────────────────────────────────────────────────
   const handleExtractDecisions = useCallback(async () => {
     let raw = fullRawForSummaryRef.current
     if (!raw) return
-
-    setIsExtractingDecisions(true)
-    setDecisions(null)
 
     const { targetLang, selectedProvider, selectedModels } = paramsRef.current
     const langName = LANG_NAMES_FOR_AI[targetLang] ?? targetLang
@@ -1558,8 +1299,13 @@ export function useLiveTranslate() {
       raw = `[…truncated]\n${raw.slice(-MAX_AI_INPUT_CHARS)}`
     }
 
-    try {
-      const result = await window.api.chat({
+    await runLiveAiAction({
+      setLoading: setIsExtractingDecisions,
+      setOutput: setDecisions,
+      historyField: 'decisions',
+      logLabel: 'decisions',
+      fallbackError: 'Failed to extract decisions.',
+      request: {
         provider: selectedProvider,
         model: selectedModels[selectedProvider],
         bypassLengthCheck: true,
@@ -1582,26 +1328,9 @@ export function useLiveTranslate() {
             ].join('\n'),
           }],
         }],
-      })
-
-      if (result.success && result.reply) {
-        setDecisions(result.reply)
-        if (sessionIdRef.current) {
-          updateLiveSession(sessionIdRef.current, { decisions: result.reply })
-        }
-      } else {
-        const errMsg = result.error ?? 'Failed to extract decisions.'
-        console.error('[decisions] Backend error:', errMsg)
-        setDecisions(`❌ ${errMsg}`)
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      console.error('[decisions] Exception:', msg)
-      setDecisions(`❌ ${msg}`)
-    } finally {
-      setIsExtractingDecisions(false)
-    }
-  }, [updateLiveSession])
+      },
+    })
+  }, [runLiveAiAction])
 
   // ── Speaker rename ─────────────────────────────────────────────────────────
   /** Maps a speaker's original label to a user-assigned display name. */
@@ -1823,7 +1552,15 @@ export function useLiveTranslate() {
     hasAnyKey,
     // Adaptive VAD mode — 'energy' (default) or 'silero' (auto-upgraded when noisy)
     vadMode,
-    // Active STT backend — pre-flight checked on mount, updates when keys change
-    activeSttProvider,
+    // Active STT backend for the UI badge.
+    // • 'auto' / 'webSpeech' → use the pre-flight-determined best provider
+    // • explicit choice       → always reflect exactly what the user selected
+    //   (store uses 'google' for Gemini STT; map to 'gemini' for display)
+    activeSttProvider: (
+      sttProvider === 'whisper' ? 'whisper' :
+      sttProvider === 'google'  ? 'gemini'  :
+      sttProvider === 'groq'    ? 'groq'    :
+      activeSttProvider  // 'auto' or 'webSpeech'
+    ) as typeof activeSttProvider,
   }
 }

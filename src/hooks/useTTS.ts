@@ -4,16 +4,15 @@
  * Extracted from TranslatePage.tsx (was a 110-line inline function).
  * Handles:
  *   - Web Audio API (primary — supports MP3, WAV, OGG, PCM)
- *   - OS SpeechSynthesis fallback
+ *   - Backend TTS routing (Edge TTS for free mode, API providers for paid modes)
  *   - Toggle off when already speaking
  *
  * Usage:
- *   const { speakingPanel, speakLoading, handleSpeak, stopSpeak } = useTTS({ ttsVoice })
+ *   const { speakingPanel, speakLoading, handleSpeak, stopSpeak } = useTTS({ ttsMode, ttsVoice })
  *   <button onClick={() => handleSpeak(text, lang, 'translated')} />
  */
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { LANG_TO_BCP47 } from '../constants/audio'
-import type { TtsVoice } from '../types'
+import { useCallback, useRef, useState } from 'react'
+import type { TtsMode, TtsVoice } from '../types'
 
 /** Tốc độ phát audio TTS — thấp hơn 1.0 để dễ nghe hơn */
 const TTS_PLAYBACK_RATE = 0.9
@@ -21,6 +20,7 @@ const TTS_PLAYBACK_RATE = 0.9
 export type SpeakPanel = 'source' | 'translated'
 
 interface UseTTSOptions {
+  ttsMode: TtsMode
   ttsVoice: TtsVoice
 }
 
@@ -31,31 +31,17 @@ interface UseTTSReturn {
   stopSpeak: () => void
 }
 
-export function useTTS({ ttsVoice }: UseTTSOptions): UseTTSReturn {
+export function useTTS({ ttsMode, ttsVoice }: UseTTSOptions): UseTTSReturn {
   const [speakingPanel, setSpeakingPanel] = useState<SpeakPanel | null>(null)
   const [speakLoading, setSpeakLoading] = useState(false)
 
   const audioCtxRef = useRef<AudioContext | null>(null)
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const voicesRef = useRef<SpeechSynthesisVoice[]>([])
-
-  // Load OS voices asynchronously (used as fallback)
-  useEffect(() => {
-    if (!window.speechSynthesis) return
-    const load = () => { voicesRef.current = window.speechSynthesis.getVoices() }
-    load()
-    window.speechSynthesis.addEventListener('voiceschanged', load)
-    return () => window.speechSynthesis.removeEventListener('voiceschanged', load)
-  }, [])
 
   const stopSpeak = useCallback(() => {
     try { audioSourceRef.current?.stop() } catch { /* node may already be stopped */ }
     try { audioSourceRef.current?.disconnect() } catch { /* node may not be connected */ }
     audioSourceRef.current = null
-    audioRef.current?.pause()
-    audioRef.current = null
-    window.speechSynthesis?.cancel()
     setSpeakingPanel(null)
     setSpeakLoading(false)
   }, [])
@@ -82,13 +68,14 @@ export function useTTS({ ttsVoice }: UseTTSOptions): UseTTSReturn {
         await audioCtxRef.current.resume()
       }
     } catch {
-      // Non-fatal — fallback to OS speech synthesis below
+      setSpeakingPanel(null)
+      return
     }
 
-    // ── Primary: backend TTS (OpenAI → Gemini fallback) ──────────────────
+    // ── Backend TTS: Edge/API routing is selected by the main process mode ──
     try {
       setSpeakLoading(true)
-      const result = await window.api.speakText({ text, voice: ttsVoice })
+      const result = await window.api.speakText({ text, voice: ttsVoice, mode: ttsMode, lang })
       setSpeakLoading(false)
 
       if (result.success && result.audioBase64) {
@@ -134,31 +121,13 @@ export function useTTS({ ttsVoice }: UseTTSOptions): UseTTSReturn {
         source.start(0)
         return
       }
+
+      setSpeakingPanel(null)
     } catch {
       setSpeakLoading(false)
-      // Fall through to OS speech synthesis
+      setSpeakingPanel(null)
     }
-
-    // ── Fallback: OS SpeechSynthesis ──────────────────────────────────────
-    if (!window.speechSynthesis) { setSpeakingPanel(null); return }
-    const utter = new SpeechSynthesisUtterance(text)
-    const bcp47 = LANG_TO_BCP47[lang]
-    if (bcp47) {
-      utter.lang = bcp47
-      const all = voicesRef.current.length ? voicesRef.current : window.speechSynthesis.getVoices()
-      const local = all.filter(v => v.localService)
-      const prefix = bcp47.split('-')[0]
-      const best =
-        local.find(v => v.lang === bcp47) ??
-        all.find(v => v.lang === bcp47) ??
-        local.find(v => v.lang.startsWith(prefix)) ??
-        all.find(v => v.lang.startsWith(prefix))
-      if (best) utter.voice = best
-    }
-    utter.onend = () => setSpeakingPanel(null)
-    utter.onerror = () => setSpeakingPanel(null)
-    window.speechSynthesis.speak(utter)
-  }, [speakingPanel, speakLoading, ttsVoice, stopSpeak])
+  }, [speakingPanel, speakLoading, ttsMode, ttsVoice, stopSpeak])
 
   return { speakingPanel, speakLoading, handleSpeak, stopSpeak }
 }

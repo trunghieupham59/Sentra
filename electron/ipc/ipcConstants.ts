@@ -67,13 +67,13 @@ export const VERIFY_MAX_TOKENS = 10
 // because verification needs minimal cost, not necessarily the best translation quality.
 
 /** Cheapest Gemini model suitable for a minimal generateContent call. */
-export const VERIFY_MODEL_GEMINI = 'gemini-2.0-flash'
+export const VERIFY_MODEL_GEMINI = 'gemini-2.5-flash-lite'
 
-/** Cheapest Claude model suitable for a minimal messages.create call. */
-export const VERIFY_MODEL_CLAUDE = 'claude-haiku-4-5'
+/** Current Claude model suitable for a minimal messages.create call. */
+export const VERIFY_MODEL_CLAUDE = 'claude-sonnet-4-20250514'
 
-/** Cheapest OpenAI chat model suitable for a minimal chat.completions.create call. */
-export const VERIFY_MODEL_OPENAI = 'gpt-4o-mini'
+/** Current OpenAI chat model suitable for a minimal chat.completions.create call. */
+export const VERIFY_MODEL_OPENAI = 'gpt-4.1-mini'
 
 // ── Gemini specialised model IDs ──────────────────────────────────────────────
 /** Gemini TTS model — optimised for low-latency, low-cost speech synthesis. */
@@ -123,7 +123,7 @@ export const VISION_SCORE_LITE_PENALTY = 30 // penalty for lite/nano variants
 export const MAX_LIGHTWEIGHT_TRANSLATE_TOKENS = 2_048
 
 /** HC-09: Default Gemini model cho local server extension endpoint. */
-export const EXT_DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash'
+export const EXT_DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash'
 
 // ── Shared lightweight translation system prompt ──────────────────────────────
 /** Shared system prompt cho các lightweight translation calls (bookmarklet, global hotkey).
@@ -148,6 +148,28 @@ export const EDGE_TTS_CHROMIUM_MAJOR = '143'
 export const EDGE_TTS_WIN_EPOCH = 11644473600
 /** Default Edge TTS voice — Vietnamese female, natural quality. */
 export const EDGE_TTS_DEFAULT_VOICE = 'vi-VN-HoaiMyNeural'
+/** Edge Neural voice map for app language codes. */
+export const EDGE_TTS_VOICE_BY_LANG: Record<string, string> = {
+  vi: 'vi-VN-HoaiMyNeural',
+  en: 'en-US-JennyNeural',
+  zh: 'zh-CN-XiaoxiaoNeural',
+  'zh-TW': 'zh-TW-HsiaoChenNeural',
+  ja: 'ja-JP-NanamiNeural',
+  ko: 'ko-KR-SunHiNeural',
+  fr: 'fr-FR-DeniseNeural',
+  de: 'de-DE-KatjaNeural',
+  es: 'es-ES-ElviraNeural',
+  pt: 'pt-PT-RaquelNeural',
+  ru: 'ru-RU-SvetlanaNeural',
+  ar: 'ar-SA-ZariyahNeural',
+  th: 'th-TH-PremwadeeNeural',
+  id: 'id-ID-GadisNeural',
+  it: 'it-IT-ElsaNeural',
+  nl: 'nl-NL-ColetteNeural',
+  pl: 'pl-PL-ZofiaNeural',
+  tr: 'tr-TR-EmelNeural',
+  hi: 'hi-IN-SwaraNeural',
+}
 /** Default speaking rate for Edge TTS — +20% faster than neutral. */
 export const EDGE_TTS_DEFAULT_RATE = '+20%'
 
@@ -207,15 +229,69 @@ export const GROQ_STT_MODEL = 'whisper-large-v3-turbo'
  */
 export const WHISPER_RATE_LIMIT_BAN_MS = 90_000
 
+/**
+ * Timeout (ms) per Whisper API call in 'auto' mode.
+ * If the OpenAI transcription endpoint does not respond within this window,
+ * the call is aborted and falls back immediately to the next STT provider.
+ *
+ * Set to 3 s — slightly above CHUNK_DURATION_MS (2 s audio) to tolerate small
+ * network fluctuations without false timeouts.  Because the hedge fires Gemini
+ * at STT_HEDGE_DELAY_MS (1 s), Gemini serves as a parallel backup so the actual
+ * result latency stays near 1–2 s even when Whisper uses the full 3 s.
+ */
+export const WHISPER_TIMEOUT_MS = 3_000
+
+/**
+ * Hedge delay (ms) in 'auto' mode — how long to wait for Whisper before
+ * firing Gemini in parallel ("hedged request" pattern).
+ *
+ * At t=0  : Whisper call starts.
+ * At t=1s : if Whisper hasn't responded yet, Gemini starts simultaneously.
+ * Whichever responds first wins; the other is ignored.
+ *
+ * This guarantees that a slow Whisper endpoint never blocks the pipeline
+ * for more than ~1–2 s, while still preferring Whisper when it is fast.
+ */
+export const STT_HEDGE_DELAY_MS = 1_000
+
+/**
+ * How long (ms) Whisper is temporarily banned after repeated consecutive failures
+ * with unknown errors (no recognised errorCode).
+ * After WHISPER_CONSECUTIVE_FAIL_LIMIT failures the session switches to
+ * Gemini/Groq for this many milliseconds, then retries Whisper once.
+ */
+export const WHISPER_CONSECUTIVE_FAIL_BAN_MS = 60_000
+
+/**
+ * How long (ms) a provider is banned after a CONNECTION_ERROR in 'auto' mode.
+ *
+ * CONNECTION_ERROR is typically a transient network issue but in a live meeting
+ * context there is no value in retrying the same endpoint on every chunk — the
+ * same failure will occur again within ~2 s and wastes the chunk's budget.
+ *
+ * 30 s gives the network/server time to recover while keeping the downtime short
+ * enough that Whisper/Gemini can be automatically restored mid-session.
+ * A background probe (scheduleRecoveryProbe) may reset the ban earlier if the
+ * provider comes back sooner.
+ */
+export const STT_CONNECTION_ERROR_BAN_MS = 30_000
+
+/**
+ * Delay (ms) between a provider ban and the first background recovery probe.
+ * 60 s is a reasonable interval for recovery checks in a live meeting — probing
+ * more frequently wastes API quota without meaningfully improving recovery speed.
+ */
+export const STT_RECOVERY_PROBE_DELAY_MS = 60_000
+
 // ── Lightweight translate default models (used when no model is specified) ────
 /**
  * Default OpenAI model for lightweight translation (global hotkey, bookmarklet).
  * NOTE: EXT_DEFAULT_GEMINI_MODEL is already defined above.
  */
-export const EXT_DEFAULT_OPENAI_MODEL = 'gpt-4o-mini'
+export const EXT_DEFAULT_OPENAI_MODEL = 'gpt-5-mini'
 
 /** Default Claude model for lightweight translation. */
-export const EXT_DEFAULT_CLAUDE_MODEL = 'claude-haiku-4-5'
+export const EXT_DEFAULT_CLAUDE_MODEL = 'claude-sonnet-4-20250514'
 
 // ── Edge TTS timeout ──────────────────────────────────────────────────────────
 /**

@@ -1,12 +1,10 @@
 /**
  * Text-to-Speech IPC handlers — Electron main process.
  *
- * Provider priority (best-to-worst, auto-ranked):
- *  1. OpenAI tts-1          — high-quality natural voices; requires OpenAI key.
- *  2. Gemini TTS            — good quality, WAV output; requires Gemini key.
- *  3. Edge TTS (Microsoft)  — FREE, no API key needed, Microsoft Neural voices;
- *                             implemented via Rust-style WebSocket DRM proxy in Node.js.
- *  4. ElevenLabs            — premium streaming quality; requires ElevenLabs key.
+ * Provider priority depends on user-selected TTS mode:
+ *  - free:    Edge TTS only (no paid API keys)
+ *  - auto:    Edge TTS first, then paid providers if Edge fails
+ *  - premium: paid providers first, then Edge fallback
  *
  * All providers return base64-encoded audio so the renderer can decode it with
  * Web Audio API regardless of format (MP3, WAV, PCM).
@@ -22,6 +20,7 @@ import {
   EDGE_TTS_DEFAULT_VOICE,
   EDGE_TTS_TIMEOUT_MS,
   EDGE_TTS_TRUSTED_TOKEN,
+  EDGE_TTS_VOICE_BY_LANG,
   EDGE_TTS_WIN_EPOCH,
   EDGE_TTS_WS_URL,
   ELEVENLABS_API_BASE,
@@ -35,16 +34,19 @@ import {
   GEMINI_TTS_VOICE_NAME,
   OPENAI_TTS_MODEL,
 } from './ipcConstants'
+import { invalidIpcInput, isRecord, isSafeLanguageCode } from './ipcValidation'
 import { getStoredApiKey } from './storage'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface TtsParams {
+export interface TtsParams {
   text: string
   voice?: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
+  mode?: TtsMode
+  lang?: string
 }
 
-interface TtsResult {
+export interface TtsResult {
   success: boolean
   /** base64-encoded audio — safer than ArrayBuffer over Electron IPC */
   audioBase64?: string
@@ -61,56 +63,124 @@ interface TtsCandidate {
   reason: string
 }
 
+export type TtsMode = 'free' | 'auto' | 'premium'
+
+type ParsedTtsParams =
+  | { ok: true; value: TtsParams }
+  | { ok: false; response: TtsResult }
+
+const TTS_VOICES = new Set(['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'])
+const TTS_MODES = new Set(['free', 'auto', 'premium'])
+const MAX_TTS_TEXT_CHARS = 5_000
+
+function parseTtsParams(rawParams: unknown): ParsedTtsParams {
+  if (!isRecord(rawParams)) {
+    return { ok: false, response: invalidIpcInput('TTS payload must be an object') }
+  }
+  if (typeof rawParams.text !== 'string' || !rawParams.text.trim()) {
+    return { ok: false, response: invalidIpcInput('Text is required') }
+  }
+  if (rawParams.text.length > MAX_TTS_TEXT_CHARS) {
+    return { ok: false, response: invalidIpcInput('Text is too long') }
+  }
+  if (rawParams.voice !== undefined && (typeof rawParams.voice !== 'string' || !TTS_VOICES.has(rawParams.voice))) {
+    return { ok: false, response: invalidIpcInput('Invalid TTS voice') }
+  }
+  if (rawParams.mode !== undefined && (typeof rawParams.mode !== 'string' || !TTS_MODES.has(rawParams.mode))) {
+    return { ok: false, response: invalidIpcInput('Invalid TTS mode') }
+  }
+  if (rawParams.lang !== undefined && !isSafeLanguageCode(rawParams.lang)) {
+    return { ok: false, response: invalidIpcInput('Invalid language') }
+  }
+
+  return {
+    ok: true,
+    value: {
+      text: rawParams.text,
+      voice: rawParams.voice as TtsParams['voice'],
+      mode: rawParams.mode as TtsParams['mode'],
+      lang: rawParams.lang,
+    },
+  }
+}
+
+function normalizeTtsMode(mode?: TtsMode): TtsMode {
+  return mode === 'auto' || mode === 'premium' ? mode : 'free'
+}
+
 // ── Provider ranking ──────────────────────────────────────────────────────────
 
 /**
- * Returns an ordered list of TTS candidates to try, from best to worst.
- *
- *  1. OpenAI tts-1  — if OpenAI key is present: high-quality, reliable.
- *  2. Gemini TTS    — if Gemini key is present: good quality, WAV output.
- *  3. Edge TTS      — ALWAYS available (free, no key); Microsoft Neural voices.
- *  4. ElevenLabs    — if ElevenLabs key is present: premium quality last resort.
+ * Returns an ordered list of TTS candidates to try for the selected mode.
  */
-function rankTtsCandidates(
+export function rankTtsCandidates(
   openaiKey: string | null,
   geminiKey: string | null,
   elevenlabsKey: string | null,
+  mode: TtsMode,
 ): TtsCandidate[] {
   const candidates: TtsCandidate[] = []
 
-  // ── 1. OpenAI tts-1: best quality when key is available ───────────────────
-  if (openaiKey) {
+  const addOpenAI = () => {
+    if (!openaiKey) return
     candidates.push({
       provider: 'openai',
-      reason: 'tts-1 — high-quality natural voices (primary)',
+      reason: 'tts-1 — high-quality natural voices',
     })
   }
 
-  // ── 2. Gemini TTS: good quality, uses existing Gemini key ─────────────────
-  if (geminiKey) {
+  const addGemini = () => {
+    if (!geminiKey) return
     candidates.push({
       provider: 'gemini',
       reason: `${GEMINI_TTS_MODEL} — Aoede voice, WAV output`,
     })
   }
 
-  // ── 3. Edge TTS: always free, no key needed ────────────────────────────────
-  // Microsoft Neural TTS via WebSocket; quality ~= OpenAI tts-1 for many languages.
-  // Used as the free fallback when no OpenAI key is present.
-  candidates.push({
-    provider: 'edge',
-    reason: 'Microsoft Edge TTS — free, no API key required',
-  })
-
-  // ── 4. ElevenLabs: premium quality, last resort ────────────────────────────
-  if (elevenlabsKey) {
+  const addElevenLabs = () => {
+    if (!elevenlabsKey) return
     candidates.push({
       provider: 'elevenlabs',
-      reason: 'eleven_multilingual_v2 — premium quality (last resort)',
+      reason: 'eleven_multilingual_v2 — premium quality',
     })
   }
 
+  const addEdge = () => {
+    candidates.push({
+      provider: 'edge',
+      reason: 'Microsoft Edge TTS — free, no API key required',
+    })
+  }
+
+  if (mode === 'free') {
+    addEdge()
+    return candidates
+  }
+
+  if (mode === 'auto') {
+    addEdge()
+    addOpenAI()
+    addGemini()
+    addElevenLabs()
+    return candidates
+  }
+
+  addOpenAI()
+  addGemini()
+  addElevenLabs()
+  addEdge()
   return candidates
+}
+
+export function getEdgeVoiceForLang(lang?: string): string {
+  if (!lang || lang === 'auto') return EDGE_TTS_DEFAULT_VOICE
+  return EDGE_TTS_VOICE_BY_LANG[lang] ?? EDGE_TTS_DEFAULT_VOICE
+}
+
+function getEdgeXmlLang(lang?: string): string {
+  const voice = getEdgeVoiceForLang(lang)
+  const [language, region] = voice.split('-')
+  return language && region ? `${language}-${region}` : 'en-US'
 }
 
 // ── OpenAI TTS ────────────────────────────────────────────────────────────────
@@ -167,8 +237,10 @@ function generateSecMsGec(): string {
  * Connects via WebSocket, sends a SSML request, collects binary audio chunks,
  * and returns base64-encoded MP3.
  */
-async function ttsWithEdge(text: string, voice = EDGE_TTS_DEFAULT_VOICE): Promise<TtsResult> {
+async function ttsWithEdge(text: string, lang?: string): Promise<TtsResult> {
   return new Promise((resolve, reject) => {
+    const voice = getEdgeVoiceForLang(lang)
+    const xmlLang = getEdgeXmlLang(lang)
     const secMsGec = generateSecMsGec()
     const connId = crypto.randomUUID().replace(/-/g, '')
     const muid = crypto.randomBytes(16).toString('hex').toUpperCase()
@@ -238,7 +310,7 @@ async function ttsWithEdge(text: string, voice = EDGE_TTS_DEFAULT_VOICE): Promis
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
       const ssml = [
-        `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'>`,
+        `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='${xmlLang}'>`,
         `<voice name='${voice}'>`,
         `<prosody pitch='+0Hz' rate='${EDGE_TTS_DEFAULT_RATE}' volume='+0%'>${escaped}</prosody>`,
         `</voice></speak>`,
@@ -403,110 +475,115 @@ async function ttsWithElevenLabs(
   return { success: true, audioBase64: base64, mimeType: 'audio/mpeg', provider: 'elevenlabs' }
 }
 
+export async function synthesizeTts(params: TtsParams): Promise<TtsResult> {
+  const { text, voice = 'nova', lang } = params
+  const mode = normalizeTtsMode(params.mode)
+  console.log('[tts] Request: text length =', text.length, '| mode =', mode, '| voice =', voice, '| lang =', lang)
+
+  const openaiKey     = getStoredApiKey('openai')
+  const geminiKey     = getStoredApiKey('gemini')
+  const elevenlabsKey = getStoredApiKey('elevenlabs')
+
+  const candidates = rankTtsCandidates(openaiKey, geminiKey, elevenlabsKey, mode)
+
+  console.log(
+    '[tts] Candidate order:',
+    candidates.map((c, i) => `${i + 1}. ${c.provider} — ${c.reason}`).join(' | '),
+  )
+
+  for (const candidate of candidates) {
+    console.log(`[tts] Trying ${candidate.provider}`)
+    try {
+      if (candidate.provider === 'openai' && openaiKey) {
+        const result = await ttsWithOpenAI(text, voice, openaiKey)
+        console.log('[tts] ✓ OpenAI TTS succeeded')
+        return result
+      }
+
+      if (candidate.provider === 'gemini' && geminiKey) {
+        const result = await ttsWithGemini(text, geminiKey)
+        console.log('[tts] ✓ Gemini TTS succeeded')
+        return result
+      }
+
+      if (candidate.provider === 'edge') {
+        const result = await ttsWithEdge(text, lang)
+        console.log('[tts] ✓ Edge TTS succeeded')
+        return result
+      }
+
+      if (candidate.provider === 'elevenlabs' && elevenlabsKey) {
+        const result = await ttsWithElevenLabs(text, elevenlabsKey)
+        console.log('[tts] ✓ ElevenLabs TTS succeeded')
+        return result
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      // biome-ignore lint/suspicious/noExplicitAny: error code from thrown object
+      const code = (err as any)?.code
+
+      console.warn(`[tts] ${candidate.provider} TTS failed:`, msg)
+
+      // Hard failures — surface immediately without trying next provider
+      if (
+        code === 'INVALID_KEY' ||
+        msg.includes('401') ||
+        msg.includes('403') ||
+        msg.includes('invalid_api_key') ||
+        msg.includes('API_KEY_INVALID')
+      ) {
+        return {
+          success: false,
+          error: `Invalid ${candidate.provider} API key.`,
+          errorCode: 'INVALID_KEY',
+        }
+      }
+      if (
+        code === 'RATE_LIMIT' ||
+        msg.includes('429') ||
+        msg.includes('RESOURCE_EXHAUSTED')
+      ) {
+        return {
+          success: false,
+          error: `${candidate.provider} rate limit exceeded.`,
+          errorCode: 'RATE_LIMIT',
+        }
+      }
+
+      // Soft failure — try next candidate
+      console.warn(`[tts] Soft failure on ${candidate.provider}, falling through to next candidate`)
+    }
+  }
+
+  // All candidates failed
+  return {
+    success: false,
+    error: 'All TTS providers failed. Check your connection and try again.',
+    errorCode: 'NETWORK',
+  }
+}
+
 // ── IPC handler ───────────────────────────────────────────────────────────────
 
 /**
  * Register all Text-to-Speech IPC handlers with the Electron main process.
  *
  * Handler: `audio:tts`
- *   - Params: `{ text: string, voice?: OpenAI voice name }`
+ *   - Params: `{ text: string, voice?: OpenAI voice name, mode?: 'free'|'auto'|'premium', lang?: string }`
  *   - Returns: `{ success, audioBase64?, mimeType?, provider?, error?, errorCode? }`
  *
- * Provider selection (in priority order):
- *  1. OpenAI tts-1  — if OpenAI key is present.
- *  2. Gemini TTS    — if Gemini key is present (reuses existing key, no extra cost).
- *  3. Edge TTS      — always available; Microsoft Neural voices, no key required.
- *  4. ElevenLabs    — if ElevenLabs key is present.
+ * Provider selection:
+ *  - free: Edge only, never touches paid API keys.
+ *  - auto: Edge first, then paid providers only if Edge fails.
+ *  - premium: paid providers first, then Edge fallback.
  *
  * Hard failures (invalid key, rate limit) are surfaced immediately.
  * Soft failures (network, temporary) fall through to the next provider.
- * If all fail, the renderer falls back to OS speech synthesis.
  */
 export function registerTtsHandlers(ipcMain: IpcMain) {
-  ipcMain.handle('audio:tts', async (_event, params: TtsParams): Promise<TtsResult> => {
-    const { text, voice = 'nova' } = params
-    console.log('[tts] Request: text length =', text.length, '| voice =', voice)
-
-    const openaiKey     = getStoredApiKey('openai')
-    const geminiKey     = getStoredApiKey('gemini')
-    const elevenlabsKey = getStoredApiKey('elevenlabs')
-
-    const candidates = rankTtsCandidates(openaiKey, geminiKey, elevenlabsKey)
-
-    console.log(
-      '[tts] Candidate order:',
-      candidates.map((c, i) => `${i + 1}. ${c.provider} — ${c.reason}`).join(' | '),
-    )
-
-    for (const candidate of candidates) {
-      console.log(`[tts] Trying ${candidate.provider}`)
-      try {
-        if (candidate.provider === 'openai' && openaiKey) {
-          const result = await ttsWithOpenAI(text, voice, openaiKey)
-          console.log('[tts] ✓ OpenAI TTS succeeded')
-          return result
-        }
-
-        if (candidate.provider === 'gemini' && geminiKey) {
-          const result = await ttsWithGemini(text, geminiKey)
-          console.log('[tts] ✓ Gemini TTS succeeded')
-          return result
-        }
-
-        if (candidate.provider === 'edge') {
-          const result = await ttsWithEdge(text)
-          console.log('[tts] ✓ Edge TTS succeeded')
-          return result
-        }
-
-        if (candidate.provider === 'elevenlabs' && elevenlabsKey) {
-          const result = await ttsWithElevenLabs(text, elevenlabsKey)
-          console.log('[tts] ✓ ElevenLabs TTS succeeded')
-          return result
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
-        // biome-ignore lint/suspicious/noExplicitAny: error code from thrown object
-        const code = (err as any)?.code
-
-        console.warn(`[tts] ${candidate.provider} TTS failed:`, msg)
-
-        // Hard failures — surface immediately without trying next provider
-        if (
-          code === 'INVALID_KEY' ||
-          msg.includes('401') ||
-          msg.includes('403') ||
-          msg.includes('invalid_api_key') ||
-          msg.includes('API_KEY_INVALID')
-        ) {
-          return {
-            success: false,
-            error: `Invalid ${candidate.provider} API key.`,
-            errorCode: 'INVALID_KEY',
-          }
-        }
-        if (
-          code === 'RATE_LIMIT' ||
-          msg.includes('429') ||
-          msg.includes('RESOURCE_EXHAUSTED')
-        ) {
-          return {
-            success: false,
-            error: `${candidate.provider} rate limit exceeded.`,
-            errorCode: 'RATE_LIMIT',
-          }
-        }
-
-        // Soft failure — try next candidate
-        console.warn(`[tts] Soft failure on ${candidate.provider}, falling through to next candidate`)
-      }
-    }
-
-    // All candidates failed
-    return {
-      success: false,
-      error: 'All TTS providers failed. Check your connection and try again.',
-      errorCode: 'NETWORK',
-    }
+  ipcMain.handle('audio:tts', async (_event, rawParams: unknown): Promise<TtsResult> => {
+    const parsed = parseTtsParams(rawParams)
+    if (!parsed.ok) return parsed.response
+    return synthesizeTts(parsed.value)
   })
 }

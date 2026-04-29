@@ -95,7 +95,7 @@ t.id='__viezanLA_tip';
 t.style.cssText='position:fixed;bottom:74px;right:20px;z-index:2147483647;max-width:300px;min-width:160px;background:#1e1b4b;color:#e0e7ff;padding:10px 13px;border-radius:10px;font:13px/1.5 -apple-system,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.4);display:none;word-break:break-word;';
 document.body.appendChild(t);
 var timer;
-var MSG={noText:'📌 Select text on the page first.',translating:'<span style="opacity:.6;font-size:11px">Translating\u2026</span>',header:'<span style="opacity:.55;font-size:10px;display:block;margin-bottom:3px">Viezan TRANSLATION</span>',failed:'Translation failed',offline:'⚠ Cannot reach Viezan app. Make sure it is running.'};
+var MSG={noText:'Select text on the page first.',translating:'<span style="opacity:.6;font-size:11px">Translating\u2026</span>',header:'<span style="opacity:.55;font-size:10px;display:block;margin-bottom:3px">Viezan TRANSLATION</span>',failed:'Translation failed',offline:'Cannot reach Viezan app. Make sure it is running.'};
 function show(msg,dur){t.innerHTML=msg;t.style.display='block';clearTimeout(timer);if(dur)timer=setTimeout(function(){t.style.display='none';},dur);}
 // --- click ---
 b.addEventListener('click',function(){
@@ -111,7 +111,7 @@ b.addEventListener('click',function(){
       show(MSG.header+d.translatedText,9000);
       try{navigator.clipboard.writeText(d.translatedText);}catch(e){}
     } else {
-      show('⚠ '+(d.error||MSG.failed),5000);
+      show('Error: '+(d.error||MSG.failed),5000);
     }
   }).catch(function(){show(MSG.offline,5000);});
 });

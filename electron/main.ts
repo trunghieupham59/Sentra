@@ -1,10 +1,12 @@
 import path from 'node:path'
 import { app, BrowserWindow, desktopCapturer, ipcMain, nativeImage, nativeTheme, screen, shell } from 'electron'
 import { registerChatHandlers } from './ipc/chat'
+import { isAllowedExternalUrl } from './ipc/externalUrl'
 import { initGlobalHotkey } from './ipc/globalHotkey'
 import { registerImageTranslateHandlers } from './ipc/imageTranslate'
 import { registerKeychainHandlers } from './ipc/keychain'
 import { initLegacyAssistant, setLocalServerAccessors } from './ipc/legacyAssistant'
+import { registerLocalAiHandlers, stopManagedLocalAiRuntime } from './ipc/localAi'
 import { getServerToken, LOCAL_SERVER_PORT, startLocalServer, stopLocalServer } from './ipc/localServer'
 import { registerModelsHandlers } from './ipc/models'
 import { registerSubtitleHandlers } from './ipc/subtitle'
@@ -94,7 +96,9 @@ function createWindow() {
 
   // Open external links in browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url)
+    if (isAllowedExternalUrl(url)) {
+      shell.openExternal(url)
+    }
     return { action: 'deny' }
   })
 
@@ -205,6 +209,7 @@ app.whenReady().then(() => {
   registerImageTranslateHandlers(ipcMain)
   registerChatHandlers(ipcMain)
   registerWebSearchHandlers(ipcMain)
+  registerLocalAiHandlers(ipcMain)
 
   // Global hotkey — translate selected text in any OS application
   initGlobalHotkey(ipcMain, () => mainWindow)
@@ -237,6 +242,7 @@ app.on('will-quit', () => {
   const { globalShortcut } = require('electron')
   globalShortcut.unregisterAll()
   stopLocalServer()
+  stopManagedLocalAiRuntime()
 })
 
 app.on('window-all-closed', () => {

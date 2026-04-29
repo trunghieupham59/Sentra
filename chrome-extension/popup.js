@@ -3,11 +3,19 @@ const PORT = 39875
 const $ = (id) => document.getElementById(id)
 
 const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
-const COPY_LABEL    = isMac ? '⌘C  Copy'    : 'Ctrl+C  Copy'
-const REPLACE_LABEL = isMac ? '⌘↵  Replace' : 'Ctrl+↵  Replace'
+const COPY_LABEL = 'Copy'
+const REPLACE_LABEL = 'Replace'
+const COPY_TITLE = isMac ? 'Copy translation (Cmd+C)' : 'Copy translation (Ctrl+C)'
+const REPLACE_TITLE = isMac ? 'Replace selected text (Cmd+Enter)' : 'Replace selected text (Ctrl+Enter)'
+const LISTEN_LABEL = 'Listen'
 
 // Last translated text — used by Copy and Replace buttons
 let lastTranslated = ''
+let ttsAudio = null
+let ttsAudioUrl = ''
+let ttsLoading = false
+let ttsRequestId = 0
+let ttsUsingSpeech = false
 
 async function getSettings () {
   return new Promise((resolve) => {
@@ -46,29 +54,130 @@ function hideStatus () {
   $('status-msg').style.display = 'none'
 }
 
-/** Provider metadata — SVG icon + full name + brand colors */
+async function fetchTtsAudio (text, lang, token) {
+  const resp = await fetch(`http://127.0.0.1:${PORT}/api/tts`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Viezan-Token': token,
+    },
+    body: JSON.stringify({ text, lang }),
+  })
+  const data = await resp.json().catch(() => null)
+  if (!resp.ok) throw new Error(data?.error || `HTTP ${resp.status}`)
+  if (!data.success || !data.audioBase64) throw new Error(data.error || 'TTS failed')
+  return data
+}
+
+const TTS_LANG_TO_BCP47 = {
+  en: 'en-US',
+  vi: 'vi-VN',
+  ja: 'ja-JP',
+  zh: 'zh-CN',
+  'zh-TW': 'zh-TW',
+  ko: 'ko-KR',
+  fr: 'fr-FR',
+  de: 'de-DE',
+  es: 'es-ES',
+  pt: 'pt-PT',
+  th: 'th-TH',
+  ru: 'ru-RU',
+  ar: 'ar-SA',
+  id: 'id-ID',
+  it: 'it-IT',
+  nl: 'nl-NL',
+  tr: 'tr-TR',
+  hi: 'hi-IN',
+}
+
+function speakWithBrowserSpeech (text, lang) {
+  if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) return false
+  const bcp47 = TTS_LANG_TO_BCP47[lang] || 'en-US'
+  const utter = new SpeechSynthesisUtterance(text)
+  utter.lang = bcp47
+  const voices = window.speechSynthesis.getVoices()
+  const prefix = bcp47.split('-')[0]
+  const local = voices.filter((voice) => voice.localService)
+  utter.voice =
+    local.find((voice) => voice.lang === bcp47) ||
+    voices.find((voice) => voice.lang === bcp47) ||
+    local.find((voice) => voice.lang.startsWith(prefix)) ||
+    voices.find((voice) => voice.lang.startsWith(prefix)) ||
+    null
+  utter.onend = stopTtsAudio
+  utter.onerror = stopTtsAudio
+  ttsUsingSpeech = true
+  window.speechSynthesis.cancel()
+  window.speechSynthesis.speak(utter)
+  $('btn-speak-result').textContent = 'Stop'
+  return true
+}
+
+function base64ToBlobUrl (base64, mimeType) {
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  const blob = new Blob([bytes], { type: mimeType || 'audio/mpeg' })
+  return URL.createObjectURL(blob)
+}
+
+function stopTtsAudio () {
+  ttsRequestId++
+  if (ttsAudio) {
+    try { ttsAudio.pause() } catch { /* ignore */ }
+    ttsAudio = null
+  }
+  if (ttsUsingSpeech && window.speechSynthesis) {
+    ttsUsingSpeech = false
+    window.speechSynthesis.cancel()
+  }
+  if (ttsAudioUrl) {
+    URL.revokeObjectURL(ttsAudioUrl)
+    ttsAudioUrl = ''
+  }
+  ttsLoading = false
+  $('btn-speak-result').textContent = LISTEN_LABEL
+}
+
+/** Provider metadata — full name + brand colors */
 const PROVIDER_META = {
   gemini: {
     name: 'Google Gemini',
     color: '#1A73E8',
     bg: 'rgba(26,115,232,0.09)',
     border: 'rgba(26,115,232,0.22)',
-    svg: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><path d="M12 2C12.3 5.5 13.8 8.8 16 10.5C13.8 12.2 12.3 15.5 12 19C11.7 15.5 10.2 12.2 8 10.5C10.2 8.8 11.7 5.5 12 2Z" fill="#1A73E8"/><path d="M2 10.5C5.5 10.8 8.8 10.2 10.5 8C12.2 10.2 15.5 10.8 19 10.5C15.5 10.2 12.2 11.8 10.5 14C8.8 11.8 5.5 10.2 2 10.5Z" fill="#1A73E8" opacity="0.5"/></svg>',
   },
   openai: {
     name: 'OpenAI GPT',
     color: '#10A37F',
     bg: 'rgba(16,163,127,0.09)',
     border: 'rgba(16,163,127,0.22)',
-    svg: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><path d="M12 7L15.46 9V13L12 15L8.54 13V9L12 7Z" fill="#10A37F"/><path d="M12 3.5V7M12 15V18.5M8.54 9L5.5 7.25M15.46 13L18.5 14.75M8.54 13L5.5 14.75M15.46 9L18.5 7.25" stroke="#10A37F" stroke-width="1.5" stroke-linecap="round"/></svg>',
   },
   claude: {
     name: 'Anthropic Claude',
     color: '#D97706',
     bg: 'rgba(217,119,6,0.09)',
     border: 'rgba(217,119,6,0.22)',
-    svg: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><path d="M12 5.5L18.2 20.5H15.5L14.2 17H9.8L8.5 20.5H5.8L12 5.5ZM12 9.5L10.7 13H13.3L12 9.5Z" fill="#D97706"/></svg>',
   },
+}
+
+function setProviderBadge (el, provider) {
+  const meta = PROVIDER_META[provider]
+  el.textContent = ''
+  el.className = 'meta-badge ctrl-badge-provider'
+  el.style.background = meta?.bg || ''
+  el.style.borderColor = meta?.border || ''
+  el.style.color = meta?.color || ''
+
+  if (meta) {
+    const mark = document.createElement('span')
+    mark.className = 'provider-mark'
+    mark.style.background = meta.color
+    el.append(mark, document.createTextNode(meta.name))
+    return
+  }
+
+  el.textContent = provider || '-'
 }
 
 /** Update header status badge + controls bar provider/model badges */
@@ -80,7 +189,7 @@ async function loadAppInfo (token) {
 
   // Loading state
   dot.className = 'status-dot loading'
-  label.textContent = 'Connecting…'
+  label.textContent = 'Connecting...'
 
   try {
     const resp = await fetch(`http://127.0.0.1:${PORT}/api/config`, {
@@ -95,34 +204,25 @@ async function loadAppInfo (token) {
     label.textContent = 'Active'
 
     // Controls bar: provider badge
-    const meta = PROVIDER_META[data.provider]
-    if (meta) {
-      providerEl.className = 'ctrl-badge ctrl-badge-provider'
-      providerEl.style.background = meta.bg
-      providerEl.style.borderColor = meta.border
-      providerEl.style.color = meta.color
-      providerEl.innerHTML = `${meta.svg}${meta.name}`
-    } else {
-      providerEl.className = 'ctrl-badge ctrl-badge-provider'
-      providerEl.textContent = data.provider || '—'
-    }
+    setProviderBadge(providerEl, data.provider)
 
     // Controls bar: model badge
-    modelEl.className = 'ctrl-badge ctrl-badge-model'
-    modelEl.textContent = data.model || '—'
-    modelEl.style = ''
+    modelEl.className = 'meta-badge ctrl-badge-model'
+    modelEl.textContent = data.model || '-'
+    modelEl.removeAttribute('style')
   } catch {
     dot.className = 'status-dot error'
     label.textContent = 'App not running'
-    providerEl.className = 'ctrl-badge ctrl-badge-loading'
-    providerEl.textContent = '—'
-    modelEl.className = 'ctrl-badge ctrl-badge-loading'
-    modelEl.textContent = '—'
+    providerEl.className = 'meta-badge ctrl-badge-loading'
+    providerEl.textContent = 'Provider unavailable'
+    modelEl.className = 'meta-badge ctrl-badge-model ctrl-badge-loading'
+    modelEl.textContent = 'Model unavailable'
   }
 }
 
 /** Show translation result and reveal Copy/Replace buttons */
 function showResult (text) {
+  stopTtsAudio()
   lastTranslated = text
   const resultEl = $('result-text')
   resultEl.innerHTML = ''
@@ -134,12 +234,15 @@ function showResult (text) {
   // Update button labels with OS-aware shortcuts
   $('btn-copy-result').textContent = COPY_LABEL
   $('btn-replace').textContent = REPLACE_LABEL
+  $('btn-copy-result').title = COPY_TITLE
+  $('btn-replace').title = REPLACE_TITLE
 }
 
 /** Hide Copy/Replace and reset result panel */
 function clearResult () {
+  stopTtsAudio()
   lastTranslated = ''
-  $('result-text').innerHTML = '<span class="result-placeholder">Translation appears here…</span>'
+  $('result-text').innerHTML = '<span class="result-placeholder">Translation appears here...</span>'
   $('footer-result').style.display = 'none'
 }
 
@@ -195,7 +298,7 @@ $('btn-translate').addEventListener('click', async () => {
 
   $('btn-translate').disabled = true
   clearResult()
-  showStatus('Translating…', 'loading')
+  showStatus('Translating...', 'loading')
 
   try {
     const appConfig = await getAppConfig(settings.token)
@@ -224,11 +327,11 @@ $('btn-translate').addEventListener('click', async () => {
   } catch (err) {
     const msg = err.message || 'Unknown error'
     if (msg.includes('401') || msg.includes('Unauthorized')) {
-      showStatus('❌ Invalid token. Update it in Options.', 'error')
+      showStatus('Invalid token. Update it in Options.', 'error')
     } else if (msg.includes('fetch') || msg.includes('Failed')) {
-      showStatus('❌ Cannot reach Viezan app. Is it running?', 'error')
+      showStatus('Cannot reach Viezan app. Is it running?', 'error')
     } else {
-      showStatus(`❌ ${msg}`, 'error')
+      showStatus(msg, 'error')
     }
   } finally {
     $('btn-translate').disabled = false
@@ -241,12 +344,62 @@ $('btn-copy-result').addEventListener('click', async () => {
   if (!lastTranslated) return
   try {
     await navigator.clipboard.writeText(lastTranslated)
-    $('btn-copy-result').textContent = '✓ Copied!'
+    $('btn-copy-result').textContent = 'Copied'
     setTimeout(() => {
       $('btn-copy-result').textContent = COPY_LABEL
     }, 1500)
   } catch {
-    showStatus('❌ Failed to copy', 'error')
+    showStatus('Failed to copy', 'error')
+  }
+})
+
+// ── Listen button ──────────────────────────────────────────────────────────
+
+$('btn-speak-result').addEventListener('click', async () => {
+  if (!lastTranslated || ttsLoading) {
+    if (ttsLoading) stopTtsAudio()
+    return
+  }
+  if (ttsAudio) {
+    stopTtsAudio()
+    return
+  }
+
+  try {
+    const settings = await getSettings()
+    if (!settings.token) throw new Error('Missing token')
+    ttsLoading = true
+    const requestId = ++ttsRequestId
+    $('btn-speak-result').textContent = 'Loading...'
+    const lang = $('target-lang').value || settings.targetLang
+    const result = await fetchTtsAudio(lastTranslated, lang, settings.token)
+    if (requestId !== ttsRequestId) return
+    ttsAudioUrl = base64ToBlobUrl(result.audioBase64, result.mimeType)
+    ttsAudio = new Audio(ttsAudioUrl)
+    ttsAudio.onended = stopTtsAudio
+    ttsAudio.onerror = () => {
+      stopTtsAudio()
+      showStatus('Failed to play audio', 'error')
+    }
+    ttsLoading = false
+    $('btn-speak-result').textContent = 'Stop'
+    await ttsAudio.play().catch((err) => {
+      stopTtsAudio()
+      if (speakWithBrowserSpeech(lastTranslated, lang)) return
+      throw err
+    })
+  } catch (err) {
+    const lang = $('target-lang').value || 'en'
+    stopTtsAudio()
+    if (speakWithBrowserSpeech(lastTranslated, lang)) return
+    const msg = err.message || 'TTS failed'
+    if (msg.includes('401') || msg.includes('Unauthorized')) {
+      showStatus('Invalid token. Update it in Options.', 'error')
+    } else if (msg.includes('fetch') || msg.includes('Failed')) {
+      showStatus('Cannot reach Viezan app. Is it running?', 'error')
+    } else {
+      showStatus(msg, 'error')
+    }
   }
 })
 
@@ -257,7 +410,7 @@ $('btn-replace').addEventListener('click', async () => {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
     if (!tab?.id) {
-      showStatus('❌ No active tab found', 'error')
+      showStatus('No active tab found', 'error')
       return
     }
 
@@ -296,15 +449,15 @@ $('btn-replace').addEventListener('click', async () => {
     })
 
     if (result?.result) {
-      $('btn-replace').textContent = '✓ Replaced!'
+      $('btn-replace').textContent = 'Replaced'
       setTimeout(() => {
         $('btn-replace').textContent = REPLACE_LABEL
       }, 1500)
     } else {
-      showStatus('⚠ No text selected on page', 'error')
+      showStatus('No text selected on page', 'error')
     }
   } catch {
-    showStatus('❌ Cannot replace — try selecting text first', 'error')
+    showStatus('Cannot replace. Try selecting text first.', 'error')
   }
 })
 

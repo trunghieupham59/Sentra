@@ -19,13 +19,34 @@ beforeEach(() => {
       autoTranslateDelay: 500,
       phoneticMode: 'off',
       translationStyle: 'general',
+      ttsMode: 'free',
       ttsVoice: 'nova',
       fontSize: 'medium',
-      keyStatus: { gemini: false, claude: false, openai: false } as Record<string, boolean>,
-      dynamicModels: { gemini: [], claude: [], openai: [] } as Record<string, []>,
-      modelsLoading: { gemini: false, claude: false, openai: false } as Record<string, boolean>,
-      modelsError: { gemini: null, claude: null, openai: null } as Record<string, null>,
+      keyStatus: { gemini: false, claude: false, openai: false, local: false } as Record<string, boolean>,
+      dynamicModels: { gemini: [], claude: [], openai: [], local: [] } as Record<string, []>,
+      modelsLoading: { gemini: false, claude: false, openai: false, local: false } as Record<string, boolean>,
+      modelsError: { gemini: null, claude: null, openai: null, local: null } as Record<string, null>,
     })
+  })
+})
+
+describe('ttsMode defaults and persistence', () => {
+  it('defaults TTS mode to free', () => {
+    expect(useAppStore.getState().ttsMode).toBe('free')
+  })
+
+  it('sets TTS mode to premium', () => {
+    act(() => useAppStore.getState().setTtsMode('premium'))
+    expect(useAppStore.getState().ttsMode).toBe('premium')
+  })
+
+  it('includes TTS mode in persisted settings', () => {
+    act(() => useAppStore.getState().setTtsMode('auto'))
+    // Zustand persist exposes the configured partialize callback at runtime.
+    // biome-ignore lint/suspicious/noExplicitAny: persist middleware test hook
+    const partialize = (useAppStore as any).persist.getOptions().partialize
+    const persisted = partialize(useAppStore.getState())
+    expect(persisted.ttsMode).toBe('auto')
   })
 })
 

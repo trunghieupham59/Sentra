@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppLogoIcon } from '../components/AppLogo'
-import { DeepResearchApiSection } from '../components/chat/DeepResearchApiSection'
 import { MessageBubble } from '../components/chat/MessageBubble'
 import { SystemPromptDropdown } from '../components/chat/SystemPromptDropdown'
 import { ModelSelector } from '../components/ModelSelector'
@@ -25,6 +24,15 @@ import { extractImageFromClipboard, resizeImageFile } from '../utils/imageUtils'
 
 /** Max height (px) của textarea input — giới hạn scroll khi text dài */
 const CHAT_TEXTAREA_MAX_HEIGHT_PX = 160
+
+const isMacPlatform = () => window.api?.platform === 'darwin'
+const NEW_CHAT_SHORTCUT_LABEL = isMacPlatform() ? 'Cmd+N' : 'Ctrl+N'
+
+function isNewChatShortcut(e: KeyboardEvent) {
+  const isMac = isMacPlatform()
+  const primaryModifier = isMac ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey
+  return primaryModifier && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'n'
+}
 
 
 // DUP-05: resizeImageToBase64 replaced by shared resizeImageFile from imageUtils.ts
@@ -94,7 +102,7 @@ export function ChatPage() {
     resetVoicePrefix,
   } = useVoiceInput({ currentText: inputText, onTextChange: setInputText })
 
-  const hasKey = keyStatus[selectedProvider]
+  const hasKey = selectedProvider === 'local' || keyStatus[selectedProvider]
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -152,7 +160,7 @@ export function ChatPage() {
       const msg = err instanceof Error ? err.message : t.image_translate_error_failed
       setAttachImageError(msg)
     }
-  }, [])
+  }, [t.image_translate_error_failed])
 
   const handleFileDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
@@ -202,12 +210,25 @@ export function ChatPage() {
     })
 
     try {
-      const result = await chatService.send({
-        provider: selectedProvider,
-        model: selectedModels[selectedProvider],
-        messages: historyMessages.map(toIpcMessage),
-        systemPrompt: chatSystemPrompt || undefined,
-      })
+      let streamedText = ''
+      const result = await chatService.stream(
+        {
+          provider: selectedProvider,
+          model: selectedModels[selectedProvider],
+          messages: historyMessages.map(toIpcMessage),
+          systemPrompt: chatSystemPrompt || undefined,
+        },
+        {
+          onToken: (token) => {
+            streamedText += token
+            updateChatMessage(activeChatSessionId, assistantMsgId, {
+              content: [{ type: 'text', text: streamedText }],
+              isLoading: true,
+              error: undefined,
+            })
+          },
+        },
+      )
 
       if (result.success && result.reply) {
         updateChatMessage(activeChatSessionId, assistantMsgId, {
@@ -228,7 +249,16 @@ export function ChatPage() {
     } finally {
       setIsSending(false)
     }
-  }, [isSending, activeChatSessionId, updateChatMessage, selectedProvider, selectedModels, chatSystemPrompt])
+  }, [
+    isSending,
+    activeChatSessionId,
+    updateChatMessage,
+    selectedProvider,
+    selectedModels,
+    chatSystemPrompt,
+    t.chat_error_failed_regenerate,
+    t.chat_error_unexpected,
+  ])
 
   const handleSend = useCallback(async () => {
     const text = inputText.trim()
@@ -255,7 +285,7 @@ export function ChatPage() {
           model: selectedModels[selectedProvider],
           question: text,
           callbacks: {
-            onStepStart: (label, icon) => {
+            onStepStart: (label) => {
               const msgId = `msg-${Date.now()}-dr${Math.random().toString(36).slice(2, 6)}`
               addChatMessage(sessionId, {
                 id: msgId,
@@ -264,7 +294,7 @@ export function ChatPage() {
                 timestamp: Date.now(),
                 isLoading: true,
                 isResearchStep: true,
-                researchStepLabel: `${icon} ${label}`,
+                researchStepLabel: label,
               })
               return msgId
             },
@@ -341,12 +371,25 @@ export function ChatPage() {
         .filter((m) => !m.isLoading && !m.error)
         .map(toIpcMessage)
 
-      const result = await chatService.send({
-        provider: selectedProvider,
-        model: selectedModels[selectedProvider],
-        messages,
-        systemPrompt: chatSystemPrompt || undefined,
-      })
+      let streamedText = ''
+      const result = await chatService.stream(
+        {
+          provider: selectedProvider,
+          model: selectedModels[selectedProvider],
+          messages,
+          systemPrompt: chatSystemPrompt || undefined,
+        },
+        {
+          onToken: (token) => {
+            streamedText += token
+            updateChatMessage(sessionId, assistantMsgId, {
+              content: [{ type: 'text', text: streamedText }],
+              isLoading: true,
+              error: undefined,
+            })
+          },
+        },
+      )
 
       if (result.success && result.reply) {
         updateChatMessage(sessionId, assistantMsgId, {
@@ -367,8 +410,21 @@ export function ChatPage() {
     } finally {
       setIsSending(false)
     }
-  }, [inputText, attachedImage, isSending, hasKey, deepResearchMode, ensureSession,
-      addChatMessage, updateChatMessage, selectedProvider, selectedModels, chatSystemPrompt])
+  }, [
+    inputText,
+    attachedImage,
+    isSending,
+    hasKey,
+    deepResearchMode,
+    ensureSession,
+    addChatMessage,
+    updateChatMessage,
+    selectedProvider,
+    selectedModels,
+    chatSystemPrompt,
+    t.chat_error_failed_response,
+    t.chat_error_unexpected,
+  ])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -392,10 +448,20 @@ export function ChatPage() {
     setTimeout(() => setCopiedId(null), COPY_FEEDBACK_DURATION_MS)  // HC-03
   }
 
-  const handleNewChat = () => {
-    const id = createChatSession(selectedProvider, selectedModels[selectedProvider])
-    setActiveChatSession(id)
-  }
+  const handleNewChat = useCallback(() => {
+    setActiveChatSession(null)
+  }, [setActiveChatSession])
+
+  useEffect(() => {
+    const handleNewChatShortcut = (e: KeyboardEvent) => {
+      if (!isNewChatShortcut(e) || e.repeat) return
+      e.preventDefault()
+      handleNewChat()
+    }
+
+    window.addEventListener('keydown', handleNewChatShortcut)
+    return () => window.removeEventListener('keydown', handleNewChatShortcut)
+  }, [handleNewChat])
 
   const handleClear = () => {
     if (activeChatSessionId) clearChatSession(activeChatSessionId)
@@ -463,7 +529,7 @@ export function ChatPage() {
       )}
 
       {/* Textarea + buttons */}
-      <div className="flex items-center gap-2 px-3 py-3">
+      <div className="flex items-center gap-2 px-3 py-2">
         <div className="flex items-center gap-1 flex-shrink-0">
           <VoiceRecorder
             sourceLang="auto"
@@ -522,7 +588,7 @@ export function ChatPage() {
             placeholder={t.chat_placeholder}
             rows={1}
             disabled={isSending}
-            className={`w-full resize-none rounded-2xl px-4 py-2.5 text-sm leading-relaxed
+            className={`w-full resize-none rounded-lg px-4 py-2.5 text-sm leading-relaxed
                         bg-gray-100 dark:bg-gray-800 border border-transparent
                         focus:outline-none focus:border-blue-400 dark:focus:border-blue-600
                         placeholder-gray-400 dark:placeholder-gray-600
@@ -555,7 +621,7 @@ export function ChatPage() {
     <div
       role="application"
       aria-label={t.chat_attach_image}
-      className="flex flex-col h-full bg-white dark:bg-gray-950 relative"
+      className="app-page relative"
       onDragOver={(e) => { e.preventDefault(); setIsDraggingOver(true) }}
       onDragLeave={handleDragLeave}
       onDrop={handleFileDrop}
@@ -567,19 +633,16 @@ export function ChatPage() {
 
       {/* ── Main area ── */}
       <div className="flex-1 flex flex-col min-h-0">
-        <div className="px-6 pt-4 pb-4 flex flex-col gap-3 flex-1 min-h-0 min-w-0">
+        <div className="app-workspace">
 
           {/* ── Top action bar: actions + settings icon ── */}
-          <div className="flex items-center justify-end gap-1.5 flex-shrink-0">
+          <div className="app-topbar justify-end gap-1.5">
             {/* New chat */}
             <button
               type="button"
               onClick={handleNewChat}
-              title={t.chat_new_session}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium border
-                         bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200
-                         dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700
-                         transition-all duration-200 cursor-pointer whitespace-nowrap"
+              title={`${t.chat_new_session} (${NEW_CHAT_SHORTCUT_LABEL})`}
+              className="toolbar-pill-button cursor-pointer whitespace-nowrap"
             >
               <PlusIcon />
               <span>{t.chat_new_session}</span>
@@ -591,10 +654,7 @@ export function ChatPage() {
                 type="button"
                 onClick={handleClear}
                 title={t.chat_clear}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium border
-                           bg-gray-100 border-gray-200 text-gray-500 hover:bg-red-50 hover:border-red-200 hover:text-red-500
-                           dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-red-950 dark:hover:text-red-400
-                           transition-all duration-200 cursor-pointer whitespace-nowrap"
+                className="toolbar-pill-button cursor-pointer whitespace-nowrap hover:!border-red-200 hover:!bg-red-50 hover:!text-red-600 dark:hover:!bg-red-950/50 dark:hover:!text-red-400"
               >
                 <TrashIcon />
                 <span>{t.chat_clear}</span>
@@ -607,21 +667,15 @@ export function ChatPage() {
                 type="button"
                 onClick={() => setShowAIConfig((v) => !v)}
                 title={t.translate_ai_config_title}
-                className={`flex items-center justify-center w-8 h-8 rounded-full border transition-all duration-200 cursor-pointer
-                            ${showAIConfig
-                              ? 'bg-blue-50 border-blue-200 text-blue-500 dark:bg-blue-950/40 dark:border-blue-700 dark:text-blue-400'
-                              : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700'}`}
+                className={`toolbar-icon-button cursor-pointer ${showAIConfig ? 'toolbar-icon-button-active' : ''}`}
               >
                 <GearIcon className="w-3.5 h-3.5" />
               </button>
 
               {/* Settings popup */}
               {showAIConfig && (
-                <div className="absolute top-full right-0 mt-2 z-50 w-[480px]
-                                bg-white dark:bg-gray-900
-                                border border-gray-200 dark:border-gray-700
-                                rounded-2xl shadow-xl p-4 flex flex-col gap-4">
-                  <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                <div className="floating-panel absolute top-full right-0 mt-2 z-50 w-[480px] p-4 flex flex-col gap-4">
+                  <h2 className="popover-title">
                     {t.translate_ai_config_title}
                   </h2>
                   <div className="flex flex-col gap-3">
@@ -637,13 +691,6 @@ export function ChatPage() {
                     />
                   </div>
 
-                  {/* Deep Research API keys */}
-                  <div className="border-t border-gray-100 dark:border-gray-800 pt-3 flex flex-col gap-2">
-                    <h3 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-                      {t.chat_deep_research_api}
-                    </h3>
-                    <DeepResearchApiSection />
-                  </div>
                 </div>
               )}
             </div>
@@ -651,7 +698,7 @@ export function ChatPage() {
 
           {messages.length === 0 ? (
             /* ── Empty state: centered layout (ChatGPT-style) ── */
-            <div className="flex-1 flex flex-col items-center justify-center gap-8 pb-4">
+            <div className="flex-1 flex flex-col items-center justify-center gap-6 pb-4">
               {/* Logo + description */}
               <div className="flex flex-col items-center gap-3 text-center select-none">
                 <AppLogoIcon size={72} />
@@ -674,19 +721,17 @@ export function ChatPage() {
               </div>
 
               {/* Input box — centered card, max-width constrained */}
-              <div className={`w-full max-w-2xl rounded-2xl border bg-white dark:bg-gray-900 shadow-sm transition-all duration-150
-                              ${isDraggingOver
-                                ? 'border-emerald-300 dark:border-emerald-700 ring-2 ring-inset ring-emerald-300 dark:ring-emerald-700'
-                                : 'border-gray-200 dark:border-gray-700'}`}>
+              <div className={`surface-panel w-full max-w-2xl transition-colors duration-150 ${
+                isDraggingOver ? 'surface-panel-drop' : ''
+              }`}>
                 {inputArea}
               </div>
             </div>
           ) : (
             /* ── With messages: card layout ── */
-            <div className={`flex-1 flex flex-col min-h-0 rounded-2xl border bg-white dark:bg-gray-900 shadow-sm overflow-hidden transition-all duration-150
-                            ${isDraggingOver
-                              ? 'border-emerald-300 dark:border-emerald-700 ring-2 ring-inset ring-emerald-300 dark:ring-emerald-700'
-                              : 'border-gray-200 dark:border-gray-700'}`}>
+            <div className={`surface-panel flex-1 min-h-0 transition-colors duration-150 ${
+              isDraggingOver ? 'surface-panel-drop' : ''
+            }`}>
 
               {/* Messages list */}
               <div className="flex-1 overflow-y-auto">
@@ -713,7 +758,7 @@ export function ChatPage() {
               </div>
 
               {/* Input — panel footer */}
-              <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-800">
                 {inputArea}
               </div>
             </div>

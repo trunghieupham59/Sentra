@@ -91,6 +91,51 @@ describe('addHistory', () => {
   })
 })
 
+describe('upsertHistory', () => {
+  it('adds an item when the id is new', () => {
+    act(() => useAppStore.getState().upsertHistory(makeHistoryItem('draft')))
+    expect(useAppStore.getState().history).toHaveLength(1)
+    expect(useAppStore.getState().history[0].id).toBe('draft')
+  })
+
+  it('updates an existing item instead of creating a duplicate', () => {
+    act(() => {
+      useAppStore.getState().addHistory(makeHistoryItem('older'))
+      useAppStore.getState().upsertHistory(makeHistoryItem('draft', {
+        sourceText: 'Hel',
+        translatedText: 'Xin',
+        timestamp: 100,
+      }))
+      useAppStore.getState().upsertHistory(makeHistoryItem('draft', {
+        sourceText: 'Hello',
+        translatedText: 'Xin chào',
+        timestamp: 200,
+      }))
+    })
+
+    const { history } = useAppStore.getState()
+    expect(history).toHaveLength(2)
+    expect(history[0]).toMatchObject({
+      id: 'draft',
+      sourceText: 'Hello',
+      translatedText: 'Xin chào',
+      timestamp: 200,
+    })
+    expect(history.filter((item) => item.id === 'draft')).toHaveLength(1)
+  })
+
+  it('keeps the max history cap when upserting new ids', () => {
+    act(() => {
+      for (let i = 0; i < 105; i++) {
+        useAppStore.getState().upsertHistory(makeHistoryItem(String(i), { timestamp: i }))
+      }
+    })
+
+    expect(useAppStore.getState().history).toHaveLength(100)
+    expect(useAppStore.getState().history[0].id).toBe('104')
+  })
+})
+
 describe('deleteHistoryItem', () => {
   it('removes the item with the given id', () => {
     act(() => {

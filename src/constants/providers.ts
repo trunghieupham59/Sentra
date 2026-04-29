@@ -2,47 +2,59 @@ import type { Language, Provider, ProviderConfig } from '../types'
 
 export const PROVIDERS: ProviderConfig[] = [
   {
+    id: 'local',
+    name: 'Local AI',
+    color: '#6B7280',
+    keyPrefix: '',
+    docsUrl: 'https://ollama.com/download',
+    requiresApiKey: false,
+    localEngines: ['ollama', 'lmstudio', 'llamacpp'],
+    models: [
+      { id: 'local-auto', name: 'Auto local model', description: 'Best running local model', tag: 'recommended' },
+      { id: 'qwen3:4b', name: 'Qwen3 4B', description: 'Balanced local model', tag: 'balanced' },
+      { id: 'gemma3:4b', name: 'Gemma 3 4B', description: 'Vision-capable local model', tag: 'powerful' },
+    ],
+  },
+  {
     id: 'openai',
     name: 'OpenAI GPT',
     color: '#10A37F',
-    emoji: '🟢',
     keyPrefix: 'sk-',
     docsUrl: 'https://platform.openai.com/api-keys',
+    requiresApiKey: true,
     models: [
       // ★ When adding a new OpenAI model, mark the fastest/best translation model as tag:'recommended'
-      { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Fast & efficient', tag: 'recommended' },
-      { id: 'gpt-4o', name: 'GPT-4o', description: 'Most capable', tag: 'balanced' },
-      { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Economy', tag: 'powerful' },
+      { id: 'gpt-5-mini', name: 'GPT-5 Mini', description: 'Fast & efficient', tag: 'recommended' },
+      { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini', description: 'Balanced performance', tag: 'balanced' },
+      { id: 'gpt-5.2', name: 'GPT-5.2', description: 'Most capable', tag: 'powerful' },
     ],
   },
   {
     id: 'claude',
     name: 'Anthropic Claude',
     color: '#CC785C',
-    emoji: '🟣',
     keyPrefix: 'sk-ant-',
     docsUrl: 'https://console.anthropic.com',
+    requiresApiKey: true,
     models: [
       // ★ When adding a new Claude model, mark the fastest/best translation model as tag:'recommended'
-      { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5', description: 'Fastest & efficient', tag: 'recommended' },
-      { id: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5', description: 'Balanced performance', tag: 'balanced' },
-      { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet', description: 'Most powerful', tag: 'powerful' },
+      { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4', description: 'Balanced performance', tag: 'recommended' },
+      { id: 'claude-opus-4-20250514', name: 'Claude Opus 4', description: 'Most capable', tag: 'balanced' },
+      { id: 'claude-opus-4-1-20250805', name: 'Claude Opus 4.1', description: 'Highest capability', tag: 'powerful' },
     ],
   },
   {
     id: 'gemini',
     name: 'Google Gemini',
     color: '#4285F4',
-    emoji: '🟡',
     keyPrefix: 'AIza',
     docsUrl: 'https://aistudio.google.com/apikey',
+    requiresApiKey: true,
     models: [
       // ★ When adding a new Gemini model, mark the fastest/best translation model as tag:'recommended'
-      { id: 'gemini-2.5-flash-preview-04-17', name: 'Gemini 2.5 Flash', description: 'Newest & fastest', tag: 'recommended' },
-      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Fast & capable', tag: 'balanced' },
-      { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash-Lite', description: 'Ultra fast & light', tag: 'balanced' },
-      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: 'Fast & efficient', tag: 'balanced' },
-      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: 'Most capable', tag: 'powerful' },
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Best price-performance', tag: 'recommended' },
+      { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite', description: 'Fast & efficient', tag: 'balanced' },
+      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Most capable', tag: 'powerful' },
     ],
   },
 ]
@@ -119,7 +131,7 @@ export const DETECT_LANG_MAX_CHARS = 500
 export const DEFAULT_TTS_FALLBACK_LANG = 'en'
 
 export const DEFAULT_SETTINGS = {
-  defaultProvider: 'openai' as const,
+  defaultProvider: 'local' as const,
   defaultSourceLang: 'auto',
   defaultTargetLang: 'vi',
   /** Auto-resolved from PROVIDERS using tag:'recommended' — update tags to change defaults */

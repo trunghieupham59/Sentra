@@ -32,14 +32,69 @@ import { useVoiceInput } from './useVoiceInput'
  */
 export const IMAGE_TRANSLATED_SENTINEL = '✓'
 
+const AUTO_HISTORY_IDLE_MS = 60_000
+
+type TranslateTrigger = 'manual' | 'auto'
+
+interface AutoHistoryDraft {
+  id: string
+  contextKey: string
+  sourceText: string
+  timestamp: number
+}
+
+function createHistoryId(timestamp = Date.now()) {
+  return `${timestamp}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function getCommonPrefixLength(a: string, b: string) {
+  let index = 0
+  while (index < a.length && index < b.length && a[index] === b[index]) index++
+  return index
+}
+
+function isLikelySameSourceDraft(previousText: string, nextText: string) {
+  const previous = previousText.trim()
+  const next = nextText.trim()
+  if (!previous || !next) return false
+  if (previous === next || previous.startsWith(next) || next.startsWith(previous)) return true
+
+  const shorterLength = Math.min(previous.length, next.length)
+  if (shorterLength < 12) return false
+
+  return getCommonPrefixLength(previous, next) / shorterLength >= 0.6
+}
+
+function buildHistoryContextKey(
+  provider: string,
+  model: string,
+  sourceLang: string,
+  targetLang: string,
+  style: string
+) {
+  return `${provider}|${model}|${sourceLang}|${targetLang}|${style}`
+}
+
+function shouldReuseAutoHistoryDraft(
+  draft: AutoHistoryDraft,
+  nextSourceText: string,
+  nextContextKey: string,
+  timestamp: number
+) {
+  if (timestamp - draft.timestamp > AUTO_HISTORY_IDLE_MS) return false
+  if (draft.sourceText.trim() === nextSourceText.trim()) return true
+  if (draft.contextKey !== nextContextKey) return false
+  return isLikelySameSourceDraft(draft.sourceText, nextSourceText)
+}
+
 export function useTranslate() {
   const {
     sourceText, translatedText, phoneticText, sourceLang, targetLang,
     isTranslating, translateError,
     selectedProvider, selectedModels, autoTranslate, autoTranslateDelay, keyStatus, phoneticMode, translationStyle,
-    ttsVoice,
+    ttsMode, ttsVoice,
     setSourceText, setTranslatedText, setPhoneticText, setTargetLang,
-    setIsTranslating, setTranslateError, setActivePage, setPhoneticMode, setTranslationStyle, setAutoTranslate, addHistory,
+    setIsTranslating, setTranslateError, setActivePage, setPhoneticMode, setTranslationStyle, setAutoTranslate, addHistory, upsertHistory,
     swapLanguages,
   } = useAppStore()
   const t = useT()
@@ -55,7 +110,8 @@ export function useTranslate() {
    * touching state — if they differ the job was cancelled and results are silently dropped.
    */
   const translateGenerationRef = useRef(0)
-  const hasKey = keyStatus[selectedProvider]
+  const autoHistoryDraftRef = useRef<AutoHistoryDraft | null>(null)
+  const hasKey = selectedProvider === 'local' || keyStatus[selectedProvider]
   const charCount = sourceText.length
 
   /**
@@ -81,7 +137,7 @@ export function useTranslate() {
   const [isDetectingLang, setIsDetectingLang] = useState(false)
 
   // TTS — delegated to useTTS hook (Web Audio API + OS synthesis fallback, no console.log)
-  const { speakingPanel, speakLoading, handleSpeak, stopSpeak } = useTTS({ ttsVoice })
+  const { speakingPanel, speakLoading, handleSpeak, stopSpeak } = useTTS({ ttsMode, ttsVoice })
 
   // ── Real-time model-switch notice from main process ──
   // Subscribe once on mount — main process emits 'image:model-switched' immediately
@@ -209,7 +265,37 @@ export function useTranslate() {
       })
   }, []) // All values are passed as params → no external deps needed
 
-  const handleTranslate = useCallback(async () => {
+  const recordTranslationHistory = useCallback((trigger: TranslateTrigger, plainText: string) => {
+    const timestamp = Date.now()
+    const model = selectedModels[selectedProvider]
+    const contextKey = buildHistoryContextKey(selectedProvider, model, sourceLang, targetLang, translationStyle)
+    const baseItem = {
+      timestamp,
+      provider: selectedProvider,
+      model,
+      sourceLang,
+      targetLang,
+      translationStyle,
+      sourceText,
+      translatedText: plainText,
+    }
+
+    if (trigger === 'auto') {
+      const existingDraft = autoHistoryDraftRef.current
+      const id = existingDraft && shouldReuseAutoHistoryDraft(existingDraft, sourceText, contextKey, timestamp)
+        ? existingDraft.id
+        : createHistoryId(timestamp)
+
+      upsertHistory({ ...baseItem, id })
+      autoHistoryDraftRef.current = { id, contextKey, sourceText, timestamp }
+      return
+    }
+
+    addHistory({ ...baseItem, id: createHistoryId(timestamp) })
+    autoHistoryDraftRef.current = null
+  }, [addHistory, upsertHistory, selectedProvider, selectedModels, sourceLang, targetLang, translationStyle, sourceText])
+
+  const runTranslate = useCallback(async (trigger: TranslateTrigger) => {
     if (!hasKey) { setTranslateError(t.translate_error_no_key); return }
     if (isTranslating) return
 
@@ -294,16 +380,7 @@ export function useTranslate() {
         setPhoneticText('')   // clear stale phonetic — phonetic pass below will repopulate it
         setIsTranslating(false)
 
-        addHistory({
-          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          timestamp: Date.now(),
-          provider: selectedProvider,
-          model: selectedModels[selectedProvider],
-          sourceLang,
-          targetLang,
-          sourceText,
-          translatedText: plainText,
-        })
+        recordTranslationHistory(trigger, plainText)
 
         // Second pass: add phonetic annotations in the selected mode.
         // Only run when a phonetic mode is active; phoneticMode is forwarded so the
@@ -338,7 +415,9 @@ export function useTranslate() {
     }
   }, [imageAttachment, sourceText, sourceLang, targetLang, selectedProvider, selectedModels,
        isTranslating, hasKey, translationStyle, phoneticMode, showFurigana,
-       setIsTranslating, setTranslateError, setTranslatedText, setPhoneticText, addHistory, t, detectLanguageInBackground])
+       setIsTranslating, setTranslateError, setTranslatedText, setPhoneticText, t, detectLanguageInBackground, recordTranslationHistory])
+
+  const handleTranslate = useCallback(() => runTranslate('manual'), [runTranslate])
 
   /** Download the translated image (original + text regions overlaid) */
   const handleDownloadTranslatedImage = useCallback(async () => {
@@ -379,10 +458,10 @@ export function useTranslate() {
   const styleInitRef = useRef(false)
   const langInitRef = useRef(false)
   const modelInitRef = useRef(false)
-  const handleTranslateRef = useRef(handleTranslate)
+  const runTranslateRef = useRef(runTranslate)
   const sourceTextRef = useRef(sourceText)
   const autoTranslateRef = useRef(autoTranslate)
-  handleTranslateRef.current = handleTranslate
+  runTranslateRef.current = runTranslate
   sourceTextRef.current = sourceText
   autoTranslateRef.current = autoTranslate
 
@@ -392,14 +471,18 @@ export function useTranslate() {
     modelInitRef.current = false
   }, [])
 
+  useEffect(() => {
+    if (!autoTranslate || !sourceText.trim()) autoHistoryDraftRef.current = null
+  }, [autoTranslate, sourceText])
+
   // Auto-translate debounce (only when autoTranslate is enabled)
   // Skip while voice is recording — interim results would spam the API.
-  // Use handleTranslateRef (already defined below for style effect) to avoid the infinite loop
-  // caused by handleTranslate changing when isTranslating flips true→false after each translation.
+  // Use runTranslateRef to avoid the infinite loop caused by runTranslate changing when
+  // isTranslating flips true→false after each translation.
   useEffect(() => {
     if (!autoTranslate || !sourceText.trim() || isVoiceActive) return
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => { handleTranslateRef.current() }, autoTranslateDelay)
+    debounceRef.current = setTimeout(() => { runTranslateRef.current('auto') }, autoTranslateDelay)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [autoTranslate, autoTranslateDelay, sourceText, isVoiceActive])
 
@@ -407,35 +490,35 @@ export function useTranslate() {
   useEffect(() => {
     if (!imageAttachment) return
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => { handleTranslateRef.current() }, IMAGE_AUTO_TRANSLATE_DELAY_MS)  // HC-03
+    debounceRef.current = setTimeout(() => { runTranslateRef.current('auto') }, IMAGE_AUTO_TRANSLATE_DELAY_MS)  // HC-03
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [imageAttachment])
 
   // Re-translate when style changes (skip first render, skip manual mode)
-  // biome-ignore lint/correctness/useExhaustiveDependencies: translationStyle is the intentional trigger; handleTranslate is accessed via a stable ref
+  // biome-ignore lint/correctness/useExhaustiveDependencies: translationStyle is the intentional trigger; runTranslate is accessed via a stable ref
   useEffect(() => {
     if (!styleInitRef.current) { styleInitRef.current = true; return }
     if (!autoTranslateRef.current) return
-    handleTranslateRef.current()
+    runTranslateRef.current('auto')
   }, [translationStyle])
 
   // Re-translate when target or source language changes (skip first render, skip manual mode)
   // Also fires when image is attached — imageAttachmentRef accessed via stable ref
-  // biome-ignore lint/correctness/useExhaustiveDependencies: lang changes are the triggers; sourceText/imageAttachment/handleTranslate accessed via stable refs
+  // biome-ignore lint/correctness/useExhaustiveDependencies: lang changes are the triggers; sourceText/imageAttachment/runTranslate accessed via stable refs
   useEffect(() => {
     if (!langInitRef.current) { langInitRef.current = true; return }
     if (!autoTranslateRef.current) return
     if (!sourceTextRef.current.trim() && !imageAttachmentRef.current) return
-    handleTranslateRef.current()
+    runTranslateRef.current('auto')
   }, [targetLang, sourceLang])
 
   // Re-translate when provider or model changes (skip first render, skip manual mode)
-  // biome-ignore lint/correctness/useExhaustiveDependencies: provider/model changes are the triggers; handleTranslate via stable ref
+  // biome-ignore lint/correctness/useExhaustiveDependencies: provider/model changes are the triggers; runTranslate via stable ref
   useEffect(() => {
     if (!modelInitRef.current) { modelInitRef.current = true; return }
     if (!autoTranslateRef.current) return
     if (!sourceTextRef.current.trim() && !imageAttachmentRef.current) return
-    handleTranslateRef.current()
+    runTranslateRef.current('auto')
   }, [selectedProvider, selectedModels[selectedProvider]])
 
   /** Swap translation panels — puts translated text into source, sets detected language as target. */

@@ -66,6 +66,7 @@ export const useAppStore = create<AppState>()(
         autoTranslateDelay: state.autoTranslateDelay,
         phoneticMode: state.phoneticMode,
         translationStyle: state.translationStyle,
+        ttsMode: state.ttsMode,
         ttsVoice: state.ttsVoice,
         fontSize: state.fontSize,
         sttProvider: state.sttProvider,

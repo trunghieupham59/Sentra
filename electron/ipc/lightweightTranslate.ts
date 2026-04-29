@@ -5,6 +5,7 @@ import {
   LIGHTWEIGHT_TRANSLATOR_PROMPT,
   MAX_LIGHTWEIGHT_TRANSLATE_TOKENS,
 } from './ipcConstants'
+import { isLocalProvider, LOCAL_AI_PLACEHOLDER_KEY, resolveLocalAiRequestModel } from './localAi'
 import { getStoredApiKey } from './storage'
 
 type TranslationStyle = 'general' | 'formal' | 'casual' | 'business' | 'technical' | 'natural'
@@ -42,10 +43,11 @@ export async function lightweightTranslate({
   const resolvedModel = model ?? (
     provider === 'gemini' ? EXT_DEFAULT_GEMINI_MODEL
     : provider === 'openai' ? EXT_DEFAULT_OPENAI_MODEL
+    : provider === 'local' ? 'local-auto'
     : EXT_DEFAULT_CLAUDE_MODEL
   )
 
-  const apiKey = await getStoredApiKey(provider)
+  const apiKey = isLocalProvider(provider) ? LOCAL_AI_PLACEHOLDER_KEY : await getStoredApiKey(provider)
   if (!apiKey) return { success: false, error: `No API key configured for ${provider}` }
 
   const tone = STYLE_TONE[translationStyle] ?? STYLE_TONE.general
@@ -66,6 +68,17 @@ export async function lightweightTranslate({
         model: resolvedModel,
         messages: [{ role: 'system', content: LIGHTWEIGHT_TRANSLATOR_PROMPT }, { role: 'user', content: prompt }],
         max_completion_tokens: MAX_LIGHTWEIGHT_TRANSLATE_TOKENS,
+      })
+      return { success: true, translatedText: (completion.choices[0]?.message?.content ?? '').trim() }
+    }
+    if (provider === 'local') {
+      const OpenAI = (await import('openai')).default
+      const local = await resolveLocalAiRequestModel(resolvedModel)
+      const client = new OpenAI({ apiKey: LOCAL_AI_PLACEHOLDER_KEY, baseURL: local.baseURL })
+      const completion = await client.chat.completions.create({
+        model: local.model,
+        messages: [{ role: 'system', content: LIGHTWEIGHT_TRANSLATOR_PROMPT }, { role: 'user', content: prompt }],
+        max_tokens: MAX_LIGHTWEIGHT_TRANSLATE_TOKENS,
       })
       return { success: true, translatedText: (completion.choices[0]?.message?.content ?? '').trim() }
     }

@@ -107,7 +107,7 @@ export function SystemPromptDropdown({
         type="button"
         onClick={() => setShowDropdown((v) => !v)}
         title={t.chat_system_prompt}
-        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium border
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border
                     transition-all duration-200 select-none cursor-pointer whitespace-nowrap
                     ${isActive
                       ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950 dark:border-indigo-800 dark:text-indigo-400'
@@ -125,8 +125,7 @@ export function SystemPromptDropdown({
 
       {/* Dropdown panel */}
       {showDropdown && (
-        <div className="absolute right-0 top-full mt-1 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-xl
-                        border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
+        <div className="floating-panel absolute right-0 top-full mt-1 w-72 z-50 overflow-hidden">
 
           {/* Header */}
           <p className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider

@@ -19,14 +19,15 @@ function showStatus (msg, type, duration) {
 $('btn-save').addEventListener('click', () => {
   const token = $('token').value.trim()
   const targetLang = $('target-lang').value
+  const translationStyle = $('translation-style').value
 
   if (!token) {
-    showStatus('❌ Please enter a Connection Token.', 'error')
+    showStatus('Please enter a Connection Token.', 'error')
     return
   }
 
-  chrome.storage.local.set({ treToken: token, treTargetLang: targetLang }, () => {
-    showStatus('✓ Settings saved!', 'success')
+  chrome.storage.local.set({ treToken: token, treTargetLang: targetLang, treTranslationStyle: translationStyle }, () => {
+    showStatus('Settings saved.', 'success')
   })
 })
 
@@ -35,11 +36,11 @@ $('btn-save').addEventListener('click', () => {
 $('btn-test').addEventListener('click', async () => {
   const token = $('token').value.trim()
   if (!token) {
-    showStatus('❌ Enter a token first.', 'error')
+    showStatus('Enter a token first.', 'error')
     return
   }
 
-  showStatus('Testing connection…', 'info', 0)
+  showStatus('Testing connection...', 'info', 0)
 
   try {
     const resp = await fetch(`http://127.0.0.1:${PORT}/api/status`, {
@@ -47,11 +48,11 @@ $('btn-test').addEventListener('click', async () => {
     })
 
     if (resp.status === 401) {
-      showStatus('❌ Token is invalid. Copy it again from the Viezan app.', 'error')
+      showStatus('Token is invalid. Copy it again from the Viezan app.', 'error')
       return
     }
     if (!resp.ok) {
-      showStatus(`❌ Server responded with HTTP ${resp.status}`, 'error')
+      showStatus(`Server responded with HTTP ${resp.status}`, 'error')
       return
     }
 
@@ -60,23 +61,24 @@ $('btn-test').addEventListener('click', async () => {
       // Auto-save settings on successful connection so content script & popup
       // always have the correct token without requiring a separate "Save" click.
       const targetLang = $('target-lang').value
-      chrome.storage.local.set({ treToken: token, treTargetLang: targetLang })
-      showStatus(`✓ Connected to Viezan v${data.version || '?'} — Settings saved!`, 'success')
+      const translationStyle = $('translation-style').value
+      chrome.storage.local.set({ treToken: token, treTargetLang: targetLang, treTranslationStyle: translationStyle })
+      showStatus(`Connected to Viezan v${data.version || '?'}. Settings saved.`, 'success')
       // Refresh the active provider/model display
       loadAiConfig(token)
     } else {
-      showStatus('❌ Unexpected response from Viezan app.', 'error')
+      showStatus('Unexpected response from Viezan app.', 'error')
     }
   } catch (err) {
     const msg = err?.message || String(err)
     if (msg.includes('fetch') || msg.includes('Failed') || msg.includes('NetworkError')) {
       showStatus(
-        '❌ Cannot reach Viezan app on port 39875. ' +
-        'Make sure the app is running. If it is, try reloading the extension (chrome://extensions → Reload).',
+        'Cannot reach Viezan app on port 39875. ' +
+        'Make sure the app is running. If it is, try reloading the extension (chrome://extensions > Reload).',
         'error'
       )
     } else {
-      showStatus(`❌ ${msg}`, 'error')
+      showStatus(msg, 'error')
     }
   }
 })
@@ -84,9 +86,23 @@ $('btn-test').addEventListener('click', async () => {
 // ── Fetch & display active AI config ─────────────────────────────────────────
 
 const PROVIDER_LABELS = {
-  gemini: '✨ Google Gemini',
-  openai: '🤖 OpenAI GPT',
-  claude: '🧠 Anthropic Claude',
+  gemini: { name: 'Google Gemini', color: '#1A73E8' },
+  openai: { name: 'OpenAI GPT', color: '#10A37F' },
+  claude: { name: 'Anthropic Claude', color: '#D97706' },
+}
+
+function setProviderBadge (provider) {
+  const badge = document.getElementById('ai-provider-badge')
+  const meta = PROVIDER_LABELS[provider]
+  badge.textContent = ''
+  if (meta) {
+    const mark = document.createElement('span')
+    mark.className = 'provider-mark'
+    mark.style.background = meta.color
+    badge.append(mark, document.createTextNode(meta.name))
+  } else {
+    badge.textContent = provider || '-'
+  }
 }
 
 async function loadAiConfig (token) {
@@ -106,12 +122,11 @@ async function loadAiConfig (token) {
     const data = await resp.json()
     if (!data.success) throw new Error('bad response')
 
-    document.getElementById('ai-provider-badge').textContent =
-      PROVIDER_LABELS[data.provider] || data.provider
-    document.getElementById('ai-model-badge').textContent = data.model || '—'
+    setProviderBadge(data.provider)
+    document.getElementById('ai-model-badge').textContent = data.model || '-'
 
     loading.style.display = 'none'
-    info.style.display    = 'block'
+    info.style.display    = 'grid'
   } catch {
     loading.style.display = 'none'
     error.style.display   = 'block'
@@ -121,9 +136,10 @@ async function loadAiConfig (token) {
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 function init () {
-  chrome.storage.local.get(['treToken', 'treTargetLang'], (data) => {
+  chrome.storage.local.get(['treToken', 'treTargetLang', 'treTranslationStyle'], (data) => {
     if (data.treToken)      $('token').value = data.treToken
     if (data.treTargetLang) $('target-lang').value = data.treTargetLang
+    if (data.treTranslationStyle) $('translation-style').value = data.treTranslationStyle
 
     if (data.treToken) {
       loadAiConfig(data.treToken)

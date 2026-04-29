@@ -87,6 +87,50 @@ export interface Translations {
   settings_security_windows: string
   settings_api_keys: string
   settings_configured: string
+  settings_local_ai_title: string
+  settings_local_ai_running: string
+  settings_local_ai_not_running: string
+  settings_local_ai_unavailable: string
+  settings_local_ai_model_waiting: string
+  settings_local_ai_models_found: string
+  settings_local_ai_start_runtime: string
+  settings_local_ai_benchmark: string
+  settings_local_ai_benchmarking: string
+  settings_local_ai_tier: string
+  settings_local_ai_cpu_score: string
+  settings_local_ai_memory_score: string
+  settings_local_ai_runtime_speed: string
+  settings_local_ai_runtime_latency: string
+  settings_local_ai_benchmark_duration: string
+  settings_local_ai_suggested_models: string
+  settings_local_ai_model_size: string
+  settings_local_ai_download_hint: string
+  settings_local_ai_recommended: string
+  settings_local_ai_installed: string
+  settings_local_ai_download: string
+  settings_local_ai_install_ollama: string
+  settings_local_ai_installing_ollama: string
+  settings_local_ai_install_runtime_title: string
+  settings_local_ai_install_runtime_desc: string
+  settings_local_ai_waiting_runtime: string
+  settings_local_ai_cancel_install: string
+  settings_local_ai_install_cancelled: string
+  settings_local_ai_ollama_installed: string
+  settings_local_ai_checking_runtime: string
+  settings_local_ai_restart_title: string
+  settings_local_ai_restart_desc: string
+  settings_local_ai_restart_now: string
+  settings_local_ai_restart_later: string
+  settings_local_ai_install_failed: string
+  settings_local_ai_need_ollama: string
+  settings_local_ai_downloaded: string
+  settings_local_ai_downloading_model: string
+  settings_local_ai_download_progress: string
+  settings_local_ai_download_failed: string
+  settings_local_ai_uninstall: string
+  settings_local_ai_uninstalling: string
+  settings_local_ai_uninstalled: string
+  settings_local_ai_uninstall_failed: string
   settings_get_key: string
   settings_key_saved: string
   settings_key_invalid: string
@@ -173,6 +217,14 @@ export interface Translations {
   settings_tts_priority_desc: string
   /** Label for the "Priority" sub-header in TTS section */
   settings_tts_priority_label: string
+  settings_tts_mode: string
+  settings_tts_mode_desc: string
+  settings_tts_mode_free: string
+  settings_tts_mode_free_desc: string
+  settings_tts_mode_auto: string
+  settings_tts_mode_auto_desc: string
+  settings_tts_mode_premium: string
+  settings_tts_mode_premium_desc: string
   settings_tts_elevenlabs_key: string
   settings_tts_elevenlabs_key_desc: string
   /** Placeholder text for ElevenLabs API key input */
@@ -224,6 +276,11 @@ export interface Translations {
 
   // History page
   history_title: string
+  history_total_count: string
+  history_search_placeholder: string
+  history_search_clear: string
+  history_no_results: string
+  history_no_results_desc: string
   time_just_now: string
   time_m_ago: string
   time_h_ago: string
@@ -232,8 +289,6 @@ export interface Translations {
   history_empty_desc: string
   history_translate_count: string
   history_live_count: string
-  history_clear_all: string
-  history_clear_confirm: string
   history_delete: string
   history_reuse: string
   history_chars_source: string
@@ -247,6 +302,9 @@ export interface Translations {
   history_chat_role_ai: string
   history_chat_open: string
   history_chat_delete: string
+  history_select_all: string
+  history_selected_count: string
+  history_delete_selected: string
 
   // Live session history
   history_tab_live: string
@@ -255,8 +313,6 @@ export interface Translations {
   history_live_delete: string
   history_live_view: string
   history_live_words: string
-  history_live_clear_all: string
-  history_live_clear_confirm: string
 
   // Live translate page
   nav_live_translate: string
@@ -484,6 +540,23 @@ export interface Translations {
   settings_token_ipc_error: string
   settings_preset_use_prompt: string
 
+  // AI Chat Quick-Ask Popup (hotkey-triggered)
+  ai_chat_popup_title: string
+  ai_chat_popup_placeholder: string
+  ai_chat_popup_open_in_chat: string
+
+  // Settings — AI Chat Hotkey
+  settings_chat_hotkey_section: string
+  settings_chat_hotkey_section_desc: string
+  settings_chat_hotkey_enabled: string
+  settings_chat_hotkey_enabled_desc: string
+  settings_chat_hotkey_label: string
+  settings_chat_hotkey_desc: string
+  settings_chat_hotkey_recording: string
+  settings_chat_hotkey_clear: string
+  settings_chat_hotkey_none: string
+  settings_chat_hotkey_status_conflict: string
+
   // Settings — AI Chat section
   settings_chat_section: string
   settings_chat_section_desc: string
@@ -556,6 +629,11 @@ export interface Translations {
   live_error_system_audio_unavailable: string
   live_error_screen_permission_denied: string
   live_error_mic_denied: string
+  /**
+   * Error shown when ALL STT providers (Whisper, Gemini, Groq) are unavailable or failed.
+   * The live session is stopped automatically when this occurs.
+   */
+  live_error_all_stt_exhausted: string
   /** Warning shown in Live Translate when the user has selected Browser Speech API
    *  (webSpeech) which is not supported in this pipeline — Whisper will be used instead. */
   live_webspeech_not_supported: string

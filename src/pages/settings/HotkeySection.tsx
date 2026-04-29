@@ -6,6 +6,7 @@ import { STATUS_RESET_DELAY_MS, STATUS_RESET_LONG_MS } from '../../constants/ui'
 import { useAppStore, useT } from '../../store/useAppStore'
 
 const DEFAULT_HOTKEY = 'Alt+Shift+T'
+const DEFAULT_CHAT_HOTKEY = 'Alt+Shift+C'
 
 const KEY_MAP: Record<string, string> = {
   ' ': 'Space', ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right',
@@ -119,8 +120,61 @@ export function HotkeySection() {
     }
   }
 
+  // ── AI Chat hotkey state ──────────────────────────────────────────────────
+  const [chatHotkeyEnabled, setChatHotkeyEnabled] = useState(false)
+  const [chatHotkeyValue, setChatHotkeyValue] = useState('')
+  const [isChatRecording, setIsChatRecording] = useState(false)
+  const [chatHotkeyError, setChatHotkeyError] = useState('')
+  const chatHotkeyInputRef = useRef<HTMLButtonElement>(null)
+
+  // Load saved AI Chat hotkey settings
+  useEffect(() => {
+    if (!window.api?.hotkey?.chat) return
+    window.api.hotkey.chat.get().then((res: { success: boolean; settings?: Record<string, unknown> }) => {
+      if (res?.success && res.settings) {
+        const s = res.settings
+        setChatHotkeyEnabled(s.enabled === true)
+        setChatHotkeyValue(typeof s.hotkey === 'string' && s.hotkey ? s.hotkey : DEFAULT_CHAT_HOTKEY)
+      } else {
+        setChatHotkeyValue(DEFAULT_CHAT_HOTKEY)
+      }
+    })
+  }, [])
+
+  const saveChatHotkeySettings = useCallback(async (overrides: Record<string, unknown> = {}) => {
+    if (!window.api?.hotkey?.chat) return
+    const settings = {
+      hotkey: chatHotkeyValue,
+      enabled: chatHotkeyEnabled,
+      ...overrides,
+    }
+    const res = await window.api.hotkey.chat.update(settings)
+    if (!res?.success && res?.error) {
+      setChatHotkeyError(res.error)
+      setChatHotkeyEnabled(false)
+    } else {
+      setChatHotkeyError('')
+    }
+  }, [chatHotkeyValue, chatHotkeyEnabled])
+
+  const handleChatHotkeyKeyDown = (e: React.KeyboardEvent) => {
+    e.preventDefault()
+    if (e.key === 'Escape') {
+      setIsChatRecording(false)
+      return
+    }
+    if (['Meta', 'Control', 'Alt', 'Shift'].includes(e.key)) return
+    const acc = keyEventToAccelerator(e)
+    if (acc) {
+      setChatHotkeyValue(acc)
+      setIsChatRecording(false)
+      saveChatHotkeySettings({ hotkey: acc })
+    }
+  }
+
   return (
     <section className="space-y-3">
+      {/* ── Quick Translate Hotkey ── */}
       <div>
         <h2 className="section-label">{t.settings_hotkey_section}</h2>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_hotkey_section_desc}</p>
@@ -194,6 +248,71 @@ export function HotkeySection() {
             <span>{hotkeyStatusMsg}</span>
           </div>
         )}
+
+      </div>
+
+      {/* ── AI Chat Hotkey ── */}
+      <div className="mt-6">
+        <h2 className="section-label">{t.settings_chat_hotkey_section}</h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_chat_hotkey_section_desc}</p>
+      </div>
+
+      <div className="card divide-y divide-gray-100 dark:divide-gray-700">
+
+        {/* Enable toggle */}
+        <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_chat_hotkey_enabled}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_chat_hotkey_enabled_desc}</p>
+          </div>
+          <ToggleSwitch
+            checked={chatHotkeyEnabled}
+            onChange={(next) => {
+              setChatHotkeyEnabled(next)
+              saveChatHotkeySettings({ enabled: next })
+            }}
+            color="blue"
+          />
+        </div>
+
+        {/* Shortcut recorder */}
+        <div className="px-4 py-3.5 space-y-2">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_chat_hotkey_label}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_chat_hotkey_desc}</p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {chatHotkeyValue && !isChatRecording && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChatHotkeyValue('')
+                    setChatHotkeyEnabled(false)
+                    saveChatHotkeySettings({ hotkey: '', enabled: false })
+                  }}
+                  className="p-1 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                  title={t.settings_chat_hotkey_clear}
+                >
+                  <XIcon />
+                </button>
+              )}
+              <HotkeyRecordButton
+                inputRef={chatHotkeyInputRef}
+                isRecording={isChatRecording}
+                value={chatHotkeyValue}
+                onKeyDown={handleChatHotkeyKeyDown}
+                onClick={() => setIsChatRecording(true)}
+                onBlur={() => setIsChatRecording(false)}
+                recordingText={t.settings_chat_hotkey_recording}
+                noneText={t.settings_chat_hotkey_none}
+              />
+            </div>
+          </div>
+          {chatHotkeyError && (
+            <p className="text-xs text-red-500 dark:text-red-400">{chatHotkeyError}</p>
+          )}
+        </div>
 
       </div>
     </section>

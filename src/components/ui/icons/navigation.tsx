@@ -47,6 +47,16 @@ export function AutoDetectIcon({ className = 'w-3.5 h-3.5' }: IconProps) {
   )
 }
 
+/** Search icon — used in filter inputs. */
+export function SearchIcon({ className = 'w-3.5 h-3.5' }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+      <circle cx="11" cy="11" r="7" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M20 20l-3.5-3.5" />
+    </svg>
+  )
+}
+
 /** Arrow-up icon — used on the bookmarklet drag hint (drag to bookmarks bar). */
 export function ArrowUpIcon({ className = 'w-3.5 h-3.5' }: IconProps) {
   return (

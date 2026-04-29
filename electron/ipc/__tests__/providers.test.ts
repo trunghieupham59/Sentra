@@ -16,21 +16,22 @@ import {
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('SUPPORTED_PROVIDERS', () => {
-  it('contains gemini, claude, and openai', () => {
+  it('contains gemini, claude, openai, and local', () => {
     expect(SUPPORTED_PROVIDERS).toContain('gemini')
     expect(SUPPORTED_PROVIDERS).toContain('claude')
     expect(SUPPORTED_PROVIDERS).toContain('openai')
+    expect(SUPPORTED_PROVIDERS).toContain('local')
   })
 
-  it('has exactly 3 providers', () => {
-    expect(SUPPORTED_PROVIDERS).toHaveLength(3)
+  it('has exactly 4 providers', () => {
+    expect(SUPPORTED_PROVIDERS).toHaveLength(4)
   })
 
   it('is readonly — cannot be mutated at runtime', () => {
     // TypeScript enforces immutability; verify the array exists and is frozen-like
     const providers = SUPPORTED_PROVIDERS as unknown as string[]
     // Attempting push would throw in strict mode; at minimum verify it's unchanged
-    expect(providers.length).toBe(3)
+    expect(providers.length).toBe(4)
   })
 })
 
@@ -47,6 +48,10 @@ describe('isValidProvider', () => {
 
   it('returns true for "openai"', () => {
     expect(isValidProvider('openai')).toBe(true)
+  })
+
+  it('returns true for "local"', () => {
+    expect(isValidProvider('local')).toBe(true)
   })
 
   // ── Invalid providers ─────────────────────────────────────────────────────
@@ -99,7 +104,7 @@ describe('isValidProvider', () => {
     const provider = 'gemini'
     if (isValidProvider(provider)) {
       // TypeScript should accept this without error — type is narrowed to SupportedProvider
-      const _typed: 'gemini' | 'claude' | 'openai' = provider
+      const _typed: 'gemini' | 'claude' | 'openai' | 'local' = provider
       expect(_typed).toBe('gemini')
     }
   })
@@ -121,6 +126,7 @@ describe('unknownProviderError', () => {
     expect(result.error).toContain('gemini')
     expect(result.error).toContain('claude')
     expect(result.error).toContain('openai')
+    expect(result.error).toContain('local')
   })
 
   it('generates a distinct message for different unknown providers', () => {

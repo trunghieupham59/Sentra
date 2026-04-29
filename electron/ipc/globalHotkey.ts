@@ -9,11 +9,14 @@
  *   5. Write translated text to clipboard
  *   6. Simulate Cmd+V / Ctrl+V to paste (replacing original selection)
  *   7. Restore original clipboard content after 1.5 s
+ *
+ * Also supports an AI Chat hotkey that opens a quick-ask popup in the app.
  */
 import { exec } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { app, type BrowserWindow, clipboard, globalShortcut } from 'electron'
+import { EXT_DEFAULT_GEMINI_MODEL } from './ipcConstants'
 import { lightweightTranslate } from './lightweightTranslate'
 
 
@@ -34,23 +37,39 @@ export interface HotkeySettings {
   targetLang: string   // BCP-47 code
 }
 
+export interface AIChatHotkeySettings {
+  hotkey: string   // Electron accelerator, e.g. "Alt+Shift+C"
+  enabled: boolean
+}
+
 // ── Persistence ───────────────────────────────────────────────────────────────
 
 const SETTINGS_FILE = 'hotkey-settings.json'
+const CHAT_SETTINGS_FILE = 'ai-chat-hotkey-settings.json'
 
 const DEFAULT_SETTINGS: HotkeySettings = {
   hotkey: '',
   enabled: false,
   provider: 'gemini',
-  model: 'gemini-2.0-flash',
+  model: EXT_DEFAULT_GEMINI_MODEL,
   sourceLang: 'auto',
   targetLang: 'en',
 }
 
+const DEFAULT_CHAT_SETTINGS: AIChatHotkeySettings = {
+  hotkey: '',
+  enabled: false,
+}
+
 let currentSettings: HotkeySettings = { ...DEFAULT_SETTINGS }
+let currentChatSettings: AIChatHotkeySettings = { ...DEFAULT_CHAT_SETTINGS }
 
 function getSettingsPath(): string {
   return path.join(app.getPath('userData'), SETTINGS_FILE)
+}
+
+function getChatSettingsPath(): string {
+  return path.join(app.getPath('userData'), CHAT_SETTINGS_FILE)
 }
 
 function loadSettings(): HotkeySettings {
@@ -64,11 +83,30 @@ function loadSettings(): HotkeySettings {
   }
 }
 
+function loadChatSettings(): AIChatHotkeySettings {
+  try {
+    const filePath = getChatSettingsPath()
+    if (!fs.existsSync(filePath)) return { ...DEFAULT_CHAT_SETTINGS }
+    const raw = fs.readFileSync(filePath, 'utf-8')
+    return { ...DEFAULT_CHAT_SETTINGS, ...JSON.parse(raw) }
+  } catch {
+    return { ...DEFAULT_CHAT_SETTINGS }
+  }
+}
+
 function saveSettings(settings: HotkeySettings): void {
   try {
     fs.writeFileSync(getSettingsPath(), JSON.stringify(settings, null, 2), 'utf-8')
   } catch (e) {
     console.error('[GlobalHotkey] Failed to save settings:', e)
+  }
+}
+
+function saveChatSettings(settings: AIChatHotkeySettings): void {
+  try {
+    fs.writeFileSync(getChatSettingsPath(), JSON.stringify(settings, null, 2), 'utf-8')
+  } catch (e) {
+    console.error('[GlobalHotkey] Failed to save chat hotkey settings:', e)
   }
 }
 
@@ -114,6 +152,33 @@ function simulatePaste(): Promise<void> {
 }
 
 // ── Hotkey registration ───────────────────────────────────────────────────────
+
+/** Register the AI Chat hotkey — opens the quick-ask popup in the renderer. */
+function registerChatHotkey(
+  settings: AIChatHotkeySettings,
+  getMainWindow: () => BrowserWindow | null
+): boolean {
+  if (!settings.hotkey || !settings.enabled) return true
+
+  try {
+    const ok = globalShortcut.register(settings.hotkey, () => {
+      const win = getMainWindow()
+      if (!win) return
+
+      // Bring the app window to the front
+      if (win.isMinimized()) win.restore()
+      win.show()
+      win.focus()
+
+      // Tell the renderer to open the AI Chat popup
+      win.webContents.send('hotkey:chat-open')
+    })
+    return ok
+  } catch (e) {
+    console.error('[GlobalHotkey] Chat hotkey registration error:', e)
+    return false
+  }
+}
 
 let isTranslating = false
 
@@ -186,7 +251,7 @@ export function initGlobalHotkey(
   ipcMain: Electron.IpcMain,
   getMainWindow: () => BrowserWindow | null
 ): void {
-  // Load persisted settings and register hotkey if enabled
+  // Load persisted settings and register translate hotkey if enabled
   currentSettings = loadSettings()
   if (currentSettings.enabled && currentSettings.hotkey) {
     const ok = registerHotkey(currentSettings, getMainWindow)
@@ -195,7 +260,16 @@ export function initGlobalHotkey(
     }
   }
 
-  /** Update (and optionally re-register) hotkey settings */
+  // Load and register AI Chat hotkey if enabled
+  currentChatSettings = loadChatSettings()
+  if (currentChatSettings.enabled && currentChatSettings.hotkey) {
+    const ok = registerChatHotkey(currentChatSettings, getMainWindow)
+    if (!ok) {
+      console.warn('[GlobalHotkey] Could not register saved chat hotkey (already in use?)')
+    }
+  }
+
+  /** Update (and optionally re-register) translate hotkey settings */
   ipcMain.handle('hotkey:update', (_event, settings: Partial<HotkeySettings>) => {
     try {
       // Unregister current hotkey first
@@ -222,13 +296,13 @@ export function initGlobalHotkey(
     }
   })
 
-  /** Return current hotkey settings */
+  /** Return current translate hotkey settings */
   ipcMain.handle('hotkey:get', () => ({
     success: true,
     settings: currentSettings,
   }))
 
-  /** Unregister hotkey and disable */
+  /** Unregister translate hotkey and disable */
   ipcMain.handle('hotkey:disable', () => {
     try {
       if (currentSettings.hotkey) {
@@ -241,4 +315,35 @@ export function initGlobalHotkey(
       return { success: false, error: String(e) }
     }
   })
+
+  /** Update (and optionally re-register) AI Chat hotkey settings */
+  ipcMain.handle('hotkey:chat:update', (_event, settings: Partial<AIChatHotkeySettings>) => {
+    try {
+      if (currentChatSettings.hotkey) {
+        try { globalShortcut.unregister(currentChatSettings.hotkey) } catch { /* ignore */ }
+      }
+
+      currentChatSettings = { ...currentChatSettings, ...settings }
+      saveChatSettings(currentChatSettings)
+
+      if (currentChatSettings.enabled && currentChatSettings.hotkey) {
+        const ok = registerChatHotkey(currentChatSettings, getMainWindow)
+        if (!ok) {
+          currentChatSettings.enabled = false
+          saveChatSettings(currentChatSettings)
+          return { success: false, error: 'Hotkey is already in use by another application.' }
+        }
+      }
+
+      return { success: true, settings: currentChatSettings }
+    } catch (e) {
+      return { success: false, error: String(e) }
+    }
+  })
+
+  /** Return current AI Chat hotkey settings */
+  ipcMain.handle('hotkey:chat:get', () => ({
+    success: true,
+    settings: currentChatSettings,
+  }))
 }

@@ -1,5 +1,6 @@
 /**
- * Global hotkey preload API — register/update/listen for the clipboard-translate hotkey.
+ * Global hotkey preload API — register/update/listen for the clipboard-translate hotkey
+ * and the AI Chat quick-ask hotkey.
  */
 import { ipcRenderer } from 'electron'
 
@@ -42,6 +43,26 @@ export const hotkeySection = {
       const handler = (_: unknown, data: { error: string }) => cb(data)
       ipcRenderer.on('hotkey:error', handler)
       return () => ipcRenderer.removeListener('hotkey:error', handler)
+    },
+
+    /** AI Chat hotkey — opens the quick-ask popup in the renderer. */
+    chat: {
+      /** Update (and re-register) AI Chat hotkey settings. */
+      update: (settings: { hotkey?: string; enabled?: boolean }) =>
+        ipcRenderer.invoke('hotkey:chat:update', settings),
+
+      /** Get the currently persisted AI Chat hotkey settings. */
+      get: () => ipcRenderer.invoke('hotkey:chat:get'),
+
+      /**
+       * Listen for the chat-open event pushed from the main process.
+       * Returns a cleanup function — call it to unsubscribe.
+       */
+      onOpen: (cb: () => void) => {
+        const handler = () => cb()
+        ipcRenderer.on('hotkey:chat-open', handler)
+        return () => ipcRenderer.removeListener('hotkey:chat-open', handler)
+      },
     },
   },
 }

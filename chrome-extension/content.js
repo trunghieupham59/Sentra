@@ -20,8 +20,11 @@
   const PORT = 39875
   const ICON_URL = chrome.runtime.getURL('icons/icon48.png')
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
-  const COPY_LABEL    = isMac ? '⌘C  Copy'    : 'Ctrl+C  Copy'
-  const REPLACE_LABEL = isMac ? '⌘↵  Replace' : 'Ctrl+↵  Replace'
+  const COPY_LABEL = 'Copy'
+  const REPLACE_LABEL = 'Replace'
+  const COPY_TITLE = isMac ? 'Copy translation (Cmd+C)' : 'Copy translation (Ctrl+C)'
+  const REPLACE_TITLE = isMac ? 'Replace selected text (Cmd+Enter)' : 'Replace selected text (Ctrl+Enter)'
+  const LISTEN_LABEL = 'Listen'
 
   // ── Cleanup stale UI from a previous content script instance ──────────────
   // When the extension is reloaded/updated, background.js re-injects this
@@ -52,35 +55,50 @@
       <span class="tre-tooltip-label">VIEZAN</span>
       <span class="tre-status-badge">
         <span class="tre-status-dot tre-status-loading"></span>
-        <span class="tre-status-text">Connecting…</span>
+        <span class="tre-status-text">Connecting...</span>
       </span>
       <div class="tre-header-spacer"></div>
-      <button class="tre-close-btn" title="Close">✕</button>
+      <button class="tre-close-btn" title="Close">x</button>
     </div>
     <div class="tre-controls-row">
-      <span class="tre-ctrl-item tre-ctrl-provider">—</span>
-      <span class="tre-ctrl-item tre-ctrl-model">—</span>
-      <div class="tre-ctrl-divider"></div>
-      <select class="tre-lang-select" title="Target language">
-        <option value="en">🇺🇸 English</option>
-        <option value="vi">🇻🇳 Vietnamese</option>
-        <option value="ja">🇯🇵 Japanese</option>
-        <option value="zh">🇨🇳 Chinese</option>
-        <option value="ko">🇰🇷 Korean</option>
-        <option value="fr">🇫🇷 French</option>
-        <option value="de">🇩🇪 German</option>
-        <option value="es">🇪🇸 Spanish</option>
-        <option value="th">🇹🇭 Thai</option>
-        <option value="ru">🇷🇺 Russian</option>
-      </select>
-      <select class="tre-style-select" title="Translation style">
-        <option value="general">General</option>
-        <option value="formal">Formal</option>
-        <option value="casual">Casual</option>
-        <option value="business">Business</option>
-        <option value="technical">Technical</option>
-        <option value="natural">Natural</option>
-      </select>
+      <div class="tre-model-stack">
+        <span class="tre-ctrl-item tre-ctrl-provider tre-ctrl-loading">Provider</span>
+        <span class="tre-ctrl-item tre-ctrl-model tre-ctrl-loading">Model</span>
+      </div>
+      <div class="tre-select-field">
+        <label>To</label>
+        <select class="tre-lang-select" title="Target language">
+          <option value="en">English</option>
+          <option value="vi">Vietnamese</option>
+          <option value="ja">Japanese</option>
+          <option value="zh">Chinese</option>
+          <option value="zh-TW">Chinese (Traditional)</option>
+          <option value="ko">Korean</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+          <option value="es">Spanish</option>
+          <option value="pt">Portuguese</option>
+          <option value="ru">Russian</option>
+          <option value="ar">Arabic</option>
+          <option value="th">Thai</option>
+          <option value="id">Indonesian</option>
+          <option value="it">Italian</option>
+          <option value="nl">Dutch</option>
+          <option value="tr">Turkish</option>
+          <option value="hi">Hindi</option>
+        </select>
+      </div>
+      <div class="tre-select-field">
+        <label>Style</label>
+        <select class="tre-style-select" title="Translation style">
+          <option value="general">General</option>
+          <option value="formal">Formal</option>
+          <option value="casual">Casual</option>
+          <option value="business">Business</option>
+          <option value="technical">Technical</option>
+          <option value="natural">Natural</option>
+        </select>
+      </div>
     </div>
     <div class="tre-tooltip-body">
       <div class="tre-panel tre-source-panel">
@@ -94,8 +112,9 @@
       </div>
     </div>
     <div class="tre-tooltip-actions">
-      <button class="tre-action-btn tre-copy-btn">📋 Copy</button>
-      <button class="tre-action-btn tre-replace-btn">↵ Replace</button>
+      <button class="tre-action-btn tre-listen-btn">Listen</button>
+      <button class="tre-action-btn tre-copy-btn">Copy</button>
+      <button class="tre-action-btn tre-replace-btn">Replace</button>
       <!-- labels updated dynamically after isMac detection -->
     </div>
   `
@@ -111,6 +130,7 @@
 
   const copyBtn = tooltip.querySelector('.tre-copy-btn')
   const replaceBtn = tooltip.querySelector('.tre-replace-btn')
+  const listenBtn = tooltip.querySelector('.tre-listen-btn')
   const langSelect = tooltip.querySelector('.tre-lang-select')
   const styleSelect = tooltip.querySelector('.tre-style-select')
   const closeBtn = tooltip.querySelector('.tre-close-btn')
@@ -118,6 +138,8 @@
   // Apply OS-aware shortcut labels to action buttons
   copyBtn.textContent = COPY_LABEL
   replaceBtn.textContent = REPLACE_LABEL
+  copyBtn.title = COPY_TITLE
+  replaceBtn.title = REPLACE_TITLE
 
   // ── State ─────────────────────────────────────────────────────────────────
 
@@ -128,6 +150,11 @@
   let savedInputStart = 0        // textarea selectionStart
   let savedInputEnd = 0          // textarea selectionEnd
   let currentTranslation = ''
+  let ttsAudio = null
+  let ttsAudioUrl = ''
+  let ttsLoading = false
+  let ttsRequestId = 0
+  let ttsUsingSpeech = false
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -163,29 +190,44 @@
     return { provider: data.provider, model: data.model }
   }
 
-  /** Provider metadata — SVG icon + full name + brand colors (mirrors the main app) */
+  /** Provider metadata — full name + brand colors (mirrors the main app) */
   const PROVIDER_META = {
     gemini: {
       name: 'Google Gemini',
       color: '#1A73E8',
       bg: 'rgba(26,115,232,0.08)',
       border: 'rgba(26,115,232,0.2)',
-      svg: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 2C12.3 5.5 13.8 8.8 16 10.5C13.8 12.2 12.3 15.5 12 19C11.7 15.5 10.2 12.2 8 10.5C10.2 8.8 11.7 5.5 12 2Z" fill="#1A73E8"/><path d="M2 10.5C5.5 10.8 8.8 10.2 10.5 8C12.2 10.2 15.5 10.8 19 10.5C15.5 10.2 12.2 11.8 10.5 14C8.8 11.8 5.5 10.2 2 10.5Z" fill="#1A73E8" opacity="0.5"/></svg>',
     },
     openai: {
       name: 'OpenAI GPT',
       color: '#10A37F',
       bg: 'rgba(16,163,127,0.08)',
       border: 'rgba(16,163,127,0.2)',
-      svg: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 7L15.46 9V13L12 15L8.54 13V9L12 7Z" fill="#10A37F"/><path d="M12 3.5V7M12 15V18.5M8.54 9L5.5 7.25M15.46 13L18.5 14.75M8.54 13L5.5 14.75M15.46 9L18.5 7.25" stroke="#10A37F" stroke-width="1.5" stroke-linecap="round"/></svg>',
     },
     claude: {
       name: 'Anthropic Claude',
       color: '#D97706',
       bg: 'rgba(217,119,6,0.08)',
       border: 'rgba(217,119,6,0.2)',
-      svg: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 5.5L18.2 20.5H15.5L14.2 17H9.8L8.5 20.5H5.8L12 5.5ZM12 9.5L10.7 13H13.3L12 9.5Z" fill="#D97706"/></svg>',
     },
+  }
+
+  function setProviderBadge (el, provider) {
+    const meta = PROVIDER_META[provider]
+    el.textContent = ''
+    el.className = 'tre-ctrl-item tre-ctrl-provider'
+    el.style.cssText = ''
+
+    if (meta) {
+      el.style.cssText = `background:${meta.bg};border-color:${meta.border};color:${meta.color}`
+      const mark = document.createElement('span')
+      mark.className = 'provider-mark'
+      mark.style.background = meta.color
+      el.append(mark, document.createTextNode(meta.name))
+      return
+    }
+
+    el.textContent = provider || '-'
   }
 
   /** Populate the provider/model badges and status in the controls row */
@@ -197,29 +239,31 @@
     if (!providerEl || !modelEl) return
     try {
       const config = await getAppConfig(token)
-      const meta = PROVIDER_META[config.provider]
 
-      // Update status → Active
+      // Update status to Active.
       if (statusDot)  { statusDot.className = 'tre-status-dot tre-status-active' }
       if (statusText) { statusText.textContent = 'Active' }
 
       // Provider badge
-      if (meta) {
-        providerEl.innerHTML = `${meta.svg}${meta.name}`
-        providerEl.style.cssText = `background:${meta.bg};border-color:${meta.border};color:${meta.color}`
-      } else {
-        providerEl.textContent = config.provider || '—'
-        providerEl.style.cssText = ''
-      }
+      setProviderBadge(providerEl, config.provider)
 
       // Model badge
-      modelEl.textContent = config.model || '—'
+      modelEl.className = 'tre-ctrl-item tre-ctrl-model'
+      modelEl.textContent = config.model || '-'
       modelEl.style.cssText = ''
     } catch {
       if (statusDot)  { statusDot.className = 'tre-status-dot tre-status-error' }
       if (statusText) { statusText.textContent = 'Offline' }
-      if (providerEl) { providerEl.textContent = '—' }
-      if (modelEl)    { modelEl.textContent = '—' }
+      if (providerEl) {
+        providerEl.className = 'tre-ctrl-item tre-ctrl-provider tre-ctrl-loading'
+        providerEl.textContent = 'Provider unavailable'
+        providerEl.style.cssText = ''
+      }
+      if (modelEl) {
+        modelEl.className = 'tre-ctrl-item tre-ctrl-model tre-ctrl-loading'
+        modelEl.textContent = 'Model unavailable'
+        modelEl.style.cssText = ''
+      }
     }
   }
 
@@ -243,6 +287,92 @@
     const data = await resp.json()
     if (!data.success) throw new Error(data.error || 'Translation failed')
     return data.translatedText
+  }
+
+  async function fetchTtsAudio (text, lang, token) {
+    const resp = await fetch(`http://127.0.0.1:${PORT}/api/tts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Viezan-Token': token,
+      },
+      body: JSON.stringify({ text, lang }),
+    })
+    const data = await resp.json().catch(() => null)
+    if (!resp.ok) throw new Error(data?.error || `HTTP ${resp.status}`)
+    if (!data.success || !data.audioBase64) throw new Error(data.error || 'TTS failed')
+    return data
+  }
+
+  const TTS_LANG_TO_BCP47 = {
+    en: 'en-US',
+    vi: 'vi-VN',
+    ja: 'ja-JP',
+    zh: 'zh-CN',
+    'zh-TW': 'zh-TW',
+    ko: 'ko-KR',
+    fr: 'fr-FR',
+    de: 'de-DE',
+    es: 'es-ES',
+    pt: 'pt-PT',
+    th: 'th-TH',
+    ru: 'ru-RU',
+    ar: 'ar-SA',
+    id: 'id-ID',
+    it: 'it-IT',
+    nl: 'nl-NL',
+    tr: 'tr-TR',
+    hi: 'hi-IN',
+  }
+
+  function speakWithBrowserSpeech (text, lang) {
+    if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) return false
+    const bcp47 = TTS_LANG_TO_BCP47[lang] || 'en-US'
+    const utter = new SpeechSynthesisUtterance(text)
+    utter.lang = bcp47
+    const voices = window.speechSynthesis.getVoices()
+    const prefix = bcp47.split('-')[0]
+    const local = voices.filter((voice) => voice.localService)
+    utter.voice =
+      local.find((voice) => voice.lang === bcp47) ||
+      voices.find((voice) => voice.lang === bcp47) ||
+      local.find((voice) => voice.lang.startsWith(prefix)) ||
+      voices.find((voice) => voice.lang.startsWith(prefix)) ||
+      null
+    utter.onend = stopTtsAudio
+    utter.onerror = stopTtsAudio
+    ttsUsingSpeech = true
+    window.speechSynthesis.cancel()
+    window.speechSynthesis.speak(utter)
+    listenBtn.textContent = 'Stop'
+    return true
+  }
+
+  function base64ToBlobUrl (base64, mimeType) {
+    const binary = atob(base64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    const blob = new Blob([bytes], { type: mimeType || 'audio/mpeg' })
+    return URL.createObjectURL(blob)
+  }
+
+  function stopTtsAudio () {
+    ttsRequestId++
+    if (ttsAudio) {
+      try { ttsAudio.pause() } catch { /* ignore */ }
+      ttsAudio = null
+    }
+    if (ttsUsingSpeech && window.speechSynthesis) {
+      ttsUsingSpeech = false
+      window.speechSynthesis.cancel()
+    }
+    if (ttsAudioUrl) {
+      URL.revokeObjectURL(ttsAudioUrl)
+      ttsAudioUrl = ''
+    }
+    ttsLoading = false
+    listenBtn.textContent = LISTEN_LABEL
+    listenBtn.disabled = false
   }
 
   function positionElement (el, rect) {
@@ -338,6 +468,7 @@
 
     tooltip.style.display = 'block'
     copyBtn.textContent = COPY_LABEL
+    stopTtsAudio()
     // Force reflow so offsetWidth is available
     tooltip.getBoundingClientRect()
     positionElement(tooltip, rect)
@@ -345,6 +476,7 @@
 
   function hideTooltip () {
     tooltip.style.display = 'none'
+    stopTtsAudio()
   }
 
   // ── Close button ───────────────────────────────────────────────────────────
@@ -360,11 +492,58 @@
     e.stopPropagation()
     try {
       await navigator.clipboard.writeText(currentTranslation)
-      copyBtn.textContent = '✓ Copied!'
+      copyBtn.textContent = 'Copied'
       setTimeout(() => { copyBtn.textContent = COPY_LABEL }, 1500)
     } catch {
-      copyBtn.textContent = '❌ Failed'
+      copyBtn.textContent = 'Failed'
       setTimeout(() => { copyBtn.textContent = COPY_LABEL }, 1500)
+    }
+  })
+
+  // ── Listen button ──────────────────────────────────────────────────────────
+
+  listenBtn.addEventListener('click', async (e) => {
+    e.stopPropagation()
+    if (!currentTranslation || ttsLoading) {
+      if (ttsLoading) stopTtsAudio()
+      return
+    }
+    if (ttsAudio) {
+      stopTtsAudio()
+      return
+    }
+
+    try {
+      const settings = await getSettings()
+      if (!settings.token) throw new Error('Missing token')
+      ttsLoading = true
+      const requestId = ++ttsRequestId
+      listenBtn.textContent = 'Loading...'
+      const lang = langSelect.value || settings.targetLang
+      const result = await fetchTtsAudio(currentTranslation, lang, settings.token)
+      if (requestId !== ttsRequestId) return
+      ttsAudioUrl = base64ToBlobUrl(result.audioBase64, result.mimeType)
+      ttsAudio = new Audio(ttsAudioUrl)
+      ttsAudio.onended = stopTtsAudio
+      ttsAudio.onerror = () => {
+        stopTtsAudio()
+        listenBtn.textContent = 'Failed'
+        setTimeout(() => { listenBtn.textContent = LISTEN_LABEL }, 1500)
+      }
+      ttsLoading = false
+      listenBtn.disabled = false
+      listenBtn.textContent = 'Stop'
+      await ttsAudio.play().catch((err) => {
+        stopTtsAudio()
+        if (speakWithBrowserSpeech(currentTranslation, lang)) return
+        throw err
+      })
+    } catch {
+      const lang = langSelect.value || 'en'
+      stopTtsAudio()
+      if (speakWithBrowserSpeech(currentTranslation, lang)) return
+      listenBtn.textContent = 'Failed'
+      setTimeout(() => { listenBtn.textContent = LISTEN_LABEL }, 1500)
     }
   })
 
@@ -382,7 +561,8 @@
     if (!lastSelection) return
 
     const tooltipText = tooltip.querySelector('.tre-tooltip-text')
-    tooltipText.textContent = '⏳ Translating…'
+    stopTtsAudio()
+    tooltipText.textContent = 'Translating...'
 
     try {
       const settings = await getSettings()
@@ -393,7 +573,7 @@
       copyBtn.textContent = COPY_LABEL
       try { await navigator.clipboard.writeText(translated) } catch { /* ignore */ }
     } catch (err) {
-      tooltipText.textContent = '❌ ' + (err.message || 'Translation failed')
+      tooltipText.textContent = err.message || 'Translation failed'
     }
   })
 
@@ -411,7 +591,8 @@
     if (!lastSelection) return
 
     const tooltipText = tooltip.querySelector('.tre-tooltip-text')
-    tooltipText.textContent = '⏳ Translating…'
+    stopTtsAudio()
+    tooltipText.textContent = 'Translating...'
 
     try {
       const settings = await getSettings()
@@ -422,7 +603,7 @@
       copyBtn.textContent = COPY_LABEL
       try { await navigator.clipboard.writeText(translated) } catch { /* ignore */ }
     } catch (err) {
-      tooltipText.textContent = '❌ ' + (err.message || 'Translation failed')
+      tooltipText.textContent = err.message || 'Translation failed'
     }
   })
 
@@ -677,12 +858,7 @@
 
     // Show loading spinner inside the round button
     btn.classList.add('tre-loading')
-    btn.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5" style="animation:tre-spin 0.8s linear infinite;width:18px;height:18px;">
-        <circle cx="12" cy="12" r="9" stroke-opacity="0.2"/>
-        <path d="M12 3a9 9 0 0 1 9 9" />
-      </svg>
-    `
+    btn.innerHTML = '<span class="tre-inline-spinner" aria-hidden="true"></span>'
 
     try {
       const settings = await getSettings()
@@ -782,8 +958,4 @@
     }
   })
 
-  // Inject spin keyframe
-  const style = document.createElement('style')
-  style.textContent = `@keyframes tre-spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`
-  document.head.appendChild(style)
 })()

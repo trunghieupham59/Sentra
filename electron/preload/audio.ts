@@ -9,7 +9,27 @@
  * webkitSpeechRecognition — it never reaches IPC.
  */
 import { ipcRenderer } from 'electron'
-import type { SttProvider, SttProviderCheckResult, TranscribeResult } from '../../src/types'
+
+// ── Types (mirrored from src/types to keep electron code self-contained) ──────
+type SttProvider = 'auto' | 'whisper' | 'google' | 'groq' | 'webSpeech'
+type SttBackend = 'whisper' | 'gemini' | 'groq'
+type TtsMode = 'free' | 'auto' | 'premium'
+
+interface SttProviderCheckResult {
+  primary: SttBackend | 'none'
+  available: SttBackend[]
+}
+
+interface TranscribeResult {
+  success: boolean
+  text?: string
+  error?: string
+  errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | string
+  noSpeechProb?: number
+  avgLogprob?: number
+  compressionRatio?: number
+  provider?: string
+}
 
 export const audioSection = {
   /**
@@ -46,10 +66,12 @@ export const audioSection = {
   checkSttProviders: (): Promise<SttProviderCheckResult> =>
     ipcRenderer.invoke('audio:checkSttProviders'),
 
-  // AI Text-to-Speech — priority: OpenAI → Gemini → Edge TTS (free) → ElevenLabs
+  // AI Text-to-Speech — default free-first; paid providers are used only when requested by mode.
   speakText: (params: {
     text: string
     voice?: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
+    mode?: TtsMode
+    lang?: string
   }) => ipcRenderer.invoke('audio:tts', params) as Promise<{
     success: boolean
     audioBase64?: string

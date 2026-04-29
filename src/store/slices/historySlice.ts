@@ -22,6 +22,7 @@ export interface HistorySlice {
 
   // History actions
   addHistory: (item: HistoryItem) => void
+  upsertHistory: (item: HistoryItem) => void
   deleteHistoryItem: (id: string) => void
   clearHistory: () => void
 
@@ -42,6 +43,11 @@ export const createHistorySlice: StateCreator<any, [], [], HistorySlice> = (set)
   addHistory: (item) =>
     set((state: HistorySlice) => ({
       history: [item, ...state.history].slice(0, MAX_HISTORY),
+    })),
+
+  upsertHistory: (item) =>
+    set((state: HistorySlice) => ({
+      history: [item, ...state.history.filter((h) => h.id !== item.id)].slice(0, MAX_HISTORY),
     })),
 
   deleteHistoryItem: (id) =>

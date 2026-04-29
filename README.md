@@ -45,12 +45,38 @@
 
 | Platform | Installer |
 |----------|-----------|
-|  macOS (Apple Silicon) | [Viezan-1.1.0-arm64.dmg](https://github.com/trunghieupham59/Viezan/releases/download/v1.1.0/Viezan-1.1.0-arm64.dmg) |
-|  macOS (Intel x64) | [Viezan-1.1.0-x64.dmg](https://github.com/trunghieupham59/Viezan/releases/download/v1.1.0/Viezan-1.1.0-x64.dmg) |
-| ⊞ Windows (x64) | [Viezan-Setup-1.1.0-x64.exe](https://github.com/trunghieupham59/Viezan/releases/download/v1.1.0/Viezan-Setup-1.1.0-x64.exe) |
-| 🐧 Linux (x64) | [Viezan-1.1.0-x64.AppImage](https://github.com/trunghieupham59/Viezan/releases/download/v1.1.0/Viezan-1.1.0-x64.AppImage) |
+|  macOS (Apple Silicon) | [Download v1.1.5 ARM64 DMG](https://github.com/trunghieupham59/Viezan/releases/tag/v1.1.5) |
+|  macOS (Intel x64) | [Download v1.1.5 x64 DMG](https://github.com/trunghieupham59/Viezan/releases/tag/v1.1.5) |
+| ⊞ Windows (x64) | [Download v1.1.5 x64 installer](https://github.com/trunghieupham59/Viezan/releases/tag/v1.1.5) |
+| 🐧 Linux (x64) | [Download v1.1.5 AppImage](https://github.com/trunghieupham59/Viezan/releases/tag/v1.1.5) |
+| 🌐 Chrome Extension | [Download ZIP from v1.1.5 release](https://github.com/trunghieupham59/Viezan/releases/tag/v1.1.5) |
 
 > View all releases: [github.com/trunghieupham59/Viezan/releases](https://github.com/trunghieupham59/Viezan/releases)
+
+---
+
+## 🆕 What's New in v1.1.5
+
+### ✨ New Features
+
+| Feature | Details |
+|---------|---------|
+| 🧠 **Local AI Provider** | Run translation, rewrite and chat through local OpenAI-compatible runtimes without an API key |
+| 🧰 **Ollama Setup Flow** | Detects Ollama, LM Studio and llama.cpp; can install/start Ollama and refresh local runtime status from Settings |
+| 📊 **Hardware Benchmarking** | Measures CPU/RAM tier, recommends local models, and resolves `local-auto` to the best available local model |
+| ⬇️ **Model Download Progress** | Pull curated Ollama models from Viezan with streamed progress, size labels, installed badges and uninstall actions |
+| 🧹 **History Bulk Actions** | Select and delete multiple Translate, Chat and Live history entries in one flow |
+| 🧩 **Chrome Extension Selection UI** | Redesigned selected-text UI with translation style support and cleaner browser interactions |
+
+### 🛠️ Improvements & Fixes
+
+- **Provider Defaults** — Local AI is now the default provider path, with cloud providers still available as BYOK options
+- **Streaming Chat Reliability** — Added streaming handler coverage and provider-specific output token guards
+- **IPC Validation** — Chat and translation payloads now have stricter Main Process validation before provider dispatch
+- **STT Reliability** — Hedged Whisper/Gemini STT routing and smarter provider banning reduce live transcription stalls
+- **UI Polish** — Responsive sidebar labels, updated blue theme, normalized surface styles, border radii and z-index layering
+- **Build Pipeline** — macOS release runners pinned to avoid the macOS 15 DMG `hdiutil` issue
+- **Tooling** — Biome upgraded to 2.4.13 and repository lint fixes applied
 
 ---
 
@@ -58,16 +84,19 @@
 
 | Feature | Description |
 |---------|-------------|
-| 🤖 **Multiple AI Providers** | Google Gemini, Anthropic Claude, OpenAI GPT — switch anytime |
+| 🤖 **Multiple AI Providers** | Local AI, Google Gemini, Anthropic Claude, OpenAI GPT — switch anytime |
+| 🧠 **Local AI** | Detect Ollama, LM Studio or llama.cpp; benchmark hardware; download curated Ollama models; run without cloud API keys |
 | 🔤 **7 Translation Styles** | Neutral, Friendly, Professional, Business, Slack, Polite, Technical — fits every context |
+| 📢 **Phonetic Mode** | Pure phonetic/romanization transcription mode for any language |
 | ⚡ **Live Translation** | Real-time translation & floating subtitles from microphone or system audio, with customizable color/size/opacity |
 | 🖼️ **Image Translation (AI Vision)** | Drag & drop or paste an image — AI extracts and translates all text |
-| 🎙️ **Voice Input** | Supports Web Speech API and OpenAI Whisper |
-| 🔊 **Text-to-Speech** | 6 high-quality OpenAI voices: Alloy, Echo, Fable, Onyx, Nova, Shimmer |
+| 🎙️ **Voice Input** | Supports Web Speech API, OpenAI Whisper, Gemini STT, and Groq as fallback |
+| 🔊 **Text-to-Speech** | OpenAI, Gemini, Edge TTS and ElevenLabs fallback chain |
 | 💬 **AI Chat** | Full chat with image attachment, voice input, System Prompt with saved presets |
+| 🔍 **Web Search in Chat** | Multi-provider web search with automatic failover |
 | 🇯🇵 **Japanese Furigana** | Automatically renders furigana on Japanese translation output |
 | 📜 **History** | Separate history for Translate, Chat and Live sessions — search & reuse anytime |
-| 🌐 **Chrome Extension** | Translate directly in the browser (floating button, popup, right-click menu) |
+| 🌐 **Chrome Extension** | Translate directly in the browser (floating button, popup, right-click menu, Alt+T shortcut, ZIP release package) |
 | 🔖 **Bookmarklet** | Quick translate on any browser without an extension |
 | ⌨️ **Global Hotkey** | Activate Viezan from any application |
 | 🌍 **19 Languages** | Vietnamese, English, Japanese, Korean, Chinese, French, German, Spanish, and more |
@@ -89,17 +118,17 @@ Download the installer for your platform from the [Download](#-download) section
 ### 2. Add your API Key
 
 1. Open **Viezan**
-2. Go to the **Settings** tab
+2. Click the **⚙ Settings** button (top-right, any tab)
 3. Select a provider (Gemini / Claude / OpenAI), paste your API key → **Save Key**
 
 Your key is stored securely in the OS Keychain and never leaves your device.
 
 ### 3. Start Translating
 
-- **Translate** — Type or paste text, choose source/target language and style
+- **Translate** — Type or paste text, choose source/target language, style, or enable Phonetic Mode
 - **Live** — Real-time translation from microphone/system audio with floating subtitles
 - **Image** — Drag & drop or paste an image to extract and translate text
-- **Chat** — Chat freely with AI, attach images, voice input and system prompts
+- **Chat** — Chat freely with AI, attach images, voice input, system prompts and web search
 - **History** — Revisit all past translations, chats and live sessions
 
 ---
@@ -110,9 +139,11 @@ Get your API keys from the respective dashboards:
 
 | Provider | Dashboard |
 |----------|-----------|
+| Local AI | No key required — install/start Ollama, LM Studio or llama.cpp locally |
 | Google Gemini | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
 | Anthropic Claude | [console.anthropic.com](https://console.anthropic.com) |
 | OpenAI GPT | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
+| Groq (STT) | [console.groq.com](https://console.groq.com) |
 
 > API keys are only used in the Electron main process to call the provider API directly — never written to disk, never sent through any intermediate server, never exposed to any third party.
 
@@ -131,9 +162,15 @@ The Chrome Extension lets you translate directly in the browser without switchin
 
 **Connect to the Viezan app:**
 
-1. Open **Viezan** → **Settings → Browser Extension**
+1. Open **Viezan** → click ⚙ **Settings → Browser Extension**
 2. Copy the **Connection Token**
 3. Click the Viezan icon in Chrome → **⚙ Options** → Paste the token → **Save Settings**
+
+**Keyboard Shortcuts:**
+
+| Shortcut | Action |
+|----------|--------|
+| `Alt+T` (Windows/Linux) / `Option+T` (macOS) | Translate selected text |
 
 > See [chrome-extension/README.md](chrome-extension/README.md) for details.
 
@@ -192,23 +229,27 @@ Viezan/
 │   └── ipc/                   # IPC handlers
 │       ├── keychain.ts         # Secure API key storage
 │       ├── translate.ts        # Text translation
+│       ├── localAi.ts          # Local AI runtime discovery, benchmark and model downloads
 │       ├── imageTranslate.ts   # Image/vision translation
-│       ├── transcribe.ts       # Speech-to-text (Whisper)
+│       ├── transcribe.ts       # Speech-to-text (Whisper / Gemini / Groq)
 │       ├── tts.ts              # Text-to-speech
 │       ├── chat.ts             # AI chat
 │       ├── subtitle.ts         # Live translation subtitles
 │       ├── localServer.ts      # Local HTTP server (Chrome Extension)
 │       ├── globalHotkey.ts     # Global hotkey registration
+│       ├── webSearch.ts        # Multi-provider web search
 │       ├── models.ts           # Available model listing
 │       └── storage.ts          # Local data persistence
 ├── src/                        # Renderer process (React)
 │   ├── pages/
-│   │   ├── TranslatePage.tsx   # Main translation UI
+│   │   ├── TranslatePage.tsx   # Main translation UI (+ Phonetic Mode)
 │   │   ├── LiveTranslatePage.tsx # Real-time translation
-│   │   ├── ChatPage.tsx        # AI chat interface
+│   │   ├── ChatPage.tsx        # AI chat interface (+ Web Search)
 │   │   ├── HistoryPage.tsx     # Translation history
 │   │   └── SettingsPage.tsx    # API keys & preferences
-│   ├── components/             # Reusable UI components
+│   ├── components/
+│   │   ├── SettingsModal.tsx   # Settings popup overlay
+│   │   └── ...                 # Other reusable UI components
 │   ├── store/                  # Zustand global state
 │   ├── i18n/                   # UI translations (VI/EN/JA)
 │   ├── types/                  # TypeScript type definitions
@@ -231,6 +272,7 @@ Viezan/
 | [Electron safeStorage](https://www.electronjs.org/docs/latest/api/safe-storage) | built-in | OS-level encrypted key storage |
 | [electron-builder](https://www.electron.build/) | v26 | App packaging & distribution |
 | [electron-updater](https://www.electron.build/auto-update) | v6 | Auto-update |
+| [Ollama / LM Studio / llama.cpp](https://ollama.com/) | local | Optional local AI runtime |
 
 ---
 
@@ -261,7 +303,7 @@ If you find Viezan useful, consider buying me a coffee via MoMo to keep the proj
 
 ## ⚠️ Disclaimer
 
-Viezan is an independent desktop application and is not affiliated with Google, Anthropic, or OpenAI. You are responsible for your own API usage and any associated costs.
+Viezan is an independent desktop application and is not affiliated with Google, Anthropic, OpenAI, or Groq. You are responsible for your own API usage and any associated costs.
 
 ---
 

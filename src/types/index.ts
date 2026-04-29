@@ -1,4 +1,6 @@
-export type Provider = 'gemini' | 'claude' | 'openai'
+export type Provider = 'gemini' | 'claude' | 'openai' | 'local'
+export type LocalAiEngine = 'ollama' | 'lmstudio' | 'llamacpp'
+export type LocalAiHardwareTier = 'low' | 'balanced' | 'powerful' | 'max'
 
 export type TranslationStyle = 'general' | 'formal' | 'casual' | 'business' | 'technical' | 'natural'
 
@@ -11,6 +13,14 @@ export type TranslationStyle = 'general' | 'formal' | 'casual' | 'business' | 't
 export type PhoneticMode = 'off' | 'standard' | 'phonetic'
 
 export type TtsVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
+
+/**
+ * TTS routing preference:
+ *  - 'free'    — free Edge TTS only; never uses local system voices or paid API keys
+ *  - 'auto'    — Edge TTS first, then paid providers only if free TTS fails
+ *  - 'premium' — paid providers first for quality, then free fallback
+ */
+export type TtsMode = 'free' | 'auto' | 'premium'
 
 /**
  * STT provider user-facing preference (stored in settings):
@@ -46,10 +56,11 @@ export interface ProviderConfig {
   id: Provider
   name: string
   color: string
-  emoji: string
   keyPrefix: string
   docsUrl: string
   models: ModelConfig[]
+  requiresApiKey?: boolean
+  localEngines?: LocalAiEngine[]
 }
 
 export interface ModelConfig {
@@ -109,6 +120,80 @@ export interface FetchedModel {
   id: string
   name: string
   description: string
+  downloadModel?: string
+  recommendedTier?: LocalAiHardwareTier
+  installed?: boolean
+  supportsVision?: boolean
+  estimatedSizeGb?: number
+}
+
+export interface LocalAiHardwareProfile {
+  platform: string
+  arch: string
+  cpuCount: number
+  totalMemoryGb: number
+  tier: LocalAiHardwareTier
+}
+
+export interface LocalAiDiscoveryResult {
+  success: boolean
+  available: boolean
+  engine?: LocalAiEngine
+  endpoint?: string
+  models: FetchedModel[]
+  suggestedModels: FetchedModel[]
+  recommendedModel?: string
+  hardware: LocalAiHardwareProfile
+  error?: string
+}
+
+export interface LocalAiBenchmarkResult {
+  hardware: LocalAiHardwareProfile
+  suggestedModels: FetchedModel[]
+  recommendedModel?: string
+  metrics?: {
+    cpuScore: number
+    memoryScore: number
+    combinedScore: number
+    durationMs: number
+    runtimeModel?: string
+    runtimeLatencyMs?: number
+    runtimeTokensPerSecond?: number
+  }
+}
+
+export interface LocalAiDownloadResult {
+  success: boolean
+  model: string
+  error?: string
+}
+
+export interface LocalAiModelActionResult {
+  success: boolean
+  model: string
+  error?: string
+}
+
+export interface LocalAiModelDownloadProgress {
+  model: string
+  status: 'running' | 'success' | 'error'
+  percent: number
+  message: string
+  completedBytes?: number
+  totalBytes?: number
+}
+
+export interface LocalAiInstallResult {
+  success: boolean
+  error?: string
+  output?: string
+  cancelled?: boolean
+}
+
+export interface LocalAiInstallProgress {
+  status: 'running' | 'success' | 'error' | 'cancelled'
+  percent: number
+  message: string
 }
 
 export interface TranscribeResult {
@@ -217,7 +302,7 @@ export interface ChatMessage {
   error?: string
   /** Deep Research mode — intermediate step bubble (collapsible, gray) */
   isResearchStep?: boolean
-  /** Label shown in the research step header, e.g. "🔍 Phân tích câu hỏi" */
+  /** Label shown in the research step header, e.g. "Phân tích câu hỏi" */
   researchStepLabel?: string
   /** Deep Research mode — final synthesis bubble (highlighted, indigo) */
   isResearchFinal?: boolean
@@ -235,6 +320,15 @@ export interface ChatSession {
 
 export interface ChatResult {
   success: boolean
+  reply?: string
+  error?: string
+  errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'NETWORK' | string
+}
+
+export interface ChatStreamEvent {
+  requestId: string
+  type: 'start' | 'token' | 'end' | 'error'
+  token?: string
   reply?: string
   error?: string
   errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'NETWORK' | string
@@ -280,6 +374,7 @@ export interface HistoryItem {
   model: string
   sourceLang: string
   targetLang: string
+  translationStyle?: TranslationStyle
   sourceText: string
   translatedText: string
 }
@@ -305,6 +400,15 @@ export interface WindowApi {
     hasKey: (provider: string) => Promise<{ exists: boolean }>
   }
   fetchModels: (provider: string) => Promise<FetchModelsResult>
+  discoverLocalAi: (force?: boolean) => Promise<LocalAiDiscoveryResult>
+  ensureLocalAiRuntime: () => Promise<LocalAiDiscoveryResult>
+  benchmarkLocalAi: () => Promise<LocalAiBenchmarkResult>
+  downloadLocalAiModel: (modelId: string) => Promise<LocalAiDownloadResult>
+  uninstallLocalAiModel: (modelId: string) => Promise<LocalAiModelActionResult>
+  onLocalAiModelDownloadProgress: (cb: (progress: LocalAiModelDownloadProgress) => void) => () => void
+  installOllama: () => Promise<LocalAiInstallResult>
+  cancelOllamaInstall: () => Promise<{ success: boolean }>
+  onLocalAiInstallProgress: (cb: (progress: LocalAiInstallProgress) => void) => () => void
   verifyKey: (provider: string, apiKey: string) => Promise<VerifyResult>
   translate: (params: TranslateParams) => Promise<TranslateResult>
   rewriteText: (params: {
@@ -335,6 +439,8 @@ export interface WindowApi {
   speakText: (params: {
     text: string
     voice?: TtsVoice
+    mode?: TtsMode
+    lang?: string
   }) => Promise<TtsResult>
   translateImage: (params: {
     provider: string
@@ -383,9 +489,32 @@ export interface WindowApi {
     systemPrompt?: string
     /** Bypass the 3k char limit — only set true for AI Summarize on long transcripts */
     bypassLengthCheck?: boolean
+    /** Optional larger output budget for long-form synthesis calls */
+    maxOutputTokens?: number | 'model-max'
   }) => Promise<ChatResult>
+  chatStream: (params: {
+    requestId: string
+    provider: string
+    model: string
+    messages: Array<{
+      role: 'user' | 'assistant'
+      content: Array<{
+        type: 'text' | 'image'
+        text?: string
+        imageBase64?: string
+        imageMimeType?: string
+      }>
+    }>
+    systemPrompt?: string
+    /** Bypass the 3k char limit — only set true for AI Summarize on long transcripts */
+    bypassLengthCheck?: boolean
+    /** Optional larger output budget for long-form synthesis calls */
+    maxOutputTokens?: number | 'model-max'
+  }) => Promise<ChatResult>
+  onChatStreamEvent: (requestId: string, cb: (event: ChatStreamEvent) => void) => () => void
   checkScreenPermission: () => Promise<string>
   openExternal: (url: string) => Promise<void>
+  relaunchApp: () => Promise<void>
   /**
    * Pre-flight STT availability check — call before starting a Live Translate session.
    * Checks which STT keys are configured (instant, no API call, no decryption) and
@@ -465,6 +594,14 @@ export interface WindowApi {
     onTranslating: (cb: (data: { text: string }) => void) => () => void
     onTranslated: (cb: (data: { original: string; translated: string }) => void) => () => void
     onError: (cb: (data: { error: string }) => void) => () => void
+    /** AI Chat quick-ask hotkey — opens a popup in the renderer */
+    chat: {
+      update: (settings: { hotkey?: string; enabled?: boolean }) =>
+        Promise<{ success: boolean; settings?: Record<string, unknown>; error?: string }>
+      get: () => Promise<{ success: boolean; settings?: Record<string, unknown> }>
+      /** Listen for the chat-open event. Returns a cleanup function. */
+      onOpen: (cb: () => void) => () => void
+    }
   }
 
   /** Legacy Assistant — floating icon injected into browsers without an extension */
@@ -516,8 +653,13 @@ export interface WindowApi {
       success: boolean; token?: string; id?: string; name?: string
       createdAt?: number; expiresAt?: number; error?: string
     }>
-    /** Sync the currently selected provider/model so /api/config reflects the app's state. */
-    syncConfig: (p: { provider: string; model: string }) => Promise<{ success: boolean }>
+    /** Sync the currently selected provider/model and TTS prefs so local extension APIs reflect the app's state. */
+    syncConfig: (p: {
+      provider: string
+      model: string
+      ttsMode?: TtsMode
+      ttsVoice?: TtsVoice
+    }) => Promise<{ success: boolean }>
   }
 }
 

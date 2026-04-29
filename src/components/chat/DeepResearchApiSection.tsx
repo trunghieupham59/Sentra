@@ -10,6 +10,7 @@
  */
 import { type ReactNode, useEffect, useState } from 'react'
 import { useAppStore, useT } from '../../store/useAppStore'
+import { tpl } from '../../utils/tpl'
 import { BraveSearchIcon, CheckCircleIcon, CheckIcon, SpinnerIcon, TavilyIcon, TrashIcon } from '../ui/icons'
 
 // ─── Provider config ──────────────────────────────────────────────────────────
@@ -18,12 +19,6 @@ interface WebSearchProviderConfig {
   id: 'tavily' | 'brave'
   name: string
   docsUrl: string
-  placeholder: string
-  colors: {
-    border: string
-    bg: string
-    text: string
-  }
   icon: ReactNode
 }
 
@@ -32,24 +27,12 @@ const WEB_SEARCH_PROVIDERS: WebSearchProviderConfig[] = [
     id: 'tavily',
     name: 'Tavily',
     docsUrl: 'https://app.tavily.com',
-    placeholder: 'tvly-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-    colors: {
-      border: 'border-indigo-500',
-      bg: 'bg-indigo-50 dark:bg-indigo-900/30',
-      text: 'text-indigo-700 dark:text-indigo-300',
-    },
     icon: <TavilyIcon size={22} />,
   },
   {
     id: 'brave',
     name: 'Brave Search',
     docsUrl: 'https://api.search.brave.com',
-    placeholder: 'BSA1-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-    colors: {
-      border: 'border-orange-500',
-      bg: 'bg-orange-50 dark:bg-orange-900/30',
-      text: 'text-orange-700 dark:text-orange-300',
-    },
     icon: <BraveSearchIcon size={22} />,
   },
 ]
@@ -72,7 +55,6 @@ function KeyCard({ provider, onStatusChange }: KeyCardProps) {
   const [verifyMessage, setVerifyMessage] = useState('')
 
   const t = useT()
-  const { colors } = provider
   const isVerifying = verifyStatus === 'verifying' || verifyStatus === 'saving'
   const isSuccess = verifyStatus === 'valid'
   const isError = verifyStatus === 'invalid'
@@ -194,15 +176,15 @@ function KeyCard({ provider, onStatusChange }: KeyCardProps) {
   }
 
   return (
-    <div className={`card p-4 space-y-3 border-l-4 ${colors.border}`}>
+    <div className="card p-4 space-y-3 border border-gray-200 dark:border-gray-700">
       {/* Provider header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors.bg} flex-shrink-0`}>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-100 dark:bg-gray-700 flex-shrink-0">
             {provider.icon}
           </div>
           <div>
-            <h3 className={`font-semibold ${colors.text}`}>{provider.name}</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{provider.name}</h3>
             <button
               type="button"
               onClick={() => window.api?.openExternal(provider.docsUrl)}
@@ -228,7 +210,7 @@ function KeyCard({ provider, onStatusChange }: KeyCardProps) {
             }}
             onClick={showMasked ? () => setInputValue('') : undefined}
             onKeyDown={(e) => { if (e.key === 'Enter' && !showMasked) handleVerify() }}
-            placeholder={exists ? t.settings_key_placeholder_new : provider.placeholder}
+            placeholder={exists ? t.settings_key_placeholder_new : tpl(t.settings_key_placeholder_paste, { name: provider.name })}
             className={[
               'w-full px-3 py-2 border rounded-lg text-sm font-mono',
               'focus:outline-none focus:ring-2 focus:ring-blue-500',

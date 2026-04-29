@@ -11,6 +11,8 @@
   <link rel="icon" href="icon.png" />
 
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/fontawesome.min.css" crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/brands.min.css" crossorigin="anonymous" />
 </head>
 <body>
 
@@ -28,13 +30,14 @@
       <a href="#support" class="nav-btn" data-i18n="nav.support">☕ Support</a>
     </div>
     <div class="lang-switcher">
-      <button class="lang-btn active" data-lang="en">EN</button>
-      <button class="lang-btn" data-lang="vi">VI</button>
-      <button class="lang-btn" data-lang="cn">CN</button>
-      <button class="lang-btn" data-lang="jp">JP</button>
-      <button class="lang-btn" data-lang="fr">FR</button>
-      <button class="lang-btn" data-lang="kr">KR</button>
+      <button type="button" class="lang-btn active" data-lang="en">EN</button>
+      <button type="button" class="lang-btn" data-lang="vi">VI</button>
+      <button type="button" class="lang-btn" data-lang="cn">CN</button>
+      <button type="button" class="lang-btn" data-lang="jp">JP</button>
+      <button type="button" class="lang-btn" data-lang="fr">FR</button>
+      <button type="button" class="lang-btn" data-lang="kr">KR</button>
     </div>
+    <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Toggle light/dark mode">☀️</button>
   </nav>
 
   <!-- HERO -->
@@ -65,15 +68,16 @@
       </div>
 
       <div class="hero-platforms">
-        <div class="platform-pill" data-i18n="hero.platform_mac">🍎 macOS</div>
-        <div class="platform-pill" data-i18n="hero.platform_win">🪟 Windows</div>
-        <div class="platform-pill" data-i18n="hero.platform_ext">🧩 Chrome Extension</div>
+        <a class="platform-pill" href="#download"><i class="fa-brands fa-apple"></i> <span data-i18n="hero.platform_mac">macOS</span></a>
+        <a class="platform-pill" href="#download"><i class="fa-brands fa-windows"></i> <span data-i18n="hero.platform_win">Windows</span></a>
+        <a class="platform-pill" href="#download"><i class="fa-brands fa-linux"></i> <span data-i18n="hero.platform_linux">Linux</span></a>
+        <a class="platform-pill" href="#download"><i class="fa-brands fa-chrome"></i> <span data-i18n="hero.platform_ext">Chrome Extension</span></a>
       </div>
     </div>
 
     <div class="hero-preview">
       <div class="hero-preview-glow"></div>
-      <img src="screenshots/1.png" alt="Viezan app screenshot" loading="eager" />
+      <img src="screenshots/demo.gif" alt="Viezan app screenshot" loading="eager" />
     </div>
   </div>
 
@@ -81,9 +85,10 @@
   <div class="providers-section">
     <div class="providers-label" data-i18n="providers.label">Powered by world-class AI providers</div>
     <div class="providers-row">
-      <div class="provider-chip"><span class="emoji">🔵</span> Google Gemini</div>
-      <div class="provider-chip"><span class="emoji">🟤</span> Anthropic Claude</div>
-      <div class="provider-chip"><span class="emoji">⚫</span> OpenAI GPT</div>
+      <div class="provider-chip"><img src="https://cdn.simpleicons.org/googlegemini/ffffff" width="18" height="18" alt="Gemini" style="vertical-align:middle;margin-right:6px"> Google Gemini</div>
+      <div class="provider-chip"><img src="https://cdn.simpleicons.org/anthropic/ffffff" width="18" height="18" alt="Anthropic" style="vertical-align:middle;margin-right:6px"> Anthropic Claude</div>
+      <div class="provider-chip"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="white" style="vertical-align:middle;margin-right:6px;flex-shrink:0"><title>OpenAI</title><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.843-3.372L15.115 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08-4.774 2.758a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z"/></svg> OpenAI GPT</div>
+      <div class="provider-chip">🧠 Local AI</div>
     </div>
   </div>
 
@@ -119,14 +124,14 @@
       <div class="feature-card reveal" data-feat="3">
         <span class="feature-icon">🤖</span>
         <h3>AI Chat</h3>
-        <p>Full-featured AI chat with image attachments, voice input, custom System Prompts, preset templates, and complete searchable chat history.</p>
+        <p>Full-featured AI chat with image attachments, voice input, custom System Prompts, preset templates, web search, and complete searchable chat history.</p>
         <span class="feature-tag">Assistant</span>
       </div>
 
       <div class="feature-card reveal" data-feat="4">
         <span class="feature-icon">🔊</span>
         <h3>Voice I/O</h3>
-        <p>Voice Input via Web Speech API and OpenAI Whisper. Text-to-Speech with 6 premium OpenAI voices: Alloy, Echo, Fable, Onyx, Nova, Shimmer.</p>
+        <p>Voice Input via Web Speech API, OpenAI Whisper, and Groq as fallback. Text-to-Speech with 6 premium OpenAI voices: Alloy, Echo, Fable, Onyx, Nova, Shimmer.</p>
         <span class="feature-tag">Audio</span>
       </div>
 
@@ -140,7 +145,7 @@
       <div class="feature-card reveal" data-feat="6">
         <span class="feature-icon">🧩</span>
         <h3>Chrome Extension</h3>
-        <p>Translate selected text directly in your browser without switching windows. Works alongside the desktop app via local server.</p>
+        <p>Translate selected text directly in your browser. Alt+T shortcut for instant translation, platform-aware hints, redesigned two-column popup UI.</p>
         <span class="feature-tag">Browser</span>
       </div>
 
@@ -158,11 +163,32 @@
         <span class="feature-tag">Security</span>
       </div>
 
-      <div class="feature-card reveal" data-feat="9" style="border-color: rgba(168,85,247,0.2);">
+      <div class="feature-card reveal" data-feat="9">
+        <span class="feature-icon">⚙️</span>
+        <h3>Settings Modal</h3>
+        <p>Settings redesigned as a clean popup overlay — access API keys, model preferences and extension settings instantly from any tab without losing context.</p>
+        <span class="feature-tag">UX</span>
+      </div>
+
+      <div class="feature-card reveal" data-feat="10">
+        <span class="feature-icon">📢</span>
+        <h3>Phonetic Mode</h3>
+        <p>Pure phonetic transcription mode — get romanization or phonetics instead of a full translation. Perfect for pronunciation learning and language study.</p>
+        <span class="feature-tag">Translate</span>
+      </div>
+
+      <div class="feature-card reveal" data-feat="11">
+        <span class="feature-icon">🔍</span>
+        <h3>Web Search in Chat</h3>
+        <p>AI Chat with real-time web search powered by Brave, DuckDuckGo or Google — automatic fallback ensures you always get results.</p>
+        <span class="feature-tag">Chat</span>
+      </div>
+
+      <div class="feature-card reveal" data-feat="12" style="border-color: rgba(168,85,247,0.2);">
         <span class="feature-icon">🧠</span>
         <h3>Local AI Support</h3>
-        <p>Run AI models directly on your machine — no API key required. Free for everyone, fully offline. No cloud, no cost, complete privacy.</p>
-        <span class="feature-tag" style="color:#a855f7; background:rgba(168,85,247,0.12);">Coming Soon</span>
+        <p>Run translation and chat through Ollama, LM Studio or llama.cpp. Benchmark your hardware, download curated models, and keep work fully local.</p>
+        <span class="feature-tag" style="color:#a855f7; background:rgba(168,85,247,0.12);">Available</span>
       </div>
 
     </div>
@@ -236,8 +262,8 @@
         <div class="highlight-item" data-highlight="4">
           <div class="icon">🚀</div>
           <div>
-            <h4>Local AI Coming Soon</h4>
-            <p>A free local AI version for users without API keys — in development now.</p>
+            <h4>Local AI Available</h4>
+            <p>Use Ollama, LM Studio or llama.cpp for private, keyless local translation and chat.</p>
           </div>
         </div>
       </div>
@@ -250,13 +276,13 @@
       <p class="section-label reveal" data-i18n="download.label">Download</p>
       <h2 class="section-title reveal" data-i18n="download.title">Get Viezan for free</h2>
       <p class="section-sub reveal" style="margin: 0 auto 0;">
-        <span data-i18n="download.sub">Available for macOS and Windows. No account required. Start translating in minutes.</span>
+        <span data-i18n="download.sub">Available for macOS, Windows and Linux. No account required. Start translating in minutes.</span>
       </p>
 
       <div class="download-cards">
 
         <div class="download-card reveal">
-          <div class="os-icon">🍎</div>
+          <div class="os-icon"><i class="fa-brands fa-apple"></i></div>
           <h3>macOS</h3>
           <div class="version">Apple Silicon &amp; Intel</div>
           <a class="dl-btn" href="https://github.com/trunghieupham59/Viezan/releases" target="_blank">
@@ -265,7 +291,7 @@
         </div>
 
         <div class="download-card reveal">
-          <div class="os-icon">🪟</div>
+          <div class="os-icon"><i class="fa-brands fa-windows"></i></div>
           <h3>Windows</h3>
           <div class="version">Windows 10 / 11</div>
           <a class="dl-btn" href="https://github.com/trunghieupham59/Viezan/releases" target="_blank">
@@ -273,12 +299,21 @@
           </a>
         </div>
 
+        <div class="download-card reveal">
+          <div class="os-icon"><i class="fa-brands fa-linux"></i></div>
+          <h3>Linux</h3>
+          <div class="version">x64 AppImage</div>
+          <a class="dl-btn" href="https://github.com/trunghieupham59/Viezan/releases" target="_blank">
+            <span id="dl-linux" data-i18n="download.linux_btn">⬇ Download .AppImage</span>
+          </a>
+        </div>
+
         <div class="download-card extension reveal">
-          <div class="os-icon">🧩</div>
+          <div class="os-icon"><i class="fa-brands fa-chrome"></i></div>
           <h3>Chrome Extension</h3>
           <div class="version">Manual Install</div>
           <a class="dl-btn" href="https://github.com/trunghieupham59/Viezan/releases" target="_blank">
-            <span id="dl-ext" data-i18n="download.ext_btn">⬇ Download .crx</span>
+            <span id="dl-ext" data-i18n="download.ext_btn">⬇ Download .zip</span>
           </a>
         </div>
 

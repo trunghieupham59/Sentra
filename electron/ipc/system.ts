@@ -1,5 +1,6 @@
 import type { IpcMain } from 'electron'
-import { shell, systemPreferences } from 'electron'
+import { app, shell, systemPreferences } from 'electron'
+import { isAllowedExternalUrl } from './externalUrl'
 
 export function registerSystemHandlers(ipc: IpcMain) {
   // ── Check Screen Recording permission (macOS) ───────────────────────────
@@ -12,13 +13,16 @@ export function registerSystemHandlers(ipc: IpcMain) {
 
   // ── Open external URL (used by renderer to open System Settings deep links) ──
   ipc.handle('app:openExternal', async (_event, url: string) => {
-    // Allowlist: only permit known safe URL schemes
-    const allowed = url.startsWith('https://') || url.startsWith('x-apple.systempreferences:')
-    if (!allowed) return
+    if (!isAllowedExternalUrl(url)) return
     try {
       await shell.openExternal(url)
     } catch (err) {
       console.error('[openExternal] failed:', err)
     }
+  })
+
+  ipc.handle('app:relaunch', () => {
+    app.relaunch()
+    app.exit(0)
   })
 }

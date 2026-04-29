@@ -31,7 +31,7 @@ export function DragOverlay({ label, zIndex = 'z-30', showRing = false }: DragOv
       className={`absolute inset-0 ${zIndex} flex items-center justify-center pointer-events-none
                   ${showRing ? 'ring-2 ring-inset ring-emerald-300 dark:ring-emerald-700' : ''}`}
     >
-      <div className="flex flex-col items-center gap-2 px-6 py-4 rounded-2xl
+      <div className="flex flex-col items-center gap-2 px-6 py-4 rounded-lg
                       bg-white/90 dark:bg-gray-900/90 border-2 border-dashed border-emerald-400
                       shadow-lg">
         <UploadIcon className="w-8 h-8 text-emerald-500" />

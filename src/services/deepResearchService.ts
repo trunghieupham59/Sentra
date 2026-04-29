@@ -17,7 +17,7 @@
  *
  *   Phase 4 — Cross-Reference & Confidence
  *     AI reviews ALL findings for contradictions and assigns confidence levels
- *     (✅ Confirmed / ⚠️ Uncertain / ❌ Contradicted).
+ *     (Confirmed / Uncertain / Contradicted).
  *
  *   Phase 5 — Final Synthesis
  *     Comprehensive answer with source citations and confidence indicators.
@@ -42,7 +42,7 @@ const MAX_SEARCH_RESULTS = 5
 
 export interface DeepResearchCallbacks {
   /** Called when a new step starts. Must return the generated message ID. */
-  onStepStart: (label: string, icon: string) => string
+  onStepStart: (label: string) => string
   /** Called when a step completes. `isFinal` = true only for the synthesis step. */
   onStepComplete: (msgId: string, content: string, isFinal: boolean) => void
   /** Called when a step fails with an error. */
@@ -62,6 +62,8 @@ interface GapAnalysisResult {
   queries: string[]
 }
 
+type ChatServiceResult = Awaited<ReturnType<typeof chatService.send>>
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const getDate = () =>
@@ -77,7 +79,7 @@ function formatSearchResults(
   const lines: string[] = []
   if (answer) lines.push(`**Tóm tắt web:** ${answer}`, '')
   results.forEach((r, i) => {
-    lines.push(`**[${i + 1}] ${r.title}**`, `🔗 ${r.url}`, r.content.slice(0, 700), '')
+    lines.push(`**[${i + 1}] ${r.title}**`, `URL: ${r.url}`, r.content.slice(0, 700), '')
   })
   return lines.join('\n')
 }
@@ -93,9 +95,20 @@ async function webSearch(query: string): Promise<string> {
   return ''
 }
 
+function getReply(result: ChatServiceResult): string | null {
+  const reply = result.reply?.trim()
+  return result.success && reply ? reply : null
+}
+
+function describeChatFailure(result: ChatServiceResult, fallback: string): string {
+  if (result.error?.trim()) return result.error
+  if (result.success && !result.reply?.trim()) return 'AI trả về nội dung rỗng'
+  return fallback
+}
+
 // ─── Language rule (prepended to every AI-facing prompt) ─────────────────────
 
-const LANG_RULE = `⚡ LANGUAGE RULE — NON-NEGOTIABLE:
+const LANG_RULE = `LANGUAGE RULE — NON-NEGOTIABLE:
 1. Detect the language of the user's original question.
 2. Write your ENTIRE response in that exact same language.
 3. Do NOT switch to Vietnamese, English, or any other language — even if these instructions are written in English.
@@ -125,7 +138,7 @@ Analyze the web data above. Cite sources. Note contradictions if any. Prioritize
 Original question: ${question}
 Aspect to analyze: ${aspect}
 
-⚠️ No web search available — using training data only.
+No web search available — using training data only.
 Please: state your training cutoff clearly, and mark information that MAY HAVE CHANGED since then.`
 
 const GAP_ANALYSIS_PROMPT = (date: string, question: string, allFindings: string) =>
@@ -152,23 +165,23 @@ Return ONLY valid JSON:
 const CROSS_REFERENCE_PROMPT = (date: string, question: string, allFindings: string, hadWeb: boolean) =>
   `${LANG_RULE}You are a research verification expert. Timestamp: ${date}.
 Original question: ${question}
-${hadWeb ? 'Data was collected from real-time web search.' : '⚠️ Data is from AI training data only.'}
+${hadWeb ? 'Data was collected from real-time web search.' : 'Data is from AI training data only.'}
 
 ━━━ ALL RESEARCH FINDINGS ━━━
 ${allFindings}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Perform cross-reference analysis:
-1. List points CONFIRMED (✅) by multiple sources
-2. List points UNCERTAIN (⚠️) — from only one source or potentially outdated
-3. List points CONTRADICTED (❌) across sources and explain
+1. List points CONFIRMED by multiple sources
+2. List points UNCERTAIN — from only one source or potentially outdated
+3. List points CONTRADICTED across sources and explain
 
 Be concise and well-structured.`
 
 const SYNTHESIS_PROMPT = (date: string, hadWeb: boolean) => {
   const note = hadWeb
     ? 'Data sourced from real-time web search. High accuracy expected.'
-    : '⚠️ Data from AI training only. Add a "## ⚠️ Accuracy Note" section at the end to warn the user about potential staleness.'
+    : 'Data from AI training only. Add a "## Accuracy Note" section at the end to warn the user about potential staleness.'
   return `${LANG_RULE}You are a research synthesis expert. Timestamp: ${date}. ${note}
 
 Create a COMPREHENSIVE and ACCURATE final answer with:
@@ -176,7 +189,7 @@ Create a COMPREHENSIVE and ACCURATE final answer with:
 - Clear headings (##)
 - Bullet points where appropriate
 - Source citations where available
-- Confidence indicators: ✅ Confirmed / ⚠️ Uncertain / ❌ Contradicted
+- Confidence indicators: Confirmed / Uncertain / Contradicted
 - A "## Conclusion" section at the end`
 }
 
@@ -201,7 +214,7 @@ export const deepResearchService = {
     let anyWebSearch = false
 
     // ── Phase 1: Initial Analysis ─────────────────────────────────────────
-    const analyzeMsgId = onStepStart('Phân tích câu hỏi', '🔍')
+    const analyzeMsgId = onStepStart('Phân tích câu hỏi')
     let aspects = DEFAULT_ASPECTS
 
     try {
@@ -210,8 +223,9 @@ export const deepResearchService = {
         messages: [{ role: 'user', content: [{ type: 'text', text: question }] }],
         systemPrompt: ANALYZE_PROMPT(date),
       })
-      if (result.success && result.reply) {
-        const m = result.reply.match(/\{[\s\S]*\}/)
+      const reply = getReply(result)
+      if (reply) {
+        const m = reply.match(/\{[\s\S]*\}/)
         if (m) {
           try {
             const p = JSON.parse(m[0])
@@ -225,7 +239,7 @@ export const deepResearchService = {
     }
 
     const analyzeContent = [
-      webAvailable ? '🌐 **Real-time mode** — Tìm kiếm web thực tế cho mỗi bước' : '⚠️ **AI-only mode** — Không có Tavily key. Thêm key trong Settings → API Keys để bật web search.',
+      webAvailable ? '**Real-time mode** — Tìm kiếm web thực tế cho mỗi bước' : '**AI-only mode** — Không có Tavily key. Thêm key trong Settings → API Keys để bật web search.',
       '',
       `**Sẽ nghiên cứu ${aspects.length} khía cạnh, qua nhiều vòng lặp:**`,
       ...aspects.map((a, i) => `${i + 1}. ${a}`),
@@ -234,8 +248,7 @@ export const deepResearchService = {
 
     // ── Phase 2: First-pass research (Breadth) ────────────────────────────
     for (const aspect of aspects) {
-      const icon = webAvailable ? '🌐' : '📚'
-      const msgId = onStepStart(`Vòng 1 — Nghiên cứu: ${aspect}`, icon)
+      const msgId = onStepStart(`Vòng 1 — Nghiên cứu: ${aspect}`)
       try {
         const webCtx = await webSearch(`${aspect} ${question}`)
         if (webCtx) anyWebSearch = true
@@ -245,7 +258,7 @@ export const deepResearchService = {
           messages: [{ role: 'user', content: [{ type: 'text', text: `Analyze this aspect: ${aspect}` }] }],
           systemPrompt: RESEARCH_PROMPT(date, aspect, question, webCtx),
         })
-        const content = result.success && result.reply ? result.reply : `[Không thể phân tích: ${result.error}]`
+        const content = getReply(result) ?? `[Không thể phân tích: ${describeChatFailure(result, 'Lỗi không xác định')}]`
         knowledgeBase.push({ label: aspect, content })
         onStepComplete(msgId, content, false)
       } catch (err) {
@@ -262,7 +275,7 @@ export const deepResearchService = {
         .join('\n\n---\n\n')
 
       // Ask AI: is the research complete? What's missing?
-      const gapMsgId = onStepStart(`Đánh giá khoảng trống — Vòng ${iteration}`, '🔎')
+      const gapMsgId = onStepStart(`Đánh giá khoảng trống — Vòng ${iteration}`)
       let gapResult: GapAnalysisResult = { isComplete: true, gaps: [], queries: [] }
 
       try {
@@ -273,8 +286,9 @@ export const deepResearchService = {
           bypassLengthCheck: true,
         })
 
-        if (result.success && result.reply) {
-          const m = result.reply.match(/\{[\s\S]*\}/)
+        const reply = getReply(result)
+        if (reply) {
+          const m = reply.match(/\{[\s\S]*\}/)
           if (m) {
             try {
               const p = JSON.parse(m[0])
@@ -288,9 +302,9 @@ export const deepResearchService = {
         }
 
         const gapContent = gapResult.isComplete
-          ? `✅ **Nghiên cứu đã đầy đủ** — Không phát hiện khoảng trống đáng kể. Tiến hành tổng hợp.`
+          ? `**Nghiên cứu đã đầy đủ** — Không phát hiện khoảng trống đáng kể. Tiến hành tổng hợp.`
           : [
-              `🔍 **Phát hiện ${gapResult.gaps.length} khoảng trống cần bổ sung:**`,
+              `**Phát hiện ${gapResult.gaps.length} khoảng trống cần bổ sung:**`,
               ...gapResult.gaps.map((g, i) => `${i + 1}. ${g}`),
             ].join('\n')
 
@@ -307,8 +321,7 @@ export const deepResearchService = {
       for (let g = 0; g < Math.min(gapResult.queries.length, MAX_GAPS_PER_ROUND); g++) {
         const query = gapResult.queries[g]
         const gapLabel = gapResult.gaps[g] ?? query
-        const icon2 = webAvailable ? '🌐' : '📚'
-        const deepMsgId = onStepStart(`Nghiên cứu sâu: ${gapLabel}`, icon2)
+        const deepMsgId = onStepStart(`Nghiên cứu sâu: ${gapLabel}`)
 
         try {
           const webCtx = await webSearch(query)
@@ -319,7 +332,7 @@ export const deepResearchService = {
             messages: [{ role: 'user', content: [{ type: 'text', text: `Deep dive research: ${gapLabel}` }] }],
             systemPrompt: RESEARCH_PROMPT(date, gapLabel, question, webCtx),
           })
-          const content = result.success && result.reply ? result.reply : `[Không thể nghiên cứu]`
+          const content = getReply(result) ?? `[Không thể nghiên cứu: ${describeChatFailure(result, 'Lỗi không xác định')}]`
           knowledgeBase.push({ label: `[Sâu hơn] ${gapLabel}`, content })
           onStepComplete(deepMsgId, content, false)
         } catch (err) {
@@ -331,7 +344,7 @@ export const deepResearchService = {
     }
 
     // ── Phase 4: Cross-reference ──────────────────────────────────────────
-    const crossMsgId = onStepStart('Kiểm chứng chéo', '🔄')
+    const crossMsgId = onStepStart('Kiểm chứng chéo')
     const allFindingsFinal = knowledgeBase
       .map((k, i) => `### ${i + 1}. ${k.label}\n${k.content}`)
       .join('\n\n---\n\n')
@@ -344,9 +357,8 @@ export const deepResearchService = {
         systemPrompt: CROSS_REFERENCE_PROMPT(date, question, allFindingsFinal, anyWebSearch),
         bypassLengthCheck: true,
       })
-      crossContent = result.success && result.reply
-        ? result.reply
-        : 'Không thể thực hiện cross-reference.'
+      crossContent = getReply(result)
+        ?? `Không thể thực hiện cross-reference: ${describeChatFailure(result, 'Lỗi không xác định')}.`
       onStepComplete(crossMsgId, crossContent, false)
     } catch (err) {
       const e = err instanceof Error ? err.message : 'Lỗi cross-reference'
@@ -355,7 +367,7 @@ export const deepResearchService = {
     }
 
     // ── Phase 5: Final Synthesis ──────────────────────────────────────────
-    const synthMsgId = onStepStart('Tổng hợp cuối cùng', '💡')
+    const synthMsgId = onStepStart('Tổng hợp cuối cùng')
 
     const synthContext = [
       `## Research Findings (${knowledgeBase.length} sources)`,
@@ -374,11 +386,11 @@ export const deepResearchService = {
         }],
         systemPrompt: SYNTHESIS_PROMPT(date, anyWebSearch),
         bypassLengthCheck: true,
+        maxOutputTokens: 'model-max',
       })
 
-      const synthesis = result.success && result.reply
-        ? result.reply
-        : `Không thể tổng hợp (${result.error ?? 'unknown error'}).`
+      const synthesis = getReply(result)
+        ?? `Không thể tổng hợp (${describeChatFailure(result, 'Lỗi không xác định')}).`
 
       onStepComplete(synthMsgId, synthesis, true)
     } catch (err) {

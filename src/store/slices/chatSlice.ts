@@ -71,11 +71,28 @@ export const createChatSlice: StateCreator<any, [], [], ChatSlice> = (set) => ({
 
   addChatMessage: (sessionId, message) =>
     set((state: ChatSlice) => ({
-      chatSessions: state.chatSessions.map((s) =>
-        s.id === sessionId
-          ? { ...s, messages: [...s.messages, message], updatedAt: Date.now() }
-          : s
-      ),
+      chatSessions: state.chatSessions.map((s) => {
+        if (s.id !== sessionId) return s
+        const messages = [...s.messages, message]
+
+        // Auto-generate title from the first user message when session still has default title
+        let title = s.title
+        if (title === 'New Chat' && message.role === 'user' && s.messages.length === 0) {
+          const textContent = message.content.find((c) => c.type === 'text')?.text ?? ''
+          if (textContent) {
+            title = textContent
+              .replace(/\*\*(.+?)\*\*/g, '$1')  // remove **bold**
+              .replace(/\*(.+?)\*/g, '$1')        // remove *italic*
+              .replace(/#+\s/g, '')               // remove # headings
+              .replace(/\n[\s\S]*/g, '')          // first line only
+              .trim()
+              .slice(0, 60)
+              || 'New Chat'
+          }
+        }
+
+        return { ...s, title, messages, updatedAt: Date.now() }
+      }),
     })),
 
   updateChatMessage: (sessionId, messageId, updates) =>

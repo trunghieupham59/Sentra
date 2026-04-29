@@ -8,6 +8,8 @@ import {
   VISION_SCORE_CHEAP, VISION_SCORE_GEN_WEIGHT, VISION_SCORE_LITE_PENALTY,VISION_SCORE_MID, 
   VISION_SCORE_SLOW, 
 } from './ipcConstants'
+import { invalidIpcInput, isNonEmptyString, isRecord, isSafeLanguageCode } from './ipcValidation'
+import { isValidProvider, unknownProviderError } from './providers/types'
 import { getStoredApiKey } from './storage'
 
 /** Allowed image MIME types for Gemini image-edit (whitelist prevents injection via IPC). */
@@ -170,6 +172,58 @@ interface ImageTranslateParams {
   imageMimeType: string
   sourceLang: string
   targetLang: string
+}
+
+type ParsedImageTranslateParams =
+  | { ok: true; value: ImageTranslateParams }
+  | { ok: false; response: { success: false; error: string; errorCode?: string } }
+
+const MAX_IMAGE_MODEL_ID_CHARS = 200
+
+function parseImageTranslateParams(rawParams: unknown): ParsedImageTranslateParams {
+  if (!isRecord(rawParams)) {
+    return { ok: false, response: invalidIpcInput('Image translate payload must be an object') }
+  }
+
+  if (!isNonEmptyString(rawParams.provider)) {
+    return { ok: false, response: invalidIpcInput('Provider is required') }
+  }
+  const provider = rawParams.provider.trim()
+  if (!isValidProvider(provider)) {
+    return { ok: false, response: unknownProviderError(provider) }
+  }
+
+  if (!isNonEmptyString(rawParams.model)) {
+    return { ok: false, response: invalidIpcInput('Model is required') }
+  }
+  const model = rawParams.model.trim()
+  if (model.length > MAX_IMAGE_MODEL_ID_CHARS) {
+    return { ok: false, response: invalidIpcInput('Model is too long') }
+  }
+  if (!isNonEmptyString(rawParams.imageBase64)) {
+    return { ok: false, response: invalidIpcInput('No image data provided') }
+  }
+  if (!isNonEmptyString(rawParams.imageMimeType) || !ALLOWED_IMAGE_MIME_TYPES.has(rawParams.imageMimeType)) {
+    return { ok: false, response: invalidIpcInput('Unsupported image MIME type') }
+  }
+  if (!isSafeLanguageCode(rawParams.sourceLang)) {
+    return { ok: false, response: invalidIpcInput('Invalid source language') }
+  }
+  if (!isSafeLanguageCode(rawParams.targetLang)) {
+    return { ok: false, response: invalidIpcInput('Invalid target language') }
+  }
+
+  return {
+    ok: true,
+    value: {
+      provider,
+      model,
+      imageBase64: rawParams.imageBase64,
+      imageMimeType: rawParams.imageMimeType,
+      sourceLang: rawParams.sourceLang,
+      targetLang: rawParams.targetLang,
+    },
+  }
 }
 
 export interface TextRegion {
@@ -439,11 +493,22 @@ const IMAGE_TRANSLATE_PROVIDERS: Record<string, ImageTranslateFn> = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function registerImageTranslateHandlers(ipcMain: IpcMain) {
-  ipcMain.handle('image:translate', async (event, params: ImageTranslateParams) => {
+  ipcMain.handle('image:translate', async (event, rawParams: unknown) => {
+    const parsed = parseImageTranslateParams(rawParams)
+    if (!parsed.ok) return parsed.response
+    const params = parsed.value
     const { provider, model, imageBase64, imageMimeType, sourceLang, targetLang } = params
 
     if (!imageBase64) {
       return { success: false, error: 'No image data provided' }
+    }
+
+    if (provider === 'local') {
+      return {
+        success: false,
+        error: 'Local image translation is not supported in this phase. Use local chat with image input when the selected model supports vision.',
+        errorCode: 'NO_VISION',
+      }
     }
 
     // DUP-02 + DUP-03
