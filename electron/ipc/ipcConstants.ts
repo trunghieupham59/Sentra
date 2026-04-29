@@ -67,13 +67,13 @@ export const VERIFY_MAX_TOKENS = 10
 // because verification needs minimal cost, not necessarily the best translation quality.
 
 /** Cheapest Gemini model suitable for a minimal generateContent call. */
-export const VERIFY_MODEL_GEMINI = 'gemini-2.0-flash'
+export const VERIFY_MODEL_GEMINI = 'gemini-2.5-flash-lite'
 
-/** Cheapest Claude model suitable for a minimal messages.create call. */
-export const VERIFY_MODEL_CLAUDE = 'claude-haiku-4-5'
+/** Current Claude model suitable for a minimal messages.create call. */
+export const VERIFY_MODEL_CLAUDE = 'claude-sonnet-4-20250514'
 
-/** Cheapest OpenAI chat model suitable for a minimal chat.completions.create call. */
-export const VERIFY_MODEL_OPENAI = 'gpt-4o-mini'
+/** Current OpenAI chat model suitable for a minimal chat.completions.create call. */
+export const VERIFY_MODEL_OPENAI = 'gpt-4.1-mini'
 
 // ── Gemini specialised model IDs ──────────────────────────────────────────────
 /** Gemini TTS model — optimised for low-latency, low-cost speech synthesis. */
@@ -123,7 +123,7 @@ export const VISION_SCORE_LITE_PENALTY = 30 // penalty for lite/nano variants
 export const MAX_LIGHTWEIGHT_TRANSLATE_TOKENS = 2_048
 
 /** HC-09: Default Gemini model cho local server extension endpoint. */
-export const EXT_DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash'
+export const EXT_DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash'
 
 // ── Shared lightweight translation system prompt ──────────────────────────────
 /** Shared system prompt cho các lightweight translation calls (bookmarklet, global hotkey).
@@ -266,10 +266,10 @@ export const STT_RECOVERY_PROBE_DELAY_MS = 60_000
  * Default OpenAI model for lightweight translation (global hotkey, bookmarklet).
  * NOTE: EXT_DEFAULT_GEMINI_MODEL is already defined above.
  */
-export const EXT_DEFAULT_OPENAI_MODEL = 'gpt-4o-mini'
+export const EXT_DEFAULT_OPENAI_MODEL = 'gpt-5-mini'
 
 /** Default Claude model for lightweight translation. */
-export const EXT_DEFAULT_CLAUDE_MODEL = 'claude-haiku-4-5'
+export const EXT_DEFAULT_CLAUDE_MODEL = 'claude-sonnet-4-20250514'
 
 // ── Edge TTS timeout ──────────────────────────────────────────────────────────
 /**

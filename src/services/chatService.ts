@@ -37,7 +37,7 @@ interface ChatParams {
   /** Bypass the 3k char limit — used for Deep Research synthesis with long context */
   bypassLengthCheck?: boolean
   /** Optional larger output budget for long-form synthesis calls */
-  maxOutputTokens?: number
+  maxOutputTokens?: number | 'model-max'
 }
 
 export const chatService = {

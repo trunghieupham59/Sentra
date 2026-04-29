@@ -19,6 +19,7 @@ import * as fs from 'node:fs'
 import * as http from 'node:http'
 import * as path from 'node:path'
 import { app } from 'electron'
+import { EXT_DEFAULT_GEMINI_MODEL } from './ipcConstants'
 import { lightweightTranslate } from './lightweightTranslate'
 import { hasStoredApiKey } from './storage'
 
@@ -55,7 +56,7 @@ let server: http.Server | null = null
  */
 const cachedConfig: { provider: string; model: string } = {
   provider: 'gemini',
-  model: 'gemini-2.0-flash',
+  model: EXT_DEFAULT_GEMINI_MODEL,
 }
 
 // ── Persistence ───────────────────────────────────────────────────────────────

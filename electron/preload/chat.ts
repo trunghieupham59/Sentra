@@ -42,6 +42,6 @@ export const chatSection = {
     /** Bypass the char limit — only set true for AI Summarize on long transcripts */
     bypassLengthCheck?: boolean
     /** Optional larger output budget for long-form synthesis calls */
-    maxOutputTokens?: number
+    maxOutputTokens?: number | 'model-max'
   }) => ipcRenderer.invoke('chat:send', params),
 }

@@ -9,7 +9,7 @@
  *
  * Provider SDKs (Gemini/Claude/OpenAI) are mocked — no real API calls made.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ── Mock Electron before importing chat.ts ────────────────────────────────────
 vi.mock('electron', () => ({
@@ -21,7 +21,14 @@ vi.mock('../storage', () => ({
   getStoredApiKey: vi.fn(),
 }))
 
-import { buildEnforcedSystemPrompt, isLikelyChatModel, registerChatHandlers, scoreOpenAIChatModel } from '../chat'
+import {
+  buildEnforcedSystemPrompt,
+  getCurrentFamilyModelMaxOutputTokens,
+  isLikelyChatModel,
+  registerChatHandlers,
+  resolveModelMaxOutputTokens,
+  scoreOpenAIChatModel,
+} from '../chat'
 import { getStoredApiKey } from '../storage'
 import { buildMockIpcMain } from './helpers/mockIpcMain'
 
@@ -30,6 +37,8 @@ const textMsg = (role: 'user' | 'assistant', text: string) => ({
   role,
   content: [{ type: 'text' as const, text }],
 })
+
+let capturedOpenAIRequest: { max_completion_tokens?: number } | null = null
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('buildEnforcedSystemPrompt', () => {
@@ -106,6 +115,50 @@ describe('scoreOpenAIChatModel', () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
+describe('model max output token resolution', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('returns documented OpenAI limits for current chat model families', () => {
+    expect(getCurrentFamilyModelMaxOutputTokens('openai', 'gpt-5.2')).toBe(128_000)
+    expect(getCurrentFamilyModelMaxOutputTokens('openai', 'gpt-5-mini')).toBe(128_000)
+    expect(getCurrentFamilyModelMaxOutputTokens('openai', 'gpt-5-chat-latest')).toBe(16_384)
+    expect(getCurrentFamilyModelMaxOutputTokens('openai', 'gpt-4.1-mini')).toBe(32_768)
+    expect(getCurrentFamilyModelMaxOutputTokens('openai', 'gpt-4o-mini')).toBe(16_384)
+  })
+
+  it('returns documented Claude limits for current model families and fallback for legacy IDs', () => {
+    expect(getCurrentFamilyModelMaxOutputTokens('claude', 'claude-sonnet-4-20250514')).toBe(64_000)
+    expect(getCurrentFamilyModelMaxOutputTokens('claude', 'claude-sonnet-4-5')).toBe(64_000)
+    expect(getCurrentFamilyModelMaxOutputTokens('claude', 'claude-opus-4-1-20250805')).toBe(32_000)
+    expect(getCurrentFamilyModelMaxOutputTokens('claude', 'claude-3-7-sonnet-20250219')).toBe(16_384)
+  })
+
+  it('returns Gemini 2.5 fallback output limits when API metadata is unavailable', () => {
+    expect(getCurrentFamilyModelMaxOutputTokens('gemini', 'gemini-2.5-pro')).toBe(65_536)
+    expect(getCurrentFamilyModelMaxOutputTokens('gemini', 'gemini-2.5-flash-lite')).toBe(65_536)
+    expect(getCurrentFamilyModelMaxOutputTokens('gemini', 'gemini-2.0-flash')).toBe(16_384)
+  })
+
+  it('uses Gemini model metadata outputTokenLimit when available', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ outputTokenLimit: 12_345 }),
+    })))
+
+    await expect(resolveModelMaxOutputTokens('gemini', 'gemini-test-metadata', 'fake-key')).resolves.toBe(12_345)
+    expect(fetch).toHaveBeenCalledWith('https://generativelanguage.googleapis.com/v1beta/models/gemini-test-metadata?key=fake-key')
+  })
+
+  it('falls back to current-family limits when Gemini metadata is unavailable', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false })))
+
+    await expect(resolveModelMaxOutputTokens('gemini', 'gemini-2.5-flash-test-fallback', 'fake-key')).resolves.toBe(65_536)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
 describe('registerChatHandlers — IPC validation', () => {
   let invoke: ReturnType<typeof buildMockIpcMain>['invoke']
 
@@ -169,6 +222,61 @@ describe('registerChatHandlers — IPC validation', () => {
     })
     expect(result.success).toBe(false)
     expect(result.error).toContain('Unknown provider')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('registerChatHandlers — output token resolution', () => {
+  let invoke: ReturnType<typeof buildMockIpcMain>['invoke']
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    capturedOpenAIRequest = null
+    vi.mocked(getStoredApiKey).mockReturnValue('fake-key')
+    vi.doMock('openai', () => ({
+      default: class {
+        chat = {
+          completions: {
+            create: async (params: { max_completion_tokens?: number }) => {
+              capturedOpenAIRequest = params
+              return { choices: [{ message: { content: 'ok' }, finish_reason: 'stop' }] }
+            },
+          },
+        }
+        models = { list: async () => ({ data: [] }) }
+      },
+    }))
+
+    const mock = buildMockIpcMain()
+    // biome-ignore lint/suspicious/noExplicitAny: mock IpcMain
+    registerChatHandlers(mock.ipcMain as any)
+    invoke = mock.invoke
+  })
+
+  afterEach(() => {
+    vi.doUnmock('openai')
+  })
+
+  it('passes model-max as the resolved model limit to the provider call', async () => {
+    const result = await invoke('chat:send', {
+      provider: 'openai', model: 'gpt-4.1-mini',
+      messages: [textMsg('user', 'Hello')],
+      maxOutputTokens: 'model-max',
+    })
+
+    expect(result.success).toBe(true)
+    expect(capturedOpenAIRequest?.max_completion_tokens).toBe(32_768)
+  })
+
+  it('clamps numeric maxOutputTokens to the resolved model limit', async () => {
+    const result = await invoke('chat:send', {
+      provider: 'openai', model: 'gpt-4.1-mini',
+      messages: [textMsg('user', 'Hello')],
+      maxOutputTokens: 128_000,
+    })
+
+    expect(result.success).toBe(true)
+    expect(capturedOpenAIRequest?.max_completion_tokens).toBe(32_768)
   })
 })
 

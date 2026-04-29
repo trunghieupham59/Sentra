@@ -38,9 +38,6 @@ const MAX_GAPS_PER_ROUND = 3
 /** Maximum search results per query */
 const MAX_SEARCH_RESULTS = 5
 
-/** Larger output budget for the final long-form report. */
-const DEEP_RESEARCH_SYNTHESIS_OUTPUT_TOKENS = 12_000
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface DeepResearchCallbacks {
@@ -391,7 +388,7 @@ export const deepResearchService = {
         }],
         systemPrompt: SYNTHESIS_PROMPT(date, anyWebSearch),
         bypassLengthCheck: true,
-        maxOutputTokens: DEEP_RESEARCH_SYNTHESIS_OUTPUT_TOKENS,
+        maxOutputTokens: 'model-max',
       })
 
       const synthesis = getReply(result)

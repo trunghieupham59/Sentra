@@ -16,6 +16,7 @@ import { exec } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { app, type BrowserWindow, clipboard, globalShortcut } from 'electron'
+import { EXT_DEFAULT_GEMINI_MODEL } from './ipcConstants'
 import { lightweightTranslate } from './lightweightTranslate'
 
 
@@ -50,7 +51,7 @@ const DEFAULT_SETTINGS: HotkeySettings = {
   hotkey: '',
   enabled: false,
   provider: 'gemini',
-  model: 'gemini-2.0-flash',
+  model: EXT_DEFAULT_GEMINI_MODEL,
   sourceLang: 'auto',
   targetLang: 'en',
 }

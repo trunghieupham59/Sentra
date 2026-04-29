@@ -3,24 +3,81 @@ import type { Content, Part } from '@google/generative-ai'
 import type { IpcMain } from 'electron'
 import type { ChatCompletionContentPartImage, ChatCompletionContentPartText, ChatCompletionMessageParam } from 'openai/resources/chat/completions'
 import { classifyProviderError, noApiKeyResponse } from './errorUtils'
-import { MAX_CHAT_OUTPUT_TOKENS, MAX_CHAT_REQUEST_CHARS } from './ipcConstants'
+import { GEMINI_API_BASE, MAX_CHAT_OUTPUT_TOKENS, MAX_CHAT_REQUEST_CHARS } from './ipcConstants'
 import { unknownProviderError } from './providers/types'
 import { withRetry } from './retry'
 import { getStoredApiKey } from './storage'
 
 // DUP-02: Removed local `getApiKey` wrapper — call getStoredApiKey directly.
 
-const MAX_CHAT_OUTPUT_TOKENS_OVERRIDE: Record<string, number> = {
-  claude: 16_000,
-  gemini: 8_192,
-  openai: 16_000,
+type MaxOutputTokensRequest = number | 'model-max'
+
+const FALLBACK_MODEL_MAX_OUTPUT_TOKENS = 16_384
+
+const geminiOutputLimitCache = new Map<string, number>()
+
+function getCurrentFamilyModelMaxOutputTokens(provider: string, model: string): number {
+  const id = model.toLowerCase()
+
+  if (provider === 'openai') {
+    if (id.includes('chat-latest')) return 16_384
+    if (id.startsWith('gpt-5')) return 128_000
+    if (id.startsWith('gpt-4.1')) return 32_768
+    if (id.startsWith('gpt-4o') || id.startsWith('chatgpt-4o')) return 16_384
+  }
+
+  if (provider === 'claude') {
+    if (id.startsWith('claude-sonnet-4')) return 64_000
+    if (id.startsWith('claude-opus-4')) return 32_000
+  }
+
+  if (provider === 'gemini') {
+    if (id.includes('2.5')) return 65_536
+  }
+
+  return FALLBACK_MODEL_MAX_OUTPUT_TOKENS
 }
 
-function normalizeChatOutputTokens(provider: string, value: unknown): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return MAX_CHAT_OUTPUT_TOKENS
-  const integerValue = Math.floor(value)
-  const providerCap = MAX_CHAT_OUTPUT_TOKENS_OVERRIDE[provider] ?? MAX_CHAT_OUTPUT_TOKENS
-  return Math.min(Math.max(integerValue, 1), providerCap)
+async function fetchGeminiModelMaxOutputTokens(apiKey: string, model: string): Promise<number | null> {
+  const cached = geminiOutputLimitCache.get(model)
+  if (cached) return cached
+
+  try {
+    const modelName = model.startsWith('models/') ? model : `models/${model}`
+    const response = await fetch(`${GEMINI_API_BASE}/${modelName}?key=${apiKey}`)
+    if (!response.ok) return null
+    const data = await response.json() as { outputTokenLimit?: number }
+    if (typeof data.outputTokenLimit === 'number' && data.outputTokenLimit > 0) {
+      geminiOutputLimitCache.set(model, data.outputTokenLimit)
+      return data.outputTokenLimit
+    }
+  } catch (err) {
+    console.warn('[chat] Failed to fetch Gemini model output limit:', err)
+  }
+
+  return null
+}
+
+async function resolveModelMaxOutputTokens(provider: string, model: string, apiKey: string): Promise<number> {
+  if (provider === 'gemini') {
+    return await fetchGeminiModelMaxOutputTokens(apiKey, model)
+      ?? getCurrentFamilyModelMaxOutputTokens(provider, model)
+  }
+  return getCurrentFamilyModelMaxOutputTokens(provider, model)
+}
+
+async function resolveChatOutputTokens(
+  provider: string,
+  model: string,
+  apiKey: string,
+  requested: MaxOutputTokensRequest | undefined,
+): Promise<number> {
+  if (requested === 'model-max') return resolveModelMaxOutputTokens(provider, model, apiKey)
+  if (typeof requested !== 'number' || !Number.isFinite(requested)) return MAX_CHAT_OUTPUT_TOKENS
+
+  const integerValue = Math.floor(requested)
+  const modelMax = await resolveModelMaxOutputTokens(provider, model, apiKey)
+  return Math.min(Math.max(integerValue, 1), modelMax)
 }
 
 /**
@@ -56,7 +113,7 @@ interface ChatParams {
    * Optional per-call output budget for long-form operations such as Deep Research
    * synthesis. Clamped in the IPC handler before reaching provider SDK calls.
    */
-  maxOutputTokens?: number
+  maxOutputTokens?: MaxOutputTokensRequest
 }
 
 // HC-08: MAX_CHAT_REQUEST_CHARS now imported from ipcConstants — stays in sync with
@@ -175,7 +232,13 @@ async function chatWithClaude(
 // ── Exported for unit testing ─────────────────────────────────────────────────
 
 /** @internal — exported for unit tests only */
-export { buildEnforcedSystemPrompt, isLikelyChatModel, scoreOpenAIChatModel }
+export {
+  buildEnforcedSystemPrompt,
+  getCurrentFamilyModelMaxOutputTokens,
+  isLikelyChatModel,
+  resolveModelMaxOutputTokens,
+  scoreOpenAIChatModel,
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -391,7 +454,6 @@ const CHAT_PROVIDERS: Record<string, ChatFn> = {
 export function registerChatHandlers(ipcMain: IpcMain) {
   ipcMain.handle('chat:send', async (_event, params: ChatParams) => {
     const { provider, model, messages, systemPrompt, bypassLengthCheck } = params
-    const maxOutputTokens = normalizeChatOutputTokens(provider, params.maxOutputTokens)
 
     if (!messages || messages.length === 0) {
       return { success: false, error: 'No messages provided' }
@@ -417,6 +479,7 @@ export function registerChatHandlers(ipcMain: IpcMain) {
     // DUP-02 + DUP-03
     const apiKey = getStoredApiKey(provider)
     if (!apiKey) return noApiKeyResponse(provider)
+    const maxOutputTokens = await resolveChatOutputTokens(provider, model, apiKey, params.maxOutputTokens)
 
     try {
       let reply = ''
