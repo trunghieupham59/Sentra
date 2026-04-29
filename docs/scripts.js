@@ -415,11 +415,8 @@ const TRANSLATIONS = {
 /* ══════════════════════════════════════════════════════════════
    I18N ENGINE
 ══════════════════════════════════════════════════════════════ */
-let currentLang = 'en';
-
 function setLang(lang) {
   if (!TRANSLATIONS[lang]) return;
-  currentLang = lang;
   const t = TRANSLATIONS[lang];
 
   /* helper: safe nested key access */
@@ -562,7 +559,9 @@ function layout(active) {
 
     slide.style.transform = `translateX(${tx}px) translateZ(${tz}px) rotateY(${ry}deg) scale(${scale})`;
   });
-  dotEls.forEach((d, i) => d.classList.toggle('active', i === active));
+  dotEls.forEach((d, i) => {
+    d.classList.toggle('active', i === active);
+  });
 }
 
 function goTo(idx)    { current = ((idx % COUNT) + COUNT) % COUNT; layout(current); }
@@ -597,7 +596,9 @@ const io = new IntersectionObserver(entries => {
     if (en.isIntersecting) { en.target.classList.add('visible'); io.unobserve(en.target); }
   });
 }, { threshold: 0.12 });
-revealEls.forEach(el => io.observe(el));
+revealEls.forEach(el => {
+  io.observe(el);
+});
 
 /* ══════════════════════════════════════════════════════════════
    FEATURE CARD MOUSE GLOW

@@ -151,7 +151,7 @@ export function ChatPage() {
       const msg = err instanceof Error ? err.message : t.image_translate_error_failed
       setAttachImageError(msg)
     }
-  }, [])
+  }, [t.image_translate_error_failed])
 
   const handleFileDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
@@ -227,7 +227,16 @@ export function ChatPage() {
     } finally {
       setIsSending(false)
     }
-  }, [isSending, activeChatSessionId, updateChatMessage, selectedProvider, selectedModels, chatSystemPrompt])
+  }, [
+    isSending,
+    activeChatSessionId,
+    updateChatMessage,
+    selectedProvider,
+    selectedModels,
+    chatSystemPrompt,
+    t.chat_error_failed_regenerate,
+    t.chat_error_unexpected,
+  ])
 
   const handleSend = useCallback(async () => {
     const text = inputText.trim()
@@ -366,8 +375,21 @@ export function ChatPage() {
     } finally {
       setIsSending(false)
     }
-  }, [inputText, attachedImage, isSending, hasKey, deepResearchMode, ensureSession,
-      addChatMessage, updateChatMessage, selectedProvider, selectedModels, chatSystemPrompt])
+  }, [
+    inputText,
+    attachedImage,
+    isSending,
+    hasKey,
+    deepResearchMode,
+    ensureSession,
+    addChatMessage,
+    updateChatMessage,
+    selectedProvider,
+    selectedModels,
+    chatSystemPrompt,
+    t.chat_error_failed_response,
+    t.chat_error_unexpected,
+  ])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {

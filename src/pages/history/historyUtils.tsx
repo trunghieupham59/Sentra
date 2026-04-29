@@ -1,4 +1,5 @@
 import { ProviderIcon } from '../../components/ProviderIcon'
+import { BotIcon } from '../../components/ui/icons'
 import { PROVIDERS } from '../../constants/providers'
 import type { Provider } from '../../types'
 import { tpl } from '../../utils/tpl'
@@ -37,10 +38,9 @@ export function ProviderBadge({ provider }: { provider: string }) {
                      bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
       {isKnown
         ? <ProviderIcon provider={provider as Provider} size={12} />
-        : <span>🤖</span>
+        : <BotIcon className="w-3 h-3" />
       }
       {p?.name ?? provider}
     </span>
   )
 }
-

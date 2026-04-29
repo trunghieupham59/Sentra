@@ -3,6 +3,13 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { useAppStore } from '../../store/useAppStore'
 import { TranslatePage } from '../TranslatePage'
 
+function openAdvancedConfig() {
+  const configButton = screen.getByTitle(/Advanced AI Config|Cấu hình AI/i)
+  act(() => {
+    fireEvent.click(configButton)
+  })
+}
+
 // Reset store before each test
 beforeEach(() => {
   act(() => {
@@ -39,7 +46,8 @@ describe('TranslatePage', () => {
 
   it('shows Auto/Manual toggle button', () => {
     render(<TranslatePage />)
-    // The Auto/Manual toggle button should be rendered
+    openAdvancedConfig()
+    // The Auto/Manual toggle button lives in the Advanced AI Config popup.
     const manualBtn = screen.getByTitle(/Tự động dịch|Dịch thủ công|Auto|Manual/i)
     expect(manualBtn).toBeInTheDocument()
   })
@@ -48,6 +56,7 @@ describe('TranslatePage', () => {
     render(<TranslatePage />)
     expect(useAppStore.getState().autoTranslate).toBe(false)
 
+    openAdvancedConfig()
     const toggle = screen.getByTitle(/Tự động dịch|Dịch thủ công|Auto|Manual/i)
     act(() => { fireEvent.click(toggle) })
 
@@ -64,11 +73,7 @@ describe('TranslatePage', () => {
 
   it('renders a text input area for source text', () => {
     render(<TranslatePage />)
-    // MarkdownEditor renders inside a scrollable div; the page panel itself should be present
-    // We check for the overall source panel — a flex column that contains the editor
-    const panels = document.querySelectorAll('.flex-1.basis-0')
-    // Two panels: source (left) and result (right)
-    expect(panels.length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByPlaceholderText(/Enter text to translate|Nhập văn bản/i)).toBeInTheDocument()
   })
 
   it('shows error message when translateError is set', () => {
@@ -81,9 +86,9 @@ describe('TranslatePage', () => {
 
   it('shows phonetic toggle button', () => {
     render(<TranslatePage />)
-    // The phonetic/furigana toggle button should be present
-    const phoneticBtn = screen.getByTitle(/phonetic|phiên âm|furigana/i)
-    expect(phoneticBtn).toBeInTheDocument()
+    openAdvancedConfig()
+    // The phonetic dropdown should be present in the Advanced AI Config popup.
+    expect(screen.getByDisplayValue(/Off|Tắt/i)).toBeInTheDocument()
   })
 
   // ── Required: source text input nhận giá trị ──────────────────────────────
@@ -127,4 +132,3 @@ describe('TranslatePage', () => {
     expect(counter?.textContent).toMatch(/5/)
   })
 })
-

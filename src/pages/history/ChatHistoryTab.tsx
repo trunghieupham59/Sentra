@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { HistoryDeleteButton } from '../../components/ui/HistoryDeleteButton'
 import { HistoryEmptyState } from '../../components/ui/HistoryEmptyState'
-import { ChatBubbleIcon, ChevronDownIcon, TrashIcon } from '../../components/ui/icons'
+import { ChatBubbleIcon, CheckIcon, ChevronDownIcon, TrashIcon } from '../../components/ui/icons'
 import { useAppStore, useT } from '../../store/useAppStore'
 import type { ChatSession } from '../../types'
 import { formatTime, ProviderBadge } from './historyUtils'
@@ -73,9 +73,7 @@ export function ChatHistoryTab() {
                   : 'border-gray-300 dark:border-gray-600',
               ].join(' ')}>
                 {isAllSelected && (
-                  <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 10 8" fill="none">
-                    <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  <CheckIcon className="w-2.5 h-2.5 text-white" />
                 )}
                 {isIndeterminate && !isAllSelected && (
                   <span className="w-2 h-0.5 bg-white rounded-full block" />
@@ -135,9 +133,7 @@ export function ChatHistoryTab() {
                           : 'border-gray-300 dark:border-gray-600 hover:border-blue-400',
                       ].join(' ')}>
                         {isSelected && (
-                          <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 10 8" fill="none">
-                            <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
+                          <CheckIcon className="w-2.5 h-2.5 text-white" />
                         )}
                       </span>
                     </button>

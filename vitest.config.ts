@@ -2,9 +2,10 @@
  * Vitest configuration — separate from vite.config.ts to avoid type conflicts.
  * Uses vitest/config which extends Vite's defineConfig with test-specific options.
  */
-import { defineConfig } from 'vitest/config'
+
+import path from 'node:path'
 import react from '@vitejs/plugin-react'
-import path from 'path'
+import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   plugins: [react()],

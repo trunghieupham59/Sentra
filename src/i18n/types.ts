@@ -484,6 +484,23 @@ export interface Translations {
   settings_token_ipc_error: string
   settings_preset_use_prompt: string
 
+  // AI Chat Quick-Ask Popup (hotkey-triggered)
+  ai_chat_popup_title: string
+  ai_chat_popup_placeholder: string
+  ai_chat_popup_open_in_chat: string
+
+  // Settings — AI Chat Hotkey
+  settings_chat_hotkey_section: string
+  settings_chat_hotkey_section_desc: string
+  settings_chat_hotkey_enabled: string
+  settings_chat_hotkey_enabled_desc: string
+  settings_chat_hotkey_label: string
+  settings_chat_hotkey_desc: string
+  settings_chat_hotkey_recording: string
+  settings_chat_hotkey_clear: string
+  settings_chat_hotkey_none: string
+  settings_chat_hotkey_status_conflict: string
+
   // Settings — AI Chat section
   settings_chat_section: string
   settings_chat_section_desc: string

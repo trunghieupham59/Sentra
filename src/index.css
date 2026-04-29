@@ -102,3 +102,9 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 .fade-in { animation: fadeIn 0.15s ease-out; }
+
+/* ── Fade + slide in (for popups / modals) ───── */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}

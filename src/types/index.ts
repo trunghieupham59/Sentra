@@ -465,6 +465,14 @@ export interface WindowApi {
     onTranslating: (cb: (data: { text: string }) => void) => () => void
     onTranslated: (cb: (data: { original: string; translated: string }) => void) => () => void
     onError: (cb: (data: { error: string }) => void) => () => void
+    /** AI Chat quick-ask hotkey — opens a popup in the renderer */
+    chat: {
+      update: (settings: { hotkey?: string; enabled?: boolean }) =>
+        Promise<{ success: boolean; settings?: Record<string, unknown>; error?: string }>
+      get: () => Promise<{ success: boolean; settings?: Record<string, unknown> }>
+      /** Listen for the chat-open event. Returns a cleanup function. */
+      onOpen: (cb: () => void) => () => void
+    }
   }
 
   /** Legacy Assistant — floating icon injected into browsers without an extension */

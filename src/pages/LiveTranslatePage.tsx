@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { DEFAULT_SEGMENT_DURATION_MS, MIN_SEGMENT_DURATION_MS } from '../constants/ui'
 import { LiveSourceLangBar } from '../components/live/LiveSourceLangBar'
 import { LiveTargetLangBar } from '../components/live/LiveTargetLangBar'
 import { SegmentRow } from '../components/live/SegmentRow'
@@ -22,7 +21,7 @@ import {
   TranslateIcon,
   TrashIcon,
   XIcon,} from '../components/ui/icons'
-import { COPY_FEEDBACK_DURATION_MS } from '../constants/ui'
+import { COPY_FEEDBACK_DURATION_MS, DEFAULT_SEGMENT_DURATION_MS, MIN_SEGMENT_DURATION_MS } from '../constants/ui'
 import { MACOS_SCREEN_RECORDING_PREFS } from '../constants/urls'
 import { DEFAULT_SUBTITLE_SETTINGS, useLiveTranslate } from '../hooks/useLiveTranslate'
 import { useAppStore, useT } from '../store/useAppStore'
@@ -175,7 +174,7 @@ export function LiveTranslatePage() {
       <div className="flex-1 flex flex-col min-h-0">
         <div className="px-6 pt-6 pb-4 flex flex-col gap-4 flex-1 min-h-0 min-w-0">
 
-          {/* ── Row 1: [Source (flex-1)] [⇄] [Target (flex-1)] [▶ Start/Stop] [⚙️] ── */}
+          {/* Row 1: source, target, start/stop, settings */}
           <div className="flex items-center flex-shrink-0">
 
             {/* Source language — always auto-detect */}
@@ -235,7 +234,7 @@ export function LiveTranslatePage() {
               )}
             </button>
 
-            {/* ⚙️ CẤU HÌNH AI NÂNG CAO popup */}
+            {/* Advanced AI config popup */}
             <div className="relative flex-shrink-0" ref={aiConfigRef}>
               <button
                 type="button"

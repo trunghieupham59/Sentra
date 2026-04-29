@@ -1,6 +1,6 @@
 /**
  * Status & indicator icons — warnings, selection state, info hints,
- * AI insights, and user avatars.
+ * AI insights, bot/provider fallbacks, and user avatars.
  */
 import type { IconProps } from './types'
 
@@ -62,6 +62,21 @@ export function UserIcon({ className = 'w-4 h-4' }: IconProps) {
       <path fillRule="evenodd"
         d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z"
         clipRule="evenodd" />
+    </svg>
+  )
+}
+
+/** Bot / assistant icon — used when no provider-specific icon is available. */
+export function BotIcon({ className = 'w-4 h-4' }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+      <path
+        d="M12 3v3m-5 4h10a3 3 0 013 3v4a3 3 0 01-3 3H7a3 3 0 01-3-3v-4a3 3 0 013-3z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+      />
+      <path d="M9 15h.01M15 15h.01" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} />
     </svg>
   )
 }

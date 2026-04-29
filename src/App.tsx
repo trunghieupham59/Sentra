@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { AIChatPopup } from './components/AIChatPopup'
 import { SettingsModal } from './components/SettingsModal'
 import { Sidebar } from './components/Sidebar'
 import { PROVIDERS } from './constants/providers'
@@ -21,6 +22,7 @@ const MACOS_TITLEBAR_HEIGHT_PX = 40
 
 function App() {
   const { activePage, localeAuto, setKeyStatus, setLocaleFromSystem, fontSize, selectedProvider, selectedModels } = useAppStore()
+  const [aiChatPopupOpen, setAiChatPopupOpen] = useState(false)
 
   // Auto-detect system language on startup (only when localeAuto is enabled)
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally run only once on mount
@@ -42,6 +44,17 @@ function App() {
     const model = selectedModels[selectedProvider] ?? ''
     window.api.localServer.syncConfig({ provider: selectedProvider, model })
   }, [selectedProvider, selectedModels])
+
+  // Listen for the AI Chat hotkey event from main process
+  useEffect(() => {
+    if (!window.api?.hotkey?.chat) return
+    const unsub = window.api.hotkey.chat.onOpen(() => {
+      setAiChatPopupOpen(true)
+    })
+    return unsub
+  }, [])
+
+  const handleCloseAiChatPopup = useCallback(() => setAiChatPopupOpen(false), [])
 
   // On startup, check which API keys exist in keychain
   useEffect(() => {
@@ -92,6 +105,9 @@ function App() {
 
       {/* Settings popup modal */}
       <SettingsModal />
+
+      {/* AI Chat quick-ask popup — triggered by global hotkey */}
+      <AIChatPopup open={aiChatPopupOpen} onClose={handleCloseAiChatPopup} />
     </div>
   )
 }

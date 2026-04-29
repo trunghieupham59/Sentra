@@ -393,7 +393,7 @@
       copyBtn.textContent = COPY_LABEL
       try { await navigator.clipboard.writeText(translated) } catch { /* ignore */ }
     } catch (err) {
-      tooltipText.textContent = '❌ ' + (err.message || 'Translation failed')
+      tooltipText.textContent = `❌ ${err.message || 'Translation failed'}`
     }
   })
 
@@ -422,7 +422,7 @@
       copyBtn.textContent = COPY_LABEL
       try { await navigator.clipboard.writeText(translated) } catch { /* ignore */ }
     } catch (err) {
-      tooltipText.textContent = '❌ ' + (err.message || 'Translation failed')
+      tooltipText.textContent = `❌ ${err.message || 'Translation failed'}`
     }
   })
 

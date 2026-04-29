@@ -11,7 +11,7 @@
  * The Groq API key is stored in the OS keychain — add it in the card below the selector.
  */
 import { useEffect, useState } from 'react'
-import { CheckCircleIcon, MicrophoneIcon, SpinnerIcon, TrashIcon } from '../../components/ui/icons'
+import { AlertTriangleIcon, CheckCircleIcon, MicrophoneIcon, SpinnerIcon, TrashIcon } from '../../components/ui/icons'
 import { GROQ_CONSOLE_URL } from '../../constants/urls'
 import { useAppStore, useT } from '../../store/useAppStore'
 import type { SttProvider } from '../../types'
@@ -72,8 +72,9 @@ function ProviderCard({ id: _id, label, description, statusBadge, note, selected
             </p>
           )}
           {note && (
-            <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 leading-relaxed">
-              ⚠ {note}
+            <p className="flex items-start gap-1 text-[10px] text-amber-600 dark:text-amber-400 mt-1 leading-relaxed">
+              <AlertTriangleIcon className="w-3 h-3 mt-0.5 flex-shrink-0" />
+              <span>{note}</span>
             </p>
           )}
         </div>
