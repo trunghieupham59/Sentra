@@ -1,4 +1,5 @@
 import type { BrowserWindow, IpcMain } from 'electron'
+import { isLocalProvider, LOCAL_AI_PLACEHOLDER_KEY } from './localAi'
 import { getStoredApiKey } from './storage'
 import { streamTranslation } from './translate'
 
@@ -134,7 +135,7 @@ export function registerSubtitleHandlers(
 
     if (!sourceText.trim()) return { success: false, error: 'Source text is empty' }
 
-    const apiKey = await getStoredApiKey(provider)
+    const apiKey = isLocalProvider(provider) ? LOCAL_AI_PLACEHOLDER_KEY : await getStoredApiKey(provider)
     if (!apiKey) return { success: false, error: `No API key for ${provider}`, errorCode: 'NO_API_KEY' }
 
     const sendToSubtitle = (channel: string, payload?: unknown) => {

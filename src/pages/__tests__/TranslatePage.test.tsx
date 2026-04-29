@@ -22,9 +22,9 @@ beforeEach(() => {
       isTranslating: false,
       translateError: null,
       autoTranslate: false, // manual mode — shows Translate button
-      keyStatus: { gemini: true, claude: false, openai: false },
+      keyStatus: { gemini: true, claude: false, openai: false, local: false },
       selectedProvider: 'gemini',
-      selectedModels: { gemini: 'gemini-2.0-flash', claude: 'claude-3-5-haiku-20241022', openai: 'gpt-4o' },
+      selectedModels: { gemini: 'gemini-2.0-flash', claude: 'claude-3-5-haiku-20241022', openai: 'gpt-4o', local: 'local-auto' },
       phoneticMode: 'off',
       translationStyle: 'general',
     })

@@ -22,10 +22,10 @@ beforeEach(() => {
       ttsMode: 'free',
       ttsVoice: 'nova',
       fontSize: 'medium',
-      keyStatus: { gemini: false, claude: false, openai: false } as Record<string, boolean>,
-      dynamicModels: { gemini: [], claude: [], openai: [] } as Record<string, []>,
-      modelsLoading: { gemini: false, claude: false, openai: false } as Record<string, boolean>,
-      modelsError: { gemini: null, claude: null, openai: null } as Record<string, null>,
+      keyStatus: { gemini: false, claude: false, openai: false, local: false } as Record<string, boolean>,
+      dynamicModels: { gemini: [], claude: [], openai: [], local: [] } as Record<string, []>,
+      modelsLoading: { gemini: false, claude: false, openai: false, local: false } as Record<string, boolean>,
+      modelsError: { gemini: null, claude: null, openai: null, local: null } as Record<string, null>,
     })
   })
 })

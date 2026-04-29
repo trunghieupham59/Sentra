@@ -1,25 +1,494 @@
 import { useEffect, useState } from 'react'
 import { ApiKeyInput } from '../../components/ApiKeyInput'
 import { DeepResearchApiSection } from '../../components/chat/DeepResearchApiSection'
+import { ProviderIcon } from '../../components/ProviderIcon'
+import { RefreshIcon, SpinnerIcon } from '../../components/ui/icons'
 import { PROVIDERS } from '../../constants/providers'
 import { JINA_DOCS_URL } from '../../constants/urls'
 import { useAppStore, useT } from '../../store/useAppStore'
-import type { Provider } from '../../types'
+import type { LocalAiBenchmarkResult, LocalAiDiscoveryResult, LocalAiInstallProgress, Provider } from '../../types'
+
+function LocalAiProviderCard({
+  status,
+  benchmark,
+  loading,
+  benchmarking,
+  downloadingModel,
+  installingOllama,
+  onRefresh,
+  onBenchmark,
+  onDownloadModel,
+  onInstallOllama,
+  downloadError,
+  downloadSuccess,
+  installError,
+  installSuccess,
+  installProgress,
+  showRestartPrompt,
+  onCancelInstall,
+  onRestartApp,
+  onDismissRestartPrompt,
+}: {
+  status: LocalAiDiscoveryResult | null
+  benchmark: LocalAiBenchmarkResult | null
+  loading: boolean
+  benchmarking: boolean
+  downloadingModel: string | null
+  installingOllama: boolean
+  onRefresh: () => void
+  onBenchmark: () => void
+  onDownloadModel: (modelId: string) => void
+  onInstallOllama: () => void
+  downloadError: string | null
+  downloadSuccess: string | null
+  installError: string | null
+  installSuccess: string | null
+  installProgress: LocalAiInstallProgress | null
+  showRestartPrompt: boolean
+  onCancelInstall: () => void
+  onRestartApp: () => void
+  onDismissRestartPrompt: () => void
+}) {
+  const t = useT()
+  const available = status?.available ?? false
+  const models = status?.models ?? []
+  const suggestions = status?.suggestedModels?.length ? status.suggestedModels : benchmark?.suggestedModels ?? []
+  const hardware = status?.hardware ?? benchmark?.hardware
+  const metrics = benchmark?.metrics
+  const canDownloadModels = status?.engine === 'ollama'
+  const showRuntimeInstallPanel = !canDownloadModels
+  const activeInstallPercent = Math.max(5, Math.min(100, installProgress?.percent ?? 8))
+  const recommended = models.find((model) => model.id === status?.recommendedModel)
+    ?? suggestions.find((model) => model.id === (status?.recommendedModel ?? benchmark?.recommendedModel))
+
+  return (
+    <div className="card p-4 space-y-3 border border-gray-200 dark:border-gray-700">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-100 dark:bg-gray-700 flex-shrink-0">
+            <ProviderIcon provider="local" size={22} />
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t.settings_local_ai_title}</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              {available
+                ? `${status?.engine ?? 'local'} · ${status?.endpoint ?? ''}`
+                : t.settings_local_ai_unavailable}
+            </p>
+          </div>
+        </div>
+        <span className={[
+          'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+          available
+            ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+            : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400',
+        ].join(' ')}>
+          <span className={[
+            'w-1.5 h-1.5 rounded-full flex-shrink-0',
+            available ? 'bg-green-500' : 'bg-gray-400',
+          ].join(' ')} />
+          {available ? t.settings_local_ai_running : t.settings_local_ai_not_running}
+        </span>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2 text-xs dark:bg-gray-800/70">
+        <div className="min-w-0">
+          <p className="font-medium text-gray-700 dark:text-gray-200">
+            {recommended ? recommended.name : t.settings_local_ai_model_waiting}
+          </p>
+          <p className="text-gray-500 dark:text-gray-400">
+            {available
+              ? `${models.length} ${t.settings_local_ai_models_found} · ${hardware?.tier ?? 'balanced'}`
+              : t.settings_local_ai_start_runtime}
+          </p>
+        </div>
+        <div className="flex flex-shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={onBenchmark}
+            disabled={benchmarking}
+            className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 font-medium text-gray-600 shadow-sm ring-1 ring-gray-200 transition-colors hover:text-gray-900 disabled:opacity-50 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-700"
+          >
+            {benchmarking ? <SpinnerIcon className="w-3.5 h-3.5 animate-spin" /> : null}
+            {benchmarking ? t.settings_local_ai_benchmarking : t.settings_local_ai_benchmark}
+          </button>
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={loading}
+            className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 font-medium text-gray-600 shadow-sm ring-1 ring-gray-200 transition-colors hover:text-gray-900 disabled:opacity-50 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-700"
+          >
+            {loading ? <SpinnerIcon className="w-3.5 h-3.5 animate-spin" /> : <RefreshIcon className="w-3.5 h-3.5" />}
+            {t.model_refresh}
+          </button>
+        </div>
+      </div>
+
+      {hardware && (
+        <div className="grid grid-cols-3 gap-2 text-xs">
+          <div className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
+            <p className="text-gray-400">{t.settings_local_ai_tier}</p>
+            <p className="font-medium text-gray-700 dark:text-gray-200">{hardware.tier}</p>
+          </div>
+          <div className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
+            <p className="text-gray-400">RAM</p>
+            <p className="font-medium text-gray-700 dark:text-gray-200">{hardware.totalMemoryGb} GB</p>
+          </div>
+          <div className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
+            <p className="text-gray-400">CPU</p>
+            <p className="font-medium text-gray-700 dark:text-gray-200">{hardware.cpuCount} cores</p>
+          </div>
+        </div>
+      )}
+
+      {metrics && (
+        <div className="grid grid-cols-3 gap-2 text-xs">
+          <div className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
+            <p className="text-gray-400">{t.settings_local_ai_cpu_score}</p>
+            <p className="font-medium text-gray-700 dark:text-gray-200">{metrics.cpuScore}</p>
+          </div>
+          <div className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
+            <p className="text-gray-400">{t.settings_local_ai_memory_score}</p>
+            <p className="font-medium text-gray-700 dark:text-gray-200">{metrics.memoryScore}</p>
+          </div>
+          <div className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
+            <p className="text-gray-400">
+              {metrics.runtimeTokensPerSecond ? t.settings_local_ai_runtime_speed : t.settings_local_ai_benchmark_duration}
+            </p>
+            <p className="font-medium text-gray-700 dark:text-gray-200">
+              {metrics.runtimeTokensPerSecond
+                ? `${metrics.runtimeTokensPerSecond} tok/s`
+                : `${Math.round(metrics.durationMs / 100) / 10}s`}
+            </p>
+          </div>
+          {metrics.runtimeLatencyMs && (
+            <div className="col-span-3 rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
+              <p className="text-gray-400">{t.settings_local_ai_runtime_latency}</p>
+              <p className="font-medium text-gray-700 dark:text-gray-200">
+                {metrics.runtimeModel} · {metrics.runtimeLatencyMs}ms
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {suggestions.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+              {t.settings_local_ai_suggested_models}
+            </h4>
+            {canDownloadModels ? (
+              <span className="text-[11px] text-gray-400">{t.settings_local_ai_download_hint}</span>
+            ) : (
+              <button
+                type="button"
+                onClick={onInstallOllama}
+                disabled={installingOllama}
+                className="flex flex-shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 dark:disabled:bg-gray-700"
+              >
+                {installingOllama && <SpinnerIcon className="h-3.5 w-3.5 animate-spin" />}
+                {installingOllama ? t.settings_local_ai_installing_ollama : t.settings_local_ai_install_ollama}
+              </button>
+            )}
+          </div>
+
+          {showRuntimeInstallPanel && (
+            <div className={[
+              'rounded-xl border px-3 py-3 text-xs',
+              installingOllama
+                ? 'border-blue-100 bg-blue-50/80 dark:border-blue-900/50 dark:bg-blue-950/20'
+                : 'border-gray-100 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/70',
+            ].join(' ')}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    {installingOllama && <SpinnerIcon className="h-3.5 w-3.5 animate-spin text-blue-600 dark:text-blue-300" />}
+                    <p className="font-semibold text-gray-800 dark:text-gray-100">
+                      {installingOllama ? t.settings_local_ai_installing_ollama : t.settings_local_ai_install_runtime_title}
+                    </p>
+                    {installingOllama && (
+                      <span className="rounded-full bg-white px-2 py-0.5 font-medium text-blue-700 ring-1 ring-blue-100 dark:bg-blue-950 dark:text-blue-300 dark:ring-blue-900">
+                        {activeInstallPercent}%
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-gray-500 dark:text-gray-400">
+                    {installingOllama
+                      ? installProgress?.message ?? t.settings_local_ai_installing_ollama
+                      : t.settings_local_ai_install_runtime_desc}
+                  </p>
+                </div>
+                {installingOllama && (
+                  <button
+                    type="button"
+                    onClick={onCancelInstall}
+                    className="flex-shrink-0 rounded-lg bg-white px-3 py-1.5 font-medium text-blue-700 shadow-sm ring-1 ring-blue-100 transition-colors hover:bg-blue-50 dark:bg-blue-950 dark:text-blue-300 dark:ring-blue-900 dark:hover:bg-blue-900/60"
+                  >
+                    {t.settings_local_ai_cancel_install}
+                  </button>
+                )}
+              </div>
+              {installingOllama && (
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/80 ring-1 ring-blue-100 dark:bg-blue-950 dark:ring-blue-900">
+                  <div
+                    className="h-full rounded-full bg-blue-600 transition-[width] duration-500"
+                    style={{ width: `${activeInstallPercent}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {suggestions.slice(0, 5).map((model) => {
+              const isDownloading = downloadingModel === model.id
+              const buttonLabel = model.installed
+                ? t.settings_local_ai_installed
+                : canDownloadModels
+                  ? t.settings_local_ai_download
+                  : t.settings_local_ai_waiting_runtime
+              return (
+                <div
+                  key={model.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2 text-xs dark:border-gray-700"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium text-gray-800 dark:text-gray-100">{model.name}</p>
+                      {model.id === recommended?.id && (
+                        <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-600 dark:bg-blue-950/50 dark:text-blue-300">
+                          {t.settings_local_ai_recommended}
+                        </span>
+                      )}
+                      {model.installed && (
+                        <span className="rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-600 dark:bg-green-950/50 dark:text-green-300">
+                          {t.settings_local_ai_installed}
+                        </span>
+                      )}
+                      {model.estimatedSizeGb && (
+                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                          {t.settings_local_ai_model_size} ~{model.estimatedSizeGb} GB
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-gray-500 dark:text-gray-400">{model.description}</p>
+                  </div>
+                  {canDownloadModels ? (
+                    <button
+                      type="button"
+                      onClick={() => onDownloadModel(model.id)}
+                      disabled={isDownloading || model.installed}
+                      className="flex flex-shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 font-medium text-white transition-colors hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 dark:disabled:bg-gray-700"
+                    >
+                      {isDownloading && <SpinnerIcon className="w-3.5 h-3.5 animate-spin" />}
+                      {buttonLabel}
+                    </button>
+                  ) : (
+                    <span className="hidden flex-shrink-0 rounded-lg bg-gray-50 px-3 py-1.5 font-medium text-gray-400 ring-1 ring-gray-100 dark:bg-gray-800 dark:ring-gray-700 sm:block">
+                      {buttonLabel}
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {(downloadError || downloadSuccess || installError || installSuccess) && (
+        <p className={[
+          'rounded-lg px-3 py-2 text-xs font-medium',
+          downloadError || installError
+            ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300'
+            : 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300',
+        ].join(' ')}>
+          {downloadError ?? installError ?? downloadSuccess ?? installSuccess}
+        </p>
+      )}
+
+      {showRestartPrompt && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="local-ai-restart-title"
+        >
+          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-gray-700">
+            <h3 id="local-ai-restart-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">
+              {t.settings_local_ai_restart_title}
+            </h3>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              {t.settings_local_ai_restart_desc}
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={onDismissRestartPrompt}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+              >
+                {t.settings_local_ai_restart_later}
+              </button>
+              <button
+                type="button"
+                onClick={onRestartApp}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+              >
+                {t.settings_local_ai_restart_now}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!available && (
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {t.settings_local_ai_start_runtime}
+        </p>
+      )}
+    </div>
+  )
+}
 
 export function ApiKeysSection() {
-  const { setKeyStatus, keyStatus, setDynamicModels } = useAppStore()
+  const { setKeyStatus, keyStatus, setDynamicModels, setSelectedModel } = useAppStore()
   const t = useT()
+  const cloudProviders = PROVIDERS.filter((provider) => provider.requiresApiKey !== false)
 
   const [keyData, setKeyData] = useState<Record<string, { exists: boolean; masked: string | null }>>({
     gemini: { exists: false, masked: null },
     claude: { exists: false, masked: null },
     openai: { exists: false, masked: null },
   })
+  const [localStatus, setLocalStatus] = useState<LocalAiDiscoveryResult | null>(null)
+  const [localBenchmark, setLocalBenchmark] = useState<LocalAiBenchmarkResult | null>(null)
+  const [localLoading, setLocalLoading] = useState(false)
+  const [localBenchmarking, setLocalBenchmarking] = useState(false)
+  const [downloadingModel, setDownloadingModel] = useState<string | null>(null)
+  const [installingOllama, setInstallingOllama] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
+  const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null)
+  const [installError, setInstallError] = useState<string | null>(null)
+  const [installSuccess, setInstallSuccess] = useState<string | null>(null)
+  const [installProgress, setInstallProgress] = useState<LocalAiInstallProgress | null>(null)
+  const [showRestartPrompt, setShowRestartPrompt] = useState(false)
+
+  const refreshLocalAi = async (): Promise<LocalAiDiscoveryResult | null> => {
+    if (!window.api?.discoverLocalAi) return null
+    setLocalLoading(true)
+    try {
+      const result = await window.api.discoverLocalAi(true)
+      setLocalStatus(result)
+      setLocalBenchmark({
+        hardware: result.hardware,
+        suggestedModels: result.suggestedModels,
+        recommendedModel: result.suggestedModels[0]?.id,
+      })
+      setKeyStatus('local', result.available)
+      if (result.models.length > 0) setDynamicModels('local', result.models)
+      if (result.recommendedModel) setSelectedModel('local', result.recommendedModel)
+      return result
+    } finally {
+      setLocalLoading(false)
+    }
+  }
+
+  const runLocalBenchmark = async () => {
+    if (!window.api?.benchmarkLocalAi) return
+    setLocalBenchmarking(true)
+    try {
+      const result = await window.api.benchmarkLocalAi()
+      setLocalBenchmark(result)
+    } finally {
+      setLocalBenchmarking(false)
+    }
+  }
+
+  const handleDownloadLocalModel = async (modelId: string) => {
+    if (!window.api?.downloadLocalAiModel) return
+    setDownloadingModel(modelId)
+    setDownloadError(null)
+    setDownloadSuccess(null)
+    setInstallError(null)
+    setInstallSuccess(null)
+    try {
+      const result = await window.api.downloadLocalAiModel(modelId)
+      if (!result.success) {
+        setDownloadError(result.error ?? t.settings_local_ai_download_failed)
+        return
+      }
+      setDownloadSuccess(`${t.settings_local_ai_downloaded}: ${result.model}`)
+      await refreshLocalAi()
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : t.settings_local_ai_download_failed)
+    } finally {
+      setDownloadingModel(null)
+    }
+  }
+
+  const handleInstallOllama = async () => {
+    if (!window.api?.installOllama) return
+    setInstallingOllama(true)
+    setInstallProgress({
+      status: 'running',
+      percent: 5,
+      message: t.settings_local_ai_installing_ollama,
+    })
+    setDownloadError(null)
+    setDownloadSuccess(null)
+    setInstallError(null)
+    setInstallSuccess(null)
+    try {
+      const result = await window.api.installOllama()
+      if (!result.success) {
+        setInstallError(result.cancelled ? t.settings_local_ai_install_cancelled : result.error ?? t.settings_local_ai_install_failed)
+        return
+      }
+      setInstallSuccess(t.settings_local_ai_checking_runtime)
+      const discovery = await refreshLocalAi()
+      if (!discovery?.available) {
+        setInstallSuccess(null)
+        setShowRestartPrompt(true)
+        return
+      }
+      setInstallSuccess(t.settings_local_ai_ollama_installed)
+    } catch (err) {
+      setInstallError(err instanceof Error ? err.message : t.settings_local_ai_install_failed)
+    } finally {
+      setInstallingOllama(false)
+    }
+  }
+
+  const handleCancelOllamaInstall = async () => {
+    await window.api?.cancelOllamaInstall?.()
+  }
+
+  const handleRestartApp = () => {
+    void window.api?.relaunchApp?.()
+  }
+
+  useEffect(() => {
+    if (!window.api?.onLocalAiInstallProgress) return
+    return window.api.onLocalAiInstallProgress((progress) => {
+      setInstallProgress(progress)
+      if (progress.status === 'cancelled') {
+        setInstallingOllama(false)
+        setInstallError(t.settings_local_ai_install_cancelled)
+      }
+      if (progress.status === 'error') {
+        setInstallingOllama(false)
+        setInstallError(progress.message || t.settings_local_ai_install_failed)
+      }
+      if (progress.status === 'success') {
+        setInstallingOllama(false)
+      }
+    })
+  }, [t.settings_local_ai_install_cancelled, t.settings_local_ai_install_failed])
 
   useEffect(() => {
     const loadKeys = async () => {
       if (!window.api) return
-      for (const p of PROVIDERS) {
+      for (const p of cloudProviders) {
         try {
           const result = await window.api.keychain.get(p.id)
           setKeyData((prev) => ({
@@ -31,7 +500,9 @@ export function ApiKeysSection() {
       }
     }
     loadKeys()
-  }, [setKeyStatus])
+    void refreshLocalAi()
+  // biome-ignore lint/correctness/useExhaustiveDependencies: run once on mount; store setters are stable
+  }, [])
 
   const handleSaveKey = async (providerId: string, key: string) => {
     if (!window.api) throw new Error('App API not available')
@@ -57,7 +528,9 @@ export function ApiKeysSection() {
     setDynamicModels(providerId as Provider, [])
   }
 
-  const configuredCount = PROVIDERS.filter((p) => keyStatus[p.id] || keyData[p.id]?.exists).length
+  const configuredCount = PROVIDERS.filter((p) =>
+    p.requiresApiKey === false ? localStatus?.available : keyStatus[p.id] || keyData[p.id]?.exists
+  ).length
 
   return (
     <div className="space-y-8">
@@ -70,14 +543,39 @@ export function ApiKeysSection() {
           </span>
         </div>
         {PROVIDERS.map((provider) => (
-          <ApiKeyInput
-            key={provider.id}
-            provider={provider}
-            hasKey={keyData[provider.id]?.exists ?? false}
-            maskedKey={keyData[provider.id]?.masked ?? null}
-            onSave={(key) => handleSaveKey(provider.id, key)}
-            onDelete={() => handleDeleteKey(provider.id)}
-          />
+          provider.requiresApiKey === false ? (
+            <LocalAiProviderCard
+              key={provider.id}
+              status={localStatus}
+              benchmark={localBenchmark}
+              loading={localLoading}
+              benchmarking={localBenchmarking}
+              downloadingModel={downloadingModel}
+              installingOllama={installingOllama}
+              onRefresh={refreshLocalAi}
+              onBenchmark={runLocalBenchmark}
+              onDownloadModel={handleDownloadLocalModel}
+              onInstallOllama={handleInstallOllama}
+              downloadError={downloadError}
+              downloadSuccess={downloadSuccess}
+              installError={installError}
+              installSuccess={installSuccess}
+              installProgress={installProgress}
+              showRestartPrompt={showRestartPrompt}
+              onCancelInstall={handleCancelOllamaInstall}
+              onRestartApp={handleRestartApp}
+              onDismissRestartPrompt={() => setShowRestartPrompt(false)}
+            />
+          ) : (
+            <ApiKeyInput
+              key={provider.id}
+              provider={provider}
+              hasKey={keyData[provider.id]?.exists ?? false}
+              maskedKey={keyData[provider.id]?.masked ?? null}
+              onSave={(key) => handleSaveKey(provider.id, key)}
+              onDelete={() => handleDeleteKey(provider.id)}
+            />
+          )
         ))}
       </section>
 

@@ -17,6 +17,8 @@ const ALLOWED_HTTPS_HOSTS = new Set([
   'console.groq.com',
   'app.tavily.com',
   'api.search.brave.com',
+  'ollama.com',
+  'www.ollama.com',
 ])
 
 export function isAllowedExternalUrl(rawUrl: string): boolean {

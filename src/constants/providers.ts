@@ -2,11 +2,26 @@ import type { Language, Provider, ProviderConfig } from '../types'
 
 export const PROVIDERS: ProviderConfig[] = [
   {
+    id: 'local',
+    name: 'Local AI',
+    color: '#6B7280',
+    keyPrefix: '',
+    docsUrl: 'https://ollama.com/download',
+    requiresApiKey: false,
+    localEngines: ['ollama', 'lmstudio', 'llamacpp'],
+    models: [
+      { id: 'local-auto', name: 'Auto local model', description: 'Best running local model', tag: 'recommended' },
+      { id: 'qwen3:4b', name: 'Qwen3 4B', description: 'Balanced local model', tag: 'balanced' },
+      { id: 'gemma3:4b', name: 'Gemma 3 4B', description: 'Vision-capable local model', tag: 'powerful' },
+    ],
+  },
+  {
     id: 'openai',
     name: 'OpenAI GPT',
     color: '#10A37F',
     keyPrefix: 'sk-',
     docsUrl: 'https://platform.openai.com/api-keys',
+    requiresApiKey: true,
     models: [
       // ★ When adding a new OpenAI model, mark the fastest/best translation model as tag:'recommended'
       { id: 'gpt-5-mini', name: 'GPT-5 Mini', description: 'Fast & efficient', tag: 'recommended' },
@@ -20,6 +35,7 @@ export const PROVIDERS: ProviderConfig[] = [
     color: '#CC785C',
     keyPrefix: 'sk-ant-',
     docsUrl: 'https://console.anthropic.com',
+    requiresApiKey: true,
     models: [
       // ★ When adding a new Claude model, mark the fastest/best translation model as tag:'recommended'
       { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4', description: 'Balanced performance', tag: 'recommended' },
@@ -33,6 +49,7 @@ export const PROVIDERS: ProviderConfig[] = [
     color: '#4285F4',
     keyPrefix: 'AIza',
     docsUrl: 'https://aistudio.google.com/apikey',
+    requiresApiKey: true,
     models: [
       // ★ When adding a new Gemini model, mark the fastest/best translation model as tag:'recommended'
       { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Best price-performance', tag: 'recommended' },
@@ -114,7 +131,7 @@ export const DETECT_LANG_MAX_CHARS = 500
 export const DEFAULT_TTS_FALLBACK_LANG = 'en'
 
 export const DEFAULT_SETTINGS = {
-  defaultProvider: 'openai' as const,
+  defaultProvider: 'local' as const,
   defaultSourceLang: 'auto',
   defaultTargetLang: 'vi',
   /** Auto-resolved from PROVIDERS using tag:'recommended' — update tags to change defaults */

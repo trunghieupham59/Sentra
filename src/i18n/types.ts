@@ -87,6 +87,44 @@ export interface Translations {
   settings_security_windows: string
   settings_api_keys: string
   settings_configured: string
+  settings_local_ai_title: string
+  settings_local_ai_running: string
+  settings_local_ai_not_running: string
+  settings_local_ai_unavailable: string
+  settings_local_ai_model_waiting: string
+  settings_local_ai_models_found: string
+  settings_local_ai_start_runtime: string
+  settings_local_ai_benchmark: string
+  settings_local_ai_benchmarking: string
+  settings_local_ai_tier: string
+  settings_local_ai_cpu_score: string
+  settings_local_ai_memory_score: string
+  settings_local_ai_runtime_speed: string
+  settings_local_ai_runtime_latency: string
+  settings_local_ai_benchmark_duration: string
+  settings_local_ai_suggested_models: string
+  settings_local_ai_model_size: string
+  settings_local_ai_download_hint: string
+  settings_local_ai_recommended: string
+  settings_local_ai_installed: string
+  settings_local_ai_download: string
+  settings_local_ai_install_ollama: string
+  settings_local_ai_installing_ollama: string
+  settings_local_ai_install_runtime_title: string
+  settings_local_ai_install_runtime_desc: string
+  settings_local_ai_waiting_runtime: string
+  settings_local_ai_cancel_install: string
+  settings_local_ai_install_cancelled: string
+  settings_local_ai_ollama_installed: string
+  settings_local_ai_checking_runtime: string
+  settings_local_ai_restart_title: string
+  settings_local_ai_restart_desc: string
+  settings_local_ai_restart_now: string
+  settings_local_ai_restart_later: string
+  settings_local_ai_install_failed: string
+  settings_local_ai_need_ollama: string
+  settings_local_ai_downloaded: string
+  settings_local_ai_download_failed: string
   settings_get_key: string
   settings_key_saved: string
   settings_key_invalid: string

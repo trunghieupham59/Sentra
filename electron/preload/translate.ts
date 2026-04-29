@@ -9,6 +9,39 @@ export const translateSection = {
   fetchModels: (provider: string) =>
     ipcRenderer.invoke('models:fetch', provider),
 
+  // Discover a running local AI runtime (Ollama, LM Studio, llama.cpp)
+  discoverLocalAi: (force?: boolean) =>
+    ipcRenderer.invoke('local-ai:discover', force),
+
+  // Benchmark this machine and return local model recommendations
+  benchmarkLocalAi: () =>
+    ipcRenderer.invoke('local-ai:benchmark'),
+
+  // Download a supported local model through the local runtime when available
+  downloadLocalAiModel: (modelId: string) =>
+    ipcRenderer.invoke('local-ai:downloadModel', modelId),
+
+  // Install the managed local runtime through a fixed main-process installer command
+  installOllama: () =>
+    ipcRenderer.invoke('local-ai:installOllama'),
+
+  cancelOllamaInstall: () =>
+    ipcRenderer.invoke('local-ai:cancelInstallOllama'),
+
+  onLocalAiInstallProgress: (cb: (progress: {
+    status: 'running' | 'success' | 'error' | 'cancelled'
+    percent: number
+    message: string
+  }) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, progress: {
+      status: 'running' | 'success' | 'error' | 'cancelled'
+      percent: number
+      message: string
+    }) => cb(progress)
+    ipcRenderer.on('local-ai:installProgress', listener)
+    return () => ipcRenderer.removeListener('local-ai:installProgress', listener)
+  },
+
   // Verify API key (test call to provider)
   verifyKey: (provider: string, apiKey: string) =>
     ipcRenderer.invoke('translate:verify', provider, apiKey),

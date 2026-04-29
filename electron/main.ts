@@ -5,6 +5,7 @@ import { initGlobalHotkey } from './ipc/globalHotkey'
 import { registerImageTranslateHandlers } from './ipc/imageTranslate'
 import { registerKeychainHandlers } from './ipc/keychain'
 import { initLegacyAssistant, setLocalServerAccessors } from './ipc/legacyAssistant'
+import { registerLocalAiHandlers } from './ipc/localAi'
 import { getServerToken, LOCAL_SERVER_PORT, startLocalServer, stopLocalServer } from './ipc/localServer'
 import { registerModelsHandlers } from './ipc/models'
 import { registerSubtitleHandlers } from './ipc/subtitle'
@@ -208,6 +209,7 @@ app.whenReady().then(() => {
   registerImageTranslateHandlers(ipcMain)
   registerChatHandlers(ipcMain)
   registerWebSearchHandlers(ipcMain)
+  registerLocalAiHandlers(ipcMain)
 
   // Global hotkey — translate selected text in any OS application
   initGlobalHotkey(ipcMain, () => mainWindow)

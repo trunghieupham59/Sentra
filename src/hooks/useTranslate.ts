@@ -55,7 +55,7 @@ export function useTranslate() {
    * touching state — if they differ the job was cancelled and results are silently dropped.
    */
   const translateGenerationRef = useRef(0)
-  const hasKey = keyStatus[selectedProvider]
+  const hasKey = selectedProvider === 'local' || keyStatus[selectedProvider]
   const charCount = sourceText.length
 
   /**

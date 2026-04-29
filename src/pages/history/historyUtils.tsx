@@ -37,7 +37,7 @@ export function langLabel(code: string): string {
   }
 }
 
-const KNOWN_PROVIDERS: Provider[] = ['openai', 'claude', 'gemini']
+const KNOWN_PROVIDERS: Provider[] = ['local', 'openai', 'claude', 'gemini']
 
 export function ProviderBadge({ provider }: { provider: string }) {
   const p = PROVIDERS.find((x) => x.id === provider)

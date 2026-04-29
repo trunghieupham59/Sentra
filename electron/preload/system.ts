@@ -13,6 +13,9 @@ export const systemSection = {
   openExternal: (url: string) =>
     ipcRenderer.invoke('app:openExternal', url),
 
+  relaunchApp: () =>
+    ipcRenderer.invoke('app:relaunch'),
+
   // App metadata
   platform: process.platform,
   version: process.env.npm_package_version || '1.0.0',

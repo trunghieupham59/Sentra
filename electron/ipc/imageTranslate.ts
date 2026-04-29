@@ -503,6 +503,14 @@ export function registerImageTranslateHandlers(ipcMain: IpcMain) {
       return { success: false, error: 'No image data provided' }
     }
 
+    if (provider === 'local') {
+      return {
+        success: false,
+        error: 'Local image translation is not supported in this phase. Use local chat with image input when the selected model supports vision.',
+        errorCode: 'NO_VISION',
+      }
+    }
+
     // DUP-02 + DUP-03
     const apiKey = getStoredApiKey(provider)
     if (!apiKey) return noApiKeyResponse(provider)

@@ -14,7 +14,7 @@
 // ── Provider identity ──────────────────────────────────────────────────────────
 
 /** All provider IDs the app currently supports. */
-export const SUPPORTED_PROVIDERS = ['gemini', 'claude', 'openai'] as const
+export const SUPPORTED_PROVIDERS = ['gemini', 'claude', 'openai', 'local'] as const
 
 /** Union type of all supported provider IDs. */
 export type SupportedProvider = typeof SUPPORTED_PROVIDERS[number]

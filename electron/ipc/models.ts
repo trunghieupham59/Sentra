@@ -1,5 +1,6 @@
 import type { IpcMain } from 'electron'
 import { ANTHROPIC_API_BASE, ANTHROPIC_API_VERSION, GEMINI_API_BASE, GEMINI_MODELS_PAGE_SIZE } from './ipcConstants'
+import { discoverLocalAiRuntimes, getLocalAiStaticModels, isLocalProvider, type LocalAiModel } from './localAi'
 import { getStoredApiKey } from './storage'
 
 // DUP-02: Removed local `getApiKey` wrapper — call getStoredApiKey directly.
@@ -10,6 +11,14 @@ interface FetchedModel {
   id: string
   name: string
   description: string
+}
+
+function toFetchedModel(model: LocalAiModel): FetchedModel {
+  return {
+    id: model.id,
+    name: model.name,
+    description: model.description,
+  }
 }
 
 // ── HC-04: Named score constants for model ranking ────────────────────────────
@@ -181,6 +190,25 @@ async function fetchOpenAIModels(apiKey: string): Promise<FetchedModel[]> {
 
 export function registerModelsHandlers(ipcMain: IpcMain) {
   ipcMain.handle('models:fetch', async (_event, provider: string) => {
+    if (isLocalProvider(provider)) {
+      const discovery = await discoverLocalAiRuntimes(true)
+      if (!discovery.available) {
+        const models = getLocalAiStaticModels().map(toFetchedModel)
+        return {
+          success: false,
+          errorCode: 'LOCAL_RUNTIME_UNAVAILABLE',
+          error: discovery.error,
+          models,
+          recommendedModel: models[0]?.id,
+        }
+      }
+      return {
+        success: true,
+        models: discovery.models.map(toFetchedModel),
+        recommendedModel: discovery.recommendedModel,
+      }
+    }
+
     const apiKey = getStoredApiKey(provider)  // DUP-02
     if (!apiKey) {
       return { success: false, errorCode: 'NO_API_KEY', models: [] }

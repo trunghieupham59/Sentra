@@ -1,4 +1,6 @@
-export type Provider = 'gemini' | 'claude' | 'openai'
+export type Provider = 'gemini' | 'claude' | 'openai' | 'local'
+export type LocalAiEngine = 'ollama' | 'lmstudio' | 'llamacpp'
+export type LocalAiHardwareTier = 'low' | 'balanced' | 'powerful' | 'max'
 
 export type TranslationStyle = 'general' | 'formal' | 'casual' | 'business' | 'technical' | 'natural'
 
@@ -57,6 +59,8 @@ export interface ProviderConfig {
   keyPrefix: string
   docsUrl: string
   models: ModelConfig[]
+  requiresApiKey?: boolean
+  localEngines?: LocalAiEngine[]
 }
 
 export interface ModelConfig {
@@ -116,6 +120,65 @@ export interface FetchedModel {
   id: string
   name: string
   description: string
+  downloadModel?: string
+  recommendedTier?: LocalAiHardwareTier
+  installed?: boolean
+  supportsVision?: boolean
+  estimatedSizeGb?: number
+}
+
+export interface LocalAiHardwareProfile {
+  platform: string
+  arch: string
+  cpuCount: number
+  totalMemoryGb: number
+  tier: LocalAiHardwareTier
+}
+
+export interface LocalAiDiscoveryResult {
+  success: boolean
+  available: boolean
+  engine?: LocalAiEngine
+  endpoint?: string
+  models: FetchedModel[]
+  suggestedModels: FetchedModel[]
+  recommendedModel?: string
+  hardware: LocalAiHardwareProfile
+  error?: string
+}
+
+export interface LocalAiBenchmarkResult {
+  hardware: LocalAiHardwareProfile
+  suggestedModels: FetchedModel[]
+  recommendedModel?: string
+  metrics?: {
+    cpuScore: number
+    memoryScore: number
+    combinedScore: number
+    durationMs: number
+    runtimeModel?: string
+    runtimeLatencyMs?: number
+    runtimeTokensPerSecond?: number
+  }
+}
+
+export interface LocalAiDownloadResult {
+  success: boolean
+  model: string
+  error?: string
+}
+
+export interface LocalAiInstallResult {
+  success: boolean
+  error?: string
+  output?: string
+  cancelled?: boolean
+}
+
+export interface LocalAiInstallProgress {
+  status: 'running' | 'success' | 'error' | 'cancelled'
+  percent: number
+  message: string
 }
 
 export interface TranscribeResult {
@@ -321,6 +384,12 @@ export interface WindowApi {
     hasKey: (provider: string) => Promise<{ exists: boolean }>
   }
   fetchModels: (provider: string) => Promise<FetchModelsResult>
+  discoverLocalAi: (force?: boolean) => Promise<LocalAiDiscoveryResult>
+  benchmarkLocalAi: () => Promise<LocalAiBenchmarkResult>
+  downloadLocalAiModel: (modelId: string) => Promise<LocalAiDownloadResult>
+  installOllama: () => Promise<LocalAiInstallResult>
+  cancelOllamaInstall: () => Promise<{ success: boolean }>
+  onLocalAiInstallProgress: (cb: (progress: LocalAiInstallProgress) => void) => () => void
   verifyKey: (provider: string, apiKey: string) => Promise<VerifyResult>
   translate: (params: TranslateParams) => Promise<TranslateResult>
   rewriteText: (params: {
@@ -426,6 +495,7 @@ export interface WindowApi {
   onChatStreamEvent: (requestId: string, cb: (event: ChatStreamEvent) => void) => () => void
   checkScreenPermission: () => Promise<string>
   openExternal: (url: string) => Promise<void>
+  relaunchApp: () => Promise<void>
   /**
    * Pre-flight STT availability check — call before starting a Live Translate session.
    * Checks which STT keys are configured (instant, no API call, no decryption) and

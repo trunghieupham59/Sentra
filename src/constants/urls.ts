@@ -22,3 +22,6 @@ export const ELEVENLABS_DOCS_URL = 'https://elevenlabs.io'
 
 /** Groq Console — used in SttSection for the API key link. */
 export const GROQ_CONSOLE_URL = 'https://console.groq.com'
+
+/** Ollama download page — used by Local AI model install flow. */
+export const OLLAMA_DOWNLOAD_URL = 'https://ollama.com/download'

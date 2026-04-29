@@ -37,9 +37,9 @@ beforeEach(() => {
     useAppStore.setState({
       chatSessions: [],
       activeChatSessionId: null,
-      keyStatus: { gemini: false, claude: false, openai: false },
+      keyStatus: { gemini: false, claude: false, openai: false, local: false },
       selectedProvider: 'gemini',
-      selectedModels: { gemini: 'gemini-2.0-flash', claude: 'claude-3-5-haiku-20241022', openai: 'gpt-4o' },
+      selectedModels: { gemini: 'gemini-2.0-flash', claude: 'claude-3-5-haiku-20241022', openai: 'gpt-4o', local: 'local-auto' },
       chatSystemPrompt: '',
       systemPromptPresets: [],
     })
@@ -84,7 +84,7 @@ describe('ChatPage', () => {
   it('creates a new chat session when "New Chat" is clicked with a key', () => {
     // Set a key so session creation is accessible
     act(() => {
-      useAppStore.setState({ keyStatus: { gemini: true, claude: false, openai: false } })
+      useAppStore.setState({ keyStatus: { gemini: true, claude: false, openai: false, local: false } })
     })
     render(<ChatPage />)
 
@@ -95,7 +95,7 @@ describe('ChatPage', () => {
   it('starts a new chat with Cmd+N on macOS', () => {
     let sessionId = ''
     act(() => {
-      useAppStore.setState({ keyStatus: { gemini: true, claude: false, openai: false } })
+      useAppStore.setState({ keyStatus: { gemini: true, claude: false, openai: false, local: false } })
       sessionId = useAppStore.getState().createChatSession('gemini', 'gemini-2.0-flash')
     })
 
@@ -126,7 +126,7 @@ describe('ChatPage', () => {
 
   it('streams assistant text while sending a message', async () => {
     act(() => {
-      useAppStore.setState({ keyStatus: { gemini: true, claude: false, openai: false } })
+      useAppStore.setState({ keyStatus: { gemini: true, claude: false, openai: false, local: false } })
     })
     const stream = mockStreamingChat()
     render(<ChatPage />)
@@ -156,7 +156,7 @@ describe('ChatPage', () => {
   it('streams text into the last assistant message when regenerating', async () => {
     let sessionId = ''
     act(() => {
-      useAppStore.setState({ keyStatus: { gemini: true, claude: false, openai: false } })
+      useAppStore.setState({ keyStatus: { gemini: true, claude: false, openai: false, local: false } })
       sessionId = useAppStore.getState().createChatSession('gemini', 'gemini-2.0-flash')
       useAppStore.getState().addChatMessage(sessionId, {
         id: 'msg-user',
@@ -191,7 +191,7 @@ describe('ChatPage', () => {
 
   it('shows stream errors and stops loading', async () => {
     act(() => {
-      useAppStore.setState({ keyStatus: { gemini: true, claude: false, openai: false } })
+      useAppStore.setState({ keyStatus: { gemini: true, claude: false, openai: false, local: false } })
     })
     vi.mocked(window.api.chatStream).mockResolvedValue({ success: false, error: 'Stream failed' })
 
@@ -208,7 +208,7 @@ describe('ChatPage', () => {
 
   it('falls back to non-streaming chat when the preload stream API is unavailable', async () => {
     act(() => {
-      useAppStore.setState({ keyStatus: { gemini: true, claude: false, openai: false } })
+      useAppStore.setState({ keyStatus: { gemini: true, claude: false, openai: false, local: false } })
     })
     const originalChatStream = window.api.chatStream
     const originalOnChatStreamEvent = window.api.onChatStreamEvent

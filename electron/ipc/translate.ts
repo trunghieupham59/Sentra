@@ -1,6 +1,7 @@
 import type { IpcMain } from 'electron'
 import { classifyProviderError, noApiKeyResponse } from './errorUtils'
 import { DETECT_LANG_MAX_CHARS } from './ipcConstants'
+import { isLocalProvider, LOCAL_AI_PLACEHOLDER_KEY } from './localAi'
 import { isValidProvider, unknownProviderError } from './providers/types'
 import { withRetry } from './retry'
 import { getStoredApiKey } from './storage'
@@ -31,9 +32,13 @@ export {
   withTimeout,
 }
 
+function getProviderCredential(provider: string) {
+  return isLocalProvider(provider) ? LOCAL_AI_PLACEHOLDER_KEY : getStoredApiKey(provider)
+}
+
 export function registerTranslateHandlers(ipcMain: IpcMain) {
   ipcMain.handle('translate:verify', async (_event, provider: string, apiKey: string) => {
-    if (!apiKey?.trim()) {
+    if (!isLocalProvider(provider) && !apiKey?.trim()) {
       return { success: false, error: 'API key is empty' }
     }
     if (!isValidProvider(provider)) return unknownProviderError(provider)
@@ -41,7 +46,7 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
     try {
       const verifyFn = VERIFY_PROVIDERS[provider]
       if (!verifyFn) return unknownProviderError(provider)
-      await verifyFn(apiKey)
+      await verifyFn(isLocalProvider(provider) ? LOCAL_AI_PLACEHOLDER_KEY : apiKey)
       return { success: true }
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error)
@@ -68,7 +73,7 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
     if (!sourceText.trim()) return { success: false, error: 'Source text is empty' }
     if (!model?.trim()) return { success: false, error: 'Model is required' }
 
-    const apiKey = getStoredApiKey(provider)
+    const apiKey = getProviderCredential(provider)
     if (!apiKey) return noApiKeyResponse(provider)
 
     try {
@@ -102,7 +107,7 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
     if (!text.trim()) return { success: false, error: 'Text is empty' }
     if (!model?.trim()) return { success: false, error: 'Model is required' }
 
-    const apiKey = getStoredApiKey(provider)
+    const apiKey = getProviderCredential(provider)
     if (!apiKey) return noApiKeyResponse(provider)
 
     try {
@@ -128,7 +133,7 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
     const { provider, model, text } = parsed.value
     if (!text.trim()) return { success: false, error: 'Text is empty' }
 
-    const apiKey = getStoredApiKey(provider)
+    const apiKey = getProviderCredential(provider)
     if (!apiKey) return noApiKeyResponse(provider)
 
     const snippet = text.slice(0, DETECT_LANG_MAX_CHARS)
