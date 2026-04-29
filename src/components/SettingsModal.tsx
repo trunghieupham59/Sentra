@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
-import { SettingsPage } from '../pages/SettingsPage'
+import { lazy, Suspense, useEffect } from 'react'
 import { useAppStore, useT } from '../store/useAppStore'
 import { XIcon } from './ui/icons'
+
+const SettingsPage = lazy(() => import('../pages/SettingsPage').then(module => ({ default: module.SettingsPage })))
 
 export function SettingsModal() {
   const { settingsOpen, closeSettings } = useAppStore()
@@ -54,7 +55,9 @@ export function SettingsModal() {
 
         {/* Scrollable content */}
         <div className="flex-1 overflow-auto">
-          <SettingsPage />
+          <Suspense fallback={<div className="h-full bg-white dark:bg-gray-950" aria-hidden="true" />}>
+            <SettingsPage />
+          </Suspense>
         </div>
       </div>
     </div>

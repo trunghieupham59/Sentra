@@ -5,7 +5,6 @@ export const PROVIDERS: ProviderConfig[] = [
     id: 'openai',
     name: 'OpenAI GPT',
     color: '#10A37F',
-    emoji: '🟢',
     keyPrefix: 'sk-',
     docsUrl: 'https://platform.openai.com/api-keys',
     models: [
@@ -19,7 +18,6 @@ export const PROVIDERS: ProviderConfig[] = [
     id: 'claude',
     name: 'Anthropic Claude',
     color: '#CC785C',
-    emoji: '🟣',
     keyPrefix: 'sk-ant-',
     docsUrl: 'https://console.anthropic.com',
     models: [
@@ -33,7 +31,6 @@ export const PROVIDERS: ProviderConfig[] = [
     id: 'gemini',
     name: 'Google Gemini',
     color: '#4285F4',
-    emoji: '🟡',
     keyPrefix: 'AIza',
     docsUrl: 'https://aistudio.google.com/apikey',
     models: [

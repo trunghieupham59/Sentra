@@ -263,7 +263,7 @@ export function ChatPage() {
           model: selectedModels[selectedProvider],
           question: text,
           callbacks: {
-            onStepStart: (label, icon) => {
+            onStepStart: (label) => {
               const msgId = `msg-${Date.now()}-dr${Math.random().toString(36).slice(2, 6)}`
               addChatMessage(sessionId, {
                 id: msgId,
@@ -272,7 +272,7 @@ export function ChatPage() {
                 timestamp: Date.now(),
                 isLoading: true,
                 isResearchStep: true,
-                researchStepLabel: `${icon} ${label}`,
+                researchStepLabel: label,
               })
               return msgId
             },

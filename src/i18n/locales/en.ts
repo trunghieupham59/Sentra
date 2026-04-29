@@ -471,7 +471,7 @@ const en: Translations = {
   live_screen_permission_title: 'Screen Recording Permission Required',
   chat_thinking_label: 'Thinking',
   chat_deep_research_summarizing: 'Synthesizing results…',
-  chat_deep_research_badge: '💡 Deep Research',
+  chat_deep_research_badge: 'Deep Research',
   live_error_stt_failed: 'STT failed — retrying next chunk',
   live_error_system_audio_unavailable: 'System audio not available — please check "Share audio" in the screen sharing dialog, then try again.',
   live_error_screen_permission_denied: 'Screen Recording permission denied. Enable it in System Settings → Privacy → Screen Recording.',

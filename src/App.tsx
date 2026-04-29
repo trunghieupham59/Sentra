@@ -1,15 +1,16 @@
-import { useCallback, useEffect, useState } from 'react'
-import { AIChatPopup } from './components/AIChatPopup'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { SettingsModal } from './components/SettingsModal'
 import { Sidebar } from './components/Sidebar'
 import { PROVIDERS } from './constants/providers'
-import { ChatPage } from './pages/ChatPage'
-import { HistoryPage } from './pages/HistoryPage'
-import { LiveTranslatePage } from './pages/LiveTranslatePage'
-import { TranslatePage } from './pages/TranslatePage'
 import { useAppStore } from './store/useAppStore'
 import type { Provider } from './types'
 import { detectSystemLocale } from './utils/locale'
+
+const TranslatePage = lazy(() => import('./pages/TranslatePage').then(module => ({ default: module.TranslatePage })))
+const LiveTranslatePage = lazy(() => import('./pages/LiveTranslatePage').then(module => ({ default: module.LiveTranslatePage })))
+const ChatPage = lazy(() => import('./pages/ChatPage').then(module => ({ default: module.ChatPage })))
+const HistoryPage = lazy(() => import('./pages/HistoryPage').then(module => ({ default: module.HistoryPage })))
+const AIChatPopup = lazy(() => import('./components/AIChatPopup').then(module => ({ default: module.AIChatPopup })))
 
 const FONT_SIZE_MAP = {
   small:  '13px',
@@ -19,6 +20,10 @@ const FONT_SIZE_MAP = {
 
 /** Height (px) of the macOS traffic-light drag region at the top of the window. */
 const MACOS_TITLEBAR_HEIGHT_PX = 40
+
+function PageFallback() {
+  return <div className="h-full bg-white dark:bg-gray-900" aria-hidden="true" />
+}
 
 function App() {
   const {
@@ -101,15 +106,17 @@ function App() {
 
         {/* Main content */}
         <main className="flex-1 overflow-hidden">
-          {activePage === 'translate' ? (
-            <TranslatePage />
-          ) : activePage === 'live' ? (
-            <LiveTranslatePage />
-          ) : activePage === 'chat' ? (
-            <ChatPage />
-          ) : (
-            <HistoryPage />
-          )}
+          <Suspense fallback={<PageFallback />}>
+            {activePage === 'translate' ? (
+              <TranslatePage />
+            ) : activePage === 'live' ? (
+              <LiveTranslatePage />
+            ) : activePage === 'chat' ? (
+              <ChatPage />
+            ) : (
+              <HistoryPage />
+            )}
+          </Suspense>
         </main>
       </div>
 
@@ -117,7 +124,11 @@ function App() {
       <SettingsModal />
 
       {/* AI Chat quick-ask popup — triggered by global hotkey */}
-      <AIChatPopup open={aiChatPopupOpen} onClose={handleCloseAiChatPopup} />
+      {aiChatPopupOpen && (
+        <Suspense fallback={null}>
+          <AIChatPopup open={aiChatPopupOpen} onClose={handleCloseAiChatPopup} />
+        </Suspense>
+      )}
     </div>
   )
 }

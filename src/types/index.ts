@@ -54,7 +54,6 @@ export interface ProviderConfig {
   id: Provider
   name: string
   color: string
-  emoji: string
   keyPrefix: string
   docsUrl: string
   models: ModelConfig[]
@@ -225,7 +224,7 @@ export interface ChatMessage {
   error?: string
   /** Deep Research mode — intermediate step bubble (collapsible, gray) */
   isResearchStep?: boolean
-  /** Label shown in the research step header, e.g. "🔍 Phân tích câu hỏi" */
+  /** Label shown in the research step header, e.g. "Phân tích câu hỏi" */
   researchStepLabel?: string
   /** Deep Research mode — final synthesis bubble (highlighted, indigo) */
   isResearchFinal?: boolean

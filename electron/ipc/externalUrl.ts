@@ -1,4 +1,10 @@
 const GITHUB_RELEASES_PATH = '/trunghieupham59/viezan/releases'
+const MACOS_SCREEN_RECORDING_PREFS =
+  'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'
+
+const ALLOWED_SYSTEM_PREFERENCE_URLS = new Set([
+  MACOS_SCREEN_RECORDING_PREFS,
+])
 
 const ALLOWED_HTTPS_HOSTS = new Set([
   'platform.openai.com',
@@ -23,14 +29,16 @@ export function isAllowedExternalUrl(rawUrl: string): boolean {
     return false
   }
 
-  if (url.protocol === 'x-apple.systempreferences:') return true
+  if (url.protocol === 'x-apple.systempreferences:') {
+    return ALLOWED_SYSTEM_PREFERENCE_URLS.has(rawUrl.trim())
+  }
   if (url.protocol !== 'https:') return false
 
   const host = url.hostname.toLowerCase()
   if (host === 'github.com') {
-    return url.pathname.toLowerCase().startsWith(GITHUB_RELEASES_PATH)
+    const pathname = url.pathname.toLowerCase()
+    return pathname === GITHUB_RELEASES_PATH || pathname.startsWith(`${GITHUB_RELEASES_PATH}/`)
   }
 
   return ALLOWED_HTTPS_HOSTS.has(host)
 }
-

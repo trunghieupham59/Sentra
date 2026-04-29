@@ -471,7 +471,7 @@ const ja: Translations = {
   live_screen_permission_title: '画面録画権限が必要',
   chat_thinking_label: '考え中',
   chat_deep_research_summarizing: '結果を統合中…',
-  chat_deep_research_badge: '💡 Deep Research',
+  chat_deep_research_badge: 'Deep Research',
   live_error_stt_failed: 'STT失敗 — 次のチャンクで再試行中',
   live_error_system_audio_unavailable: 'システムオーディオが利用できません — 画面共有ダイアログで「オーディオを共有」を有効にしてから再試行してください。',
   live_error_screen_permission_denied: '画面録画の権限がありません。システム設定 → プライバシーとセキュリティ → 画面録画で有効にしてください。',
