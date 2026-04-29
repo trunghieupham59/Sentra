@@ -45,38 +45,38 @@
 
 | Platform | Installer |
 |----------|-----------|
-|  macOS (Apple Silicon) | [Viezan-1.1.2-arm64.dmg](https://github.com/trunghieupham59/Viezan/releases/download/v1.1.2/Viezan-1.1.2-arm64.dmg) |
-|  macOS (Intel x64) | [Viezan-1.1.2-x64.dmg](https://github.com/trunghieupham59/Viezan/releases/download/v1.1.2/Viezan-1.1.2-x64.dmg) |
-| ⊞ Windows (x64) | [Viezan-Setup-1.1.2-x64.exe](https://github.com/trunghieupham59/Viezan/releases/download/v1.1.2/Viezan-Setup-1.1.2-x64.exe) |
-| 🐧 Linux (x64) | [Viezan-1.1.2-x64.AppImage](https://github.com/trunghieupham59/Viezan/releases/download/v1.1.2/Viezan-1.1.2-x64.AppImage) |
+|  macOS (Apple Silicon) | [Download v1.1.5 ARM64 DMG](https://github.com/trunghieupham59/Viezan/releases/tag/v1.1.5) |
+|  macOS (Intel x64) | [Download v1.1.5 x64 DMG](https://github.com/trunghieupham59/Viezan/releases/tag/v1.1.5) |
+| ⊞ Windows (x64) | [Download v1.1.5 x64 installer](https://github.com/trunghieupham59/Viezan/releases/tag/v1.1.5) |
+| 🐧 Linux (x64) | [Download v1.1.5 AppImage](https://github.com/trunghieupham59/Viezan/releases/tag/v1.1.5) |
+| 🌐 Chrome Extension | [Download ZIP from v1.1.5 release](https://github.com/trunghieupham59/Viezan/releases/tag/v1.1.5) |
 
 > View all releases: [github.com/trunghieupham59/Viezan/releases](https://github.com/trunghieupham59/Viezan/releases)
 
 ---
 
-## 🆕 What's New in v1.1.2
+## 🆕 What's New in v1.1.5
 
 ### ✨ New Features
 
 | Feature | Details |
 |---------|---------|
-| ⚙️ **Settings Modal** | Settings redesigned from a dedicated page into a clean popup overlay — access instantly from any tab without losing context |
-| 🔤 **Phonetic Mode** | New phonetic transcription mode in Translate — get pure romanization/phonetics instead of a full translation |
-| 🔍 **Multi-provider Web Search** | AI Chat now supports multi-provider web search (Brave, DuckDuckGo, Google fallback) with automatic failover |
-| 🎙️ **Groq STT Fallback** | Groq added as a third Speech-to-Text provider fallback after Whisper, improving transcription reliability |
-| 🧩 **Chrome Extension Redesign** | Wider two-column popup layout, Alt+T global shortcut for selected-text translation, platform-aware keyboard hints |
-| 📡 **Subtitle Locale Support** | Floating subtitle window now respects the app UI language setting |
+| 🧠 **Local AI Provider** | Run translation, rewrite and chat through local OpenAI-compatible runtimes without an API key |
+| 🧰 **Ollama Setup Flow** | Detects Ollama, LM Studio and llama.cpp; can install/start Ollama and refresh local runtime status from Settings |
+| 📊 **Hardware Benchmarking** | Measures CPU/RAM tier, recommends local models, and resolves `local-auto` to the best available local model |
+| ⬇️ **Model Download Progress** | Pull curated Ollama models from Viezan with streamed progress, size labels, installed badges and uninstall actions |
+| 🧹 **History Bulk Actions** | Select and delete multiple Translate, Chat and Live history entries in one flow |
+| 🧩 **Chrome Extension Selection UI** | Redesigned selected-text UI with translation style support and cleaner browser interactions |
 
 ### 🛠️ Improvements & Fixes
 
-- **Live Translate UI** — Language selectors extracted into reusable components; cleaner, more responsive layout
-- **Translation Styles** — Style options clarified and simplified for better discoverability
-- **Typography System** — Unified desktop typography across all pages for consistent reading experience
-- **Single-instance Guard** — App now enforces single-instance + auto-retries local server port binding on conflict
-- **Web Search Chat UI** — Web search provider selection redesigned as a card-based layout in Chat settings
-- **VoiceRecorder Fix** — Fixed retry budget drain caused by silence-timeout events
-- **Extension Tooltip Fix** — Excessive newlines in tooltip panels normalized; line breaks preserved correctly
-- **Chrome Extension CI** — Extension now released as `.zip` for easy manual install (replaced `.crx`)
+- **Provider Defaults** — Local AI is now the default provider path, with cloud providers still available as BYOK options
+- **Streaming Chat Reliability** — Added streaming handler coverage and provider-specific output token guards
+- **IPC Validation** — Chat and translation payloads now have stricter Main Process validation before provider dispatch
+- **STT Reliability** — Hedged Whisper/Gemini STT routing and smarter provider banning reduce live transcription stalls
+- **UI Polish** — Responsive sidebar labels, updated blue theme, normalized surface styles, border radii and z-index layering
+- **Build Pipeline** — macOS release runners pinned to avoid the macOS 15 DMG `hdiutil` issue
+- **Tooling** — Biome upgraded to 2.4.13 and repository lint fixes applied
 
 ---
 
@@ -84,18 +84,19 @@
 
 | Feature | Description |
 |---------|-------------|
-| 🤖 **Multiple AI Providers** | Google Gemini, Anthropic Claude, OpenAI GPT — switch anytime |
+| 🤖 **Multiple AI Providers** | Local AI, Google Gemini, Anthropic Claude, OpenAI GPT — switch anytime |
+| 🧠 **Local AI** | Detect Ollama, LM Studio or llama.cpp; benchmark hardware; download curated Ollama models; run without cloud API keys |
 | 🔤 **7 Translation Styles** | Neutral, Friendly, Professional, Business, Slack, Polite, Technical — fits every context |
 | 📢 **Phonetic Mode** | Pure phonetic/romanization transcription mode for any language |
 | ⚡ **Live Translation** | Real-time translation & floating subtitles from microphone or system audio, with customizable color/size/opacity |
 | 🖼️ **Image Translation (AI Vision)** | Drag & drop or paste an image — AI extracts and translates all text |
-| 🎙️ **Voice Input** | Supports Web Speech API, OpenAI Whisper, and Groq as fallback |
-| 🔊 **Text-to-Speech** | 6 high-quality OpenAI voices: Alloy, Echo, Fable, Onyx, Nova, Shimmer |
+| 🎙️ **Voice Input** | Supports Web Speech API, OpenAI Whisper, Gemini STT, and Groq as fallback |
+| 🔊 **Text-to-Speech** | OpenAI, Gemini, Edge TTS and ElevenLabs fallback chain |
 | 💬 **AI Chat** | Full chat with image attachment, voice input, System Prompt with saved presets |
-| 🔍 **Web Search in Chat** | Multi-provider web search (Brave / DuckDuckGo / Google) with auto-fallback |
+| 🔍 **Web Search in Chat** | Multi-provider web search with automatic failover |
 | 🇯🇵 **Japanese Furigana** | Automatically renders furigana on Japanese translation output |
 | 📜 **History** | Separate history for Translate, Chat and Live sessions — search & reuse anytime |
-| 🌐 **Chrome Extension** | Translate directly in the browser (floating button, popup, right-click menu, Alt+T shortcut) |
+| 🌐 **Chrome Extension** | Translate directly in the browser (floating button, popup, right-click menu, Alt+T shortcut, ZIP release package) |
 | 🔖 **Bookmarklet** | Quick translate on any browser without an extension |
 | ⌨️ **Global Hotkey** | Activate Viezan from any application |
 | 🌍 **19 Languages** | Vietnamese, English, Japanese, Korean, Chinese, French, German, Spanish, and more |
@@ -138,6 +139,7 @@ Get your API keys from the respective dashboards:
 
 | Provider | Dashboard |
 |----------|-----------|
+| Local AI | No key required — install/start Ollama, LM Studio or llama.cpp locally |
 | Google Gemini | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
 | Anthropic Claude | [console.anthropic.com](https://console.anthropic.com) |
 | OpenAI GPT | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
@@ -227,8 +229,9 @@ Viezan/
 │   └── ipc/                   # IPC handlers
 │       ├── keychain.ts         # Secure API key storage
 │       ├── translate.ts        # Text translation
+│       ├── localAi.ts          # Local AI runtime discovery, benchmark and model downloads
 │       ├── imageTranslate.ts   # Image/vision translation
-│       ├── transcribe.ts       # Speech-to-text (Whisper / Groq)
+│       ├── transcribe.ts       # Speech-to-text (Whisper / Gemini / Groq)
 │       ├── tts.ts              # Text-to-speech
 │       ├── chat.ts             # AI chat
 │       ├── subtitle.ts         # Live translation subtitles
@@ -269,6 +272,7 @@ Viezan/
 | [Electron safeStorage](https://www.electronjs.org/docs/latest/api/safe-storage) | built-in | OS-level encrypted key storage |
 | [electron-builder](https://www.electron.build/) | v26 | App packaging & distribution |
 | [electron-updater](https://www.electron.build/auto-update) | v6 | Auto-update |
+| [Ollama / LM Studio / llama.cpp](https://ollama.com/) | local | Optional local AI runtime |
 
 ---
 
