@@ -113,7 +113,7 @@
 
 Download the installer for your platform from the [Download](#-download) section above and run it.
 
-> **macOS:** If you see an "unidentified developer" warning, go to **System Preferences → Security & Privacy** and click **Open Anyway**.
+> **macOS unsigned build:** Viezan is not signed/notarized yet, so macOS Gatekeeper may show **"Viezan" cannot be opened** on first launch. Open **System Settings → Privacy & Security** and click **Open Anyway** for Viezan. If you trust the downloaded app and macOS still blocks it, run `xattr -dr com.apple.quarantine /Applications/Viezan.app` after dragging it to Applications, then open Viezan again.
 
 ### 2. Add your API Key
 
