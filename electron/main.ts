@@ -1,11 +1,12 @@
 import path from 'node:path'
 import { app, BrowserWindow, desktopCapturer, ipcMain, nativeImage, nativeTheme, screen, shell } from 'electron'
 import { registerChatHandlers } from './ipc/chat'
+import { isAllowedExternalUrl } from './ipc/externalUrl'
 import { initGlobalHotkey } from './ipc/globalHotkey'
 import { registerImageTranslateHandlers } from './ipc/imageTranslate'
 import { registerKeychainHandlers } from './ipc/keychain'
 import { initLegacyAssistant, setLocalServerAccessors } from './ipc/legacyAssistant'
-import { registerLocalAiHandlers } from './ipc/localAi'
+import { registerLocalAiHandlers, stopManagedLocalAiRuntime } from './ipc/localAi'
 import { getServerToken, LOCAL_SERVER_PORT, startLocalServer, stopLocalServer } from './ipc/localServer'
 import { registerModelsHandlers } from './ipc/models'
 import { registerSubtitleHandlers } from './ipc/subtitle'
@@ -15,7 +16,6 @@ import { registerTranslateHandlers } from './ipc/translate'
 import { registerTtsHandlers } from './ipc/tts'
 import { registerUpdaterHandlers } from './ipc/updater'
 import { registerWebSearchHandlers } from './ipc/webSearch'
-import { isAllowedExternalUrl } from './ipc/externalUrl'
 
 // Allow audio autoplay after async operations (TTS API calls lose user-gesture context)
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
@@ -242,6 +242,7 @@ app.on('will-quit', () => {
   const { globalShortcut } = require('electron')
   globalShortcut.unregisterAll()
   stopLocalServer()
+  stopManagedLocalAiRuntime()
 })
 
 app.on('window-all-closed', () => {

@@ -1,5 +1,7 @@
+import { type ChildProcess, spawn } from 'node:child_process'
+import fs from 'node:fs'
 import os from 'node:os'
-import { spawn, type ChildProcess } from 'node:child_process'
+import path from 'node:path'
 import { performance } from 'node:perf_hooks'
 import type { IpcMain, WebContents } from 'electron'
 
@@ -52,6 +54,21 @@ export interface LocalAiDownloadResult {
   error?: string
 }
 
+export interface LocalAiModelActionResult {
+  success: boolean
+  model: string
+  error?: string
+}
+
+export interface LocalAiModelDownloadProgress {
+  model: string
+  status: 'running' | 'success' | 'error'
+  percent: number
+  message: string
+  completedBytes?: number
+  totalBytes?: number
+}
+
 export interface LocalAiInstallResult {
   success: boolean
   error?: string
@@ -90,6 +107,14 @@ interface OpenAiChatCompletion {
   }>
 }
 
+interface OllamaPullProgress {
+  status?: string
+  digest?: string
+  total?: number
+  completed?: number
+  error?: string
+}
+
 interface OpenAiModelList {
   data?: Array<{
     id?: string
@@ -112,6 +137,8 @@ const LOCAL_AI_PROBE_TIMEOUT_MS = 1200
 const LOCAL_AI_CACHE_TTL_MS = 5000
 const LOCAL_AI_INSTALL_TIMEOUT_MS = 10 * 60 * 1000
 const LOCAL_AI_RUNTIME_BENCHMARK_TIMEOUT_MS = 15_000
+const LOCAL_AI_RUNTIME_START_TIMEOUT_MS = 18_000
+const LOCAL_AI_RUNTIME_START_POLL_MS = 600
 const OLLAMA_INSTALL_COMMAND = 'curl -fsSL https://ollama.com/install.sh | sh'
 const OLLAMA_INSTALL_COMMAND_NO_START = 'curl -fsSL https://ollama.com/install.sh | OLLAMA_NO_START=1 sh'
 
@@ -126,6 +153,8 @@ let activeOllamaInstall: {
   child: ChildProcess
   cancel: () => void
 } | null = null
+let activeOllamaStart: Promise<LocalAiDiscoveryResult> | null = null
+let managedOllamaProcess: ChildProcess | null = null
 
 export function isLocalProvider(provider: string) {
   return provider === LOCAL_PROVIDER_ID
@@ -474,6 +503,10 @@ function markInstalledSuggestions(suggestedModels: LocalAiModel[], installedMode
   }))
 }
 
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 async function fetchJsonWithTimeout(url: string, timeoutMs = LOCAL_AI_PROBE_TIMEOUT_MS): Promise<unknown> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
@@ -534,8 +567,176 @@ export async function discoverLocalAiRuntimes(force = false): Promise<LocalAiDis
   return result
 }
 
+function getOllamaRuntimeCandidate() {
+  return LOCAL_AI_RUNTIME_CANDIDATES.find((candidate) => candidate.engine === 'ollama') ?? LOCAL_AI_RUNTIME_CANDIDATES[0]
+}
+
+function createUnavailableLocalAiResult(error: string): LocalAiDiscoveryResult {
+  return {
+    success: false,
+    available: false,
+    models: [],
+    suggestedModels: getLocalAiModelCatalog(getLocalAiHardwareProfile()),
+    hardware: getLocalAiHardwareProfile(),
+    error,
+  }
+}
+
+function getBundledOllamaExecutablePath() {
+  const resourcesPath = process.resourcesPath
+  const executable = process.platform === 'win32' ? 'ollama.exe' : 'ollama'
+  const platformDir = process.platform === 'darwin'
+    ? 'macos'
+    : process.platform === 'win32'
+      ? 'windows'
+      : 'linux'
+  const candidates = [
+    path.join(resourcesPath, 'local-ai', 'ollama', platformDir, process.arch, executable),
+    path.join(resourcesPath, 'local-ai', 'ollama', platformDir, executable),
+    path.join(resourcesPath, 'local-ai', 'ollama', executable),
+  ]
+  return candidates.find((candidate) => fs.existsSync(candidate)) ?? null
+}
+
+function startDetachedProcess(command: string, args: string[], options: { env?: NodeJS.ProcessEnv; trackManaged?: boolean } = {}) {
+  return new Promise<boolean>((resolve) => {
+    let settled = false
+    const child = spawn(command, args, {
+      detached: true,
+      env: options.env,
+      stdio: 'ignore',
+    })
+    const settle = (started: boolean) => {
+      if (settled) return
+      settled = true
+      if (started) {
+        if (options.trackManaged) managedOllamaProcess = child
+        child.unref()
+      }
+      resolve(started)
+    }
+
+    child.once('error', () => settle(false))
+    child.once('spawn', () => settle(true))
+  })
+}
+
+async function waitForOllamaRuntime(timeoutMs = LOCAL_AI_RUNTIME_START_TIMEOUT_MS) {
+  const candidate = getOllamaRuntimeCandidate()
+  const expiresAt = Date.now() + timeoutMs
+  while (Date.now() < expiresAt) {
+    const result = await probeLocalAiRuntime(candidate)
+    if (result?.available) {
+      discoveryCache = { expiresAt: Date.now() + LOCAL_AI_CACHE_TTL_MS, result }
+      return result
+    }
+    await delay(LOCAL_AI_RUNTIME_START_POLL_MS)
+  }
+  return null
+}
+
+async function startBundledOllamaRuntime() {
+  const executablePath = getBundledOllamaExecutablePath()
+  if (!executablePath) return null
+
+  const started = await startDetachedProcess(executablePath, ['serve'], {
+    env: { ...process.env, OLLAMA_HOST: '127.0.0.1:11434' },
+    trackManaged: true,
+  })
+  if (!started) return null
+  return waitForOllamaRuntime()
+}
+
+function openMacOllamaApp() {
+  return new Promise<boolean>((resolve) => {
+    let settled = false
+    const child = spawn('/usr/bin/open', ['-g', '-a', 'Ollama', '--args', 'hidden'], {
+      stdio: 'ignore',
+    })
+    const settle = (opened: boolean) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      resolve(opened)
+    }
+    const timer = setTimeout(() => settle(true), 1500)
+
+    child.once('error', () => settle(false))
+    child.once('close', (code) => settle(code === 0))
+  })
+}
+
+async function startInstalledOllamaApp() {
+  if (process.platform !== 'darwin') return null
+
+  const opened = await openMacOllamaApp()
+  if (!opened) return null
+  return waitForOllamaRuntime()
+}
+
+async function startOllamaCliRuntime() {
+  const executable = process.platform === 'win32' ? 'ollama.exe' : 'ollama'
+  const started = await startDetachedProcess(executable, ['serve'], {
+    env: { ...process.env, OLLAMA_HOST: '127.0.0.1:11434' },
+    trackManaged: true,
+  })
+  if (!started) return null
+  return waitForOllamaRuntime()
+}
+
+async function startManagedOllamaRuntime(): Promise<LocalAiDiscoveryResult> {
+  const existing = await probeLocalAiRuntime(getOllamaRuntimeCandidate())
+  if (existing?.available) return existing
+
+  const bundled = await startBundledOllamaRuntime()
+  if (bundled?.available) return bundled
+
+  const appRuntime = await startInstalledOllamaApp()
+  if (appRuntime?.available) return appRuntime
+
+  const cliRuntime = await startOllamaCliRuntime()
+  if (cliRuntime?.available) return cliRuntime
+
+  return createUnavailableLocalAiResult('No local AI runtime found. Install Ollama or start LM Studio/llama.cpp and refresh.')
+}
+
+async function ensureOllamaRuntime(): Promise<LocalAiDiscoveryResult> {
+  const existing = await probeLocalAiRuntime(getOllamaRuntimeCandidate())
+  if (existing?.available) return existing
+
+  if (!activeOllamaStart) {
+    activeOllamaStart = startManagedOllamaRuntime()
+      .finally(() => {
+        activeOllamaStart = null
+      })
+  }
+  return activeOllamaStart
+}
+
+export async function ensureLocalAiRuntime(): Promise<LocalAiDiscoveryResult> {
+  const discovered = await discoverLocalAiRuntimes(true)
+  if (discovered.available) return discovered
+
+  return ensureOllamaRuntime()
+}
+
+export function stopManagedLocalAiRuntime() {
+  const child = managedOllamaProcess
+  managedOllamaProcess = null
+  if (!child?.pid) return
+  try {
+    process.kill(-child.pid, 'SIGTERM')
+  } catch {
+    try {
+      child.kill('SIGTERM')
+    } catch {
+      // Managed runtime shutdown is best-effort; a user-owned Ollama app is never killed here.
+    }
+  }
+}
+
 export async function resolveLocalAiRequestModel(model: string): Promise<{ baseURL: string; model: string; engine: LocalAiEngine }> {
-  const discovery = await discoverLocalAiRuntimes()
+  const discovery = await ensureLocalAiRuntime()
   if (!discovery.available || !discovery.endpoint || !discovery.engine) {
     throw new Error(discovery.error ?? 'Local AI runtime is not running')
   }
@@ -566,7 +767,73 @@ function getOllamaManagementEndpoint() {
     ?? 'http://127.0.0.1:11434/api'
 }
 
-export async function downloadLocalAiModel(modelId: string): Promise<LocalAiDownloadResult> {
+function emitModelDownloadProgress(sender: WebContents | undefined, progress: LocalAiModelDownloadProgress) {
+  if (!sender || sender.isDestroyed()) return
+  sender.send('local-ai:modelDownloadProgress', progress)
+}
+
+function emitPullProgress(sender: WebContents | undefined, model: string, payload: OllamaPullProgress, fallbackPercent: number) {
+  const totalBytes = typeof payload.total === 'number' && payload.total > 0 ? payload.total : undefined
+  const completedBytes = typeof payload.completed === 'number' && payload.completed >= 0 ? payload.completed : undefined
+  const percent = totalBytes && completedBytes
+    ? Math.min(99, Math.max(1, Math.round((completedBytes / totalBytes) * 100)))
+    : fallbackPercent
+  emitModelDownloadProgress(sender, {
+    model,
+    status: 'running',
+    percent,
+    message: payload.status ?? 'Downloading model...',
+    completedBytes,
+    totalBytes,
+  })
+  return percent
+}
+
+async function readResponseText(response: Response) {
+  const text = await response.text()
+  if (!text.trim()) return ''
+  try {
+    const payload = JSON.parse(text) as { error?: unknown; message?: unknown }
+    const error = typeof payload.error === 'string' ? payload.error : null
+    const message = typeof payload.message === 'string' ? payload.message : null
+    return error ?? message ?? text
+  } catch {
+    return text
+  }
+}
+
+function getOllamaCliExecutable() {
+  return getBundledOllamaExecutablePath() ?? (process.platform === 'win32' ? 'ollama.exe' : 'ollama')
+}
+
+function removeOllamaModelWithCli(model: string): Promise<LocalAiModelActionResult> {
+  return new Promise((resolve) => {
+    const child = spawn(getOllamaCliExecutable(), ['rm', model], {
+      env: { ...process.env, OLLAMA_HOST: '127.0.0.1:11434' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    let output = ''
+    const append = (chunk: Buffer | string) => {
+      output = `${output}${chunk.toString()}`.slice(-2000)
+    }
+
+    child.stdout?.on('data', append)
+    child.stderr?.on('data', append)
+    child.once('error', (error) => {
+      resolve({ success: false, model, error: `ollama rm failed: ${error.message}` })
+    })
+    child.once('close', (code) => {
+      if (code === 0) {
+        resolve({ success: true, model })
+        return
+      }
+      const message = output.trim() || `exit code ${code ?? 'unknown'}`
+      resolve({ success: false, model, error: `ollama rm failed: ${message}` })
+    })
+  })
+}
+
+export async function downloadLocalAiModel(modelId: string, sender?: WebContents): Promise<LocalAiDownloadResult> {
   const hardware = getLocalAiHardwareProfile()
   const suggestedModels = getLocalAiModelCatalog(hardware)
   const benchmark = { suggestedModels }
@@ -575,19 +842,19 @@ export async function downloadLocalAiModel(modelId: string): Promise<LocalAiDown
     return { success: false, model: modelId, error: `Unsupported local model: ${modelId}` }
   }
 
-  const ollamaProbe = await probeLocalAiRuntime(LOCAL_AI_RUNTIME_CANDIDATES[0])
+  const ollamaProbe = await ensureOllamaRuntime()
   if (!ollamaProbe?.available) {
     return {
       success: false,
       model: target.downloadModel,
-      error: 'Ollama is required for direct model downloads. Start Ollama and try again.',
+      error: 'Ollama is required for direct model downloads. Install Ollama or start a local runtime and try again.',
     }
   }
 
   const response = await fetch(`${getOllamaManagementEndpoint()}/pull`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ model: target.downloadModel, stream: false }),
+    body: JSON.stringify({ model: target.downloadModel, stream: true }),
   })
 
   if (!response.ok) {
@@ -595,8 +862,133 @@ export async function downloadLocalAiModel(modelId: string): Promise<LocalAiDown
     return { success: false, model: target.downloadModel, error: `Download failed (${response.status}): ${body}` }
   }
 
+  emitModelDownloadProgress(sender, {
+    model: target.downloadModel,
+    status: 'running',
+    percent: 1,
+    message: 'Starting model download...',
+  })
+
+  let percent = 1
+  let streamError: string | null = null
+  const reader = response.body?.getReader()
+  if (reader) {
+    const decoder = new TextDecoder()
+    let buffer = ''
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed) continue
+        try {
+          const payload = JSON.parse(trimmed) as OllamaPullProgress
+          if (payload.error) {
+            streamError = payload.error
+            break
+          }
+          percent = emitPullProgress(sender, target.downloadModel, payload, percent)
+        } catch {
+          // Ignore malformed stream lines; Ollama progress is best-effort.
+        }
+      }
+      if (streamError) break
+    }
+    const tail = buffer.trim()
+    if (tail && !streamError) {
+      try {
+        const payload = JSON.parse(tail) as OllamaPullProgress
+        if (payload.error) streamError = payload.error
+        else percent = emitPullProgress(sender, target.downloadModel, payload, percent)
+      } catch {
+        // Ignore malformed trailing line.
+      }
+    }
+  }
+
+  if (streamError) {
+    emitModelDownloadProgress(sender, {
+      model: target.downloadModel,
+      status: 'error',
+      percent,
+      message: streamError,
+    })
+    return { success: false, model: target.downloadModel, error: streamError }
+  }
+
   discoveryCache = null
+  emitModelDownloadProgress(sender, {
+    model: target.downloadModel,
+    status: 'success',
+    percent: 100,
+    message: 'Model downloaded.',
+  })
   return { success: true, model: target.downloadModel }
+}
+
+export async function uninstallLocalAiModel(modelId: string): Promise<LocalAiModelActionResult> {
+  const model = String(modelId).trim()
+  if (!model) {
+    return { success: false, model: modelId, error: 'Model is required.' }
+  }
+
+  const ollamaProbe = await ensureOllamaRuntime()
+  if (!ollamaProbe?.available) {
+    return {
+      success: false,
+      model,
+      error: 'Ollama is required to uninstall local models. Install Ollama or start a local runtime and try again.',
+    }
+  }
+
+  const managementEndpoint = getOllamaManagementEndpoint()
+  const body = JSON.stringify({ model })
+
+  try {
+    await fetch(`${managementEndpoint}/generate`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model, prompt: '', keep_alive: 0, stream: false }),
+    })
+  } catch {
+    // Unloading is best-effort; delete/rm below will return the actionable error.
+  }
+
+  const apiErrors: string[] = []
+  for (const method of ['DELETE', 'POST']) {
+    try {
+      const response = await fetch(`${managementEndpoint}/delete`, {
+        method,
+        headers: { 'content-type': 'application/json' },
+        body,
+      })
+      if (response.ok) {
+        discoveryCache = null
+        return { success: true, model }
+      }
+      const responseText = await readResponseText(response)
+      apiErrors.push(`${method} /api/delete returned ${response.status}${responseText ? `: ${responseText}` : ''}`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      apiErrors.push(`${method} /api/delete failed: ${message}`)
+    }
+  }
+
+  const cliResult = await removeOllamaModelWithCli(model)
+  if (cliResult.success) {
+    discoveryCache = null
+    return { success: true, model }
+  }
+
+  const detail = [...apiErrors, cliResult.error].filter(Boolean).join(' | ')
+  return {
+    success: false,
+    model,
+    error: detail ? `Uninstall failed: ${detail}` : 'Uninstall failed.',
+  }
 }
 
 function emitInstallProgress(sender: WebContents | undefined, progress: LocalAiInstallProgress) {
@@ -885,8 +1277,10 @@ export async function installOllamaRuntime(sender?: WebContents): Promise<LocalA
 
 export function registerLocalAiHandlers(ipcMain: IpcMain) {
   ipcMain.handle('local-ai:discover', async (_event, force?: boolean) => discoverLocalAiRuntimes(Boolean(force)))
+  ipcMain.handle('local-ai:ensureRuntime', async () => ensureLocalAiRuntime())
   ipcMain.handle('local-ai:benchmark', async () => benchmarkLocalAiSystem())
-  ipcMain.handle('local-ai:downloadModel', async (_event, modelId: string) => downloadLocalAiModel(modelId))
+  ipcMain.handle('local-ai:downloadModel', async (event, modelId: string) => downloadLocalAiModel(modelId, event.sender))
+  ipcMain.handle('local-ai:uninstallModel', async (_event, modelId: string) => uninstallLocalAiModel(modelId))
   ipcMain.handle('local-ai:installOllama', async (event) => installOllamaRuntime(event.sender))
   ipcMain.handle('local-ai:cancelInstallOllama', async () => ({ success: stopOllamaInstallProcess() }))
 }

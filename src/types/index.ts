@@ -168,6 +168,21 @@ export interface LocalAiDownloadResult {
   error?: string
 }
 
+export interface LocalAiModelActionResult {
+  success: boolean
+  model: string
+  error?: string
+}
+
+export interface LocalAiModelDownloadProgress {
+  model: string
+  status: 'running' | 'success' | 'error'
+  percent: number
+  message: string
+  completedBytes?: number
+  totalBytes?: number
+}
+
 export interface LocalAiInstallResult {
   success: boolean
   error?: string
@@ -359,6 +374,7 @@ export interface HistoryItem {
   model: string
   sourceLang: string
   targetLang: string
+  translationStyle?: TranslationStyle
   sourceText: string
   translatedText: string
 }
@@ -385,8 +401,11 @@ export interface WindowApi {
   }
   fetchModels: (provider: string) => Promise<FetchModelsResult>
   discoverLocalAi: (force?: boolean) => Promise<LocalAiDiscoveryResult>
+  ensureLocalAiRuntime: () => Promise<LocalAiDiscoveryResult>
   benchmarkLocalAi: () => Promise<LocalAiBenchmarkResult>
   downloadLocalAiModel: (modelId: string) => Promise<LocalAiDownloadResult>
+  uninstallLocalAiModel: (modelId: string) => Promise<LocalAiModelActionResult>
+  onLocalAiModelDownloadProgress: (cb: (progress: LocalAiModelDownloadProgress) => void) => () => void
   installOllama: () => Promise<LocalAiInstallResult>
   cancelOllamaInstall: () => Promise<{ success: boolean }>
   onLocalAiInstallProgress: (cb: (progress: LocalAiInstallProgress) => void) => () => void

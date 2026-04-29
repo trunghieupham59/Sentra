@@ -124,7 +124,13 @@ export interface Translations {
   settings_local_ai_install_failed: string
   settings_local_ai_need_ollama: string
   settings_local_ai_downloaded: string
+  settings_local_ai_downloading_model: string
+  settings_local_ai_download_progress: string
   settings_local_ai_download_failed: string
+  settings_local_ai_uninstall: string
+  settings_local_ai_uninstalling: string
+  settings_local_ai_uninstalled: string
+  settings_local_ai_uninstall_failed: string
   settings_get_key: string
   settings_key_saved: string
   settings_key_invalid: string

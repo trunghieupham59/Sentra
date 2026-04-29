@@ -2,11 +2,17 @@ import { useEffect, useState } from 'react'
 import { ApiKeyInput } from '../../components/ApiKeyInput'
 import { DeepResearchApiSection } from '../../components/chat/DeepResearchApiSection'
 import { ProviderIcon } from '../../components/ProviderIcon'
-import { RefreshIcon, SpinnerIcon } from '../../components/ui/icons'
+import { DownloadIcon, RefreshIcon, SpinnerIcon, TrashIcon } from '../../components/ui/icons'
 import { PROVIDERS } from '../../constants/providers'
 import { JINA_DOCS_URL } from '../../constants/urls'
 import { useAppStore, useT } from '../../store/useAppStore'
-import type { LocalAiBenchmarkResult, LocalAiDiscoveryResult, LocalAiInstallProgress, Provider } from '../../types'
+import type {
+  LocalAiBenchmarkResult,
+  LocalAiDiscoveryResult,
+  LocalAiInstallProgress,
+  LocalAiModelDownloadProgress,
+  Provider,
+} from '../../types'
 
 function LocalAiProviderCard({
   status,
@@ -14,10 +20,13 @@ function LocalAiProviderCard({
   loading,
   benchmarking,
   downloadingModel,
+  downloadProgress,
+  uninstallingModel,
   installingOllama,
   onRefresh,
   onBenchmark,
   onDownloadModel,
+  onUninstallModel,
   onInstallOllama,
   downloadError,
   downloadSuccess,
@@ -34,10 +43,13 @@ function LocalAiProviderCard({
   loading: boolean
   benchmarking: boolean
   downloadingModel: string | null
+  downloadProgress: LocalAiModelDownloadProgress | null
+  uninstallingModel: string | null
   installingOllama: boolean
   onRefresh: () => void
   onBenchmark: () => void
   onDownloadModel: (modelId: string) => void
+  onUninstallModel: (modelId: string) => void
   onInstallOllama: () => void
   downloadError: string | null
   downloadSuccess: string | null
@@ -60,6 +72,12 @@ function LocalAiProviderCard({
   const activeInstallPercent = Math.max(5, Math.min(100, installProgress?.percent ?? 8))
   const recommended = models.find((model) => model.id === status?.recommendedModel)
     ?? suggestions.find((model) => model.id === (status?.recommendedModel ?? benchmark?.recommendedModel))
+  const formatModelDownloadBytes = (progress: LocalAiModelDownloadProgress) => {
+    if (!progress.completedBytes || !progress.totalBytes) return null
+    const completedGb = Math.round((progress.completedBytes / 1024 ** 3) * 10) / 10
+    const totalGb = Math.round((progress.totalBytes / 1024 ** 3) * 10) / 10
+    return `${completedGb}/${totalGb} GB`
+  }
 
   return (
     <div className="card p-4 space-y-3 border border-gray-200 dark:border-gray-700">
@@ -243,51 +261,86 @@ function LocalAiProviderCard({
           <div className="space-y-2">
             {suggestions.slice(0, 5).map((model) => {
               const isDownloading = downloadingModel === model.id
+              const isUninstalling = uninstallingModel === model.id
+              const activeDownloadProgress = isDownloading && downloadProgress?.model === model.id ? downloadProgress : null
+              const activeDownloadPercent = Math.max(1, Math.min(100, activeDownloadProgress?.percent ?? 1))
+              const activeDownloadBytes = activeDownloadProgress ? formatModelDownloadBytes(activeDownloadProgress) : null
               const buttonLabel = model.installed
-                ? t.settings_local_ai_installed
+                ? t.settings_local_ai_uninstall
                 : canDownloadModels
                   ? t.settings_local_ai_download
                   : t.settings_local_ai_waiting_runtime
               return (
                 <div
                   key={model.id}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2 text-xs dark:border-gray-700"
+                  className="rounded-lg border border-gray-100 px-3 py-2 text-xs dark:border-gray-700"
                 >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-gray-800 dark:text-gray-100">{model.name}</p>
-                      {model.id === recommended?.id && (
-                        <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-600 dark:bg-blue-950/50 dark:text-blue-300">
-                          {t.settings_local_ai_recommended}
-                        </span>
-                      )}
-                      {model.installed && (
-                        <span className="rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-600 dark:bg-green-950/50 dark:text-green-300">
-                          {t.settings_local_ai_installed}
-                        </span>
-                      )}
-                      {model.estimatedSizeGb && (
-                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-                          {t.settings_local_ai_model_size} ~{model.estimatedSizeGb} GB
-                        </span>
-                      )}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium text-gray-800 dark:text-gray-100">{model.name}</p>
+                        {model.id === recommended?.id && (
+                          <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-600 dark:bg-blue-950/50 dark:text-blue-300">
+                            {t.settings_local_ai_recommended}
+                          </span>
+                        )}
+                        {model.installed && (
+                          <span className="rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-600 dark:bg-green-950/50 dark:text-green-300">
+                            {t.settings_local_ai_installed}
+                          </span>
+                        )}
+                        {model.estimatedSizeGb && (
+                          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                            {t.settings_local_ai_model_size} ~{model.estimatedSizeGb} GB
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-gray-500 dark:text-gray-400">{model.description}</p>
                     </div>
-                    <p className="text-gray-500 dark:text-gray-400">{model.description}</p>
+                    {canDownloadModels ? (
+                      <button
+                        type="button"
+                        onClick={() => model.installed ? onUninstallModel(model.id) : onDownloadModel(model.id)}
+                        disabled={isDownloading || isUninstalling || Boolean(downloadingModel) || Boolean(uninstallingModel)}
+                        className={[
+                          'flex flex-shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors disabled:bg-gray-200 disabled:text-gray-400 dark:disabled:bg-gray-700',
+                          model.installed
+                            ? 'bg-red-50 text-red-600 ring-1 ring-red-100 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-300 dark:ring-red-900/60 dark:hover:bg-red-950/50'
+                            : 'bg-blue-600 text-white hover:bg-blue-700',
+                        ].join(' ')}
+                      >
+                        {(isDownloading || isUninstalling) && <SpinnerIcon className="w-3.5 h-3.5 animate-spin" />}
+                        {!model.installed && !isDownloading && <DownloadIcon className="w-3.5 h-3.5" />}
+                        {model.installed && !isUninstalling && <TrashIcon className="w-3.5 h-3.5" />}
+                        {isDownloading
+                          ? `${activeDownloadPercent}%`
+                          : isUninstalling
+                            ? t.settings_local_ai_uninstalling
+                            : buttonLabel}
+                      </button>
+                    ) : (
+                      <span className="hidden flex-shrink-0 rounded-lg bg-gray-50 px-3 py-1.5 font-medium text-gray-400 ring-1 ring-gray-100 dark:bg-gray-800 dark:ring-gray-700 sm:block">
+                        {buttonLabel}
+                      </span>
+                    )}
                   </div>
-                  {canDownloadModels ? (
-                    <button
-                      type="button"
-                      onClick={() => onDownloadModel(model.id)}
-                      disabled={isDownloading || model.installed}
-                      className="flex flex-shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 font-medium text-white transition-colors hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 dark:disabled:bg-gray-700"
-                    >
-                      {isDownloading && <SpinnerIcon className="w-3.5 h-3.5 animate-spin" />}
-                      {buttonLabel}
-                    </button>
-                  ) : (
-                    <span className="hidden flex-shrink-0 rounded-lg bg-gray-50 px-3 py-1.5 font-medium text-gray-400 ring-1 ring-gray-100 dark:bg-gray-800 dark:ring-gray-700 sm:block">
-                      {buttonLabel}
-                    </span>
+                  {activeDownloadProgress && (
+                    <div className="mt-3 rounded-lg bg-blue-50 px-3 py-2 dark:bg-blue-950/20">
+                      <div className="flex items-center justify-between gap-3 text-[11px]">
+                        <span className="min-w-0 truncate font-medium text-blue-700 dark:text-blue-300">
+                          {t.settings_local_ai_downloading_model}: {activeDownloadProgress.message}
+                        </span>
+                        <span className="flex-shrink-0 font-semibold text-blue-700 dark:text-blue-300">
+                          {activeDownloadBytes ? `${activeDownloadBytes} · ` : ''}{activeDownloadPercent}%
+                        </span>
+                      </div>
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white ring-1 ring-blue-100 dark:bg-blue-950 dark:ring-blue-900">
+                        <div
+                          className="h-full rounded-full bg-blue-600 transition-[width] duration-300"
+                          style={{ width: `${activeDownloadPercent}%` }}
+                        />
+                      </div>
+                    </div>
                   )}
                 </div>
               )
@@ -365,6 +418,8 @@ export function ApiKeysSection() {
   const [localLoading, setLocalLoading] = useState(false)
   const [localBenchmarking, setLocalBenchmarking] = useState(false)
   const [downloadingModel, setDownloadingModel] = useState<string | null>(null)
+  const [downloadProgress, setDownloadProgress] = useState<LocalAiModelDownloadProgress | null>(null)
+  const [uninstallingModel, setUninstallingModel] = useState<string | null>(null)
   const [installingOllama, setInstallingOllama] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
   const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null)
@@ -377,7 +432,9 @@ export function ApiKeysSection() {
     if (!window.api?.discoverLocalAi) return null
     setLocalLoading(true)
     try {
-      const result = await window.api.discoverLocalAi(true)
+      const result = window.api.ensureLocalAiRuntime
+        ? await window.api.ensureLocalAiRuntime()
+        : await window.api.discoverLocalAi(true)
       setLocalStatus(result)
       setLocalBenchmark({
         hardware: result.hardware,
@@ -385,8 +442,8 @@ export function ApiKeysSection() {
         recommendedModel: result.suggestedModels[0]?.id,
       })
       setKeyStatus('local', result.available)
-      if (result.models.length > 0) setDynamicModels('local', result.models)
-      if (result.recommendedModel) setSelectedModel('local', result.recommendedModel)
+      setDynamicModels('local', result.models)
+      setSelectedModel('local', result.recommendedModel ?? 'local-auto')
       return result
     } finally {
       setLocalLoading(false)
@@ -407,6 +464,12 @@ export function ApiKeysSection() {
   const handleDownloadLocalModel = async (modelId: string) => {
     if (!window.api?.downloadLocalAiModel) return
     setDownloadingModel(modelId)
+    setDownloadProgress({
+      model: modelId,
+      status: 'running',
+      percent: 1,
+      message: t.settings_local_ai_downloading_model,
+    })
     setDownloadError(null)
     setDownloadSuccess(null)
     setInstallError(null)
@@ -423,6 +486,32 @@ export function ApiKeysSection() {
       setDownloadError(err instanceof Error ? err.message : t.settings_local_ai_download_failed)
     } finally {
       setDownloadingModel(null)
+      setDownloadProgress(null)
+    }
+  }
+
+  const handleUninstallLocalModel = async (modelId: string) => {
+    setUninstallingModel(modelId)
+    setDownloadError(null)
+    setDownloadSuccess(null)
+    setInstallError(null)
+    setInstallSuccess(null)
+    try {
+      if (!window.api?.uninstallLocalAiModel) {
+        setDownloadError(t.settings_local_ai_uninstall_failed)
+        return
+      }
+      const result = await window.api.uninstallLocalAiModel(modelId)
+      if (!result.success) {
+        setDownloadError(result.error ?? t.settings_local_ai_uninstall_failed)
+        return
+      }
+      setDownloadSuccess(`${t.settings_local_ai_uninstalled}: ${result.model}`)
+      await refreshLocalAi()
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : t.settings_local_ai_uninstall_failed)
+    } finally {
+      setUninstallingModel(null)
     }
   }
 
@@ -486,6 +575,17 @@ export function ApiKeysSection() {
   }, [t.settings_local_ai_install_cancelled, t.settings_local_ai_install_failed])
 
   useEffect(() => {
+    if (!window.api?.onLocalAiModelDownloadProgress) return
+    return window.api.onLocalAiModelDownloadProgress((progress) => {
+      setDownloadProgress(progress)
+      if (progress.status === 'error') {
+        setDownloadError(progress.message)
+      }
+    })
+  }, [])
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: run once on mount; store setters are stable
+  useEffect(() => {
     const loadKeys = async () => {
       if (!window.api) return
       for (const p of cloudProviders) {
@@ -501,7 +601,6 @@ export function ApiKeysSection() {
     }
     loadKeys()
     void refreshLocalAi()
-  // biome-ignore lint/correctness/useExhaustiveDependencies: run once on mount; store setters are stable
   }, [])
 
   const handleSaveKey = async (providerId: string, key: string) => {
@@ -551,10 +650,13 @@ export function ApiKeysSection() {
               loading={localLoading}
               benchmarking={localBenchmarking}
               downloadingModel={downloadingModel}
+              downloadProgress={downloadProgress}
+              uninstallingModel={uninstallingModel}
               installingOllama={installingOllama}
               onRefresh={refreshLocalAi}
               onBenchmark={runLocalBenchmark}
               onDownloadModel={handleDownloadLocalModel}
+              onUninstallModel={handleUninstallLocalModel}
               onInstallOllama={handleInstallOllama}
               downloadError={downloadError}
               downloadSuccess={downloadSuccess}
