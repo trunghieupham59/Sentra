@@ -148,6 +148,28 @@ export const EDGE_TTS_CHROMIUM_MAJOR = '143'
 export const EDGE_TTS_WIN_EPOCH = 11644473600
 /** Default Edge TTS voice — Vietnamese female, natural quality. */
 export const EDGE_TTS_DEFAULT_VOICE = 'vi-VN-HoaiMyNeural'
+/** Edge Neural voice map for app language codes. */
+export const EDGE_TTS_VOICE_BY_LANG: Record<string, string> = {
+  vi: 'vi-VN-HoaiMyNeural',
+  en: 'en-US-JennyNeural',
+  zh: 'zh-CN-XiaoxiaoNeural',
+  'zh-TW': 'zh-TW-HsiaoChenNeural',
+  ja: 'ja-JP-NanamiNeural',
+  ko: 'ko-KR-SunHiNeural',
+  fr: 'fr-FR-DeniseNeural',
+  de: 'de-DE-KatjaNeural',
+  es: 'es-ES-ElviraNeural',
+  pt: 'pt-PT-RaquelNeural',
+  ru: 'ru-RU-SvetlanaNeural',
+  ar: 'ar-SA-ZariyahNeural',
+  th: 'th-TH-PremwadeeNeural',
+  id: 'id-ID-GadisNeural',
+  it: 'it-IT-ElsaNeural',
+  nl: 'nl-NL-ColetteNeural',
+  pl: 'pl-PL-ZofiaNeural',
+  tr: 'tr-TR-EmelNeural',
+  hi: 'hi-IN-SwaraNeural',
+}
 /** Default speaking rate for Edge TTS — +20% faster than neutral. */
 export const EDGE_TTS_DEFAULT_RATE = '+20%'
 

@@ -37,7 +37,7 @@ export function useTranslate() {
     sourceText, translatedText, phoneticText, sourceLang, targetLang,
     isTranslating, translateError,
     selectedProvider, selectedModels, autoTranslate, autoTranslateDelay, keyStatus, phoneticMode, translationStyle,
-    ttsVoice,
+    ttsMode, ttsVoice,
     setSourceText, setTranslatedText, setPhoneticText, setTargetLang,
     setIsTranslating, setTranslateError, setActivePage, setPhoneticMode, setTranslationStyle, setAutoTranslate, addHistory,
     swapLanguages,
@@ -81,7 +81,7 @@ export function useTranslate() {
   const [isDetectingLang, setIsDetectingLang] = useState(false)
 
   // TTS — delegated to useTTS hook (Web Audio API + OS synthesis fallback, no console.log)
-  const { speakingPanel, speakLoading, handleSpeak, stopSpeak } = useTTS({ ttsVoice })
+  const { speakingPanel, speakLoading, handleSpeak, stopSpeak } = useTTS({ ttsMode, ttsVoice })
 
   // ── Real-time model-switch notice from main process ──
   // Subscribe once on mount — main process emits 'image:model-switched' immediately

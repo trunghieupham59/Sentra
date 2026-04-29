@@ -37,7 +37,12 @@ export const localServerSection = {
      * so the local server can serve it via GET /api/config.
      * Call on startup and whenever selectedProvider or selectedModels changes.
      */
-    syncConfig: (params: { provider: string; model: string }) =>
+    syncConfig: (params: {
+      provider: string
+      model: string
+      ttsMode?: 'free' | 'auto' | 'premium'
+      ttsVoice?: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
+    }) =>
       ipcRenderer.invoke('localServer:syncConfig', params) as Promise<{ success: boolean }>,
   },
 }

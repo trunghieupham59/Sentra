@@ -45,6 +45,66 @@ export function LightbulbIcon({ className = 'w-3.5 h-3.5' }: IconProps) {
   )
 }
 
+/** Auto mode icon — used when the app picks the best available provider. */
+export function AutoModeIcon({ className = 'w-5 h-5' }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M6.5 7.25H14.5C16.9853 7.25 19 9.26472 19 11.75C19 14.2353 16.9853 16.25 14.5 16.25H9"
+        stroke="currentColor"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8 4.75L5.5 7.25L8 9.75"
+        stroke="currentColor"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M15.75 13.75L18.25 16.25L15.75 18.75"
+        stroke="currentColor"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M11.5 10.25L12.15 11.55L13.5 12.25L12.15 12.95L11.5 14.25L10.85 12.95L9.5 12.25L10.85 11.55L11.5 10.25Z"
+        fill="currentColor"
+      />
+    </svg>
+  )
+}
+
+/** Premium mode icon — used for high-quality paid provider preference. */
+export function PremiumModeIcon({ className = 'w-5 h-5' }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 3.75L14.2 8.35L19.25 9.05L15.6 12.65L16.5 17.7L12 15.3L7.5 17.7L8.4 12.65L4.75 9.05L9.8 8.35L12 3.75Z"
+        fill="currentColor"
+        opacity="0.16"
+      />
+      <path
+        d="M12 3.75L14.2 8.35L19.25 9.05L15.6 12.65L16.5 17.7L12 15.3L7.5 17.7L8.4 12.65L4.75 9.05L9.8 8.35L12 3.75Z"
+        stroke="currentColor"
+        strokeWidth={1.7}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 8.7V12.1L14.15 13.25"
+        stroke="currentColor"
+        strokeWidth={1.7}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 /** Check-circle / success icon — used on update-downloaded and success states. */
 export function CheckCircleIcon({ className = 'w-4 h-4' }: IconProps) {
   return (

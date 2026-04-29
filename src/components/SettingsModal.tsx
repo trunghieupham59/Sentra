@@ -26,7 +26,7 @@ export function SettingsModal() {
       onClick={closeSettings}
     >
       <div
-        className="relative w-full max-w-xl mx-4 max-h-[90vh] flex flex-col
+        className="relative w-full max-w-[1040px] mx-4 h-[min(90vh,860px)] flex flex-col
                    bg-white dark:bg-gray-950 rounded-2xl shadow-2xl overflow-hidden
                    border border-gray-200 dark:border-gray-800"
         role="dialog"
@@ -35,8 +35,11 @@ export function SettingsModal() {
         onKeyDown={(e) => e.stopPropagation()}
       >
         {/* Modal header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
-          <span className="text-sm font-semibold text-gray-900 dark:text-gray-50">{t.nav_settings}</span>
+        <div className="flex items-center justify-between gap-4 px-5 py-3 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
+          <div className="min-w-0">
+            <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-50">{t.settings_title}</h1>
+            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400 truncate">{t.settings_subtitle}</p>
+          </div>
           <button
             type="button"
             onClick={closeSettings}

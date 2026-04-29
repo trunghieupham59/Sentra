@@ -13,6 +13,14 @@ export type PhoneticMode = 'off' | 'standard' | 'phonetic'
 export type TtsVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
 
 /**
+ * TTS routing preference:
+ *  - 'free'    — free Edge TTS only; never uses local system voices or paid API keys
+ *  - 'auto'    — Edge TTS first, then paid providers only if free TTS fails
+ *  - 'premium' — paid providers first for quality, then free fallback
+ */
+export type TtsMode = 'free' | 'auto' | 'premium'
+
+/**
  * STT provider user-facing preference (stored in settings):
  *  - 'auto'      — smart routing: Whisper → Gemini STT → Groq (free) → surface error
  *  - 'whisper'   — OpenAI Whisper only (highest accuracy, requires OpenAI key)
@@ -335,6 +343,8 @@ export interface WindowApi {
   speakText: (params: {
     text: string
     voice?: TtsVoice
+    mode?: TtsMode
+    lang?: string
   }) => Promise<TtsResult>
   translateImage: (params: {
     provider: string
@@ -526,8 +536,13 @@ export interface WindowApi {
       success: boolean; token?: string; id?: string; name?: string
       createdAt?: number; expiresAt?: number; error?: string
     }>
-    /** Sync the currently selected provider/model so /api/config reflects the app's state. */
-    syncConfig: (p: { provider: string; model: string }) => Promise<{ success: boolean }>
+    /** Sync the currently selected provider/model and TTS prefs so local extension APIs reflect the app's state. */
+    syncConfig: (p: {
+      provider: string
+      model: string
+      ttsMode?: TtsMode
+      ttsVoice?: TtsVoice
+    }) => Promise<{ success: boolean }>
   }
 }
 

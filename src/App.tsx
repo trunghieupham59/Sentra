@@ -21,7 +21,17 @@ const FONT_SIZE_MAP = {
 const MACOS_TITLEBAR_HEIGHT_PX = 40
 
 function App() {
-  const { activePage, localeAuto, setKeyStatus, setLocaleFromSystem, fontSize, selectedProvider, selectedModels } = useAppStore()
+  const {
+    activePage,
+    localeAuto,
+    setKeyStatus,
+    setLocaleFromSystem,
+    fontSize,
+    selectedProvider,
+    selectedModels,
+    ttsMode,
+    ttsVoice,
+  } = useAppStore()
   const [aiChatPopupOpen, setAiChatPopupOpen] = useState(false)
 
   // Auto-detect system language on startup (only when localeAuto is enabled)
@@ -42,8 +52,8 @@ function App() {
   useEffect(() => {
     if (!window.api?.localServer) return
     const model = selectedModels[selectedProvider] ?? ''
-    window.api.localServer.syncConfig({ provider: selectedProvider, model })
-  }, [selectedProvider, selectedModels])
+    window.api.localServer.syncConfig({ provider: selectedProvider, model, ttsMode, ttsVoice })
+  }, [selectedProvider, selectedModels, ttsMode, ttsVoice])
 
   // Listen for the AI Chat hotkey event from main process
   useEffect(() => {

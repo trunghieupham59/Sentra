@@ -3,7 +3,7 @@
  * Single source of truth — import from here instead of duplicating.
  */
 
-/** Map app language codes → BCP-47 tags understood by SpeechSynthesis and MediaRecorder APIs */
+/** Map app language codes → BCP-47 tags understood by browser audio APIs. */
 export const LANG_TO_BCP47: Record<string, string> = {
   auto: 'en-US',
   vi: 'vi-VN',

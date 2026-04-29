@@ -49,6 +49,7 @@ When you select text on any webpage, a small **Viezan Translate** button appears
 Click the Viezan toolbar icon to open a mini translate panel where you can:
 - Type or paste text manually
 - Select the target language
+- Select the translation style
 - See the translation result
 - Auto-fill from your current selection
 
@@ -67,6 +68,7 @@ Right-click any selected text and choose **"Translate with Viezan"** from the co
 | `background.js` | Service worker — handles context menu |
 | `popup.html/js` | Toolbar popup for quick translation |
 | `options.html/js` | Settings page for token & preferences |
+| `extension-ui.css` | Shared popup/options visual system |
 
 ---
 

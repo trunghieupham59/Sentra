@@ -1,4 +1,10 @@
-/* Viezan — floating icon button (circular) */
+/* Viezan browser selection UI */
+
+#Viezan-btn,
+#tre-result-tooltip,
+#tre-result-tooltip * {
+  box-sizing: border-box;
+}
 
 #Viezan-btn {
   position: fixed;
@@ -9,386 +15,386 @@
   width: 36px;
   height: 36px;
   padding: 0;
+  border: 1px solid rgba(203, 213, 225, 0.88);
+  border-radius: 999px;
   background: #ffffff;
-  border: none;
-  border-radius: 50%;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.18), 0 2px 8px rgba(15, 23, 42, 0.10);
   cursor: pointer;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18), 0 1px 4px rgba(37, 99, 235, 0.15);
-  transition: box-shadow 0.15s, transform 0.12s;
-  user-select: none;
   pointer-events: auto;
+  user-select: none;
+  transition: transform 0.13s ease, box-shadow 0.13s ease, border-color 0.13s ease, background 0.13s ease;
 }
 
 #Viezan-btn:hover {
-  box-shadow: 0 4px 18px rgba(37, 99, 235, 0.35), 0 2px 6px rgba(0,0,0,0.12);
-  transform: scale(1.1);
+  border-color: rgba(37, 99, 235, 0.38);
+  box-shadow: 0 14px 32px rgba(37, 99, 235, 0.22), 0 4px 10px rgba(15, 23, 42, 0.10);
+  transform: translateY(-1px);
 }
 
 #Viezan-btn.tre-loading {
+  border-color: rgba(37, 99, 235, 0.36);
   background: #eff6ff;
   pointer-events: none;
 }
 
+#Viezan-btn .tre-inline-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(37, 99, 235, 0.22);
+  border-top-color: #2563eb;
+  border-radius: 999px;
+  animation: tre-spin 0.75s linear infinite;
+}
+
 #Viezan-btn img {
+  display: block;
   width: 22px;
   height: 22px;
   border-radius: 6px;
-  display: block;
-  pointer-events: none;
   object-fit: cover;
+  pointer-events: none;
 }
-
-/* ── Translate result tooltip — two-column layout ─────────────────────────── */
 
 #tre-result-tooltip {
   position: fixed;
   z-index: 2147483647;
   display: none;
-  min-width: 480px;
-  max-width: 640px;
   width: max-content;
-  background: #ffffff;
-  color: #0f172a;
-  border-radius: 14px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 13px;
-  line-height: 1.6;
-  box-shadow:
-    0 8px 32px rgba(37, 99, 235, 0.14),
-    0 2px 8px rgba(0, 0, 0, 0.10),
-    0 0 0 1px rgba(37, 99, 235, 0.08);
-  pointer-events: auto;
+  min-width: 500px;
+  max-width: min(680px, calc(100vw - 16px));
   overflow: hidden;
+  border: 1px solid rgba(203, 213, 225, 0.92);
+  border-radius: 10px;
+  background: #ffffff;
+  color: #111827;
+  box-shadow: 0 22px 54px rgba(15, 23, 42, 0.18), 0 4px 12px rgba(15, 23, 42, 0.08);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+  font-size: 13px;
+  line-height: 1.58;
+  pointer-events: auto;
 }
-
-/* ══════════════════════════════════════
-   ROW 1 — Header: Logo + Status + Close
-══════════════════════════════════════ */
 
 #tre-result-tooltip .tre-tooltip-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 9px 10px 9px 14px;
-  background: #eff6ff;
-  border-bottom: 1px solid #bfdbfe;
+  gap: 10px;
+  min-height: 44px;
+  padding: 9px 10px 9px 12px;
+  border-bottom: 1px solid #dbe3ef;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
 }
 
 #tre-result-tooltip .tre-tooltip-logo {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
   flex-shrink: 0;
 }
 
 #tre-result-tooltip .tre-tooltip-label {
-  font-size: 10px;
-  color: #1e40af;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  flex-shrink: 0;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0;
+  white-space: nowrap;
 }
 
-/* Status badge */
 #tre-result-tooltip .tre-status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid #bfdbfe;
-  border-radius: 20px;
-  padding: 2px 9px;
-  flex-shrink: 0;
+  gap: 7px;
+  min-height: 24px;
+  padding: 3px 9px;
+  border: 1px solid #dbe3ef;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
 }
 
-#tre-result-tooltip .tre-status-text {
-  font-size: 10px;
-  font-weight: 600;
-  color: #1e40af;
-}
-
-#tre-result-tooltip .tre-status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+#tre-result-tooltip .tre-status-dot,
+#tre-result-tooltip .provider-mark {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
   flex-shrink: 0;
 }
 
 #tre-result-tooltip .tre-status-loading {
-  background: #fbbf24;
+  background: #d97706;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.14);
   animation: tre-pulse 1s ease-in-out infinite;
 }
 
 #tre-result-tooltip .tre-status-active {
-  background: #4ade80;
-  box-shadow: 0 0 5px rgba(74, 222, 128, 0.7);
+  background: #047857;
+  box-shadow: 0 0 0 3px rgba(4, 120, 87, 0.12);
 }
 
 #tre-result-tooltip .tre-status-error {
-  background: #f87171;
-  box-shadow: none;
+  background: #be123c;
+  box-shadow: 0 0 0 3px rgba(190, 18, 60, 0.12);
 }
 
 @keyframes tre-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
+  0%,
+  100% { opacity: 1; }
+  50% { opacity: 0.42; }
+}
+
+@keyframes tre-spin {
+  to { transform: rotate(360deg); }
 }
 
 #tre-result-tooltip .tre-header-spacer {
   flex: 1;
 }
 
-/* Close (✕) button */
 #tre-result-tooltip .tre-close-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
   padding: 0;
-  border: none;
-  border-radius: 50%;
+  border: 1px solid transparent;
+  border-radius: 7px;
   background: transparent;
-  color: #2563eb;
-  font-size: 12px;
+  color: #64748b;
+  font-size: 17px;
   line-height: 1;
   cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.13s, color 0.13s;
+  transition: background 0.13s ease, border-color 0.13s ease, color 0.13s ease;
 }
 
 #tre-result-tooltip .tre-close-btn:hover {
-  background: rgba(37, 99, 235, 0.12);
-  color: #1d4ed8;
+  border-color: #dbe3ef;
+  background: #f8fafc;
+  color: #111827;
 }
-
-/* ══════════════════════════════════════
-   ROW 2 — Controls: Provider | Model | Lang | Style
-══════════════════════════════════════ */
 
 #tre-result-tooltip .tre-controls-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 7px 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(80px, auto) minmax(92px, auto);
+  align-items: end;
+  gap: 8px;
+  padding: 9px 12px;
+  border-bottom: 1px solid #dbe3ef;
   background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
-  flex-wrap: wrap;
 }
 
-/* Shared control item base */
-#tre-result-tooltip .tre-ctrl-item {
-  display: inline-flex;
+#tre-result-tooltip .tre-model-stack {
+  display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 9px;
-  border-radius: 8px;
-  font-size: 11px;
-  font-weight: 700;
-  white-space: nowrap;
-  flex-shrink: 0;
-  border: 1px solid transparent;
-}
-
-/* Provider badge */
-#tre-result-tooltip .tre-ctrl-provider {
-  background: rgba(16, 163, 127, 0.08);
-  border-color: rgba(16, 163, 127, 0.2);
-  color: #10A37F;
-}
-
-/* Model badge */
-#tre-result-tooltip .tre-ctrl-model {
-  background: rgba(37, 99, 235, 0.07);
-  border-color: rgba(37, 99, 235, 0.18);
-  color: #2563eb;
-  font-family: 'SF Mono', 'Menlo', monospace;
-  max-width: 140px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Divider between badges and selects */
-#tre-result-tooltip .tre-ctrl-divider {
-  width: 1px;
-  height: 18px;
-  background: #bfdbfe;
-  flex-shrink: 0;
-}
-
-/* Language selector */
-#tre-result-tooltip .tre-lang-select {
-  appearance: none;
-  -webkit-appearance: none;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #bfdbfe;
-  border-radius: 6px;
-  color: #1e40af;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 22px 3px 7px;
-  cursor: pointer;
-  outline: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231e40af' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 5px center;
-  transition: border-color 0.13s, background-color 0.13s;
-  flex-shrink: 0;
-  max-width: 130px;
-}
-
-#tre-result-tooltip .tre-lang-select:hover {
-  border-color: #2563eb;
-  background-color: rgba(255, 255, 255, 0.98);
-}
-
-#tre-result-tooltip .tre-lang-select:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
-}
-
-/* Style selector */
-#tre-result-tooltip .tre-style-select {
-  appearance: none;
-  -webkit-appearance: none;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #bfdbfe;
-  border-radius: 6px;
-  color: #1e40af;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 22px 3px 7px;
-  cursor: pointer;
-  outline: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231e40af' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 5px center;
-  transition: border-color 0.13s, background-color 0.13s;
-  flex-shrink: 0;
-  max-width: 110px;
-}
-
-#tre-result-tooltip .tre-style-select:hover {
-  border-color: #2563eb;
-  background-color: rgba(255, 255, 255, 0.98);
-}
-
-#tre-result-tooltip .tre-style-select:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
-}
-
-/* ══════════════════════════════════════
-   ROW 3 — Body: two-column panels
-══════════════════════════════════════ */
-
-#tre-result-tooltip .tre-tooltip-body {
-  display: flex;
-  flex-direction: row;
-  min-height: 64px;
-  max-height: 200px;
-}
-
-#tre-result-tooltip .tre-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  gap: 7px;
   min-width: 0;
 }
 
-/* Subtle background tint for source panel */
+#tre-result-tooltip .tre-ctrl-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 26px;
+  max-width: 166px;
+  padding: 4px 10px;
+  overflow: hidden;
+  border: 1px solid #dbe3ef;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 760;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#tre-result-tooltip .tre-ctrl-provider {
+  color: #1d4ed8;
+}
+
+#tre-result-tooltip .tre-ctrl-model {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10.5px;
+}
+
+#tre-result-tooltip .tre-ctrl-loading {
+  color: #94a3b8;
+}
+
+#tre-result-tooltip .tre-select-field {
+  display: grid;
+  gap: 4px;
+}
+
+#tre-result-tooltip .tre-select-field label {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+#tre-result-tooltip .tre-lang-select,
+#tre-result-tooltip .tre-style-select {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 30px;
+  max-width: 138px;
+  padding: 6px 30px 6px 10px;
+  border: 1px solid #dbe3ef;
+  border-radius: 7px;
+  background-color: #ffffff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.75 6 6.25l4.5-4.5' stroke='%23475569' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  color: #1f2937;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  outline: none;
+  cursor: pointer;
+}
+
+#tre-result-tooltip .tre-lang-select:hover,
+#tre-result-tooltip .tre-style-select:hover {
+  border-color: #cbd5e1;
+}
+
+#tre-result-tooltip .tre-lang-select:focus,
+#tre-result-tooltip .tre-style-select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+}
+
+#tre-result-tooltip .tre-tooltip-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+  min-height: 84px;
+  max-height: 220px;
+}
+
+#tre-result-tooltip .tre-panel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 #tre-result-tooltip .tre-source-panel {
-  background: #fafafa;
+  background: #fbfdff;
 }
 
 #tre-result-tooltip .tre-result-panel {
   background: #ffffff;
 }
 
-/* Column label ("Original" / "Translation") */
 #tre-result-tooltip .tre-panel-label {
-  font-size: 9px;
-  font-weight: 700;
+  padding: 10px 12px 4px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  letter-spacing: 0.09em;
-  color: #60a5fa;
-  padding: 8px 12px 3px;
-  flex-shrink: 0;
 }
 
-/* Original source text (left column) */
-#tre-result-tooltip .tre-source-text {
-  color: #6b7280;
-  padding: 0 12px 10px;
-  font-size: 12.5px;
-  line-height: 1.55;
-  overflow-y: auto;
-  flex: 1;
-  white-space: pre-wrap;
-}
-
-/* Vertical divider between columns */
 #tre-result-tooltip .tre-panel-divider {
   width: 1px;
-  background: #e2e8f0;
-  flex-shrink: 0;
-  margin: 10px 0;
+  margin: 12px 0;
+  background: #dbe3ef;
 }
 
-/* Translated text (right column) */
+#tre-result-tooltip .tre-source-text,
 #tre-result-tooltip .tre-tooltip-text {
-  color: #0f172a;
-  padding: 0 12px 10px;
-  font-size: 13px;
-  line-height: 1.6;
-  overflow-y: auto;
   flex: 1;
+  min-height: 0;
+  padding: 0 12px 12px;
+  overflow-y: auto;
+  color: #1f2937;
+  font-size: 13px;
+  line-height: 1.58;
   white-space: pre-wrap;
 }
 
-/* ══════════════════════════════════════
-   ROW 4 — Action buttons
-══════════════════════════════════════ */
+#tre-result-tooltip .tre-source-text {
+  color: #64748b;
+}
 
 #tre-result-tooltip .tre-tooltip-actions {
   display: flex;
-  gap: 0;
-  border-top: 1px solid #e2e8f0;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 10px 12px;
+  border-top: 1px solid #dbe3ef;
+  background: #f8fafc;
 }
 
 #tre-result-tooltip .tre-action-btn {
-  flex: 1;
-  padding: 9px 10px;
-  border: none;
-  border-radius: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 7px 12px;
+  border: 1px solid #dbe3ef;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #334155;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
   font-size: 12px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.13s;
-  user-select: none;
+  font-weight: 760;
+  line-height: 1;
   white-space: nowrap;
-  background: transparent;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.13s ease, border-color 0.13s ease, color 0.13s ease, transform 0.13s ease;
+}
+
+#tre-result-tooltip .tre-action-btn:hover {
+  border-color: #cbd5e1;
+  background: #ffffff;
+}
+
+#tre-result-tooltip .tre-action-btn:active {
+  transform: translateY(1px);
 }
 
 #tre-result-tooltip .tre-copy-btn {
-  color: #2563eb;
-  border-right: 1px solid #e2e8f0;
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
 }
 
-#tre-result-tooltip .tre-copy-btn:hover {
-  background: #eff6ff;
+#tre-result-tooltip .tre-listen-btn {
+  border-color: #ddd6fe;
+  background: #f5f3ff;
+  color: #6d28d9;
 }
 
 #tre-result-tooltip .tre-replace-btn {
-  color: #0f766e;
+  border-color: #bbf7d0;
+  background: #ecfdf5;
+  color: #065f46;
 }
 
-#tre-result-tooltip .tre-replace-btn:hover {
-  background: #f0fdf4;
+@media (max-width: 560px) {
+  #tre-result-tooltip {
+    min-width: calc(100vw - 16px);
+  }
+
+  #tre-result-tooltip .tre-controls-row,
+  #tre-result-tooltip .tre-tooltip-body {
+    grid-template-columns: 1fr;
+  }
+
+  #tre-result-tooltip .tre-panel-divider {
+    width: auto;
+    height: 1px;
+    margin: 0 12px;
+  }
+
+  #tre-result-tooltip .tre-tooltip-actions,
+  #tre-result-tooltip .tre-model-stack {
+    flex-wrap: wrap;
+  }
 }

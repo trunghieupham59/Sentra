@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ApiKeyInput } from '../../components/ApiKeyInput'
 import { DeepResearchApiSection } from '../../components/chat/DeepResearchApiSection'
-import { LockIcon } from '../../components/ui/icons'
 import { PROVIDERS } from '../../constants/providers'
 import { JINA_DOCS_URL } from '../../constants/urls'
 import { useAppStore, useT } from '../../store/useAppStore'
@@ -61,17 +60,7 @@ export function ApiKeysSection() {
   const configuredCount = PROVIDERS.filter((p) => keyStatus[p.id] || keyData[p.id]?.exists).length
 
   return (
-    <>
-      {/* Security notice */}
-      <div className="flex items-start gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-950/30
-                      border border-blue-100 dark:border-blue-900 rounded-xl">
-        <LockIcon className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
-        <div>
-          <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">{t.settings_security_title}</p>
-          <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">{t.settings_security_desc}</p>
-        </div>
-      </div>
-
+    <div className="space-y-8">
       {/* AI Provider API Keys */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
@@ -93,39 +82,25 @@ export function ApiKeysSection() {
       </section>
 
       {/* Deep Research Web Search API Keys */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
+      <section className="space-y-3 border-t border-gray-200 pt-6 dark:border-gray-700">
+        <div>
           <h2 className="section-label">{t.settings_web_search_section}</h2>
-        </div>
-
-        {/* Info card */}
-        <div className="flex items-start gap-3 px-4 py-3
-                        bg-blue-50 dark:bg-blue-950/30
-                        border border-blue-100 dark:border-blue-900 rounded-xl">
-          <span className="text-base flex-shrink-0">🌐</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">
-              {t.settings_web_search_title}
-            </p>
-            <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
-              {t.settings_web_search_desc_prefix}{' '}
-              <button
-                type="button"
-                onClick={() => window.api?.openExternal(JINA_DOCS_URL)}
-                className="underline cursor-pointer hover:text-blue-800 dark:hover:text-blue-200"
-              >
-                Jina AI
-              </button>
-              {' '}{t.settings_web_search_desc_suffix}
-            </p>
-          </div>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {t.settings_web_search_desc_prefix}{' '}
+            <button
+              type="button"
+              onClick={() => window.api?.openExternal(JINA_DOCS_URL)}
+              className="text-blue-500 hover:text-blue-700 hover:underline"
+            >
+              Jina AI
+            </button>
+            {' '}{t.settings_web_search_desc_suffix}
+          </p>
         </div>
 
         {/* Shared provider table */}
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden px-4 py-3">
-          <DeepResearchApiSection />
-        </div>
+        <DeepResearchApiSection />
       </section>
-    </>
+    </div>
   )
 }

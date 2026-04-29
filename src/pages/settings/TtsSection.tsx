@@ -1,13 +1,42 @@
-import { useEffect, useState } from 'react'
-import { CheckCircleIcon, ChevronDownIcon, SpinnerIcon, TrashIcon } from '../../components/ui/icons'
+import { useEffect, useState, type ReactNode } from 'react'
+import {
+  AutoModeIcon,
+  CheckCircleIcon,
+  ElevenLabsIcon,
+  MicrosoftEdgeIcon,
+  PremiumModeIcon,
+  SpinnerIcon,
+  TrashIcon,
+} from '../../components/ui/icons'
 import { TtsVoicePicker } from '../../components/ui/TtsVoicePicker'
 import { TOAST_DISMISS_DELAY_MS } from '../../constants/ui'
 import { ELEVENLABS_DOCS_URL } from '../../constants/urls'
 import { useAppStore, useT } from '../../store/useAppStore'
-import type { TtsVoice } from '../../types'
+import type { TtsMode } from '../../types'
+
+function ProviderLogoFrame({
+  children,
+  selected,
+}: {
+  children: ReactNode
+  selected: boolean
+}) {
+  return (
+    <span
+      className={[
+        'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border',
+        selected
+          ? 'border-blue-200 bg-white text-gray-950 dark:border-blue-900 dark:bg-gray-950 dark:text-white'
+          : 'border-gray-200 bg-gray-50 text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100',
+      ].join(' ')}
+    >
+      {children}
+    </span>
+  )
+}
 
 export function TtsSection() {
-  const { ttsVoice, setTtsVoice } = useAppStore()
+  const { ttsMode, ttsVoice, setTtsMode, setTtsVoice } = useAppStore()
   const t = useT()
 
   // ── ElevenLabs key state ────────────────────────────────────────────────────
@@ -65,49 +94,72 @@ export function TtsSection() {
     <section className="space-y-3">
       <h2 className="section-label">{t.settings_tts_section}</h2>
 
-      {/* Section info banner */}
-      <div className="flex items-start gap-3 px-4 py-3
-                      bg-blue-50 dark:bg-blue-950/30
-                      border border-blue-100 dark:border-blue-900 rounded-xl">
-        <span className="text-base flex-shrink-0">🔊</span>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">
-            {t.settings_tts_section}
-          </p>
-          <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
-            {t.settings_tts_priority_desc}
-          </p>
-        </div>
-      </div>
-
       <div className="card divide-y divide-gray-100 dark:divide-gray-700">
 
+        {/* TTS mode selector — default free-first to avoid paid API calls */}
+        <div className="px-4 py-3.5 space-y-3">
+          <div>
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_tts_mode}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_tts_mode_desc}</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {([
+              {
+                mode: 'free',
+                label: t.settings_tts_mode_free,
+                desc: t.settings_tts_mode_free_desc,
+                icon: <MicrosoftEdgeIcon size={21} />,
+              },
+              {
+                mode: 'auto',
+                label: t.settings_tts_mode_auto,
+                desc: t.settings_tts_mode_auto_desc,
+                icon: <AutoModeIcon className="w-5 h-5 text-blue-600 dark:text-blue-300" />,
+              },
+              {
+                mode: 'premium',
+                label: t.settings_tts_mode_premium,
+                desc: t.settings_tts_mode_premium_desc,
+                icon: <PremiumModeIcon className="w-5 h-5 text-amber-600 dark:text-amber-300" />,
+              },
+            ] as Array<{ mode: TtsMode; label: string; desc: string; icon: ReactNode }>).map(({ mode, label, desc, icon }) => {
+              const active = ttsMode === mode
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setTtsMode(mode)}
+                  className={[
+                    'text-left px-3 py-2.5 rounded-lg border transition-colors min-h-[76px]',
+                    active
+                      ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-blue-200 hover:bg-blue-50/50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:border-blue-900 dark:hover:bg-blue-950/20',
+                  ].join(' ')}
+                  aria-pressed={active}
+                >
+                  <span className="flex items-start gap-2">
+                    <ProviderLogoFrame selected={active}>
+                      {icon}
+                    </ProviderLogoFrame>
+                    <span className="block min-w-0 text-sm font-semibold leading-snug pt-0.5">{label}</span>
+                  </span>
+                  <span className={[
+                    'block text-xs mt-2 leading-snug',
+                    active ? 'text-blue-600 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400',
+                  ].join(' ')}>
+                    {desc}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
         {/* Voice selector — applies when OpenAI is the active provider */}
-        <div className="flex items-center justify-between px-4 py-3.5 gap-4">
+        <div className="px-4 py-3.5">
           <div className="min-w-0">
             <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_tts_voice}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_tts_voice_desc}</p>
-          </div>
-          <div className="relative flex-shrink-0">
-            <select
-              value={ttsVoice}
-              onChange={(e) => setTtsVoice(e.target.value as TtsVoice)}
-              className="select-field py-1.5 pl-3 pr-8 text-xs min-w-[200px]"
-            >
-              {([
-                ['alloy',   t.settings_tts_voice_alloy],
-                ['echo',    t.settings_tts_voice_echo],
-                ['fable',   t.settings_tts_voice_fable],
-                ['onyx',    t.settings_tts_voice_onyx],
-                ['nova',    t.settings_tts_voice_nova],
-                ['shimmer', t.settings_tts_voice_shimmer],
-              ] as [TtsVoice, string][]).map(([id, label]) => (
-                <option key={id} value={id}>{label}</option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute right-2.5 inset-y-0 flex items-center">
-              <ChevronDownIcon className="w-3.5 h-3.5 text-gray-400" />
-            </div>
           </div>
         </div>
 
@@ -118,17 +170,22 @@ export function TtsSection() {
         <div className="px-4 py-3.5 space-y-2">
           {/* Header: title + link on left, badge on right */}
           <div className="flex items-center justify-between gap-4">
-            <div>
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                {t.settings_tts_elevenlabs_key}
-              </h3>
-              <button
-                type="button"
-                onClick={() => window.api?.openExternal(ELEVENLABS_DOCS_URL)}
-                className="text-xs text-blue-500 hover:text-blue-700 hover:underline"
-              >
-                {t.settings_get_key}
-              </button>
+            <div className="flex min-w-0 items-center gap-3">
+              <ProviderLogoFrame selected={false}>
+                <ElevenLabsIcon size={21} />
+              </ProviderLogoFrame>
+              <div className="min-w-0">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                  {t.settings_tts_elevenlabs_key}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => window.api?.openExternal(ELEVENLABS_DOCS_URL)}
+                  className="text-xs text-blue-500 hover:text-blue-700 hover:underline"
+                >
+                  {t.settings_get_key}
+                </button>
+              </div>
             </div>
             {elKey.exists ? (
               <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 flex-shrink-0">

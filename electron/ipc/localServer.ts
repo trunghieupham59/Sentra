@@ -13,6 +13,8 @@
  *   GET  /api/status                                 → { success, version }
  *   POST /api/translate  { text, targetLang, sourceLang?, provider?, model? }
  *                        → { success, translatedText } | { success:false, error }
+ *   POST /api/tts        { text, lang?, mode? }
+ *                        → { success, audioBase64?, mimeType?, provider? } | { success:false, error }
  */
 import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
@@ -22,6 +24,7 @@ import { app } from 'electron'
 import { EXT_DEFAULT_GEMINI_MODEL } from './ipcConstants'
 import { lightweightTranslate } from './lightweightTranslate'
 import { hasStoredApiKey } from './storage'
+import { synthesizeTts, type TtsMode, type TtsParams } from './tts'
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -54,9 +57,16 @@ let server: http.Server | null = null
  * Updated via IPC `localServer:syncConfig` whenever the user changes provider/model.
  * Used by /api/config so the extension always mirrors the app's current selection.
  */
-const cachedConfig: { provider: string; model: string } = {
+const cachedConfig: {
+  provider: string
+  model: string
+  ttsMode: TtsMode
+  ttsVoice: NonNullable<TtsParams['voice']>
+} = {
   provider: 'gemini',
   model: EXT_DEFAULT_GEMINI_MODEL,
+  ttsMode: 'free',
+  ttsVoice: 'nova',
 }
 
 // ── Persistence ───────────────────────────────────────────────────────────────
@@ -167,54 +177,78 @@ function readBody (req: http.IncomingMessage): Promise<string> {
   })
 }
 
-function createHttpServer (): http.Server {
-  return http.createServer(async (req, res) => {
-    if (req.method === 'OPTIONS') { sendJSON(res, 200, {}); return }
+export async function handleLocalServerRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+  if (req.method === 'OPTIONS') { sendJSON(res, 200, {}); return }
 
-    // Validate token against all active, non-expired tokens
-    const incomingToken = req.headers['x-viezan-token']
-    const now = Date.now()
-    purgeExpired()
-    const valid = activeTokens.some(t => t.token === incomingToken && t.expiresAt > now)
-    if (!valid) {
-      sendJSON(res, 401, { success: false, error: 'Unauthorized — token expired or invalid' })
-      return
+  // Validate token against all active, non-expired tokens
+  const incomingToken = req.headers['x-viezan-token']
+  const now = Date.now()
+  purgeExpired()
+  const valid = activeTokens.some(t => t.token === incomingToken && t.expiresAt > now)
+  if (!valid) {
+    sendJSON(res, 401, { success: false, error: 'Unauthorized — token expired or invalid' })
+    return
+  }
+
+  const url = req.url ?? ''
+
+  if (req.method === 'GET' && url === '/api/status') {
+    sendJSON(res, 200, { success: true, version: app.getVersion(), appName: app.getName() })
+    return
+  }
+
+  // Returns the app's currently active provider/model so the extension
+  // mirrors the user's selection without needing its own provider settings.
+  if (req.method === 'GET' && url === '/api/config') {
+    sendJSON(res, 200, {
+      success: true,
+      provider: cachedConfig.provider,
+      model: cachedConfig.model,
+      availableProviders: {
+        gemini: hasStoredApiKey('gemini'),
+        openai: hasStoredApiKey('openai'),
+        claude: hasStoredApiKey('claude'),
+      },
+    })
+    return
+  }
+
+  if (req.method === 'POST' && url === '/api/translate') {
+    try {
+      const result = await lightweightTranslate(JSON.parse(await readBody(req)))
+      sendJSON(res, 200, result)
+    } catch (e) {
+      sendJSON(res, 400, { success: false, error: String(e) })
     }
+    return
+  }
 
-    const url = req.url ?? ''
-
-    if (req.method === 'GET' && url === '/api/status') {
-      sendJSON(res, 200, { success: true, version: app.getVersion(), appName: app.getName() })
-      return
-    }
-
-    // Returns the app's currently active provider/model so the extension
-    // mirrors the user's selection without needing its own provider settings.
-    if (req.method === 'GET' && url === '/api/config') {
-      sendJSON(res, 200, {
-        success: true,
-        provider: cachedConfig.provider,
-        model: cachedConfig.model,
-        availableProviders: {
-          gemini: hasStoredApiKey('gemini'),
-          openai: hasStoredApiKey('openai'),
-          claude: hasStoredApiKey('claude'),
-        },
-      })
-      return
-    }
-
-    if (req.method === 'POST' && url === '/api/translate') {
-      try {
-        const result = await lightweightTranslate(JSON.parse(await readBody(req)))
-        sendJSON(res, 200, result)
-      } catch (e) {
-        sendJSON(res, 400, { success: false, error: String(e) })
+  if (req.method === 'POST' && url === '/api/tts') {
+    try {
+      const body = JSON.parse(await readBody(req))
+      const text = typeof body?.text === 'string' ? body.text.trim() : ''
+      if (!text) {
+        sendJSON(res, 400, { success: false, error: 'Missing text' })
+        return
       }
-      return
+      const result = await synthesizeTts({
+        text,
+        lang: typeof body?.lang === 'string' ? body.lang : undefined,
+        mode: cachedConfig.ttsMode,
+        voice: cachedConfig.ttsVoice,
+      })
+      sendJSON(res, result.success ? 200 : 400, result)
+    } catch (e) {
+      sendJSON(res, 400, { success: false, error: String(e) })
     }
-    sendJSON(res, 404, { success: false, error: 'Not found' })
-  })
+    return
+  }
+
+  sendJSON(res, 404, { success: false, error: 'Not found' })
+}
+
+export function createHttpServer (): http.Server {
+  return http.createServer(handleLocalServerRequest)
 }
 
 /**
@@ -261,9 +295,30 @@ export function startLocalServer (ipcMain: Electron.IpcMain): void {
    * Called by the renderer whenever selectedProvider or selectedModels changes.
    * Keeps cachedConfig in sync so /api/config reflects the app's current state.
    */
-  ipcMain.handle('localServer:syncConfig', (_event, { provider, model }: { provider: string; model: string }) => {
+  ipcMain.handle('localServer:syncConfig', (_event, {
+    provider,
+    model,
+    ttsMode,
+    ttsVoice,
+  }: {
+    provider: string
+    model: string
+    ttsMode?: TtsMode
+    ttsVoice?: TtsParams['voice']
+  }) => {
     if (typeof provider === 'string') cachedConfig.provider = provider
     if (typeof model === 'string') cachedConfig.model = model
+    if (ttsMode === 'free' || ttsMode === 'auto' || ttsMode === 'premium') cachedConfig.ttsMode = ttsMode
+    if (
+      ttsVoice === 'alloy' ||
+      ttsVoice === 'echo' ||
+      ttsVoice === 'fable' ||
+      ttsVoice === 'onyx' ||
+      ttsVoice === 'nova' ||
+      ttsVoice === 'shimmer'
+    ) {
+      cachedConfig.ttsVoice = ttsVoice
+    }
     return { success: true }
   })
 
@@ -331,4 +386,8 @@ export function stopLocalServer (): void {
 export function getServerToken (): string {
   purgeExpired()
   return activeTokens[0]?.token ?? ''
+}
+
+export function setLocalServerTokensForTest(tokens: TokenEntry[]): void {
+  activeTokens = tokens
 }

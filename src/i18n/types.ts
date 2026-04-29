@@ -173,6 +173,14 @@ export interface Translations {
   settings_tts_priority_desc: string
   /** Label for the "Priority" sub-header in TTS section */
   settings_tts_priority_label: string
+  settings_tts_mode: string
+  settings_tts_mode_desc: string
+  settings_tts_mode_free: string
+  settings_tts_mode_free_desc: string
+  settings_tts_mode_auto: string
+  settings_tts_mode_auto_desc: string
+  settings_tts_mode_premium: string
+  settings_tts_mode_premium_desc: string
   settings_tts_elevenlabs_key: string
   settings_tts_elevenlabs_key_desc: string
   /** Placeholder text for ElevenLabs API key input */
