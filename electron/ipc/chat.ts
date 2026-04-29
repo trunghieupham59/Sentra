@@ -10,6 +10,19 @@ import { getStoredApiKey } from './storage'
 
 // DUP-02: Removed local `getApiKey` wrapper — call getStoredApiKey directly.
 
+const MAX_CHAT_OUTPUT_TOKENS_OVERRIDE: Record<string, number> = {
+  claude: 16_000,
+  gemini: 8_192,
+  openai: 16_000,
+}
+
+function normalizeChatOutputTokens(provider: string, value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return MAX_CHAT_OUTPUT_TOKENS
+  const integerValue = Math.floor(value)
+  const providerCap = MAX_CHAT_OUTPUT_TOKENS_OVERRIDE[provider] ?? MAX_CHAT_OUTPUT_TOKENS
+  return Math.min(Math.max(integerValue, 1), providerCap)
+}
+
 /**
  * DUP-07: This interface is intentionally kept here (not imported from src/types/index.ts)
  * because tsconfig.electron.json only includes ["electron"] — the main process build
@@ -39,6 +52,11 @@ interface ChatParams {
    * Only used for AI Summarize (live-translate) which needs to send longer transcripts.
    */
   bypassLengthCheck?: boolean
+  /**
+   * Optional per-call output budget for long-form operations such as Deep Research
+   * synthesis. Clamped in the IPC handler before reaching provider SDK calls.
+   */
+  maxOutputTokens?: number
 }
 
 // HC-08: MAX_CHAT_REQUEST_CHARS now imported from ipcConstants — stays in sync with
@@ -58,13 +76,15 @@ async function chatWithGemini(
   apiKey: string,
   model: string,
   messages: ChatMessage[],
-  systemPrompt?: string
+  systemPrompt?: string,
+  maxOutputTokens = MAX_CHAT_OUTPUT_TOKENS,
 ): Promise<string> {
   const { GoogleGenerativeAI } = await import('@google/generative-ai')
   const genAI = new GoogleGenerativeAI(apiKey)
   const genModel = genAI.getGenerativeModel({
     model,
     systemInstruction: buildEnforcedSystemPrompt(systemPrompt || ''),
+    generationConfig: { maxOutputTokens },
   })
 
   // Build chat history (all messages except the last user message)
@@ -95,14 +115,22 @@ async function chatWithGemini(
   }
 
   const result = await chat.sendMessage(parts)
-  return result.response.text().trim()
+  const text = result.response.text().trim()
+  if (!text) {
+    const finishReason = result.response.candidates?.[0]?.finishReason
+    throw new Error(
+      `Gemini returned an empty response${finishReason ? ` (finishReason=${finishReason})` : ''}.`
+    )
+  }
+  return text
 }
 
 async function chatWithClaude(
   apiKey: string,
   model: string,
   messages: ChatMessage[],
-  systemPrompt?: string
+  systemPrompt?: string,
+  maxOutputTokens = MAX_CHAT_OUTPUT_TOKENS,
 ): Promise<string> {
   const Anthropic = (await import('@anthropic-ai/sdk')).default
   const client = new Anthropic({ apiKey })
@@ -128,13 +156,19 @@ async function chatWithClaude(
 
   const message = await client.messages.create({
     model,
-    max_tokens: MAX_CHAT_OUTPUT_TOKENS,  // HC-02
+    max_tokens: maxOutputTokens,  // HC-02
     system: buildEnforcedSystemPrompt(systemPrompt || ''),
     messages: formattedMessages,
   })
 
   const block = message.content[0]
-  if (block.type === 'text') return block.text.trim()
+  if (block.type === 'text') {
+    const text = block.text.trim()
+    if (!text) {
+      throw new Error(`Claude returned an empty response (stop_reason=${message.stop_reason ?? 'unknown'}).`)
+    }
+    return text
+  }
   throw new Error('Unexpected response type from Claude')
 }
 
@@ -245,7 +279,8 @@ async function chatWithOpenAI(
   apiKey: string,
   model: string,
   messages: ChatMessage[],
-  systemPrompt?: string
+  systemPrompt?: string,
+  maxOutputTokens = MAX_CHAT_OUTPUT_TOKENS,
 ): Promise<string> {
   const OpenAI = (await import('openai')).default
   const client = new OpenAI({ apiKey })
@@ -286,9 +321,20 @@ async function chatWithOpenAI(
     const completion = await client.chat.completions.create({
       model: m,
       messages: formattedMessages,
-      max_completion_tokens: MAX_CHAT_OUTPUT_TOKENS,  // HC-02
+      max_completion_tokens: maxOutputTokens,  // HC-02
     })
-    return (completion.choices[0]?.message?.content ?? '').trim()
+    const choice = completion.choices[0]
+    const text = (choice?.message?.content ?? '').trim()
+    if (!text) {
+      const finishReason = choice?.finish_reason ?? 'unknown'
+      const refusal = choice?.message && 'refusal' in choice.message
+        ? choice.message.refusal
+        : undefined
+      throw new Error(
+        `OpenAI returned an empty response (finish_reason=${finishReason}${refusal ? `, refusal=${refusal}` : ''}).`
+      )
+    }
+    return text
   }
 
   try {
@@ -316,7 +362,7 @@ async function chatWithOpenAI(
 // contract explicit. Per-provider functions remain separate (each SDK is different).
 
 type ChatFn = (
-  apiKey: string, model: string, messages: ChatMessage[], systemPrompt?: string
+  apiKey: string, model: string, messages: ChatMessage[], systemPrompt?: string, maxOutputTokens?: number
 ) => Promise<string>
 
 const CHAT_PROVIDERS: Record<string, ChatFn> = {
@@ -345,6 +391,7 @@ const CHAT_PROVIDERS: Record<string, ChatFn> = {
 export function registerChatHandlers(ipcMain: IpcMain) {
   ipcMain.handle('chat:send', async (_event, params: ChatParams) => {
     const { provider, model, messages, systemPrompt, bypassLengthCheck } = params
+    const maxOutputTokens = normalizeChatOutputTokens(provider, params.maxOutputTokens)
 
     if (!messages || messages.length === 0) {
       return { success: false, error: 'No messages provided' }
@@ -380,7 +427,7 @@ export function registerChatHandlers(ipcMain: IpcMain) {
       if (!chatFn) return unknownProviderError(provider)
       // withRetry wraps the chat call with exponential backoff for transient network errors.
       // Hard failures (auth, rate limit) are not retried — they propagate immediately.
-      reply = await withRetry(() => chatFn(apiKey, model, messages, systemPrompt))
+      reply = await withRetry(() => chatFn(apiKey, model, messages, systemPrompt, maxOutputTokens))
 
       return { success: true, reply }
     } catch (error: unknown) {

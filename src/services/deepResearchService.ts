@@ -38,6 +38,9 @@ const MAX_GAPS_PER_ROUND = 3
 /** Maximum search results per query */
 const MAX_SEARCH_RESULTS = 5
 
+/** Larger output budget for the final long-form report. */
+const DEEP_RESEARCH_SYNTHESIS_OUTPUT_TOKENS = 12_000
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface DeepResearchCallbacks {
@@ -61,6 +64,8 @@ interface GapAnalysisResult {
   gaps: string[]
   queries: string[]
 }
+
+type ChatServiceResult = Awaited<ReturnType<typeof chatService.send>>
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -91,6 +96,17 @@ async function webSearch(query: string): Promise<string> {
     }
   } catch { /* ignore */ }
   return ''
+}
+
+function getReply(result: ChatServiceResult): string | null {
+  const reply = result.reply?.trim()
+  return result.success && reply ? reply : null
+}
+
+function describeChatFailure(result: ChatServiceResult, fallback: string): string {
+  if (result.error?.trim()) return result.error
+  if (result.success && !result.reply?.trim()) return 'AI trả về nội dung rỗng'
+  return fallback
 }
 
 // ─── Language rule (prepended to every AI-facing prompt) ─────────────────────
@@ -210,8 +226,9 @@ export const deepResearchService = {
         messages: [{ role: 'user', content: [{ type: 'text', text: question }] }],
         systemPrompt: ANALYZE_PROMPT(date),
       })
-      if (result.success && result.reply) {
-        const m = result.reply.match(/\{[\s\S]*\}/)
+      const reply = getReply(result)
+      if (reply) {
+        const m = reply.match(/\{[\s\S]*\}/)
         if (m) {
           try {
             const p = JSON.parse(m[0])
@@ -245,7 +262,7 @@ export const deepResearchService = {
           messages: [{ role: 'user', content: [{ type: 'text', text: `Analyze this aspect: ${aspect}` }] }],
           systemPrompt: RESEARCH_PROMPT(date, aspect, question, webCtx),
         })
-        const content = result.success && result.reply ? result.reply : `[Không thể phân tích: ${result.error}]`
+        const content = getReply(result) ?? `[Không thể phân tích: ${describeChatFailure(result, 'Lỗi không xác định')}]`
         knowledgeBase.push({ label: aspect, content })
         onStepComplete(msgId, content, false)
       } catch (err) {
@@ -273,8 +290,9 @@ export const deepResearchService = {
           bypassLengthCheck: true,
         })
 
-        if (result.success && result.reply) {
-          const m = result.reply.match(/\{[\s\S]*\}/)
+        const reply = getReply(result)
+        if (reply) {
+          const m = reply.match(/\{[\s\S]*\}/)
           if (m) {
             try {
               const p = JSON.parse(m[0])
@@ -319,7 +337,7 @@ export const deepResearchService = {
             messages: [{ role: 'user', content: [{ type: 'text', text: `Deep dive research: ${gapLabel}` }] }],
             systemPrompt: RESEARCH_PROMPT(date, gapLabel, question, webCtx),
           })
-          const content = result.success && result.reply ? result.reply : `[Không thể nghiên cứu]`
+          const content = getReply(result) ?? `[Không thể nghiên cứu: ${describeChatFailure(result, 'Lỗi không xác định')}]`
           knowledgeBase.push({ label: `[Sâu hơn] ${gapLabel}`, content })
           onStepComplete(deepMsgId, content, false)
         } catch (err) {
@@ -344,9 +362,8 @@ export const deepResearchService = {
         systemPrompt: CROSS_REFERENCE_PROMPT(date, question, allFindingsFinal, anyWebSearch),
         bypassLengthCheck: true,
       })
-      crossContent = result.success && result.reply
-        ? result.reply
-        : 'Không thể thực hiện cross-reference.'
+      crossContent = getReply(result)
+        ?? `Không thể thực hiện cross-reference: ${describeChatFailure(result, 'Lỗi không xác định')}.`
       onStepComplete(crossMsgId, crossContent, false)
     } catch (err) {
       const e = err instanceof Error ? err.message : 'Lỗi cross-reference'
@@ -374,11 +391,11 @@ export const deepResearchService = {
         }],
         systemPrompt: SYNTHESIS_PROMPT(date, anyWebSearch),
         bypassLengthCheck: true,
+        maxOutputTokens: DEEP_RESEARCH_SYNTHESIS_OUTPUT_TOKENS,
       })
 
-      const synthesis = result.success && result.reply
-        ? result.reply
-        : `Không thể tổng hợp (${result.error ?? 'unknown error'}).`
+      const synthesis = getReply(result)
+        ?? `Không thể tổng hợp (${describeChatFailure(result, 'Lỗi không xác định')}).`
 
       onStepComplete(synthMsgId, synthesis, true)
     } catch (err) {

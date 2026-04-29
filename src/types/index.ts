@@ -383,6 +383,8 @@ export interface WindowApi {
     systemPrompt?: string
     /** Bypass the 3k char limit — only set true for AI Summarize on long transcripts */
     bypassLengthCheck?: boolean
+    /** Optional larger output budget for long-form synthesis calls */
+    maxOutputTokens?: number
   }) => Promise<ChatResult>
   checkScreenPermission: () => Promise<string>
   openExternal: (url: string) => Promise<void>
