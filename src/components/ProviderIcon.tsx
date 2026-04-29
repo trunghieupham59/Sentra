@@ -1,5 +1,5 @@
 import type { Provider } from '../types'
-import { ClaudeProviderIcon, GeminiProviderIcon, OpenAIProviderIcon } from './ui/icons'
+import { ClaudeProviderIcon, GeminiProviderIcon, LocalProviderIcon, OpenAIProviderIcon } from './ui/icons'
 
 // SPLIT-ICON-01: SVG icon definitions moved to src/components/ui/icons/providers.tsx
 // ProviderIcon.tsx now only holds the wrapper component and PROVIDER_COLORS map.
@@ -16,6 +16,7 @@ export function ProviderIcon({ provider, size = 20, className = '' }: ProviderIc
       {provider === 'gemini' && <GeminiProviderIcon size={size} />}
       {provider === 'claude' && <ClaudeProviderIcon size={size} />}
       {provider === 'openai' && <OpenAIProviderIcon size={size} />}
+      {provider === 'local' && <LocalProviderIcon size={size} />}
     </span>
   )
 }
@@ -60,5 +61,15 @@ export const PROVIDER_COLORS: Record<Provider, {
     borderActive: 'border-emerald-400 dark:border-emerald-600',
     dot: 'bg-emerald-500',
     iconColor: '#10A37F',
+  },
+  local: {
+    bg: 'bg-gray-50 dark:bg-gray-800/70',
+    bgActive: 'bg-gray-100 dark:bg-gray-700/80',
+    text: 'text-gray-700 dark:text-gray-300',
+    textActive: 'text-gray-900 dark:text-gray-100',
+    border: 'border-gray-200 dark:border-gray-700',
+    borderActive: 'border-gray-400 dark:border-gray-500',
+    dot: 'bg-gray-500',
+    iconColor: '#6B7280',
   },
 }

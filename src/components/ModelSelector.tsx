@@ -30,10 +30,13 @@ export function ModelSelector() {
   const currentDynamic = dynamicModels[selectedProvider]
   const isLoading = modelsLoading[selectedProvider]
   const error = modelsError[selectedProvider]
-  const hasKey = keyStatus[selectedProvider]
+  const currentProviderConfig = PROVIDERS.find((p) => p.id === selectedProvider)
+  const providerRequiresKey = currentProviderConfig?.requiresApiKey !== false
+  const hasKey = !providerRequiresKey || keyStatus[selectedProvider]
 
   const fetchModels = async (provider: Provider, forceRecommended = false) => {
-    if (!keyStatus[provider] || !window.api) return
+    const requiresKey = PROVIDERS.find((p) => p.id === provider)?.requiresApiKey !== false
+    if ((requiresKey && !keyStatus[provider]) || !window.api) return
     setModelsLoading(provider, true)
     setModelsError(provider, null)
     try {
@@ -64,8 +67,9 @@ export function ModelSelector() {
     }
   }, [selectedProvider, hasKey])
 
-  const staticModels = PROVIDERS.find((p) => p.id === selectedProvider)?.models ?? []
+  const staticModels = currentProviderConfig?.models ?? []
   const displayModels = currentDynamic.length > 0 ? currentDynamic : staticModels
+  const selectedModel = selectedModels[selectedProvider] ?? displayModels[0]?.id ?? ''
 
   return (
     <div className="flex items-end gap-3 min-w-0 overflow-hidden">
@@ -80,7 +84,7 @@ export function ModelSelector() {
                             ${PROVIDER_COLORS[selectedProvider].text}`}>
             <ProviderIcon provider={selectedProvider} size={13} />
             <span className="flex-1 truncate">{PROVIDERS.find(p => p.id === selectedProvider)?.name}</span>
-            {!keyStatus[selectedProvider] && (
+            {!hasKey && (
               <span className="w-1.5 h-1.5 rounded-full bg-orange-400 flex-shrink-0" />
             )}
             <ChevronDownIcon className="w-3 h-3 text-gray-400 flex-shrink-0" />
@@ -93,7 +97,7 @@ export function ModelSelector() {
           >
             {PROVIDERS.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name}{!keyStatus[p.id as Provider] ? ` (${t.model_no_key})` : ''}
+                {p.name}{p.requiresApiKey !== false && !keyStatus[p.id as Provider] ? ` (${t.model_no_key})` : ''}
               </option>
             ))}
           </select>
@@ -126,7 +130,7 @@ export function ModelSelector() {
           ) : (
             <div className="relative inline-block">
               <select
-                value={selectedModels[selectedProvider]}
+                value={selectedModel}
                 onChange={(e) => setSelectedModel(selectedProvider, e.target.value)}
                 className="select-field pl-2.5 pr-7 w-[140px] lg:w-[190px] xl:w-[230px]"
               >

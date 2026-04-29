@@ -1,5 +1,5 @@
 import type { IpcMain } from 'electron'
-import { shell, systemPreferences } from 'electron'
+import { app, shell, systemPreferences } from 'electron'
 import { isAllowedExternalUrl } from './externalUrl'
 
 export function registerSystemHandlers(ipc: IpcMain) {
@@ -19,5 +19,10 @@ export function registerSystemHandlers(ipc: IpcMain) {
     } catch (err) {
       console.error('[openExternal] failed:', err)
     }
+  })
+
+  ipc.handle('app:relaunch', () => {
+    app.relaunch()
+    app.exit(0)
   })
 }

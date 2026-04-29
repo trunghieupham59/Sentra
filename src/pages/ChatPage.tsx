@@ -102,7 +102,7 @@ export function ChatPage() {
     resetVoicePrefix,
   } = useVoiceInput({ currentText: inputText, onTextChange: setInputText })
 
-  const hasKey = keyStatus[selectedProvider]
+  const hasKey = selectedProvider === 'local' || keyStatus[selectedProvider]
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)

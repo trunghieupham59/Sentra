@@ -9,6 +9,18 @@
  *   import { GroqIcon, ElevenLabsIcon, MicrosoftEdgeIcon, TavilyIcon, BraveSearchIcon } from './ui/icons'
  */
 
+export function LocalProviderIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <title>Local AI</title>
+      <rect x="4" y="5" width="16" height="11" rx="2" fill="#6B7280" opacity="0.18" />
+      <path d="M7 16H17M10 19H14" stroke="#6B7280" strokeWidth="1.8" strokeLinecap="round" />
+      <rect x="4" y="5" width="16" height="11" rx="2" stroke="#6B7280" strokeWidth="1.8" />
+      <path d="M9 10.5H15M12 7.8V13.2" stroke="#6B7280" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 /**
  * Google Gemini — Official 4-pointed star (sparkle) icon.
  * Brand color: #1A73E8 (Google Blue)

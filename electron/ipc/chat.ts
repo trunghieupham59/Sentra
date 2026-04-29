@@ -5,6 +5,7 @@ import type { ChatCompletionContentPartImage, ChatCompletionContentPartText, Cha
 import { type ChatMessage, type MaxOutputTokensRequest, parseChatParams } from './chatValidation'
 import { classifyProviderError, noApiKeyResponse } from './errorUtils'
 import { GEMINI_API_BASE, MAX_CHAT_OUTPUT_TOKENS } from './ipcConstants'
+import { isLocalProvider, LOCAL_AI_PLACEHOLDER_KEY, resolveLocalAiRequestModel } from './localAi'
 import { unknownProviderError } from './providers/types'
 import { withRetry } from './retry'
 import { getStoredApiKey } from './storage'
@@ -471,6 +472,27 @@ async function chatWithOpenAI(
   }
 }
 
+async function chatWithLocal(
+  _apiKey: string,
+  model: string,
+  messages: ChatMessage[],
+  systemPrompt?: string,
+  maxOutputTokens = MAX_CHAT_OUTPUT_TOKENS,
+): Promise<string> {
+  const OpenAI = (await import('openai')).default
+  const local = await resolveLocalAiRequestModel(model)
+  const client = new OpenAI({ apiKey: LOCAL_AI_PLACEHOLDER_KEY, baseURL: local.baseURL })
+  const completion = await client.chat.completions.create({
+    model: local.model,
+    messages: formatOpenAIChatMessages(messages, systemPrompt),
+    max_tokens: maxOutputTokens,
+  })
+  const choice = completion.choices[0]
+  const text = (choice?.message?.content ?? '').trim()
+  if (!text) throw new Error(`Local AI returned an empty response (finish_reason=${choice?.finish_reason ?? 'unknown'}).`)
+  return text
+}
+
 async function streamChatWithOpenAI(
   apiKey: string,
   model: string,
@@ -518,6 +540,38 @@ async function streamChatWithOpenAI(
   }
 }
 
+async function streamChatWithLocal(
+  _apiKey: string,
+  model: string,
+  messages: ChatMessage[],
+  systemPrompt: string | undefined,
+  maxOutputTokens: number,
+  onToken: ChatStreamTokenHandler,
+): Promise<string> {
+  const OpenAI = (await import('openai')).default
+  const local = await resolveLocalAiRequestModel(model)
+  const client = new OpenAI({ apiKey: LOCAL_AI_PLACEHOLDER_KEY, baseURL: local.baseURL })
+  let fullText = ''
+  const stream = await client.chat.completions.create({
+    model: local.model,
+    messages: formatOpenAIChatMessages(messages, systemPrompt),
+    stream: true,
+    max_tokens: maxOutputTokens,
+  })
+
+  for await (const chunk of stream) {
+    const token = chunk.choices[0]?.delta?.content ?? ''
+    if (token) {
+      fullText += token
+      onToken(token)
+    }
+  }
+
+  const text = fullText.trim()
+  if (!text) throw new Error('Local AI returned an empty response.')
+  return text
+}
+
 // ── Provider registry — DUP-04 / DUP-06 ──────────────────────────────────────
 // Registry eliminates the switch/case dispatch block and makes the provider
 // contract explicit. Per-provider functions remain separate (each SDK is different).
@@ -539,12 +593,18 @@ const CHAT_PROVIDERS: Record<string, ChatFn> = {
   gemini: chatWithGemini,
   claude: chatWithClaude,
   openai: chatWithOpenAI,
+  local: chatWithLocal,
 }
 
 const CHAT_STREAM_PROVIDERS: Record<string, ChatStreamFn> = {
   gemini: streamChatWithGemini,
   claude: streamChatWithClaude,
   openai: streamChatWithOpenAI,
+  local: streamChatWithLocal,
+}
+
+function getProviderCredential(provider: string) {
+  return isLocalProvider(provider) ? LOCAL_AI_PLACEHOLDER_KEY : getStoredApiKey(provider)
 }
 
 function toChatFailure(error: unknown) {
@@ -582,7 +642,7 @@ export function registerChatHandlers(ipcMain: IpcMain) {
     const { provider, model, messages, systemPrompt } = params
 
     // DUP-02 + DUP-03
-    const apiKey = getStoredApiKey(provider)
+    const apiKey = getProviderCredential(provider)
     if (!apiKey) return noApiKeyResponse(provider)
     const maxOutputTokens = await resolveChatOutputTokens(provider, model, apiKey, params.maxOutputTokens)
 
@@ -617,7 +677,7 @@ export function registerChatHandlers(ipcMain: IpcMain) {
 
     emit({ type: 'start' })
 
-    const apiKey = getStoredApiKey(provider)
+    const apiKey = getProviderCredential(provider)
     if (!apiKey) {
       const response = noApiKeyResponse(provider)
       emit({ type: 'error', error: response.error, errorCode: response.errorCode })

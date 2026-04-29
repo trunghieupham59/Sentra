@@ -9,6 +9,67 @@ export const translateSection = {
   fetchModels: (provider: string) =>
     ipcRenderer.invoke('models:fetch', provider),
 
+  // Discover a running local AI runtime (Ollama, LM Studio, llama.cpp)
+  discoverLocalAi: (force?: boolean) =>
+    ipcRenderer.invoke('local-ai:discover', force),
+
+  // Ensure a local AI runtime is available, starting a managed runtime when possible
+  ensureLocalAiRuntime: () =>
+    ipcRenderer.invoke('local-ai:ensureRuntime'),
+
+  // Benchmark this machine and return local model recommendations
+  benchmarkLocalAi: () =>
+    ipcRenderer.invoke('local-ai:benchmark'),
+
+  // Download a supported local model through the local runtime when available
+  downloadLocalAiModel: (modelId: string) =>
+    ipcRenderer.invoke('local-ai:downloadModel', modelId),
+
+  // Remove an installed local model through the local runtime when available
+  uninstallLocalAiModel: (modelId: string) =>
+    ipcRenderer.invoke('local-ai:uninstallModel', modelId),
+
+  onLocalAiModelDownloadProgress: (cb: (progress: {
+    model: string
+    status: 'running' | 'success' | 'error'
+    percent: number
+    message: string
+    completedBytes?: number
+    totalBytes?: number
+  }) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, progress: {
+      model: string
+      status: 'running' | 'success' | 'error'
+      percent: number
+      message: string
+      completedBytes?: number
+      totalBytes?: number
+    }) => cb(progress)
+    ipcRenderer.on('local-ai:modelDownloadProgress', listener)
+    return () => ipcRenderer.removeListener('local-ai:modelDownloadProgress', listener)
+  },
+
+  // Install the managed local runtime through a fixed main-process installer command
+  installOllama: () =>
+    ipcRenderer.invoke('local-ai:installOllama'),
+
+  cancelOllamaInstall: () =>
+    ipcRenderer.invoke('local-ai:cancelInstallOllama'),
+
+  onLocalAiInstallProgress: (cb: (progress: {
+    status: 'running' | 'success' | 'error' | 'cancelled'
+    percent: number
+    message: string
+  }) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, progress: {
+      status: 'running' | 'success' | 'error' | 'cancelled'
+      percent: number
+      message: string
+    }) => cb(progress)
+    ipcRenderer.on('local-ai:installProgress', listener)
+    return () => ipcRenderer.removeListener('local-ai:installProgress', listener)
+  },
+
   // Verify API key (test call to provider)
   verifyKey: (provider: string, apiKey: string) =>
     ipcRenderer.invoke('translate:verify', provider, apiKey),

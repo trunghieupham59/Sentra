@@ -37,7 +37,7 @@ export function AIChatPopup({ open, onClose }: Props) {
   const cardRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const hasKey = keyStatus[selectedProvider]
+  const hasKey = selectedProvider === 'local' || keyStatus[selectedProvider]
 
   // Auto-focus textarea when popup opens; reset state
   useEffect(() => {
