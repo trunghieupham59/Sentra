@@ -88,13 +88,13 @@
   }
 
   .app-topbar {
-    @apply flex items-center flex-shrink-0 min-h-11 rounded-lg border border-white/80 bg-white/80 px-3 py-2
+    @apply relative z-30 flex items-center flex-shrink-0 min-h-11 overflow-visible rounded-lg border border-white/80 bg-white/80 px-3 py-2
            shadow-sm shadow-gray-900/5 backdrop-blur
            dark:border-white/10 dark:bg-neutral-900/80 dark:shadow-black/20;
   }
 
   .app-panel-grid {
-    @apply grid grid-cols-1 grid-rows-2 lg:grid-cols-2 lg:grid-rows-1 gap-4 flex-1 min-h-0;
+    @apply relative z-0 grid grid-cols-1 grid-rows-2 lg:grid-cols-2 lg:grid-rows-1 gap-4 flex-1 min-h-0;
   }
 
   .surface-panel {
