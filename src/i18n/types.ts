@@ -245,8 +245,6 @@ export interface Translations {
   history_empty_desc: string
   history_translate_count: string
   history_live_count: string
-  history_clear_all: string
-  history_clear_confirm: string
   history_delete: string
   history_reuse: string
   history_chars_source: string
@@ -271,8 +269,6 @@ export interface Translations {
   history_live_delete: string
   history_live_view: string
   history_live_words: string
-  history_live_clear_all: string
-  history_live_clear_confirm: string
 
   // Live translate page
   nav_live_translate: string

@@ -13,9 +13,8 @@ interface TranslationHistoryTabProps {
 }
 
 export function TranslationHistoryTab({ query }: TranslationHistoryTabProps) {
-  const { history, deleteHistoryItem, clearHistory, setActivePage, setSourceText, setTranslatedText, setSourceLang, setTargetLang } = useAppStore()
+  const { history, deleteHistoryItem, setActivePage, setSourceText, setTranslatedText, setSourceLang, setTargetLang } = useAppStore()
   const t = useT()
-  const [confirmClear, setConfirmClear] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const normalizedQuery = normalizeHistoryQuery(query)
@@ -39,16 +38,6 @@ export function TranslationHistoryTab({ query }: TranslationHistoryTabProps) {
     setSourceLang(item.sourceLang)
     setTargetLang(item.targetLang)
     setActivePage('translate')
-  }
-
-  const handleClearAll = () => {
-    if (confirmClear) {
-      clearHistory()
-      setConfirmClear(false)
-      setSelectedIds(new Set())
-    } else {
-      setConfirmClear(true)
-    }
   }
 
   const toggleSelect = (id: string) => {
@@ -83,16 +72,11 @@ export function TranslationHistoryTab({ query }: TranslationHistoryTabProps) {
           countLabel={tpl(t.history_translate_count, { n: filteredHistory.length })}
           totalCount={filteredHistory.length}
           selectedCount={selectedCount}
-          confirmClear={confirmClear}
           labelSelectAll={t.history_select_all}
           labelSelected={tpl(t.history_selected_count, { n: selectedCount })}
           labelDeleteSelected={t.history_delete_selected}
-          labelClear={t.history_clear_all}
-          labelConfirm={t.history_clear_confirm}
           onSelectAll={handleSelectAll}
           onDeleteSelected={handleDeleteSelected}
-          onClear={handleClearAll}
-          onBlur={() => setTimeout(() => setConfirmClear(false), 200)}
         />
       )}
 

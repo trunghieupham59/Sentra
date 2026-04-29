@@ -247,6 +247,15 @@ export interface ChatResult {
   errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'NETWORK' | string
 }
 
+export interface ChatStreamEvent {
+  requestId: string
+  type: 'start' | 'token' | 'end' | 'error'
+  token?: string
+  reply?: string
+  error?: string
+  errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'NETWORK' | string
+}
+
 // ─── Live Session History ─────────────────────────────────────────────────────
 
 export interface LiveSession {
@@ -395,6 +404,26 @@ export interface WindowApi {
     /** Optional larger output budget for long-form synthesis calls */
     maxOutputTokens?: number | 'model-max'
   }) => Promise<ChatResult>
+  chatStream: (params: {
+    requestId: string
+    provider: string
+    model: string
+    messages: Array<{
+      role: 'user' | 'assistant'
+      content: Array<{
+        type: 'text' | 'image'
+        text?: string
+        imageBase64?: string
+        imageMimeType?: string
+      }>
+    }>
+    systemPrompt?: string
+    /** Bypass the 3k char limit — only set true for AI Summarize on long transcripts */
+    bypassLengthCheck?: boolean
+    /** Optional larger output budget for long-form synthesis calls */
+    maxOutputTokens?: number | 'model-max'
+  }) => Promise<ChatResult>
+  onChatStreamEvent: (requestId: string, cb: (event: ChatStreamEvent) => void) => () => void
   checkScreenPermission: () => Promise<string>
   openExternal: (url: string) => Promise<void>
   /**

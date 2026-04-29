@@ -25,6 +25,15 @@ import { extractImageFromClipboard, resizeImageFile } from '../utils/imageUtils'
 /** Max height (px) của textarea input — giới hạn scroll khi text dài */
 const CHAT_TEXTAREA_MAX_HEIGHT_PX = 160
 
+const isMacPlatform = () => window.api?.platform === 'darwin'
+const NEW_CHAT_SHORTCUT_LABEL = isMacPlatform() ? 'Cmd+N' : 'Ctrl+N'
+
+function isNewChatShortcut(e: KeyboardEvent) {
+  const isMac = isMacPlatform()
+  const primaryModifier = isMac ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey
+  return primaryModifier && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'n'
+}
+
 
 // DUP-05: resizeImageToBase64 replaced by shared resizeImageFile from imageUtils.ts
 // HC-09: MAX_CHAT_IMAGE_DIMENSION imported from constants/image.ts
@@ -201,12 +210,25 @@ export function ChatPage() {
     })
 
     try {
-      const result = await chatService.send({
-        provider: selectedProvider,
-        model: selectedModels[selectedProvider],
-        messages: historyMessages.map(toIpcMessage),
-        systemPrompt: chatSystemPrompt || undefined,
-      })
+      let streamedText = ''
+      const result = await chatService.stream(
+        {
+          provider: selectedProvider,
+          model: selectedModels[selectedProvider],
+          messages: historyMessages.map(toIpcMessage),
+          systemPrompt: chatSystemPrompt || undefined,
+        },
+        {
+          onToken: (token) => {
+            streamedText += token
+            updateChatMessage(activeChatSessionId, assistantMsgId, {
+              content: [{ type: 'text', text: streamedText }],
+              isLoading: true,
+              error: undefined,
+            })
+          },
+        },
+      )
 
       if (result.success && result.reply) {
         updateChatMessage(activeChatSessionId, assistantMsgId, {
@@ -349,12 +371,25 @@ export function ChatPage() {
         .filter((m) => !m.isLoading && !m.error)
         .map(toIpcMessage)
 
-      const result = await chatService.send({
-        provider: selectedProvider,
-        model: selectedModels[selectedProvider],
-        messages,
-        systemPrompt: chatSystemPrompt || undefined,
-      })
+      let streamedText = ''
+      const result = await chatService.stream(
+        {
+          provider: selectedProvider,
+          model: selectedModels[selectedProvider],
+          messages,
+          systemPrompt: chatSystemPrompt || undefined,
+        },
+        {
+          onToken: (token) => {
+            streamedText += token
+            updateChatMessage(sessionId, assistantMsgId, {
+              content: [{ type: 'text', text: streamedText }],
+              isLoading: true,
+              error: undefined,
+            })
+          },
+        },
+      )
 
       if (result.success && result.reply) {
         updateChatMessage(sessionId, assistantMsgId, {
@@ -413,9 +448,20 @@ export function ChatPage() {
     setTimeout(() => setCopiedId(null), COPY_FEEDBACK_DURATION_MS)  // HC-03
   }
 
-  const handleNewChat = () => {
+  const handleNewChat = useCallback(() => {
     setActiveChatSession(null)
-  }
+  }, [setActiveChatSession])
+
+  useEffect(() => {
+    const handleNewChatShortcut = (e: KeyboardEvent) => {
+      if (!isNewChatShortcut(e) || e.repeat) return
+      e.preventDefault()
+      handleNewChat()
+    }
+
+    window.addEventListener('keydown', handleNewChatShortcut)
+    return () => window.removeEventListener('keydown', handleNewChatShortcut)
+  }, [handleNewChat])
 
   const handleClear = () => {
     if (activeChatSessionId) clearChatSession(activeChatSessionId)
@@ -595,7 +641,7 @@ export function ChatPage() {
             <button
               type="button"
               onClick={handleNewChat}
-              title={t.chat_new_session}
+              title={`${t.chat_new_session} (${NEW_CHAT_SHORTCUT_LABEL})`}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium border
                          bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200
                          dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700

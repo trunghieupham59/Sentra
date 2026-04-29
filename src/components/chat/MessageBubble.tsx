@@ -189,8 +189,8 @@ export function MessageBubble({
         ))}
 
         {/* Text / status */}
-        {message.isLoading ? (
-          <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl rounded-bl-md px-4 py-3">
+        {message.isLoading && !textContent ? (
+          <div className="px-1 py-2">
             <div className="flex items-center gap-1.5">
               {[0, 1, 2].map((i) => (
                 <span
@@ -201,22 +201,28 @@ export function MessageBubble({
               ))}
             </div>
           </div>
-        ) : message.error ? (
-          <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-2xl px-4 py-3 text-sm text-red-700 dark:text-red-300 select-text cursor-text">
-            {message.error}
-          </div>
         ) : textContent ? (
-          <div className={`rounded-2xl px-4 py-3 break-words select-text cursor-text
+          <div className={`break-words select-text cursor-text
                            ${isUser
-                             ? 'bg-blue-500 text-white rounded-br-md'
-                             : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-md'}`}>
+                             ? 'rounded-2xl rounded-br-md bg-blue-500 px-4 py-3 text-white'
+                             : 'px-0 py-1 text-gray-900 dark:text-gray-100'}`}>
             {isUser ? (
               <span className="text-sm leading-relaxed whitespace-pre-wrap">{textContent}</span>
             ) : (
               <MarkdownText text={textContent} />
             )}
           </div>
+        ) : message.error ? (
+          <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-2xl px-4 py-3 text-sm text-red-700 dark:text-red-300 select-text cursor-text">
+            {message.error}
+          </div>
         ) : null}
+
+        {message.error && textContent && (
+          <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-2xl px-3 py-2 text-xs text-red-700 dark:text-red-300">
+            {message.error}
+          </div>
+        )}
 
         {/* Timestamp + Copy + Regenerate */}
         <div className={`flex items-center gap-2 px-1 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>

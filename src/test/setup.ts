@@ -15,6 +15,9 @@ import { vi } from 'vitest'
 // Only set up DOM mocks when running in a browser-like environment (jsdom).
 // Electron IPC tests use @vitest-environment node which has no `window`.
 if (typeof window !== 'undefined') {
+  if (!Element.prototype.scrollIntoView) {
+    Element.prototype.scrollIntoView = vi.fn()
+  }
 
   // Mock localStorage — required for Zustand persist middleware in jsdom environment
   const localStorageMock = (() => {
@@ -46,6 +49,8 @@ if (typeof window !== 'undefined') {
       translateImage: vi.fn().mockResolvedValue({ success: false }),
       translateStream: vi.fn().mockResolvedValue({ success: false }),
       chat: vi.fn().mockResolvedValue({ success: false }),
+      chatStream: vi.fn().mockResolvedValue({ success: false }),
+      onChatStreamEvent: vi.fn().mockReturnValue(() => {}),
       fetchModels: vi.fn().mockResolvedValue({ success: false, models: [] }),
       verifyKey: vi.fn().mockResolvedValue({ success: false }),
       checkScreenPermission: vi.fn().mockResolvedValue('denied'),

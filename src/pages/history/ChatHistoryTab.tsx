@@ -80,7 +80,6 @@ export function ChatHistoryTab({ query }: ChatHistoryTabProps) {
             countLabel={tpl(t.history_total_count, { n: filteredSessions.length })}
             totalCount={filteredSessions.length}
             selectedCount={selectedCount}
-            confirmClear={false}
             labelSelectAll={t.history_select_all}
             labelSelected={tpl(t.history_selected_count, { n: selectedCount })}
             labelDeleteSelected={t.history_delete_selected}

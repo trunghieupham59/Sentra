@@ -16,10 +16,9 @@ interface LiveHistoryTabProps {
 }
 
 export function LiveHistoryTab({ query }: LiveHistoryTabProps) {
-  const { liveSessions, deleteLiveSession, clearLiveSessions, setActivePage, setViewingLiveSession } = useAppStore()
+  const { liveSessions, deleteLiveSession, setActivePage, setViewingLiveSession } = useAppStore()
   const t = useT()
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [confirmClear, setConfirmClear] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const normalizedQuery = normalizeHistoryQuery(query)
   const filteredSessions = liveSessions.filter((session) => historyMatches(normalizedQuery, [
@@ -44,16 +43,6 @@ export function LiveHistoryTab({ query }: LiveHistoryTabProps) {
   const handleOpenLive = (sessionId: string) => {
     setViewingLiveSession(sessionId)
     setActivePage('live')
-  }
-
-  const handleClearAll = () => {
-    if (confirmClear) {
-      clearLiveSessions()
-      setConfirmClear(false)
-      setSelectedIds(new Set())
-    } else {
-      setConfirmClear(true)
-    }
   }
 
   const toggleSelect = (id: string) => {
@@ -88,16 +77,11 @@ export function LiveHistoryTab({ query }: LiveHistoryTabProps) {
           countLabel={tpl(t.history_live_count, { n: filteredSessions.length })}
           totalCount={filteredSessions.length}
           selectedCount={selectedCount}
-          confirmClear={confirmClear}
           labelSelectAll={t.history_select_all}
           labelSelected={tpl(t.history_selected_count, { n: selectedCount })}
           labelDeleteSelected={t.history_delete_selected}
-          labelClear={t.history_live_clear_all}
-          labelConfirm={t.history_live_clear_confirm}
           onSelectAll={handleSelectAll}
           onDeleteSelected={handleDeleteSelected}
-          onClear={handleClearAll}
-          onBlur={() => setTimeout(() => setConfirmClear(false), 200)}
         />
       )}
 

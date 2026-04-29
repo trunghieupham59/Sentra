@@ -1,6 +1,6 @@
 import type { ImageBlockParam, TextBlockParam } from '@anthropic-ai/sdk/resources/messages'
 import type { Content, Part } from '@google/generative-ai'
-import type { IpcMain } from 'electron'
+import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import type { ChatCompletionContentPartImage, ChatCompletionContentPartText, ChatCompletionMessageParam } from 'openai/resources/chat/completions'
 import { type ChatMessage, type MaxOutputTokensRequest, parseChatParams } from './chatValidation'
 import { classifyProviderError, noApiKeyResponse } from './errorUtils'
@@ -12,8 +12,20 @@ import { getStoredApiKey } from './storage'
 // DUP-02: Removed local `getApiKey` wrapper — call getStoredApiKey directly.
 
 const FALLBACK_MODEL_MAX_OUTPUT_TOKENS = 16_384
+const CHAT_STREAM_EVENT = 'chat:stream:event'
 
 const geminiOutputLimitCache = new Map<string, number>()
+
+type ChatStreamEvent =
+  { requestId: string } & ChatStreamEventPayload
+
+type ChatStreamEventPayload =
+  | { type: 'start' }
+  | { type: 'token'; token: string }
+  | { type: 'end'; reply: string }
+  | { type: 'error'; error: string; errorCode?: string }
+
+type ChatStreamTokenHandler = (token: string) => void
 
 function getCurrentFamilyModelMaxOutputTokens(provider: string, model: string): number {
   const id = model.toLowerCase()
@@ -89,6 +101,32 @@ function buildEnforcedSystemPrompt(userPrompt: string): string {
 IMPORTANT: You MUST strictly follow the instructions above in every response. Do not deviate, explain or refuse these instructions. Apply them to all messages unconditionally.`
 }
 
+function buildGeminiChatPayload(messages: ChatMessage[]) {
+  const history: Content[] = messages.slice(0, -1).map((msg) => {
+    const parts: Part[] = []
+    for (const c of msg.content) {
+      if (c.type === 'text' && c.text) {
+        parts.push({ text: c.text })
+      } else if (c.type === 'image' && c.imageBase64 && c.imageMimeType) {
+        parts.push({ inlineData: { data: c.imageBase64, mimeType: c.imageMimeType } })
+      }
+    }
+    return { role: msg.role === 'user' ? 'user' : 'model', parts }
+  })
+
+  const lastMsg = messages[messages.length - 1]
+  const parts: Array<string | Part> = []
+  for (const c of lastMsg.content) {
+    if (c.type === 'text' && c.text) {
+      parts.push(c.text)
+    } else if (c.type === 'image' && c.imageBase64 && c.imageMimeType) {
+      parts.push({ inlineData: { data: c.imageBase64, mimeType: c.imageMimeType } })
+    }
+  }
+
+  return { history, parts }
+}
+
 async function chatWithGemini(
   apiKey: string,
   model: string,
@@ -104,33 +142,9 @@ async function chatWithGemini(
     generationConfig: { maxOutputTokens },
   })
 
-  // Build chat history (all messages except the last user message)
-  const history: Content[] = messages.slice(0, -1).map((msg) => {
-    const parts: Part[] = []
-    for (const c of msg.content) {
-      if (c.type === 'text' && c.text) {
-        parts.push({ text: c.text })
-      } else if (c.type === 'image' && c.imageBase64 && c.imageMimeType) {
-        parts.push({ inlineData: { data: c.imageBase64, mimeType: c.imageMimeType } })
-      }
-    }
-    return { role: msg.role === 'user' ? 'user' : 'model', parts }
-  })
+  const { history, parts } = buildGeminiChatPayload(messages)
 
   const chat = genModel.startChat({ history })
-
-  // Last message is the current user input
-  const lastMsg = messages[messages.length - 1]
-  // sendMessage accepts Array<string | Part>: strings for plain text, Part objects for inline data
-  const parts: Array<string | Part> = []
-  for (const c of lastMsg.content) {
-    if (c.type === 'text' && c.text) {
-      parts.push(c.text)
-    } else if (c.type === 'image' && c.imageBase64 && c.imageMimeType) {
-      parts.push({ inlineData: { data: c.imageBase64, mimeType: c.imageMimeType } })
-    }
-  }
-
   const result = await chat.sendMessage(parts)
   const text = result.response.text().trim()
   if (!text) {
@@ -142,17 +156,41 @@ async function chatWithGemini(
   return text
 }
 
-async function chatWithClaude(
+async function streamChatWithGemini(
   apiKey: string,
   model: string,
   messages: ChatMessage[],
-  systemPrompt?: string,
-  maxOutputTokens = MAX_CHAT_OUTPUT_TOKENS,
+  systemPrompt: string | undefined,
+  maxOutputTokens: number,
+  onToken: ChatStreamTokenHandler,
 ): Promise<string> {
-  const Anthropic = (await import('@anthropic-ai/sdk')).default
-  const client = new Anthropic({ apiKey })
+  const { GoogleGenerativeAI } = await import('@google/generative-ai')
+  const genAI = new GoogleGenerativeAI(apiKey)
+  const genModel = genAI.getGenerativeModel({
+    model,
+    systemInstruction: buildEnforcedSystemPrompt(systemPrompt || ''),
+    generationConfig: { maxOutputTokens },
+  })
+  const { history, parts } = buildGeminiChatPayload(messages)
+  const chat = genModel.startChat({ history })
+  const result = await chat.sendMessageStream(parts)
+  let fullText = ''
 
-  const formattedMessages: { role: 'user' | 'assistant'; content: Array<TextBlockParam | ImageBlockParam> }[] = messages.map((msg) => {
+  for await (const chunk of result.stream) {
+    const token = chunk.text()
+    if (token) {
+      fullText += token
+      onToken(token)
+    }
+  }
+
+  const text = fullText.trim()
+  if (!text) throw new Error('Gemini returned an empty response.')
+  return text
+}
+
+function formatClaudeMessages(messages: ChatMessage[]) {
+  return messages.map((msg) => {
     const content: Array<TextBlockParam | ImageBlockParam> = []
     for (const c of msg.content) {
       if (c.type === 'text' && c.text) {
@@ -170,6 +208,19 @@ async function chatWithClaude(
     }
     return { role: msg.role, content }
   })
+}
+
+async function chatWithClaude(
+  apiKey: string,
+  model: string,
+  messages: ChatMessage[],
+  systemPrompt?: string,
+  maxOutputTokens = MAX_CHAT_OUTPUT_TOKENS,
+): Promise<string> {
+  const Anthropic = (await import('@anthropic-ai/sdk')).default
+  const client = new Anthropic({ apiKey })
+
+  const formattedMessages = formatClaudeMessages(messages)
 
   const message = await client.messages.create({
     model,
@@ -187,6 +238,39 @@ async function chatWithClaude(
     return text
   }
   throw new Error('Unexpected response type from Claude')
+}
+
+async function streamChatWithClaude(
+  apiKey: string,
+  model: string,
+  messages: ChatMessage[],
+  systemPrompt: string | undefined,
+  maxOutputTokens: number,
+  onToken: ChatStreamTokenHandler,
+): Promise<string> {
+  const Anthropic = (await import('@anthropic-ai/sdk')).default
+  const client = new Anthropic({ apiKey })
+  let fullText = ''
+  const stream = client.messages.stream({
+    model,
+    max_tokens: maxOutputTokens,
+    system: buildEnforcedSystemPrompt(systemPrompt || ''),
+    messages: formatClaudeMessages(messages),
+  })
+
+  for await (const event of stream) {
+    if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+      const token = event.delta.text
+      if (token) {
+        fullText += token
+        onToken(token)
+      }
+    }
+  }
+
+  const text = fullText.trim()
+  if (!text) throw new Error('Claude returned an empty response.')
+  return text
 }
 
 // ── Exported for unit testing ─────────────────────────────────────────────────
@@ -298,16 +382,7 @@ async function fetchBestOpenAIChatModel(apiKey: string): Promise<string> {
   return 'gpt-4o'
 }
 
-async function chatWithOpenAI(
-  apiKey: string,
-  model: string,
-  messages: ChatMessage[],
-  systemPrompt?: string,
-  maxOutputTokens = MAX_CHAT_OUTPUT_TOKENS,
-): Promise<string> {
-  const OpenAI = (await import('openai')).default
-  const client = new OpenAI({ apiKey })
-
+function formatOpenAIChatMessages(messages: ChatMessage[], systemPrompt?: string): ChatCompletionMessageParam[] {
   const formattedMessages: ChatCompletionMessageParam[] = [
     {
       role: 'system',
@@ -339,6 +414,28 @@ async function chatWithOpenAI(
       formattedMessages.push({ role: msg.role, content } as ChatCompletionMessageParam)
     }
   }
+  return formattedMessages
+}
+
+function isOpenAIChatEndpointError(error: unknown) {
+  const errMsg = error instanceof Error ? error.message : String(error)
+  return (
+    errMsg.includes('not a chat model') ||
+    errMsg.includes('v1/completions') ||
+    (errMsg.includes('404') && errMsg.includes('completions'))
+  )
+}
+
+async function chatWithOpenAI(
+  apiKey: string,
+  model: string,
+  messages: ChatMessage[],
+  systemPrompt?: string,
+  maxOutputTokens = MAX_CHAT_OUTPUT_TOKENS,
+): Promise<string> {
+  const OpenAI = (await import('openai')).default
+  const client = new OpenAI({ apiKey })
+  const formattedMessages = formatOpenAIChatMessages(messages, systemPrompt)
 
   const tryChat = async (m: string) => {
     const completion = await client.chat.completions.create({
@@ -363,18 +460,59 @@ async function chatWithOpenAI(
   try {
     return await tryChat(model)
   } catch (err: unknown) {
-    const errMsg = err instanceof Error ? err.message : String(err)
-    const isChatEndpointError =
-      errMsg.includes('not a chat model') ||
-      errMsg.includes('v1/completions') ||
-      (errMsg.includes('404') && errMsg.includes('completions'))
-
-    if (isChatEndpointError) {
+    if (isOpenAIChatEndpointError(err)) {
       // Fetch the best actual chat-capable model from the API
       const bestModel = await fetchBestOpenAIChatModel(apiKey)
       if (bestModel !== model) {
         return await tryChat(bestModel)
       }
+    }
+    throw err
+  }
+}
+
+async function streamChatWithOpenAI(
+  apiKey: string,
+  model: string,
+  messages: ChatMessage[],
+  systemPrompt: string | undefined,
+  maxOutputTokens: number,
+  onToken: ChatStreamTokenHandler,
+): Promise<string> {
+  const OpenAI = (await import('openai')).default
+  const client = new OpenAI({ apiKey })
+  const formattedMessages = formatOpenAIChatMessages(messages, systemPrompt)
+  let emittedToken = false
+
+  const tryChat = async (m: string) => {
+    let fullText = ''
+    const stream = await client.chat.completions.create({
+      model: m,
+      messages: formattedMessages,
+      stream: true,
+      max_completion_tokens: maxOutputTokens,
+    })
+
+    for await (const chunk of stream) {
+      const token = chunk.choices[0]?.delta?.content ?? ''
+      if (token) {
+        emittedToken = true
+        fullText += token
+        onToken(token)
+      }
+    }
+
+    const text = fullText.trim()
+    if (!text) throw new Error('OpenAI returned an empty response.')
+    return text
+  }
+
+  try {
+    return await tryChat(model)
+  } catch (err: unknown) {
+    if (!emittedToken && isOpenAIChatEndpointError(err)) {
+      const bestModel = await fetchBestOpenAIChatModel(apiKey)
+      if (bestModel !== model) return await tryChat(bestModel)
     }
     throw err
   }
@@ -388,10 +526,35 @@ type ChatFn = (
   apiKey: string, model: string, messages: ChatMessage[], systemPrompt?: string, maxOutputTokens?: number
 ) => Promise<string>
 
+type ChatStreamFn = (
+  apiKey: string,
+  model: string,
+  messages: ChatMessage[],
+  systemPrompt: string | undefined,
+  maxOutputTokens: number,
+  onToken: ChatStreamTokenHandler,
+) => Promise<string>
+
 const CHAT_PROVIDERS: Record<string, ChatFn> = {
   gemini: chatWithGemini,
   claude: chatWithClaude,
   openai: chatWithOpenAI,
+}
+
+const CHAT_STREAM_PROVIDERS: Record<string, ChatStreamFn> = {
+  gemini: streamChatWithGemini,
+  claude: streamChatWithClaude,
+  openai: streamChatWithOpenAI,
+}
+
+function toChatFailure(error: unknown) {
+  const msg = error instanceof Error ? error.message : String(error)
+  const classified = classifyProviderError(msg)
+  return { ...classified, error: classified.errorCode ? classified.error : `Chat failed: ${msg}` }
+}
+
+function sendChatStreamEvent(event: IpcMainInvokeEvent, payload: ChatStreamEvent) {
+  event.sender.send(CHAT_STREAM_EVENT, payload)
 }
 
 /**
@@ -437,10 +600,50 @@ export function registerChatHandlers(ipcMain: IpcMain) {
       return { success: true, reply }
     } catch (error: unknown) {
       console.error(`Chat error with ${provider}:`, error)
-      const msg = error instanceof Error ? error.message : String(error)
-      // DUP-01: use classifyProviderError for consistent error categorization
-      const classified = classifyProviderError(msg)
-      return { ...classified, error: classified.errorCode ? classified.error : `Chat failed: ${msg}` }
+      return toChatFailure(error)
+    }
+  })
+
+  ipcMain.handle('chat:stream', async (event, rawParams: unknown) => {
+    const parsed = parseChatParams(rawParams)
+    if (!parsed.ok) return parsed.response
+    const params = parsed.value
+    const { provider, model, messages, systemPrompt, requestId } = params
+    if (!requestId) return { success: false, error: 'Chat stream requestId is required', errorCode: 'INVALID_INPUT' }
+
+    const emit = (payload: ChatStreamEventPayload) => {
+      sendChatStreamEvent(event, { requestId, ...payload })
+    }
+
+    emit({ type: 'start' })
+
+    const apiKey = getStoredApiKey(provider)
+    if (!apiKey) {
+      const response = noApiKeyResponse(provider)
+      emit({ type: 'error', error: response.error, errorCode: response.errorCode })
+      return response
+    }
+    const maxOutputTokens = await resolveChatOutputTokens(provider, model, apiKey, params.maxOutputTokens)
+
+    try {
+      const chatFn = CHAT_STREAM_PROVIDERS[provider]
+      if (!chatFn) {
+        const response = unknownProviderError(provider)
+        emit({ type: 'error', error: response.error })
+        return response
+      }
+
+      const reply = await chatFn(apiKey, model, messages, systemPrompt, maxOutputTokens, (token) => {
+        emit({ type: 'token', token })
+      })
+
+      emit({ type: 'end', reply })
+      return { success: true, reply }
+    } catch (error: unknown) {
+      console.error(`Chat stream error with ${provider}:`, error)
+      const response = toChatFailure(error)
+      emit({ type: 'error', error: response.error, errorCode: response.errorCode })
+      return response
     }
   })
 }

@@ -38,7 +38,15 @@ const textMsg = (role: 'user' | 'assistant', text: string) => ({
   content: [{ type: 'text' as const, text }],
 })
 
-let capturedOpenAIRequest: { max_completion_tokens?: number } | null = null
+let capturedOpenAIRequest: { max_completion_tokens?: number; stream?: boolean } | null = null
+
+function createOpenAIStream(tokens: string[]) {
+  return (async function* streamChunks() {
+    for (const token of tokens) {
+      yield { choices: [{ delta: { content: token } }] }
+    }
+  })()
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('buildEnforcedSystemPrompt', () => {
@@ -277,6 +285,97 @@ describe('registerChatHandlers — output token resolution', () => {
 
     expect(result.success).toBe(true)
     expect(capturedOpenAIRequest?.max_completion_tokens).toBe(32_768)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('registerChatHandlers — streaming', () => {
+  let invoke: ReturnType<typeof buildMockIpcMain>['invoke']
+  let sentEvents: ReturnType<typeof buildMockIpcMain>['sentEvents']
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    capturedOpenAIRequest = null
+    vi.mocked(getStoredApiKey).mockReturnValue('fake-key')
+    vi.doMock('openai', () => ({
+      default: class {
+        chat = {
+          completions: {
+            create: async (params: { max_completion_tokens?: number; stream?: boolean }) => {
+              capturedOpenAIRequest = params
+              return createOpenAIStream(['Hel', 'lo'])
+            },
+          },
+        }
+        models = { list: async () => ({ data: [] }) }
+      },
+    }))
+
+    const mock = buildMockIpcMain()
+    // biome-ignore lint/suspicious/noExplicitAny: mock IpcMain
+    registerChatHandlers(mock.ipcMain as any)
+    invoke = mock.invoke
+    sentEvents = mock.sentEvents
+  })
+
+  afterEach(() => {
+    vi.doUnmock('openai')
+  })
+
+  it('emits token events and returns the accumulated reply', async () => {
+    const result = await invoke('chat:stream', {
+      requestId: 'req-1',
+      provider: 'openai',
+      model: 'gpt-4o',
+      messages: [textMsg('user', 'Hello')],
+    })
+
+    expect(result).toEqual({ success: true, reply: 'Hello' })
+    expect(capturedOpenAIRequest?.stream).toBe(true)
+    expect(sentEvents).toEqual([
+      { channel: 'chat:stream:event', payload: { requestId: 'req-1', type: 'start' } },
+      { channel: 'chat:stream:event', payload: { requestId: 'req-1', type: 'token', token: 'Hel' } },
+      { channel: 'chat:stream:event', payload: { requestId: 'req-1', type: 'token', token: 'lo' } },
+      { channel: 'chat:stream:event', payload: { requestId: 'req-1', type: 'end', reply: 'Hello' } },
+    ])
+  })
+
+  it('returns NO_API_KEY and emits an error event when the key is missing', async () => {
+    vi.mocked(getStoredApiKey).mockReturnValue(null)
+    const result = await invoke('chat:stream', {
+      requestId: 'req-no-key',
+      provider: 'openai',
+      model: 'gpt-4o',
+      messages: [textMsg('user', 'Hello')],
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.errorCode).toBe('NO_API_KEY')
+    expect(sentEvents).toEqual([
+      { channel: 'chat:stream:event', payload: { requestId: 'req-no-key', type: 'start' } },
+      {
+        channel: 'chat:stream:event',
+        payload: {
+          requestId: 'req-no-key',
+          type: 'error',
+          error: 'No API key found for openai. Please add it in Settings.',
+          errorCode: 'NO_API_KEY',
+        },
+      },
+    ])
+  })
+
+  it('returns validation errors before emitting stream events', async () => {
+    const result = await invoke('chat:stream', {
+      requestId: 'req-empty',
+      provider: 'openai',
+      model: 'gpt-4o',
+      messages: [],
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('No messages provided')
+    expect(sentEvents).toEqual([])
   })
 })
 

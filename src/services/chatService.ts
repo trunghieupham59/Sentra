@@ -13,7 +13,7 @@
 // It has extra renderer-only fields (imagePreviewUrl, imageFileName) compared to the
 // main-process version in electron/ipc/chat.ts, but the IPC layer ignores unknown fields,
 // so using the richer type here is safe.
-import type { ChatMessageContent, ChatResult } from '../types'
+import type { ChatMessageContent, ChatResult, ChatStreamEvent } from '../types'
 
 // Re-export for any consumers that import ChatMessageContent from chatService
 export type { ChatMessageContent }
@@ -40,8 +40,43 @@ interface ChatParams {
   maxOutputTokens?: number | 'model-max'
 }
 
+interface ChatStreamCallbacks {
+  onStart?: () => void
+  onToken?: (token: string) => void
+  onEnd?: (reply: string) => void
+  onError?: (error: string, errorCode?: string) => void
+}
+
+function createChatStreamRequestId() {
+  return `chat-stream-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
 export const chatService = {
   /** Send a conversational message — supports text + image content, multi-turn. */
   send: (params: ChatParams): Promise<ChatResult> =>
     window.api.chat(params),
+
+  /** Stream a conversational message and receive provider tokens as they arrive. */
+  stream: async (params: ChatParams, callbacks: ChatStreamCallbacks = {}): Promise<ChatResult> => {
+    if (
+      typeof window.api.chatStream !== 'function' ||
+      typeof window.api.onChatStreamEvent !== 'function'
+    ) {
+      return window.api.chat(params)
+    }
+
+    const requestId = createChatStreamRequestId()
+    const cleanup = window.api.onChatStreamEvent(requestId, (event: ChatStreamEvent) => {
+      if (event.type === 'start') callbacks.onStart?.()
+      if (event.type === 'token' && event.token) callbacks.onToken?.(event.token)
+      if (event.type === 'end' && event.reply !== undefined) callbacks.onEnd?.(event.reply)
+      if (event.type === 'error' && event.error) callbacks.onError?.(event.error, event.errorCode)
+    })
+
+    try {
+      return await window.api.chatStream({ ...params, requestId })
+    } finally {
+      cleanup()
+    }
+  },
 }

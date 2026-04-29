@@ -23,6 +23,7 @@ export interface ChatParams {
   systemPrompt?: string
   bypassLengthCheck?: boolean
   maxOutputTokens?: MaxOutputTokensRequest
+  requestId?: string
 }
 
 export type ParsedChatParams =
@@ -34,6 +35,7 @@ const CHAT_ROLES = new Set(['user', 'assistant'])
 const CHAT_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 const MAX_CHAT_MODEL_ID_CHARS = 200
 const MAX_SYSTEM_PROMPT_CHARS = 20_000
+const MAX_CHAT_REQUEST_ID_CHARS = 100
 
 export function parseChatParams(rawParams: unknown): ParsedChatParams {
   if (!isRecord(rawParams)) {
@@ -104,6 +106,11 @@ export function parseChatParams(rawParams: unknown): ParsedChatParams {
   ) {
     return { ok: false, response: invalidIpcInput('Invalid max output tokens') }
   }
+  if (rawParams.requestId !== undefined) {
+    if (!isNonEmptyString(rawParams.requestId) || rawParams.requestId.length > MAX_CHAT_REQUEST_ID_CHARS) {
+      return { ok: false, response: invalidIpcInput('Invalid chat stream request id') }
+    }
+  }
 
   if (!rawParams.bypassLengthCheck) {
     const lastMsg = messages[messages.length - 1]
@@ -130,7 +137,7 @@ export function parseChatParams(rawParams: unknown): ParsedChatParams {
       systemPrompt: rawParams.systemPrompt,
       bypassLengthCheck: rawParams.bypassLengthCheck,
       maxOutputTokens: rawParams.maxOutputTokens as MaxOutputTokensRequest | undefined,
+      requestId: typeof rawParams.requestId === 'string' ? rawParams.requestId.trim() : undefined,
     },
   }
 }
-
