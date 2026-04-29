@@ -1,18 +1,18 @@
 <p align="right">
   <a href="https://me.momo.vn/aMI2T6tWf3uRteU4tqUZtn">
-    <img src="https://img.shields.io/badge/☕%20Support%20via%20MoMo-ae2070?style=for-the-badge" alt="Support via MoMo">
+    <img src="https://img.shields.io/badge/Support%20via%20MoMo-ae2070?style=for-the-badge" alt="Support via MoMo">
   </a>
 </p>
 
-# Viezan — AI Translation Desktop App
+# Viezan
 
 <p align="center">
   <img src="public/icon.png" width="96" alt="Viezan logo">
 </p>
 
 <p align="center">
-  A powerful AI translation desktop app running 100% locally on <strong>macOS</strong>, <strong>Windows</strong> and <strong>Linux</strong>.<br>
-  Supports <strong>Google Gemini</strong>, <strong>Anthropic Claude</strong> and <strong>OpenAI GPT</strong> — API keys stored securely in OS Keychain, never sent to any intermediate server.
+  <strong>Local-first AI translation for desktop and browser.</strong><br>
+  Viezan runs on macOS, Windows and Linux, with Local AI support plus bring-your-own-key cloud providers.
 </p>
 
 <p align="center">
@@ -25,288 +25,204 @@
   <img src="https://img.shields.io/badge/React-v18-61DAFB?style=flat-square&logo=react" alt="React">
 </p>
 
----
+Viezan is a desktop translation workspace for text, images, live audio, chat and browser-selected text. The app does not use a Viezan-hosted relay server: requests are handled on your machine, then sent only to the local runtime or cloud provider you choose.
 
-## 📸 Screenshots
+## Screenshots
 
 <p align="center">
-  <a href="https://trunghieupham59.github.io/viezan/" title="🎬 Interactive 3D Slider">
-    <img src="docs/screenshots/demo.gif" width="800" alt="Viezan Screenshots — click to open interactive slider">
+  <a href="https://trunghieupham59.github.io/viezan/" title="Open interactive screenshot slider">
+    <img src="docs/screenshots/demo.gif" width="800" alt="Viezan screenshots">
   </a>
 </p>
 
 <p align="center">
-  <a href="https://trunghieupham59.github.io/viezan/">🎬 Open Interactive Slider →</a>
+  <a href="https://trunghieupham59.github.io/viezan/">Open interactive screenshot gallery</a>
 </p>
 
----
+## Download
 
-## 📦 Download
+| Platform | Package |
+| --- | --- |
+| macOS Apple Silicon | DMG from the [latest release](https://github.com/trunghieupham59/Viezan/releases/latest) |
+| macOS Intel x64 | DMG from the [latest release](https://github.com/trunghieupham59/Viezan/releases/latest) |
+| Windows x64 | NSIS installer from the [latest release](https://github.com/trunghieupham59/Viezan/releases/latest) |
+| Linux x64 | AppImage from the [latest release](https://github.com/trunghieupham59/Viezan/releases/latest) |
+| Chrome Extension | Extension package from the matching [release](https://github.com/trunghieupham59/Viezan/releases/latest) |
 
-| Platform | Installer |
-|----------|-----------|
-|  macOS (Apple Silicon) | [Download v1.1.5 ARM64 DMG](https://github.com/trunghieupham59/Viezan/releases/tag/v1.1.5) |
-|  macOS (Intel x64) | [Download v1.1.5 x64 DMG](https://github.com/trunghieupham59/Viezan/releases/tag/v1.1.5) |
-| ⊞ Windows (x64) | [Download v1.1.5 x64 installer](https://github.com/trunghieupham59/Viezan/releases/tag/v1.1.5) |
-| 🐧 Linux (x64) | [Download v1.1.5 AppImage](https://github.com/trunghieupham59/Viezan/releases/tag/v1.1.5) |
-| 🌐 Chrome Extension | [Download ZIP from v1.1.5 release](https://github.com/trunghieupham59/Viezan/releases/tag/v1.1.5) |
+View all versions on the [GitHub Releases page](https://github.com/trunghieupham59/Viezan/releases).
 
-> View all releases: [github.com/trunghieupham59/Viezan/releases](https://github.com/trunghieupham59/Viezan/releases)
+## What's New in v1.1.5
 
----
+| Area | Change |
+| --- | --- |
+| Local AI | Local AI is the default provider path. Viezan can detect Ollama, LM Studio and llama.cpp. |
+| Setup | Ollama install/start flow, local runtime refresh, hardware benchmarking and model recommendations. |
+| Models | Streamed Ollama download progress, size labels, installed badges and uninstall actions. |
+| History | Bulk selection and deletion for Translate, Chat and Live history entries. |
+| Browser | Redesigned selected-text Chrome Extension UI with translation style support. |
+| Reliability | Stricter IPC validation, streaming chat coverage and hedged STT routing. |
+| Tooling | Biome 2.4.13 upgrade and release-runner fixes. |
 
-## 🆕 What's New in v1.1.5
-
-### ✨ New Features
-
-| Feature | Details |
-|---------|---------|
-| 🧠 **Local AI Provider** | Run translation, rewrite and chat through local OpenAI-compatible runtimes without an API key |
-| 🧰 **Ollama Setup Flow** | Detects Ollama, LM Studio and llama.cpp; can install/start Ollama and refresh local runtime status from Settings |
-| 📊 **Hardware Benchmarking** | Measures CPU/RAM tier, recommends local models, and resolves `local-auto` to the best available local model |
-| ⬇️ **Model Download Progress** | Pull curated Ollama models from Viezan with streamed progress, size labels, installed badges and uninstall actions |
-| 🧹 **History Bulk Actions** | Select and delete multiple Translate, Chat and Live history entries in one flow |
-| 🧩 **Chrome Extension Selection UI** | Redesigned selected-text UI with translation style support and cleaner browser interactions |
-
-### 🛠️ Improvements & Fixes
-
-- **Provider Defaults** — Local AI is now the default provider path, with cloud providers still available as BYOK options
-- **Streaming Chat Reliability** — Added streaming handler coverage and provider-specific output token guards
-- **IPC Validation** — Chat and translation payloads now have stricter Main Process validation before provider dispatch
-- **STT Reliability** — Hedged Whisper/Gemini STT routing and smarter provider banning reduce live transcription stalls
-- **UI Polish** — Responsive sidebar labels, updated blue theme, normalized surface styles, border radii and z-index layering
-- **Build Pipeline** — macOS release runners pinned to avoid the macOS 15 DMG `hdiutil` issue
-- **Tooling** — Biome upgraded to 2.4.13 and repository lint fixes applied
-
----
-
-## ✨ Features
+## Features
 
 | Feature | Description |
-|---------|-------------|
-| 🤖 **Multiple AI Providers** | Local AI, Google Gemini, Anthropic Claude, OpenAI GPT — switch anytime |
-| 🧠 **Local AI** | Detect Ollama, LM Studio or llama.cpp; benchmark hardware; download curated Ollama models; run without cloud API keys |
-| 🔤 **7 Translation Styles** | Neutral, Friendly, Professional, Business, Slack, Polite, Technical — fits every context |
-| 📢 **Phonetic Mode** | Pure phonetic/romanization transcription mode for any language |
-| ⚡ **Live Translation** | Real-time translation & floating subtitles from microphone or system audio, with customizable color/size/opacity |
-| 🖼️ **Image Translation (AI Vision)** | Drag & drop or paste an image — AI extracts and translates all text |
-| 🎙️ **Voice Input** | Supports Web Speech API, OpenAI Whisper, Gemini STT, and Groq as fallback |
-| 🔊 **Text-to-Speech** | OpenAI, Gemini, Edge TTS and ElevenLabs fallback chain |
-| 💬 **AI Chat** | Full chat with image attachment, voice input, System Prompt with saved presets |
-| 🔍 **Web Search in Chat** | Multi-provider web search with automatic failover |
-| 🇯🇵 **Japanese Furigana** | Automatically renders furigana on Japanese translation output |
-| 📜 **History** | Separate history for Translate, Chat and Live sessions — search & reuse anytime |
-| 🌐 **Chrome Extension** | Translate directly in the browser (floating button, popup, right-click menu, Alt+T shortcut, ZIP release package) |
-| 🔖 **Bookmarklet** | Quick translate on any browser without an extension |
-| ⌨️ **Global Hotkey** | Activate Viezan from any application |
-| 🌍 **19 Languages** | Vietnamese, English, Japanese, Korean, Chinese, French, German, Spanish, and more |
-| 🌐 **Multi-language UI** | Interface available in Vietnamese, English and Japanese |
-| 🔒 **Secure API Key Storage** | Encrypted via Electron safeStorage — Keychain (macOS) / Credential Manager (Windows) |
-| 🌙 **Dark Mode** | Follows system appearance automatically |
-| 🔄 **Auto Update** | Built-in auto-update |
+| --- | --- |
+| Text Translation | Translate text with source detection, manual mode, 7 tone styles and phonetic output. |
+| Local AI | Run translation, rewrite and chat through Ollama, LM Studio or llama.cpp without a cloud API key. |
+| Cloud Providers | Use Google Gemini, Anthropic Claude or OpenAI with your own API keys. |
+| Live Translation | Real-time microphone/system-audio transcription, translation and floating subtitles. |
+| Image Translation | Drag, drop or paste images; AI extracts and translates visible text. |
+| Voice Input | Web Speech API plus Whisper, Gemini STT and Groq fallback routing. |
+| Text-to-Speech | OpenAI, Gemini, Edge TTS and ElevenLabs fallback chain. |
+| AI Chat | Chat with image attachments, voice input, saved system prompts, history and optional web search. |
+| Web Search | Tavily and Brave key support with a Jina fallback path. |
+| Browser Integration | Chrome Extension, context menu, floating selected-text button and `Alt+T` shortcut. |
+| History | Separate searchable history for Translate, Chat and Live sessions. |
+| Security | API keys are encrypted with Electron safeStorage and are used only by the Electron main process. |
 
----
+## Getting Started
 
-## 🚀 Getting Started
+### 1. Install Viezan
 
-### 1. Download & Install
+Download the package for your platform from [Releases](https://github.com/trunghieupham59/Viezan/releases/latest), install it, then launch Viezan.
 
-Download the installer for your platform from the [Download](#-download) section above and run it.
+For unsigned macOS builds, Gatekeeper may show `"Viezan" cannot be opened` on first launch. Open **System Settings -> Privacy & Security** and choose **Open Anyway** for Viezan. If you trust the downloaded app and macOS still blocks it after dragging it to Applications, run:
 
-> **macOS unsigned build:** Viezan is not signed/notarized yet, so macOS Gatekeeper may show **"Viezan" cannot be opened** on first launch. Open **System Settings → Privacy & Security** and click **Open Anyway** for Viezan. If you trust the downloaded app and macOS still blocks it, run `xattr -dr com.apple.quarantine /Applications/Viezan.app` after dragging it to Applications, then open Viezan again.
+```bash
+xattr -dr com.apple.quarantine /Applications/Viezan.app
+```
 
-### 2. Add your API Key
+### 2. Choose a Provider
 
-1. Open **Viezan**
-2. Click the **⚙ Settings** button (top-right, any tab)
-3. Select a provider (Gemini / Claude / OpenAI), paste your API key → **Save Key**
+Local AI works without cloud keys when a compatible local runtime is available.
 
-Your key is stored securely in the OS Keychain and never leaves your device.
+For cloud providers, open **Settings -> API Keys**, choose a provider, paste your key, and save it. Keys are encrypted by Electron safeStorage on the current OS and are not stored in the browser extension.
+
+| Provider | Key required | Where to configure |
+| --- | --- | --- |
+| Local AI | No | **Settings -> Local AI** |
+| Google Gemini | Yes | **Settings -> API Keys** |
+| Anthropic Claude | Yes | **Settings -> API Keys** |
+| OpenAI | Yes | **Settings -> API Keys** |
+| Groq STT | Optional | **Settings -> Speech-to-Text** |
+| Tavily / Brave Search | Optional | **Settings -> Web Search** |
 
 ### 3. Start Translating
 
-- **Translate** — Type or paste text, choose source/target language, style, or enable Phonetic Mode
-- **Live** — Real-time translation from microphone/system audio with floating subtitles
-- **Image** — Drag & drop or paste an image to extract and translate text
-- **Chat** — Chat freely with AI, attach images, voice input, system prompts and web search
-- **History** — Revisit all past translations, chats and live sessions
+- **Translate**: text translation, tone styles and phonetic mode.
+- **Live**: live subtitles from microphone, system audio or both.
+- **Image**: image OCR-style translation and translated image output where supported.
+- **Chat**: multimodal chat with voice input, saved prompts and optional web search.
+- **History**: search, reuse and delete previous Translate, Chat and Live sessions.
 
----
+## Chrome Extension
 
-## 🔑 API Keys
+The extension connects browser-selected text to the Viezan desktop app over `127.0.0.1:39875`.
 
-Get your API keys from the respective dashboards:
+1. Install the extension package from the matching release, or load `chrome-extension/` unpacked for local development.
+2. Open **Viezan -> Settings -> Browser Extension**.
+3. Copy or create a connection token.
+4. Open the extension **Options** page, paste the token, set your preferred language/provider, then save.
 
-| Provider | Dashboard |
-|----------|-----------|
-| Local AI | No key required — install/start Ollama, LM Studio or llama.cpp locally |
-| Google Gemini | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
-| Anthropic Claude | [console.anthropic.com](https://console.anthropic.com) |
-| OpenAI GPT | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
-| Groq (STT) | [console.groq.com](https://console.groq.com) |
+The desktop app must be running for browser translations to work. Every extension request includes the `X-Viezan-Token` header, and the extension never stores cloud provider API keys.
 
-> API keys are only used in the Electron main process to call the provider API directly — never written to disk, never sent through any intermediate server, never exposed to any third party.
+See [chrome-extension/README.md](chrome-extension/README.md) for the detailed extension guide.
 
----
-
-## 🌐 Chrome Extension
-
-The Chrome Extension lets you translate directly in the browser without switching windows.
-
-**Installation (Developer / Unpacked):**
-
-1. Open `chrome://extensions` in Chrome
-2. Enable **Developer mode**
-3. Click **Load unpacked** → select the `chrome-extension/` folder from this repository
-4. The Viezan icon will appear in your toolbar
-
-**Connect to the Viezan app:**
-
-1. Open **Viezan** → click ⚙ **Settings → Browser Extension**
-2. Copy the **Connection Token**
-3. Click the Viezan icon in Chrome → **⚙ Options** → Paste the token → **Save Settings**
-
-**Keyboard Shortcuts:**
-
-| Shortcut | Action |
-|----------|--------|
-| `Alt+T` (Windows/Linux) / `Option+T` (macOS) | Translate selected text |
-
-> See [chrome-extension/README.md](chrome-extension/README.md) for details.
-
----
-
-## 🛠️ Development
+## Development
 
 ### Prerequisites
 
-- **Node.js** v18+
-- **macOS**, **Windows** or **Linux**
+- Node.js 18+
+- npm
+- macOS, Windows or Linux
 
 ### Setup
 
 ```bash
-# Clone the repository
 git clone https://github.com/trunghieupham59/Viezan.git
 cd Viezan
-
-# Install dependencies
 npm install
-
-# Start development server + Electron
 npm run dev
 ```
 
 ### Test
 
 ```bash
-npm test              # Run all tests (unit + integration)
-npm run test:watch    # Watch mode
-npm run test:coverage # Coverage report
+npm test
+npm run test:watch
+npm run test:coverage
 ```
 
-Tests are located in `src/**/__tests__/` and `electron/ipc/__tests__/`.
+Tests live in `src/**/__tests__/` and `electron/ipc/__tests__/`.
 
 ### Build
 
 ```bash
-npm run build:mac     # macOS (arm64 + x64 DMG)
-npm run build:win     # Windows (NSIS installer)
-npm run build:linux   # Linux (AppImage)
+npm run build
+npm run build:mac
+npm run build:win
+npm run build:linux
 ```
 
-Output files are placed in the `release/` directory.
+Build artifacts are written to `release/`.
 
----
+## Project Map
 
-## 📁 Project Structure
-
-```
+```text
 Viezan/
-├── electron/                   # Main process (Node.js / Electron)
-│   ├── main.ts                 # App entry point, window management
-│   ├── preload.ts              # Context bridge (IPC bindings)
-│   └── ipc/                   # IPC handlers
-│       ├── keychain.ts         # Secure API key storage
-│       ├── translate.ts        # Text translation
-│       ├── localAi.ts          # Local AI runtime discovery, benchmark and model downloads
-│       ├── imageTranslate.ts   # Image/vision translation
-│       ├── transcribe.ts       # Speech-to-text (Whisper / Gemini / Groq)
-│       ├── tts.ts              # Text-to-speech
-│       ├── chat.ts             # AI chat
-│       ├── subtitle.ts         # Live translation subtitles
-│       ├── localServer.ts      # Local HTTP server (Chrome Extension)
-│       ├── globalHotkey.ts     # Global hotkey registration
-│       ├── webSearch.ts        # Multi-provider web search
-│       ├── models.ts           # Available model listing
-│       └── storage.ts          # Local data persistence
-├── src/                        # Renderer process (React)
-│   ├── pages/
-│   │   ├── TranslatePage.tsx   # Main translation UI (+ Phonetic Mode)
-│   │   ├── LiveTranslatePage.tsx # Real-time translation
-│   │   ├── ChatPage.tsx        # AI chat interface (+ Web Search)
-│   │   ├── HistoryPage.tsx     # Translation history
-│   │   └── SettingsPage.tsx    # API keys & preferences
-│   ├── components/
-│   │   ├── SettingsModal.tsx   # Settings popup overlay
-│   │   └── ...                 # Other reusable UI components
-│   ├── store/                  # Zustand global state
-│   ├── i18n/                   # UI translations (VI/EN/JA)
-│   ├── types/                  # TypeScript type definitions
-│   └── constants/              # Provider, model & language constants
-└── chrome-extension/           # Chrome Extension (Browser Integration)
+├── electron/                 # Electron main process and IPC handlers
+│   ├── main.ts               # App lifecycle and window management
+│   ├── preload.ts            # Context bridge entry
+│   ├── preload/              # Renderer-facing preload modules
+│   └── ipc/                  # Providers, storage, local server, audio, updater
+├── src/                      # React renderer
+│   ├── pages/                # Translate, Live, Chat, History, Settings
+│   ├── components/           # Shared UI and feature components
+│   ├── store/                # Zustand app state
+│   ├── services/             # Renderer service helpers
+│   ├── i18n/                 # App UI translations
+│   └── types/                # Shared TypeScript types
+├── chrome-extension/         # Chrome/Chromium extension
+├── docs/                     # GitHub Pages landing page and screenshots
+├── scripts/                  # Build and asset scripts
+└── viezanagent/              # Agent rules, skills, workflows, reports and docs
 ```
 
----
+## Tech Stack
 
-## 🧰 Tech Stack
+| Technology | Role |
+| --- | --- |
+| Electron 41 | Desktop shell, native capabilities and secure storage |
+| React 18 | Renderer UI |
+| TypeScript 5 | Type safety across renderer and Electron code |
+| Vite 8 | Renderer build pipeline |
+| Tailwind CSS 3 | Styling |
+| Zustand 5 | Client state |
+| electron-builder 26 | Packaging and publishing |
+| Vitest 4 | Unit and integration tests |
 
-| Technology | Version | Role |
-|-----------|---------|------|
-| [Electron](https://www.electronjs.org/) | v41 | Desktop shell |
-| [React](https://react.dev/) | v18 | UI framework |
-| [TypeScript](https://www.typescriptlang.org/) | v5 | Type safety |
-| [Vite](https://vitejs.dev/) | v8 | Build tool |
-| [Tailwind CSS](https://tailwindcss.com/) | v3 | Styling |
-| [Zustand](https://zustand-demo.pmnd.rs/) | v5 | State management |
-| [Electron safeStorage](https://www.electronjs.org/docs/latest/api/safe-storage) | built-in | OS-level encrypted key storage |
-| [electron-builder](https://www.electron.build/) | v26 | App packaging & distribution |
-| [electron-updater](https://www.electron.build/auto-update) | v6 | Auto-update |
-| [Ollama / LM Studio / llama.cpp](https://ollama.com/) | local | Optional local AI runtime |
+## Contributing
 
----
+Contributions, bug reports and feature requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## 🤝 Contributing
+## Support
 
-Contributions, bug reports, and feature requests are welcome!
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
----
-
-## ☕ Support the Author
-
-If you find Viezan useful, consider buying me a coffee via MoMo to keep the project going and motivate new features! 🙏
+If Viezan is useful to you, you can support development via MoMo:
 
 <p align="center">
   <a href="https://me.momo.vn/aMI2T6tWf3uRteU4tqUZtn">
-    <img src="https://img.shields.io/badge/☕_Buy_me_a_coffee-MoMo-ae2070?style=for-the-badge" alt="Buy me a coffee via MoMo">
+    <img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-MoMo-ae2070?style=for-the-badge" alt="Buy me a coffee via MoMo">
   </a>
 </p>
 
----
+## Author
 
-## 👤 Author
+**trunghieupham59** - [github.com/trunghieupham59](https://github.com/trunghieupham59)
 
-**trunghieupham59** — [github.com/trunghieupham59](https://github.com/trunghieupham59)
+## Disclaimer
 
----
+Viezan is an independent desktop application and is not affiliated with Google, Anthropic, OpenAI, Groq, Tavily, Brave, Ollama, LM Studio or llama.cpp. You are responsible for your own provider usage and associated costs.
 
-## ⚠️ Disclaimer
-
-Viezan is an independent desktop application and is not affiliated with Google, Anthropic, OpenAI, or Groq. You are responsible for your own API usage and any associated costs.
-
----
-
-## 📄 License
+## License
 
 [MIT](LICENSE)

@@ -1,87 +1,77 @@
-# Viezan Translate — Chrome Extension
+# Viezan Chrome Extension
 
-A Chrome/Chromium browser extension that lets you translate selected text on any webpage using the **Viezan native app** running on your machine.
+The Viezan Chrome/Chromium extension translates selected text through the Viezan desktop app running on your machine.
 
-## Architecture
-
-```
-Browser (Extension)  ←→  Viezan Native App (localhost:39875)
-                              ↓
-                         AI Provider (Gemini / OpenAI / Claude)
-                              ↓
-                         Uses API keys stored securely in OS Keychain
+```text
+Browser extension
+  -> http://127.0.0.1:39875
+  -> Viezan desktop app
+  -> Local AI runtime or selected cloud provider
 ```
 
-**API keys are never stored in the extension** — they remain in the Viezan native app's OS Keychain. The extension communicates with the app over a local-only HTTP server protected by a shared token.
+The extension is a browser client only. It does not store Gemini, Claude, OpenAI, Groq, Tavily or Brave API keys. Provider keys stay in the desktop app and are encrypted with Electron safeStorage.
 
----
+## Requirements
 
-## Installation
+- Viezan desktop app installed and running.
+- A Browser Extension connection token from **Viezan -> Settings -> Browser Extension**.
+- Chrome, Arc, Brave, Edge or another Chromium browser that supports Manifest V3 extensions.
 
-For release users, download `viezan-chrome-extension.zip` from the matching Viezan release, unzip it, then load the extracted `chrome-extension/` folder.
+## Install From a Release
 
-For local development:
+1. Download the Chrome Extension package from the Viezan release that matches your app version.
+2. If the package is a `.zip`, unzip it first.
+3. Open `chrome://extensions`.
+4. Enable **Developer mode**.
+5. Click **Load unpacked** and select the extracted `chrome-extension/` folder.
 
-1. Open Chrome and navigate to `chrome://extensions`
-2. Enable **Developer mode** (top-right toggle)
-3. Click **Load unpacked**
-4. Select the `chrome-extension/` folder from this repository
-5. The Viezan icon will appear in your toolbar
+## Local Development Install
 
----
+1. Clone this repository.
+2. Open `chrome://extensions`.
+3. Enable **Developer mode**.
+4. Click **Load unpacked**.
+5. Select this repository's `chrome-extension/` folder.
 
-## Setup
+## Connect to Viezan
 
-1. Open the **Viezan app** on your computer
-2. Go to **Settings → Browser Extension**
-3. Copy the **Connection Token** shown there
-4. Click the Viezan extension icon → **⚙ Options**
-5. Paste the token in the **Connection Token** field
-6. Set your preferred **Target Language** and **AI Provider**
-7. Click **Test Connection** to verify, then **Save Settings**
+1. Open the Viezan desktop app.
+2. Go to **Settings -> Browser Extension**.
+3. Copy or create a **Connection Token**.
+4. Open the extension **Options** page.
+5. Paste the token, choose your target language/provider and save.
+6. Use **Test Connection** to verify that the desktop app is reachable.
 
-> ⚠️ The Viezan app must be **running** for translations to work.
-
----
+If the test fails, confirm that Viezan is running and that local requests to `127.0.0.1:39875` are not blocked.
 
 ## Features
 
-### Floating Translate Button
-When you select text on any webpage, a small **Viezan Translate** button appears near the selection. Click it to instantly translate the text. The result appears in a tooltip above the selection and is also copied to your clipboard.
-
-### Popup Quick Translate
-Click the Viezan toolbar icon to open a mini translate panel where you can:
-- Type or paste text manually
-- Select the target language
-- Select the translation style
-- See the translation result
-- Auto-fill from your current selection
-
-### Keyboard Shortcut
-Use `Alt+T` on Windows/Linux or `Option+T` on macOS to translate the selected text without opening the popup first.
-
-### Right-Click Context Menu
-Right-click any selected text and choose **"Translate with Viezan"** from the context menu.
-
----
+| Feature | How it works |
+| --- | --- |
+| Floating button | Select text on a page, then click the Viezan button near the selection. |
+| Popup translate | Open the toolbar popup to type, paste or auto-fill selected text. |
+| Keyboard shortcut | Press `Alt+T` on Windows/Linux or `Option+T` on macOS to translate the current selection. |
+| Context menu | Right-click selected text and choose **Translate with Viezan**. |
+| Translation style | Choose the same style options used by the desktop app where supported. |
 
 ## Files
 
-| File | Description |
-|------|-------------|
-| `manifest.json` | Chrome Extension Manifest V3 |
-| `content.js` | Injects the floating button into every page |
-| `content.css` | Styles for the floating button and tooltip |
-| `background.js` | Service worker — handles context menu |
-| `popup.html/js` | Toolbar popup for quick translation |
-| `options.html/js` | Settings page for token & preferences |
-| `extension-ui.css` | Shared popup/options visual system |
+| File | Purpose |
+| --- | --- |
+| `manifest.json` | Manifest V3 metadata, permissions and commands. |
+| `background.js` | Service worker and context menu handling. |
+| `content.js` | Injected selected-text button and tooltip flow. |
+| `content.css` | Styles for the injected page UI. |
+| `popup.html` / `popup.js` | Toolbar quick-translate panel. |
+| `options.html` / `options.js` | Token, language and provider settings. |
+| `extension-ui.css` | Shared popup/options visual system. |
+| `icons/` | Extension icon assets. |
 
----
+## Security Model
 
-## Security
-
-- The local server listens **only on `127.0.0.1`** (loopback) — not accessible from other devices
-- Every request requires the **`X-Viezan-Token`** header — random 32-byte hex secret
-- The token is shown in the Viezan app Settings and stored in Chrome's `storage.local`
-- API keys **never leave the Viezan native app**
+- The extension talks only to the Viezan local server at `127.0.0.1:39875`.
+- Every request must include the `X-Viezan-Token` header.
+- The token is generated in the desktop app and stored in Chrome `storage.local`.
+- Provider API keys are never stored in the extension.
+- Webpage content is sent only when you trigger a translation.
+- The desktop app decides whether translation uses Local AI or a configured cloud provider.

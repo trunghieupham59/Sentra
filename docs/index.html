@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Viezan — AI Translation Desktop App</title>
-  <meta name="description" content="AI-powered translation desktop app for macOS & Windows. Live translation, image translation, AI chat, and more. Free download." />
+  <meta name="description" content="Local-first AI translation desktop app for macOS, Windows and Linux. Text, live audio, image translation, AI chat and browser translation." />
   <meta property="og:title" content="Viezan — AI Translation Desktop App" />
-  <meta property="og:description" content="Real-time AI translation, live subtitles, image translation, and AI chat — all running locally on your machine." />
+  <meta property="og:description" content="Local-first AI translation with Local AI support, bring-your-own-key cloud providers, live subtitles, image translation, chat and browser integration." />
   <meta property="og:image" content="screenshots/1.png" />
   <link rel="icon" href="icon.png" />
 
@@ -53,7 +53,7 @@
 
       <h1 data-i18n-html="hero.h1"><span class="brand">AI Translation</span><br><span class="dim">Built for</span> Real Work</h1>
 
-      <p class="hero-sub" data-i18n-html="hero.sub">Real-time translation, live subtitles, image translation, and AI chat — all running <strong>100% locally</strong> on your machine. No server. No data leaks. Just you and AI.</p>
+      <p class="hero-sub" data-i18n-html="hero.sub">Text, live audio, image translation, browser translation and AI chat in one <strong>local-first</strong> desktop app. Use Local AI or connect your own cloud provider keys.</p>
 
       <div class="hero-actions">
         <a class="btn btn-primary" href="https://github.com/trunghieupham59/Viezan/releases" target="_blank">
@@ -83,7 +83,7 @@
 
   <!-- PROVIDERS -->
   <div class="providers-section">
-    <div class="providers-label" data-i18n="providers.label">Powered by world-class AI providers</div>
+    <div class="providers-label" data-i18n="providers.label">Powered by local runtimes and bring-your-own-key cloud providers</div>
     <div class="providers-row">
       <div class="provider-chip"><img src="https://cdn.simpleicons.org/googlegemini/ffffff" width="18" height="18" alt="Gemini" style="vertical-align:middle;margin-right:6px"> Google Gemini</div>
       <div class="provider-chip"><img src="https://cdn.simpleicons.org/anthropic/ffffff" width="18" height="18" alt="Anthropic" style="vertical-align:middle;margin-right:6px"> Anthropic Claude</div>
@@ -96,7 +96,7 @@
   <section id="features">
     <p class="section-label reveal" data-i18n="features.label">Features</p>
     <h2 class="section-title reveal" data-i18n-html="features.title">Everything you need to<br>communicate without barriers</h2>
-    <p class="section-sub reveal" data-i18n="features.sub">Viezan packs a full translation suite into one elegant desktop app — no subscriptions, no tracking, just tools that work.</p>
+    <p class="section-sub reveal" data-i18n="features.sub">Viezan packs a full translation suite into one desktop app: local runtime support, bring-your-own-key cloud providers, no Viezan relay server.</p>
 
     <div class="features-grid">
 
@@ -131,7 +131,7 @@
       <div class="feature-card reveal" data-feat="4">
         <span class="feature-icon">🔊</span>
         <h3>Voice I/O</h3>
-        <p>Voice Input via Web Speech API, OpenAI Whisper, and Groq as fallback. Text-to-Speech with 6 premium OpenAI voices: Alloy, Echo, Fable, Onyx, Nova, Shimmer.</p>
+        <p>Voice input via Web Speech API, OpenAI Whisper, Gemini STT, and Groq fallback. Text-to-Speech uses free-first and premium provider paths.</p>
         <span class="feature-tag">Audio</span>
       </div>
 
@@ -159,7 +159,7 @@
       <div class="feature-card reveal" data-feat="8">
         <span class="feature-icon">🔒</span>
         <h3>Privacy First</h3>
-        <p>API keys encrypted via Electron safeStorage — Keychain on macOS, Credential Manager on Windows. No file writes. Zero servers. 100% local.</p>
+        <p>Provider keys are encrypted with Electron safeStorage and used by the desktop app only. No Viezan-hosted relay server sits between you and the selected provider.</p>
         <span class="feature-tag">Security</span>
       </div>
 
@@ -180,7 +180,7 @@
       <div class="feature-card reveal" data-feat="11">
         <span class="feature-icon">🔍</span>
         <h3>Web Search in Chat</h3>
-        <p>AI Chat with real-time web search powered by Brave, DuckDuckGo or Google — automatic fallback ensures you always get results.</p>
+        <p>AI Chat with optional real-time web search through Tavily or Brave keys, plus a Jina fallback path when available.</p>
         <span class="feature-tag">Chat</span>
       </div>
 
@@ -226,7 +226,7 @@
           <span data-i18n-html="story.p2">With the spirit of <strong>"工夫"</strong> — always finding a way to improve — I built Viezan: a tool that lets everyone communicate directly with AI translation, no intermediary needed.</span>
         </p>
         <p>
-          <span data-i18n-html="story.p3">The app runs <strong>100% on your machine</strong>. I only use provider APIs to call models. No intermediate server. No data passes through my systems. Your conversations stay yours.</span>
+          <span data-i18n-html="story.p3">The app is <strong>local-first</strong>. It can call local runtimes directly, or provider APIs with your own keys. No Viezan relay server sits between you and the provider you choose.</span>
         </p>
       </div>
 
