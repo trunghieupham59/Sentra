@@ -22,7 +22,7 @@ const FONT_SIZE_MAP = {
 const MACOS_TITLEBAR_HEIGHT_PX = 40
 
 function PageFallback() {
-  return <div className="h-full bg-white dark:bg-gray-900" aria-hidden="true" />
+  return <div className="app-page" aria-hidden="true" />
 }
 
 function App() {
@@ -90,13 +90,13 @@ function App() {
   const isMac = window.api?.platform === 'darwin'
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
+    <div className="app-shell">
       {/* Full-width macOS traffic light drag region — only on macOS */}
       {isMac && (
         <>
-          <div className="titlebar-drag flex-shrink-0 w-full bg-white dark:bg-gray-900" style={{ height: `${MACOS_TITLEBAR_HEIGHT_PX}px` }} />
+          <div className="titlebar-drag flex-shrink-0 w-full bg-white/75 dark:bg-neutral-950/80" style={{ height: `${MACOS_TITLEBAR_HEIGHT_PX}px` }} />
           {/* Divider below traffic light buttons */}
-          <div className="flex-shrink-0 w-full border-b border-gray-200 dark:border-gray-700" />
+          <div className="flex-shrink-0 w-full border-b border-white/70 dark:border-white/10" />
         </>
       )}
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChatBubbleIcon, ClockIcon, MicrophoneIcon, SearchIcon, TranslateIcon, XIcon } from '../components/ui/icons'
+import { ChatBubbleIcon, type ClockIcon, MicrophoneIcon, SearchIcon, TranslateIcon, XIcon } from '../components/ui/icons'
 import { useAppStore, useT } from '../store/useAppStore'
 import { tpl } from '../utils/tpl'
 import { ChatHistoryTab } from './history/ChatHistoryTab'
@@ -26,7 +26,7 @@ export function HistoryPage() {
     <div className="app-page">
       <div className="app-workspace">
 
-        <div className="flex items-center justify-between gap-4 flex-shrink-0">
+        <div className="app-topbar justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-base font-semibold text-gray-900 dark:text-gray-50">
               {t.history_title}
@@ -42,11 +42,7 @@ export function HistoryPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t.history_search_placeholder}
-              className="w-full h-9 rounded-lg border border-gray-200 dark:border-gray-800
-                         bg-gray-50 dark:bg-gray-900 pl-9 pr-9 text-sm text-gray-800 dark:text-gray-100
-                         placeholder:text-gray-400 dark:placeholder:text-gray-600
-                         focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400
-                         transition-colors select-text"
+              className="search-field"
             />
             {query && (
               <button
@@ -63,7 +59,7 @@ export function HistoryPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1 rounded-lg bg-gray-100 dark:bg-gray-900 p-1 flex-shrink-0">
+        <div className="segmented-control flex-shrink-0">
           {tabs.map(({ id, label, count, icon: Icon }) => {
             const isActive = activeTab === id
             return (

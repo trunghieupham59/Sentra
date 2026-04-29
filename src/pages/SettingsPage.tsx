@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
-import { useT } from '../store/useAppStore'
+import { type ComponentType, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ChatBubbleIcon,
   GearIcon,
@@ -11,6 +10,7 @@ import {
   SpeakerIcon,
   UploadIcon,
 } from '../components/ui/icons'
+import { useT } from '../store/useAppStore'
 import { AboutSection } from './settings/AboutSection'
 import { ApiKeysSection } from './settings/ApiKeysSection'
 import { BrowserIntegrationSection } from './settings/BrowserIntegrationSection'
@@ -153,8 +153,8 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="h-full min-h-0 bg-gray-50 dark:bg-gray-950 md:grid md:grid-cols-[232px_minmax(0,1fr)]">
-      <aside className="hidden md:flex min-h-0 flex-col border-r border-gray-200 bg-white/80 dark:border-gray-800 dark:bg-gray-900/70">
+    <div className="settings-shell">
+      <aside className="hidden md:flex min-h-0 flex-col border-r border-gray-200/80 bg-white/65 dark:border-white/10 dark:bg-neutral-950/50">
         <nav className="flex-1 overflow-auto p-2" aria-label={t.settings_title}>
           <div className="space-y-1">
             {sections.map(({ id, label, description, Icon }) => {
@@ -168,8 +168,8 @@ export function SettingsPage() {
                   className={[
                     'w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors',
                     active
-                      ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100',
+                      ? 'bg-blue-50 text-blue-700 shadow-sm shadow-blue-900/5 dark:bg-blue-950/40 dark:text-blue-300'
+                      : 'text-gray-600 hover:bg-white hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100',
                   ].join(' ')}
                   aria-current={active ? 'true' : undefined}
                 >
@@ -183,7 +183,7 @@ export function SettingsPage() {
       </aside>
 
       <div className="flex min-h-0 flex-col">
-        <div className="md:hidden border-b border-gray-200 bg-white/90 dark:border-gray-800 dark:bg-gray-900/90">
+        <div className="md:hidden border-b border-gray-200 bg-white/90 dark:border-white/10 dark:bg-neutral-950/90">
           <nav className="overflow-x-auto px-3 py-2" aria-label={t.settings_title}>
             <div className="flex gap-1">
               {sections.map(({ id, label, description, Icon }) => {
@@ -198,7 +198,7 @@ export function SettingsPage() {
                       'flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
                       active
                         ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
-                        : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800',
+                        : 'text-gray-500 hover:bg-white dark:text-gray-400 dark:hover:bg-white/5',
                     ].join(' ')}
                     aria-current={active ? 'true' : undefined}
                   >

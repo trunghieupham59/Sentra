@@ -111,7 +111,7 @@ export function TranslatePage() {
         <div className="app-workspace">
 
           {/* ── Top action bar: Language selectors + settings icon ── */}
-          <div className="flex items-center flex-shrink-0">
+          <div className="app-topbar">
             {/* Source language selector — left half, overflow-hidden prevents pills from bleeding right */}
             <div className="flex-1 min-w-0 overflow-hidden">
               <SourceLanguageSelector
@@ -209,7 +209,7 @@ export function TranslatePage() {
           </div>
 
           {/* Text panels */}
-          <div className="grid grid-cols-2 gap-4 flex-1 min-h-0">
+          <div className="app-panel-grid">
 
             {/* ── Source panel card ── */}
             <section

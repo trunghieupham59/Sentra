@@ -636,7 +636,7 @@ export function ChatPage() {
         <div className="app-workspace">
 
           {/* ── Top action bar: actions + settings icon ── */}
-          <div className="flex items-center justify-end gap-1.5 flex-shrink-0">
+          <div className="app-topbar justify-end gap-1.5">
             {/* New chat */}
             <button
               type="button"
@@ -698,7 +698,7 @@ export function ChatPage() {
 
           {messages.length === 0 ? (
             /* ── Empty state: centered layout (ChatGPT-style) ── */
-            <div className="flex-1 flex flex-col items-center justify-center gap-8 pb-4">
+            <div className="flex-1 flex flex-col items-center justify-center gap-6 pb-4">
               {/* Logo + description */}
               <div className="flex flex-col items-center gap-3 text-center select-none">
                 <AppLogoIcon size={72} />
