@@ -151,7 +151,7 @@ jobs:
     # ─────────────────────────────────────────────
     build-mac-arm64:
         needs: create-release
-        runs-on: macos-14
+        runs-on: macos-15
 
         steps:
             - name: Checkout
@@ -195,7 +195,9 @@ jobs:
     # ─────────────────────────────────────────────
     build-mac-intel:
         needs: create-release
-        runs-on: macos-13
+        # macos-13 was retired by GitHub Actions; macos-15-intel is the
+        # supported x86_64 runner label for standard hosted runners.
+        runs-on: macos-15-intel
 
         steps:
             - name: Checkout
