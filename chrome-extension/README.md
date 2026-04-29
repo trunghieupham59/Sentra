@@ -1,4 +1,4 @@
-# Viezan Translate — Chrome Extension (Legacy Assistant)
+# Viezan Translate — Chrome Extension
 
 A Chrome/Chromium browser extension that lets you translate selected text on any webpage using the **Viezan native app** running on your machine.
 
@@ -16,7 +16,11 @@ Browser (Extension)  ←→  Viezan Native App (localhost:39875)
 
 ---
 
-## Installation (Developer / Unpacked)
+## Installation
+
+For release users, download `viezan-chrome-extension.zip` from the matching Viezan release, unzip it, then load the extracted `chrome-extension/` folder.
+
+For local development:
 
 1. Open Chrome and navigate to `chrome://extensions`
 2. Enable **Developer mode** (top-right toggle)
@@ -29,7 +33,7 @@ Browser (Extension)  ←→  Viezan Native App (localhost:39875)
 ## Setup
 
 1. Open the **Viezan app** on your computer
-2. Go to **Settings → Browser Extension (Legacy Assistant)**
+2. Go to **Settings → Browser Extension**
 3. Copy the **Connection Token** shown there
 4. Click the Viezan extension icon → **⚙ Options**
 5. Paste the token in the **Connection Token** field
@@ -52,6 +56,9 @@ Click the Viezan toolbar icon to open a mini translate panel where you can:
 - Select the translation style
 - See the translation result
 - Auto-fill from your current selection
+
+### Keyboard Shortcut
+Use `Alt+T` on Windows/Linux or `Option+T` on macOS to translate the selected text without opening the popup first.
 
 ### Right-Click Context Menu
 Right-click any selected text and choose **"Translate with Viezan"** from the context menu.

@@ -37,7 +37,7 @@ const TRANSLATIONS = {
       { title: 'Settings Modal',     desc: 'Settings redesigned as a clean popup overlay — access API keys, model preferences and extension settings instantly from any tab without losing context.', tag: 'UX' },
       { title: 'Phonetic Mode',      desc: 'Pure phonetic transcription mode — get romanization or phonetics instead of a full translation. Perfect for pronunciation learning and language study.', tag: 'Translate' },
       { title: 'Web Search in Chat', desc: 'AI Chat with real-time web search powered by Brave, DuckDuckGo or Google — automatic fallback ensures you always get results.', tag: 'Chat' },
-      { title: 'Local AI Support',   desc: 'Run AI models directly on your machine — no API key required. Free for everyone, fully offline. No cloud, no cost, complete privacy.', tag: 'Coming Soon' },
+      { title: 'Local AI Support',   desc: 'Run translation and chat through Ollama, LM Studio or llama.cpp. Benchmark your hardware, download curated models, and keep work fully local.', tag: 'Available' },
     ],
     screenshots: { label: 'Screenshots', title: 'See it in action', sub: 'Click any card to zoom in. Navigate with arrow keys or swipe on mobile.' },
     story: {
@@ -52,17 +52,17 @@ const TRANSLATIONS = {
       { title: '3 UI Languages',           desc: 'Interface available in Vietnamese, English, and Japanese — auto dark mode included.' },
       { title: 'Smart Model Suggestions',  desc: 'Viezan automatically recommends the best AI model for each task type.' },
       { title: '100% Free to Download',    desc: 'No subscription. You only pay for the AI API calls you choose to make.' },
-      { title: 'Local AI Coming Soon',     desc: 'A free local AI version for users without API keys — in development now.' },
+      { title: 'Local AI Available',       desc: 'Use Ollama, LM Studio or llama.cpp for private, keyless local translation and chat.' },
     ],
     download: {
       label: 'Download', title: 'Get Viezan for free',
       sub: 'Available for macOS, Windows and Linux. No account required. Start translating in minutes.',
-      mac_btn: '⬇ Download .dmg', win_btn: '⬇ Download .exe', linux_btn: '⬇ Download .AppImage', ext_btn: '⬇ Download .crx',
+      mac_btn: '⬇ Download .dmg', win_btn: '⬇ Download .exe', linux_btn: '⬇ Download .AppImage', ext_btn: '⬇ Download .zip',
       warning: '⚠️ macOS may show a security warning since the app isn\'t code-signed yet. Right-click → Open to bypass. <a href="https://github.com/trunghieupham59/Viezan#readme" style="color:var(--accent)" target="_blank">See instructions →</a>',
     },
     support: {
       label: 'Support', h2: 'Enjoying Viezan?',
-      p: 'Viezan is free and built in my spare time. If it saves you time or helps your team communicate better, a coffee goes a long way toward code signing, local AI, and new features. ☕',
+      p: 'Viezan is free and built in my spare time. If it saves you time or helps your team communicate better, a coffee goes a long way toward code signing, better local AI, and new features. ☕',
       btn: '☕ Buy me a coffee via Momo', github: '★ Star on GitHub', bug: '🐛 Report a bug', changelog: '📋 Changelog',
     },
     footer: {
@@ -105,7 +105,7 @@ const TRANSLATIONS = {
       { title: 'Cài đặt dạng Modal',   desc: 'Cài đặt được thiết kế lại thành popup overlay — truy cập API key, tùy chọn mô hình và cài đặt tiện ích ngay lập tức từ bất kỳ tab nào mà không mất ngữ cảnh.', tag: 'UX' },
       { title: 'Chế độ Phiên âm',      desc: 'Chế độ phiên âm thuần tuý — nhận phiên âm/romanization thay vì bản dịch đầy đủ. Hoàn hảo cho việc học phát âm và nghiên cứu ngôn ngữ.', tag: 'Dịch thuật' },
       { title: 'Tìm kiếm Web trong Chat', desc: 'Chat AI với tìm kiếm web thời gian thực qua Brave, DuckDuckGo hoặc Google — tự động chuyển đổi dự phòng để luôn có kết quả.', tag: 'Chat' },
-      { title: 'Hỗ trợ AI cục bộ',     desc: 'Chạy mô hình AI trực tiếp trên máy — không cần API key. Miễn phí cho tất cả, hoàn toàn offline. Không cloud, không chi phí, hoàn toàn riêng tư.', tag: 'Sắp ra mắt' },
+      { title: 'Hỗ trợ AI cục bộ',     desc: 'Dịch và chat qua Ollama, LM Studio hoặc llama.cpp. Benchmark phần cứng, tải model đề xuất và giữ dữ liệu hoàn toàn trên máy.', tag: 'Đã có' },
     ],
     screenshots: { label: 'Ảnh chụp', title: 'Xem thực tế', sub: 'Nhấp vào bất kỳ ảnh nào để phóng to. Điều hướng bằng phím mũi tên hoặc vuốt trên di động.' },
     story: {
@@ -120,17 +120,17 @@ const TRANSLATIONS = {
       { title: '3 Ngôn ngữ giao diện',         desc: 'Giao diện có sẵn bằng Tiếng Việt, Tiếng Anh và Tiếng Nhật — chế độ tối tự động.' },
       { title: 'Gợi ý mô hình thông minh',     desc: 'Viezan tự động đề xuất mô hình AI tốt nhất cho từng loại tác vụ.' },
       { title: '100% Miễn phí tải xuống',      desc: 'Không đăng ký. Bạn chỉ trả tiền cho các lần gọi API AI mà bạn chọn.' },
-      { title: 'AI cục bộ sắp ra mắt',         desc: 'Phiên bản AI cục bộ miễn phí cho người dùng không có API key — đang phát triển.' },
+      { title: 'AI cục bộ đã có',              desc: 'Dùng Ollama, LM Studio hoặc llama.cpp để dịch và chat local, riêng tư, không cần API key.' },
     ],
     download: {
       label: 'Tải xuống', title: 'Tải Viezan miễn phí',
       sub: 'Có sẵn cho macOS, Windows và Linux. Không cần tài khoản. Bắt đầu dịch trong vài phút.',
-      mac_btn: '⬇ Tải .dmg', win_btn: '⬇ Tải .exe', linux_btn: '⬇ Tải .AppImage', ext_btn: '⬇ Tải .crx',
+      mac_btn: '⬇ Tải .dmg', win_btn: '⬇ Tải .exe', linux_btn: '⬇ Tải .AppImage', ext_btn: '⬇ Tải .zip',
       warning: '⚠️ macOS có thể hiển thị cảnh báo bảo mật vì ứng dụng chưa được ký mã. Nhấp chuột phải → Mở để bỏ qua. <a href="https://github.com/trunghieupham59/Viezan#readme" style="color:var(--accent)" target="_blank">Xem hướng dẫn →</a>',
     },
     support: {
       label: 'Ủng hộ', h2: 'Thích Viezan?',
-      p: 'Viezan miễn phí và được xây dựng trong thời gian rảnh. Nếu nó tiết kiệm thời gian hoặc giúp nhóm của bạn giao tiếp tốt hơn, một ly cà phê sẽ đóng góp rất nhiều cho việc ký mã, AI cục bộ và các tính năng mới. ☕',
+      p: 'Viezan miễn phí và được xây dựng trong thời gian rảnh. Nếu nó tiết kiệm thời gian hoặc giúp nhóm của bạn giao tiếp tốt hơn, một ly cà phê sẽ đóng góp rất nhiều cho việc ký mã, cải thiện AI cục bộ và các tính năng mới. ☕',
       btn: '☕ Mua tôi một ly cà phê qua Momo', github: '★ Star trên GitHub', bug: '🐛 Báo lỗi', changelog: '📋 Nhật ký thay đổi',
     },
     footer: {
@@ -173,7 +173,7 @@ const TRANSLATIONS = {
       { title: '设置弹窗',       desc: '设置重新设计为简洁弹出层 — 可从任何标签页即时访问 API 密钥、模型偏好和扩展设置，无需离开当前页面。', tag: 'UX' },
       { title: '音标模式',       desc: '纯音标转录模式 — 获取罗马音或音标而非完整翻译。非常适合发音学习和语言研究。', tag: '翻译' },
       { title: 'Chat 网页搜索',  desc: 'AI 聊天集成实时网页搜索，由 Brave、DuckDuckGo 或 Google 提供支持 — 自动切换备用以确保始终获得结果。', tag: '聊天' },
-      { title: '本地 AI 支持',   desc: '直接在您的机器上运行 AI 模型 — 无需 API 密钥。对所有人免费，完全离线。无云端，无成本，完全私密。', tag: '即将推出' },
+      { title: '本地 AI 支持',   desc: '通过 Ollama、LM Studio 或 llama.cpp 进行翻译和聊天。测试硬件、下载推荐模型，并让数据保留在本机。', tag: '已可用' },
     ],
     screenshots: { label: '截图', title: '实际效果一览', sub: '点击任意卡片放大查看。使用方向键导航或在移动端滑动。' },
     story: {
@@ -188,17 +188,17 @@ const TRANSLATIONS = {
       { title: '3 种界面语言',      desc: '界面支持越南语、英语和日语 — 包含自动深色模式。' },
       { title: '智能模型建议',      desc: 'Viezan 自动为每种任务类型推荐最佳 AI 模型。' },
       { title: '100% 免费下载',     desc: '无需订阅。您只需为选择的 AI API 调用付费。' },
-      { title: '本地 AI 即将推出',  desc: '面向无 API 密钥用户的免费本地 AI 版本 — 正在开发中。' },
+      { title: '本地 AI 已可用',    desc: '使用 Ollama、LM Studio 或 llama.cpp 进行私密、免 API 密钥的本地翻译和聊天。' },
     ],
     download: {
       label: '下载', title: '免费获取 Viezan',
       sub: '适用于 macOS、Windows 和 Linux。无需账户。几分钟内开始翻译。',
-      mac_btn: '⬇ 下载 .dmg', win_btn: '⬇ 下载 .exe', linux_btn: '⬇ 下载 .AppImage', ext_btn: '⬇ 下载 .crx',
+      mac_btn: '⬇ 下载 .dmg', win_btn: '⬇ 下载 .exe', linux_btn: '⬇ 下载 .AppImage', ext_btn: '⬇ 下载 .zip',
       warning: '⚠️ 由于应用尚未进行代码签名，macOS 可能会显示安全警告。右键点击 → 打开 即可绕过。<a href="https://github.com/trunghieupham59/Viezan#readme" style="color:var(--accent)" target="_blank">查看说明 →</a>',
     },
     support: {
       label: '支持', h2: '喜欢 Viezan？',
-      p: 'Viezan 是免费的，在我的业余时间构建。如果它为您节省了时间或帮助您的团队更好地沟通，一杯咖啡将在代码签名、本地 AI 和新功能方面大有帮助。☕',
+      p: 'Viezan 是免费的，在我的业余时间构建。如果它为您节省了时间或帮助团队更好沟通，一杯咖啡将在代码签名、改进本地 AI 和新功能方面大有帮助。☕',
       btn: '☕ 通过 Momo 请我喝咖啡', github: '★ 在 GitHub 上给星', bug: '🐛 报告错误', changelog: '📋 更新日志',
     },
     footer: {
@@ -241,7 +241,7 @@ const TRANSLATIONS = {
       { title: '設定モーダル',          desc: '設定をクリーンなポップアップオーバーレイに刷新 — どのタブからでも即座に API キー、モデル設定、拡張機能設定にアクセス。コンテキストを失わない。', tag: 'UX' },
       { title: 'フォネティックモード',   desc: '純粋な音声転写モード — 完全な翻訳の代わりにローマ字や音声表記を取得。発音学習や語学研究に最適。', tag: '翻訳' },
       { title: 'チャットでウェブ検索',   desc: 'Brave、DuckDuckGo、Google によるリアルタイムウェブ検索付き AI チャット — 自動フォールバックで常に結果を取得。', tag: 'チャット' },
-      { title: 'ローカル AI サポート',   desc: 'マシン上で直接 AI モデルを実行 — API キー不要。すべての人に無料、完全オフライン。クラウドなし、コストなし、完全なプライバシー。', tag: '近日公開' },
+      { title: 'ローカル AI サポート',   desc: 'Ollama、LM Studio、llama.cpp で翻訳とチャットを実行。ハードウェアを測定し、推奨モデルをダウンロードして、作業を完全にローカルに保ちます。', tag: '利用可能' },
     ],
     screenshots: { label: 'スクリーンショット', title: '実際の動作を見る', sub: 'カードをクリックしてズームイン。矢印キーでナビゲートまたはモバイルでスワイプ。' },
     story: {
@@ -256,17 +256,17 @@ const TRANSLATIONS = {
       { title: '3 つの UI 言語',          desc: 'ベトナム語、英語、日本語のインターフェース — 自動ダークモード付き。' },
       { title: 'スマートモデル提案',       desc: 'Viezan が各タスクに最適な AI モデルを自動で推薦。' },
       { title: '100% 無料ダウンロード',    desc: 'サブスクリプション不要。選択した AI API 呼び出し分のみお支払い。' },
-      { title: 'ローカル AI 近日公開',     desc: 'API キーなしのユーザー向け無料ローカル AI バージョン — 開発中。' },
+      { title: 'ローカル AI 利用可能',     desc: 'Ollama、LM Studio、llama.cpp で、API キー不要のプライベートなローカル翻訳とチャットを利用できます。' },
     ],
     download: {
       label: 'ダウンロード', title: 'Viezan を無料で入手',
       sub: 'macOS、Windows および Linux で利用可能。アカウント不要。数分で翻訳開始。',
-      mac_btn: '⬇ .dmg をダウンロード', win_btn: '⬇ .exe をダウンロード', linux_btn: '⬇ .AppImage をダウンロード', ext_btn: '⬇ .crx をダウンロード',
+      mac_btn: '⬇ .dmg をダウンロード', win_btn: '⬇ .exe をダウンロード', linux_btn: '⬇ .AppImage をダウンロード', ext_btn: '⬇ .zip をダウンロード',
       warning: '⚠️ アプリはまだコード署名されていないため、macOS でセキュリティ警告が表示される場合があります。右クリック → 開く でバイパスできます。<a href="https://github.com/trunghieupham59/Viezan#readme" style="color:var(--accent)" target="_blank">手順を見る →</a>',
     },
     support: {
       label: 'サポート', h2: 'Viezan を気に入っていますか？',
-      p: 'Viezan は無料で、余暇に作られています。時間を節約したり、チームのコミュニケーションに役立てているなら、コーヒー一杯がコード署名、ローカル AI、新機能への大きな力になります。☕',
+      p: 'Viezan は無料で、余暇に作られています。時間を節約したり、チームのコミュニケーションに役立てているなら、コーヒー一杯がコード署名、ローカル AI の改善、新機能への大きな力になります。☕',
       btn: '☕ Momo でコーヒーを買ってください', github: '★ GitHub でスター', bug: '🐛 バグを報告', changelog: '📋 変更履歴',
     },
     footer: {
@@ -309,7 +309,7 @@ const TRANSLATIONS = {
       { title: 'Fenêtre Paramètres',         desc: 'Les paramètres redessinés en popup overlay — accédez aux clés API, préférences de modèle et paramètres d\'extension instantanément depuis n\'importe quel onglet.', tag: 'UX' },
       { title: 'Mode Phonétique',            desc: 'Mode de transcription phonétique pure — obtenez la romanisation ou la phonétique au lieu d\'une traduction complète. Parfait pour l\'apprentissage de la prononciation.', tag: 'Traduction' },
       { title: 'Recherche Web dans le Chat', desc: 'Chat IA avec recherche web en temps réel via Brave, DuckDuckGo ou Google — basculement automatique pour toujours obtenir des résultats.', tag: 'Chat' },
-      { title: 'Support IA local',           desc: 'Exécutez des modèles IA directement sur votre machine — aucune clé API requise. Gratuit pour tous, entièrement hors ligne. Aucun cloud, aucun coût, confidentialité totale.', tag: 'Bientôt' },
+      { title: 'Support IA local',           desc: 'Traduisez et chattez via Ollama, LM Studio ou llama.cpp. Évaluez votre matériel, téléchargez des modèles recommandés et gardez tout en local.', tag: 'Disponible' },
     ],
     screenshots: { label: 'Captures d\'écran', title: 'Voyez-le en action', sub: 'Cliquez sur une carte pour zoomer. Naviguez avec les touches directionnelles ou glissez sur mobile.' },
     story: {
@@ -324,17 +324,17 @@ const TRANSLATIONS = {
       { title: '3 langues d\'interface',             desc: 'Interface disponible en vietnamien, anglais et japonais — mode sombre automatique inclus.' },
       { title: 'Suggestions de modèles intelligentes', desc: 'Viezan recommande automatiquement le meilleur modèle IA pour chaque type de tâche.' },
       { title: '100% gratuit à télécharger',         desc: 'Aucun abonnement. Vous ne payez que pour les appels API IA que vous choisissez d\'effectuer.' },
-      { title: 'IA locale bientôt disponible',       desc: 'Une version IA locale gratuite pour les utilisateurs sans clés API — en développement.' },
+      { title: 'IA locale disponible',               desc: 'Utilisez Ollama, LM Studio ou llama.cpp pour une traduction et un chat locaux, privés et sans clé API.' },
     ],
     download: {
       label: 'Télécharger', title: 'Obtenez Viezan gratuitement',
       sub: 'Disponible pour macOS, Windows et Linux. Aucun compte requis. Commencez à traduire en quelques minutes.',
-      mac_btn: '⬇ Télécharger .dmg', win_btn: '⬇ Télécharger .exe', linux_btn: '⬇ Télécharger .AppImage', ext_btn: '⬇ Télécharger .crx',
+      mac_btn: '⬇ Télécharger .dmg', win_btn: '⬇ Télécharger .exe', linux_btn: '⬇ Télécharger .AppImage', ext_btn: '⬇ Télécharger .zip',
       warning: '⚠️ macOS peut afficher un avertissement de sécurité car l\'application n\'est pas encore signée. Clic droit → Ouvrir pour contourner. <a href="https://github.com/trunghieupham59/Viezan#readme" style="color:var(--accent)" target="_blank">Voir les instructions →</a>',
     },
     support: {
       label: 'Soutien', h2: 'Vous appréciez Viezan ?',
-      p: 'Viezan est gratuit et développé sur mon temps libre. S\'il vous fait gagner du temps ou aide votre équipe à mieux communiquer, un café contribue grandement à la signature de code, à l\'IA locale et aux nouvelles fonctionnalités. ☕',
+      p: 'Viezan est gratuit et développé sur mon temps libre. S\'il vous fait gagner du temps ou aide votre équipe à mieux communiquer, un café contribue à la signature de code, à l\'amélioration de l\'IA locale et aux nouvelles fonctionnalités. ☕',
       btn: '☕ Offrez-moi un café via Momo', github: '★ Star sur GitHub', bug: '🐛 Signaler un bug', changelog: '📋 Journal des modifications',
     },
     footer: {
@@ -377,7 +377,7 @@ const TRANSLATIONS = {
       { title: '설정 모달',          desc: '설정이 깔끔한 팝업 오버레이로 재설계 — 어떤 탭에서든 API 키, 모델 기본 설정 및 확장 설정에 즉시 접근. 컨텍스트 유지.', tag: 'UX' },
       { title: '발음 표기 모드',      desc: '순수 음성 전사 모드 — 완전한 번역 대신 로마자나 발음 기호를 받아보세요. 발음 학습과 언어 연구에 완벽합니다.', tag: '번역' },
       { title: 'Chat 웹 검색',       desc: 'Brave, DuckDuckGo 또는 Google로 구동되는 실시간 웹 검색 AI 채팅 — 자동 폴백으로 항상 결과를 보장합니다.', tag: '채팅' },
-      { title: '로컬 AI 지원',       desc: '머신에서 직접 AI 모델 실행 — API 키 불필요. 모든 사람에게 무료, 완전 오프라인. 클라우드 없음, 비용 없음, 완전한 프라이버시.', tag: '출시 예정' },
+      { title: '로컬 AI 지원',       desc: 'Ollama, LM Studio 또는 llama.cpp로 번역과 채팅을 실행합니다. 하드웨어를 벤치마크하고 추천 모델을 다운로드하며 작업을 로컬에 유지합니다.', tag: '사용 가능' },
     ],
     screenshots: { label: '스크린샷', title: '실제 작동 모습', sub: '카드를 클릭하면 확대됩니다. 화살표 키로 탐색하거나 모바일에서 스와이프하세요.' },
     story: {
@@ -392,17 +392,17 @@ const TRANSLATIONS = {
       { title: '3개 UI 언어',        desc: '베트남어, 영어, 일본어 인터페이스 — 자동 다크 모드 포함.' },
       { title: '스마트 모델 제안',    desc: 'Viezan이 각 작업 유형에 가장 적합한 AI 모델을 자동으로 추천합니다.' },
       { title: '100% 무료 다운로드', desc: '구독 없음. 선택한 AI API 호출 비용만 지불합니다.' },
-      { title: '로컬 AI 출시 예정',  desc: 'API 키가 없는 사용자를 위한 무료 로컬 AI 버전 — 현재 개발 중.' },
+      { title: '로컬 AI 사용 가능',  desc: 'Ollama, LM Studio 또는 llama.cpp로 비공개, 키 없는 로컬 번역과 채팅을 사용할 수 있습니다.' },
     ],
     download: {
       label: '다운로드', title: '무료로 Viezan 받기',
       sub: 'macOS, Windows 및 Linux에서 사용 가능. 계정 불필요. 몇 분 안에 번역 시작.',
-      mac_btn: '⬇ .dmg 다운로드', win_btn: '⬇ .exe 다운로드', linux_btn: '⬇ .AppImage 다운로드', ext_btn: '⬇ .crx 다운로드',
+      mac_btn: '⬇ .dmg 다운로드', win_btn: '⬇ .exe 다운로드', linux_btn: '⬇ .AppImage 다운로드', ext_btn: '⬇ .zip 다운로드',
       warning: '⚠️ 앱이 아직 코드 서명되지 않아 macOS에서 보안 경고가 표시될 수 있습니다. 우클릭 → 열기로 우회하세요. <a href="https://github.com/trunghieupham59/Viezan#readme" style="color:var(--accent)" target="_blank">안내 보기 →</a>',
     },
     support: {
       label: '후원', h2: 'Viezan이 마음에 드시나요?',
-      p: 'Viezan은 무료이며 여가 시간에 만들어졌습니다. 시간을 절약하거나 팀의 소통에 도움이 된다면 커피 한 잔이 코드 서명, 로컬 AI, 새 기능에 큰 도움이 됩니다. ☕',
+      p: 'Viezan은 무료이며 여가 시간에 만들어졌습니다. 시간을 절약하거나 팀의 소통에 도움이 된다면 커피 한 잔이 코드 서명, 로컬 AI 개선, 새 기능에 큰 도움이 됩니다. ☕',
       btn: '☕ Momo로 커피 사주기', github: '★ GitHub에서 스타', bug: '🐛 버그 신고', changelog: '📋 변경 로그',
     },
     footer: {
@@ -489,10 +489,16 @@ const IMAGES = [
   'screenshots/3.1.png',
   'screenshots/3.2.png',
   'screenshots/4.png',
+  'screenshots/4.1.png',
+  'screenshots/4.2.png',
   'screenshots/5.png',
   'screenshots/5.1.png',
   'screenshots/5.2.png',
   'screenshots/5.3.png',
+  'screenshots/5.4.png',
+  'screenshots/5.5.png',
+  'screenshots/5.6.png',
+  'screenshots/5.7.png',
 ];
 const COUNT  = IMAGES.length;
 
