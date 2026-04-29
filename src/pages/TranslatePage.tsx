@@ -103,17 +103,12 @@ export function TranslatePage() {
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [showAIConfig])
 
-  /** Shared Tailwind classes for panel footer bars (inside cards) */
-  const PANEL_FOOTER_CLS =
-    'flex-shrink-0 flex items-center justify-between px-4 h-12 ' +
-    'border-t border-gray-200 dark:border-gray-800'
-
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-950">
+    <div className="app-page">
 
       {/* Centered content — fills remaining height */}
       <div className="flex-1 flex flex-col min-h-0">
-        <div className="px-6 pt-6 pb-4 flex flex-col gap-4 flex-1 min-h-0 min-w-0">
+        <div className="app-workspace">
 
           {/* ── Top action bar: Language selectors + settings icon ── */}
           <div className="flex items-center flex-shrink-0">
@@ -155,25 +150,19 @@ export function TranslatePage() {
 
               {/* AI Config settings icon + popup */}
               <div className="relative flex-shrink-0" ref={aiConfigRef}>
-              <button
-                type="button"
-                onClick={() => setShowAIConfig((v) => !v)}
-                title={t.translate_ai_config_title}
-                className={`flex items-center justify-center w-8 h-8 rounded-full border transition-all duration-200 cursor-pointer
-                            ${showAIConfig
-                              ? 'bg-blue-50 border-blue-200 text-blue-500 dark:bg-blue-950/40 dark:border-blue-700 dark:text-blue-400'
-                              : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700'}`}
-              >
-                <GearIcon className="w-3.5 h-3.5" />
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAIConfig((v) => !v)}
+                  title={t.translate_ai_config_title}
+                  className={`toolbar-icon-button cursor-pointer ${showAIConfig ? 'toolbar-icon-button-active' : ''}`}
+                >
+                  <GearIcon className="w-3.5 h-3.5" />
+                </button>
 
                 {/* Settings popup */}
                 {showAIConfig && (
-                <div className="absolute top-full right-0 mt-2 z-50 w-[520px]
-                                bg-white dark:bg-gray-900
-                                border border-gray-200 dark:border-gray-700
-                                rounded-2xl shadow-xl p-4 flex flex-col gap-4">
-                    <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                  <div className="floating-panel absolute top-full right-0 mt-2 z-50 w-[520px] p-4 flex flex-col gap-4">
+                    <h2 className="popover-title">
                       {t.translate_ai_config_title}
                     </h2>
                     {/* Row 1: Provider + Model selector */}
@@ -184,33 +173,33 @@ export function TranslatePage() {
 
                     {/* Row 2: Style + Phonetic + Auto-translate */}
                     <TranslateToolbar
-                    hideModelSelector
-                    translationStyle={translationStyle}
-                    onStyleChange={setTranslationStyle}
-                    autoTranslate={autoTranslate}
-                    onAutoTranslateChange={setAutoTranslate}
-                    phoneticMode={phoneticMode}
-                    onPhoneticModeChange={setPhoneticMode}
-                    isPhoneticLoading={
-                      phoneticMode !== 'off' &&
-                      !phoneticText &&
-                      (isTranslating || (!!translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL))
-                    }
-                    labelStyleLabel={t.translate_style_label}
-                    labelStyleGeneral={t.translate_style_general}
-                    labelStyleFormal={t.translate_style_formal}
-                    labelStyleCasual={t.translate_style_casual}
-                    labelStyleBusiness={t.translate_style_business}
-                    labelStyleTechnical={t.translate_style_technical}
-                    labelStyleNatural={t.translate_style_natural}
-                    labelPhoneticSection={t.translate_phonetic}
-                    labelPhoneticOff={t.translate_phonetic_off}
-                    labelPhoneticStandard={t.translate_phonetic_standard}
-                    labelPhoneticTranscription={t.translate_phonetic_transcription}
-                    labelAutoSection={t.settings_auto_translate}
-                    titleAutoMode={t.translate_mode_auto_title}
-                    titleManualMode={t.translate_mode_manual_title}
-                    labelAutoMode={t.translate_mode_auto}
+                      hideModelSelector
+                      translationStyle={translationStyle}
+                      onStyleChange={setTranslationStyle}
+                      autoTranslate={autoTranslate}
+                      onAutoTranslateChange={setAutoTranslate}
+                      phoneticMode={phoneticMode}
+                      onPhoneticModeChange={setPhoneticMode}
+                      isPhoneticLoading={
+                        phoneticMode !== 'off' &&
+                        !phoneticText &&
+                        (isTranslating || (!!translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL))
+                      }
+                      labelStyleLabel={t.translate_style_label}
+                      labelStyleGeneral={t.translate_style_general}
+                      labelStyleFormal={t.translate_style_formal}
+                      labelStyleCasual={t.translate_style_casual}
+                      labelStyleBusiness={t.translate_style_business}
+                      labelStyleTechnical={t.translate_style_technical}
+                      labelStyleNatural={t.translate_style_natural}
+                      labelPhoneticSection={t.translate_phonetic}
+                      labelPhoneticOff={t.translate_phonetic_off}
+                      labelPhoneticStandard={t.translate_phonetic_standard}
+                      labelPhoneticTranscription={t.translate_phonetic_transcription}
+                      labelAutoSection={t.settings_auto_translate}
+                      titleAutoMode={t.translate_mode_auto_title}
+                      titleManualMode={t.translate_mode_manual_title}
+                      labelAutoMode={t.translate_mode_auto}
                       labelManualMode={t.translate_mode_manual}
                     />
                   </div>
@@ -225,10 +214,9 @@ export function TranslatePage() {
             {/* ── Source panel card ── */}
             <section
               aria-label={t.image_translate_title}
-              className={`flex flex-col h-full rounded-2xl border bg-white dark:bg-gray-900 shadow-sm overflow-hidden relative transition-all duration-150
-                          ${isDraggingOver
-                            ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/20 ring-2 ring-inset ring-emerald-300 dark:ring-emerald-700'
-                            : 'border-gray-200 dark:border-gray-700 focus-within:border-blue-300 dark:focus-within:border-blue-600 focus-within:shadow-md focus-within:shadow-blue-100/50 dark:focus-within:shadow-blue-900/20'}`}
+              className={`surface-panel h-full relative transition-colors duration-150 ${
+                isDraggingOver ? 'surface-panel-drop' : 'surface-panel-focus'
+              }`}
               onDragOver={handleSourcePanelDragOver}
               onDragLeave={handleSourcePanelDragLeave}
               onDrop={handleSourcePanelDrop}
@@ -270,7 +258,7 @@ export function TranslatePage() {
               </div>
 
               {/* Source panel footer — LEFT: icons | RIGHT: char count + translate button */}
-              <div className={`${PANEL_FOOTER_CLS} relative z-20`}>
+              <div className="surface-footer relative z-20">
                 {/* LEFT: mic, image, (clear, rewrite, speak when content present) */}
                 <SourcePanelActions
                   isVoiceActive={isVoiceActive}
@@ -335,7 +323,7 @@ export function TranslatePage() {
             </section>
 
             {/* ── Result panel card ── */}
-            <div className="flex flex-col h-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+            <div className="surface-panel h-full">
               <div ref={translatedScrollRef} className="flex-1 min-h-0 overflow-auto p-4 relative">
                 {isTranslating ? (
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -378,7 +366,7 @@ export function TranslatePage() {
               </div>
 
               {/* Result panel footer */}
-              <div className={PANEL_FOOTER_CLS}>
+              <div className="surface-footer">
                 <ResultPanelActions
                   translatedText={translatedText}
                   targetLang={targetLang}

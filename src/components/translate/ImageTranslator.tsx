@@ -95,8 +95,7 @@ export function ImageTranslator({ onImageReady, onClose }: ImageTranslatorProps)
       />
 
       {/* Modal */}
-      <div className="relative z-10 w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl
-                      border border-gray-200 dark:border-gray-700 overflow-hidden fade-in">
+      <div className="modal-surface relative z-10 w-full max-w-md overflow-hidden fade-in">
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5
@@ -142,7 +141,7 @@ export function ImageTranslator({ onImageReady, onClose }: ImageTranslatorProps)
               <label
                 htmlFor="img-upload-input"
                 className={[
-                  'flex flex-col items-center justify-center rounded-xl border-2 border-dashed',
+                  'flex flex-col items-center justify-center rounded-lg border-2 border-dashed',
                   'cursor-pointer transition-all duration-200 select-none py-12 px-6 text-center',
                   isDragging
                     ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30'
@@ -152,7 +151,7 @@ export function ImageTranslator({ onImageReady, onClose }: ImageTranslatorProps)
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={handleDrop}
               >
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-colors
+                <div className={`w-14 h-14 rounded-lg flex items-center justify-center mb-4 transition-colors
                                 ${isDragging ? 'bg-emerald-100 dark:bg-emerald-900' : 'bg-gray-100 dark:bg-gray-800'}`}>
                   <UploadIcon className={`w-7 h-7 transition-colors ${isDragging ? 'text-emerald-500' : 'text-gray-400'}`} />
                 </div>

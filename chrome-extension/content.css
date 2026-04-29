@@ -81,7 +81,7 @@
   min-height: 44px;
   padding: 9px 10px 9px 12px;
   border-bottom: 1px solid #dbe3ef;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  background: #ffffff;
 }
 
 #tre-result-tooltip .tre-tooltip-logo {

@@ -114,7 +114,7 @@ export function MessageBubble({
 
         <div className="flex-1 flex flex-col gap-1.5">
           {message.isLoading ? (
-            <div className="rounded-2xl border-2 border-indigo-200 dark:border-indigo-700
+            <div className="rounded-lg border-2 border-indigo-200 dark:border-indigo-700
                             bg-indigo-50/30 dark:bg-indigo-950/20 px-4 py-3">
               <div className="flex items-center gap-2">
                 <SpinnerIcon className="w-4 h-4 animate-spin text-indigo-400" />
@@ -122,7 +122,7 @@ export function MessageBubble({
               </div>
             </div>
           ) : (
-            <div className="rounded-2xl border-2 border-indigo-200 dark:border-indigo-700
+            <div className="rounded-lg border-2 border-indigo-200 dark:border-indigo-700
                             bg-white dark:bg-gray-900 overflow-hidden shadow-sm">
               {/* Badge header */}
               <div className="flex items-center gap-2 px-4 py-2.5
@@ -204,7 +204,7 @@ export function MessageBubble({
         ) : textContent ? (
           <div className={`break-words select-text cursor-text
                            ${isUser
-                             ? 'rounded-2xl rounded-br-md bg-blue-500 px-4 py-3 text-white'
+                             ? 'rounded-lg rounded-br-sm bg-blue-500 px-4 py-3 text-white'
                              : 'px-0 py-1 text-gray-900 dark:text-gray-100'}`}>
             {isUser ? (
               <span className="text-sm leading-relaxed whitespace-pre-wrap">{textContent}</span>
@@ -213,13 +213,13 @@ export function MessageBubble({
             )}
           </div>
         ) : message.error ? (
-          <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-2xl px-4 py-3 text-sm text-red-700 dark:text-red-300 select-text cursor-text">
+          <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-lg px-4 py-3 text-sm text-red-700 dark:text-red-300 select-text cursor-text">
             {message.error}
           </div>
         ) : null}
 
         {message.error && textContent && (
-          <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-2xl px-3 py-2 text-xs text-red-700 dark:text-red-300">
+          <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-lg px-3 py-2 text-xs text-red-700 dark:text-red-300">
             {message.error}
           </div>
         )}

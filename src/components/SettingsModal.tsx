@@ -28,8 +28,7 @@ export function SettingsModal() {
     >
       <div
         className="relative w-full max-w-[1040px] mx-4 h-[min(90vh,860px)] flex flex-col
-                   bg-white dark:bg-gray-950 rounded-2xl shadow-2xl overflow-hidden
-                   border border-gray-200 dark:border-gray-800"
+                   modal-surface overflow-hidden"
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}

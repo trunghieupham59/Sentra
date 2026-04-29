@@ -75,7 +75,7 @@ export function ModelSelector() {
         <SectionLabel>{t.settings_hotkey_provider}</SectionLabel>
         <div className="relative">
           {/* Visible styled label */}
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700
                             bg-white dark:bg-gray-800 text-[13px] font-semibold pointer-events-none select-none w-36
                             ${PROVIDER_COLORS[selectedProvider].text}`}>
             <ProviderIcon provider={selectedProvider} size={13} />

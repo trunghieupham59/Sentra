@@ -588,7 +588,7 @@ export function ChatPage() {
             placeholder={t.chat_placeholder}
             rows={1}
             disabled={isSending}
-            className={`w-full resize-none rounded-2xl px-4 py-2.5 text-sm leading-relaxed
+            className={`w-full resize-none rounded-lg px-4 py-2.5 text-sm leading-relaxed
                         bg-gray-100 dark:bg-gray-800 border border-transparent
                         focus:outline-none focus:border-blue-400 dark:focus:border-blue-600
                         placeholder-gray-400 dark:placeholder-gray-600
@@ -621,7 +621,7 @@ export function ChatPage() {
     <div
       role="application"
       aria-label={t.chat_attach_image}
-      className="flex flex-col h-full bg-white dark:bg-gray-950 relative"
+      className="app-page relative"
       onDragOver={(e) => { e.preventDefault(); setIsDraggingOver(true) }}
       onDragLeave={handleDragLeave}
       onDrop={handleFileDrop}
@@ -633,7 +633,7 @@ export function ChatPage() {
 
       {/* ── Main area ── */}
       <div className="flex-1 flex flex-col min-h-0">
-        <div className="px-6 pt-4 pb-4 flex flex-col gap-3 flex-1 min-h-0 min-w-0">
+        <div className="app-workspace">
 
           {/* ── Top action bar: actions + settings icon ── */}
           <div className="flex items-center justify-end gap-1.5 flex-shrink-0">
@@ -642,10 +642,7 @@ export function ChatPage() {
               type="button"
               onClick={handleNewChat}
               title={`${t.chat_new_session} (${NEW_CHAT_SHORTCUT_LABEL})`}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium border
-                         bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200
-                         dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700
-                         transition-all duration-200 cursor-pointer whitespace-nowrap"
+              className="toolbar-pill-button cursor-pointer whitespace-nowrap"
             >
               <PlusIcon />
               <span>{t.chat_new_session}</span>
@@ -657,10 +654,7 @@ export function ChatPage() {
                 type="button"
                 onClick={handleClear}
                 title={t.chat_clear}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium border
-                           bg-gray-100 border-gray-200 text-gray-500 hover:bg-red-50 hover:border-red-200 hover:text-red-500
-                           dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-red-950 dark:hover:text-red-400
-                           transition-all duration-200 cursor-pointer whitespace-nowrap"
+                className="toolbar-pill-button cursor-pointer whitespace-nowrap hover:!border-red-200 hover:!bg-red-50 hover:!text-red-600 dark:hover:!bg-red-950/50 dark:hover:!text-red-400"
               >
                 <TrashIcon />
                 <span>{t.chat_clear}</span>
@@ -673,21 +667,15 @@ export function ChatPage() {
                 type="button"
                 onClick={() => setShowAIConfig((v) => !v)}
                 title={t.translate_ai_config_title}
-                className={`flex items-center justify-center w-8 h-8 rounded-full border transition-all duration-200 cursor-pointer
-                            ${showAIConfig
-                              ? 'bg-blue-50 border-blue-200 text-blue-500 dark:bg-blue-950/40 dark:border-blue-700 dark:text-blue-400'
-                              : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700'}`}
+                className={`toolbar-icon-button cursor-pointer ${showAIConfig ? 'toolbar-icon-button-active' : ''}`}
               >
                 <GearIcon className="w-3.5 h-3.5" />
               </button>
 
               {/* Settings popup */}
               {showAIConfig && (
-                <div className="absolute top-full right-0 mt-2 z-50 w-[480px]
-                                bg-white dark:bg-gray-900
-                                border border-gray-200 dark:border-gray-700
-                                rounded-2xl shadow-xl p-4 flex flex-col gap-4">
-                  <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                <div className="floating-panel absolute top-full right-0 mt-2 z-50 w-[480px] p-4 flex flex-col gap-4">
+                  <h2 className="popover-title">
                     {t.translate_ai_config_title}
                   </h2>
                   <div className="flex flex-col gap-3">
@@ -733,19 +721,17 @@ export function ChatPage() {
               </div>
 
               {/* Input box — centered card, max-width constrained */}
-              <div className={`w-full max-w-2xl rounded-2xl border bg-white dark:bg-gray-900 shadow-sm transition-all duration-150
-                              ${isDraggingOver
-                                ? 'border-emerald-300 dark:border-emerald-700 ring-2 ring-inset ring-emerald-300 dark:ring-emerald-700'
-                                : 'border-gray-200 dark:border-gray-700'}`}>
+              <div className={`surface-panel w-full max-w-2xl transition-colors duration-150 ${
+                isDraggingOver ? 'surface-panel-drop' : ''
+              }`}>
                 {inputArea}
               </div>
             </div>
           ) : (
             /* ── With messages: card layout ── */
-            <div className={`flex-1 flex flex-col min-h-0 rounded-2xl border bg-white dark:bg-gray-900 shadow-sm overflow-hidden transition-all duration-150
-                            ${isDraggingOver
-                              ? 'border-emerald-300 dark:border-emerald-700 ring-2 ring-inset ring-emerald-300 dark:ring-emerald-700'
-                              : 'border-gray-200 dark:border-gray-700'}`}>
+            <div className={`surface-panel flex-1 min-h-0 transition-colors duration-150 ${
+              isDraggingOver ? 'surface-panel-drop' : ''
+            }`}>
 
               {/* Messages list */}
               <div className="flex-1 overflow-y-auto">
@@ -772,7 +758,7 @@ export function ChatPage() {
               </div>
 
               {/* Input — panel footer */}
-              <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-800">
                 {inputArea}
               </div>
             </div>

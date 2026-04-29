@@ -275,7 +275,7 @@ button {
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  background: var(--vzn-surface);
   border-bottom: 1px solid var(--vzn-line);
 }
 
@@ -533,7 +533,7 @@ button {
 .options-header .brand-mark {
   width: 48px;
   height: 48px;
-  border-radius: 12px;
+  border-radius: 10px;
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.10);
 }
 

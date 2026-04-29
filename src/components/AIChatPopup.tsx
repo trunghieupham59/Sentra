@@ -157,10 +157,7 @@ export function AIChatPopup({ open, onClose }: Props) {
       {/* Popup card */}
       <div
         ref={cardRef}
-        className="w-full max-w-lg bg-white dark:bg-gray-900
-                   border border-gray-200 dark:border-gray-700
-                   rounded-2xl shadow-2xl
-                   flex flex-col overflow-hidden
+        className="modal-surface w-full max-w-lg flex flex-col overflow-hidden
                    animate-[fadeSlideIn_0.15s_ease-out]"
       >
         {/* ── Header ── */}
@@ -195,7 +192,7 @@ export function AIChatPopup({ open, onClose }: Props) {
             placeholder={t.ai_chat_popup_placeholder}
             rows={1}
             disabled={isSending}
-            className={`flex-1 resize-none rounded-xl px-3 py-2 text-sm leading-relaxed
+            className={`flex-1 resize-none rounded-lg px-3 py-2 text-sm leading-relaxed
                         bg-gray-100 dark:bg-gray-800 border border-transparent
                         focus:outline-none focus:border-blue-400 dark:focus:border-blue-600
                         placeholder-gray-400 dark:placeholder-gray-600

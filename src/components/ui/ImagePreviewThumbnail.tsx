@@ -4,7 +4,7 @@
  * SPLIT-DUP-01: Extracted from ChatPage.tsx inline JSX and ImageAttachmentPreview.tsx
  * to eliminate near-duplicate UI pattern. Both now delegate to this component.
  *
- * Visual: 128×128 px thumbnail with rounded-3xl, shadow, and an absolutely-positioned
+ * Visual: 128x128 px thumbnail with a compact radius and an absolutely-positioned
  * × button that appears on hover.
  */
 import { XIcon } from './icons'
@@ -27,7 +27,7 @@ export function ImagePreviewThumbnail({ src, alt, removeTitle, onRemove }: Image
         <img
           src={src}
           alt={alt}
-          className="w-32 h-32 object-cover rounded-3xl shadow-sm
+          className="w-32 h-32 object-cover rounded-lg shadow-sm
                      border border-gray-200 dark:border-gray-700"
         />
         {/* × remove button — visible on hover */}

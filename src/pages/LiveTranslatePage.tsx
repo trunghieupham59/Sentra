@@ -168,11 +168,11 @@ export function LiveTranslatePage() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="relative flex flex-col h-full bg-white dark:bg-gray-950">
+    <div className="app-page relative">
 
       {/* ── Main scrollable area ── */}
       <div className="flex-1 flex flex-col min-h-0">
-        <div className="px-6 pt-6 pb-4 flex flex-col gap-4 flex-1 min-h-0 min-w-0">
+        <div className="app-workspace">
 
           {/* Row 1: source, target, start/stop, settings */}
           <div className="flex items-center flex-shrink-0">
@@ -240,20 +240,14 @@ export function LiveTranslatePage() {
                 type="button"
                 onClick={() => setShowAIConfig((v) => !v)}
                 title={t.translate_ai_config_title}
-                className={`flex items-center justify-center w-8 h-8 rounded-full border transition-all duration-200 cursor-pointer
-                            ${showAIConfig
-                              ? 'bg-blue-50 border-blue-200 text-blue-500 dark:bg-blue-950/40 dark:border-blue-700 dark:text-blue-400'
-                              : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700'}`}
+                className={`toolbar-icon-button cursor-pointer ${showAIConfig ? 'toolbar-icon-button-active' : ''}`}
               >
                 <GearIcon className="w-3.5 h-3.5" />
               </button>
 
               {showAIConfig && (
-                <div className="absolute top-full right-0 mt-2 z-50 w-[380px]
-                                bg-white dark:bg-gray-900
-                                border border-gray-200 dark:border-gray-700
-                                rounded-2xl shadow-xl p-4 flex flex-col gap-4">
-                  <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                <div className="floating-panel absolute top-full right-0 mt-2 z-50 w-[380px] p-4 flex flex-col gap-4">
+                  <h2 className="popover-title">
                     {t.translate_ai_config_title}
                   </h2>
 
@@ -268,13 +262,13 @@ export function LiveTranslatePage() {
                     <span className="text-[0.65rem] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
                       {t.live_audio_source_label}
                     </span>
-                    <div className="flex items-center rounded-full border border-gray-200 dark:border-gray-700
+                    <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700
                                     bg-gray-50 dark:bg-gray-800 p-0.5 gap-0.5 select-none w-fit">
                       <button
                         type="button" disabled={isActive} onClick={() => setAudioMode('mic')}
                         title={t.live_audio_mode_mic_title}
                         className={[
-                          'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150',
+                          'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150',
                           audioMode === 'mic'
                             ? 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 shadow-sm'
                             : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400',
@@ -288,7 +282,7 @@ export function LiveTranslatePage() {
                         type="button" disabled={isActive} onClick={() => setAudioMode('system')}
                         title={t.live_audio_mode_system_title}
                         className={[
-                          'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150',
+                          'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150',
                           audioMode === 'system'
                             ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
                             : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400',
@@ -302,7 +296,7 @@ export function LiveTranslatePage() {
                         type="button" disabled={isActive} onClick={() => setAudioMode('both')}
                         title={t.live_audio_mode_both_title}
                         className={[
-                          'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150',
+                          'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150',
                           audioMode === 'both'
                             ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
                             : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400',
@@ -332,7 +326,7 @@ export function LiveTranslatePage() {
                         onClick={() => setShowSubtitles(v => !v)}
                         title={showSubtitles ? t.live_subtitles_hide_title : t.live_subtitles_show_title}
                         className={[
-                          'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150 cursor-pointer border',
+                          'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer border',
                           showSubtitles
                             ? 'bg-blue-500 border-blue-500 text-white shadow-sm'
                             : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300',
@@ -346,7 +340,7 @@ export function LiveTranslatePage() {
                         onClick={() => setShowSubtitleConfig(v => !v)}
                         title={t.live_subtitle_config_title}
                         className={[
-                          'flex items-center justify-center w-8 h-8 rounded-full border text-xs font-medium transition-all duration-150 cursor-pointer',
+                          'flex items-center justify-center w-8 h-8 rounded-lg border text-xs font-medium transition-all duration-150 cursor-pointer',
                           showSubtitleConfig
                             ? 'bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-950/40 dark:border-blue-700 dark:text-blue-400 shadow-sm'
                             : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400',
@@ -357,9 +351,7 @@ export function LiveTranslatePage() {
 
                       {/* Subtitle settings nested popup */}
                       {showSubtitleConfig && (
-                        <div className="absolute top-full mt-2 left-0 z-50 w-64
-                                        bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700
-                                        rounded-xl shadow-xl p-3 flex flex-col gap-3 select-none">
+                        <div className="floating-panel absolute top-full mt-2 left-0 z-50 w-64 p-3 flex flex-col gap-3 select-none">
                           <div>
                             <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">
                               {t.live_subtitle_text_color}
@@ -513,7 +505,7 @@ export function LiveTranslatePage() {
           <div className="grid grid-cols-2 gap-4 flex-1 min-h-0">
 
             {/* Left: Nguyên Bản */}
-            <div className="flex flex-col h-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+            <div className="surface-panel h-full">
               {/* Status indicator bar (only when active) */}
               {isActive && (
                 <div className="flex-shrink-0 flex items-center px-4 pt-2 pb-1">
@@ -598,7 +590,7 @@ export function LiveTranslatePage() {
               </div>
 
               {/* Left panel footer — Copy icon + word count */}
-              <div className="flex-shrink-0 flex items-center justify-between px-4 h-12 border-t border-gray-200 dark:border-gray-800">
+              <div className="surface-footer">
                 <button
                   type="button"
                   disabled={!rawTranscript}
@@ -623,7 +615,7 @@ export function LiveTranslatePage() {
             </div>
 
             {/* Right: Bản Dịch */}
-            <div className="flex flex-col h-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+            <div className="surface-panel h-full">
               {/* STT provider badge — top-right, only when active */}
               {isActive && (
                 <div className="flex-shrink-0 flex items-center justify-end px-4 pt-2 pb-1">
@@ -684,7 +676,7 @@ export function LiveTranslatePage() {
               </div>
 
               {/* Right panel footer — Copy icon + Tổng hợp nội dung button */}
-              <div className="flex-shrink-0 flex items-center justify-between px-4 h-12 border-t border-gray-200 dark:border-gray-800">
+              <div className="surface-footer">
                 <button
                   type="button"
                   disabled={!translation}
@@ -731,7 +723,7 @@ export function LiveTranslatePage() {
           onKeyDown={(e) => e.key === 'Escape' && setShowSummaryPopup(false)}
         >
           <div
-            className="relative w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden"
+            className="modal-surface relative w-full max-w-2xl flex flex-col overflow-hidden"
             role="dialog"
             aria-modal="true"
             style={{ maxHeight: '80vh' }}
@@ -913,7 +905,7 @@ export function LiveTranslatePage() {
           onKeyDown={(e) => e.key === 'Escape' && setShowScreenPermModal(false)}
         >
           <div
-            className="relative mx-4 w-full max-w-sm bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 flex flex-col gap-4"
+            className="modal-surface relative mx-4 w-full max-w-sm p-6 flex flex-col gap-4"
             role="dialog"
             aria-modal="true"
             onClick={e => e.stopPropagation()}
@@ -1015,7 +1007,7 @@ function Notice({ children, variant = 'warning' }: { children: React.ReactNode; 
     ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900 text-red-700 dark:text-red-300'
     : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300'
   return (
-    <div className={`flex-shrink-0 flex items-start gap-2 p-3 rounded-xl border text-sm ${cls}`}>
+    <div className={`flex-shrink-0 flex items-start gap-2 p-3 rounded-lg border text-sm ${cls}`}>
       <AlertTriangleIcon className="w-4 h-4 flex-shrink-0 mt-0.5" />
       <span>{children}</span>
     </div>
@@ -1033,12 +1025,12 @@ function EmptyPanel({ children, icon, onClick }: { children: React.ReactNode; ic
         <button
           type="button"
           onClick={onClick}
-          className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center transition-all duration-150 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 hover:scale-105 active:scale-95"
+          className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center transition-all duration-150 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 hover:scale-105 active:scale-95"
         >
           {iconEl}
         </button>
       ) : (
-        <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center transition-all duration-150">
+        <div className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center transition-all duration-150">
           {iconEl}
         </div>
       )}

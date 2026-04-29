@@ -23,8 +23,8 @@ export function HistoryPage() {
   ] satisfies Array<{ id: HistoryTabId; label: string; count: number; icon: typeof ClockIcon }>)
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-950">
-      <div className="px-6 pt-6 pb-4 flex flex-col gap-4 flex-1 min-h-0 min-w-0">
+    <div className="app-page">
+      <div className="app-workspace">
 
         <div className="flex items-center justify-between gap-4 flex-shrink-0">
           <div className="min-w-0">
@@ -94,8 +94,7 @@ export function HistoryPage() {
           })}
         </div>
 
-        <div className="flex-1 min-h-0 rounded-lg border border-gray-200 dark:border-gray-800
-                        bg-white dark:bg-gray-900 shadow-sm overflow-hidden flex flex-col">
+        <div className="surface-panel flex-1 min-h-0">
           {activeTab === 'translate' && <TranslationHistoryTab query={query} />}
           {activeTab === 'chat'      && <ChatHistoryTab query={query} />}
           {activeTab === 'live'      && <LiveHistoryTab query={query} />}
