@@ -543,6 +543,7 @@ export interface Translations {
   // AI Chat Quick-Ask Popup (hotkey-triggered)
   ai_chat_popup_title: string
   ai_chat_popup_placeholder: string
+  ai_chat_popup_placeholder_mod_enter: string
   ai_chat_popup_open_in_chat: string
 
   // Settings — AI Chat Hotkey
@@ -561,6 +562,15 @@ export interface Translations {
   settings_chat_section: string
   settings_chat_section_desc: string
   settings_chat_go_to_chat: string
+  settings_chat_shortcuts: string
+  settings_chat_shortcuts_desc: string
+  settings_chat_shortcut_send: string
+  settings_chat_shortcut_send_desc: string
+  settings_chat_shortcut_send_enter: string
+  settings_chat_shortcut_send_mod_enter: string
+  settings_chat_shortcut_new_chat: string
+  settings_chat_shortcut_new_chat_desc: string
+  settings_chat_shortcut_restore_default: string
   settings_chat_presets: string
   settings_chat_presets_empty: string
   settings_chat_preset_add: string

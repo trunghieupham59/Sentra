@@ -89,6 +89,11 @@ if (typeof window !== 'undefined') {
         onTranslating: vi.fn().mockReturnValue(() => {}),
         onTranslated: vi.fn().mockReturnValue(() => {}),
         onError: vi.fn().mockReturnValue(() => {}),
+        chat: {
+          update: vi.fn().mockResolvedValue({ success: true }),
+          get: vi.fn().mockResolvedValue({ success: true, settings: {} }),
+          onOpen: vi.fn().mockReturnValue(() => {}),
+        },
       },
       legacyAssistant: {
         get: vi.fn().mockResolvedValue({ success: true, settings: {} }),

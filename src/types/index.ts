@@ -283,6 +283,8 @@ export interface SystemPromptPreset {
   isDefault?: boolean
 }
 
+export type ChatSendShortcut = 'enter' | 'modEnter'
+
 export interface ChatMessageContent {
   type: 'text' | 'image'
   text?: string

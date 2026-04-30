@@ -12,6 +12,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { chatService } from '../services/chatService'
 import { useAppStore, useT } from '../store/useAppStore'
+import { shouldSendChatMessage } from '../utils/keyboardShortcuts'
+import { tpl } from '../utils/tpl'
 import { MarkdownText } from './MarkdownText'
 import { BotIcon, SendIcon, SpinnerIcon, XIcon } from './ui/icons'
 
@@ -26,7 +28,7 @@ interface Props {
 }
 
 export function AIChatPopup({ open, onClose }: Props) {
-  const { selectedProvider, selectedModels, keyStatus, setActivePage, addChatMessage, createChatSession, setActiveChatSession } = useAppStore()
+  const { selectedProvider, selectedModels, keyStatus, chatSendShortcut, setActivePage, addChatMessage, createChatSession, setActiveChatSession } = useAppStore()
   const t = useT()
 
   const [question, setQuestion] = useState('')
@@ -38,6 +40,11 @@ export function AIChatPopup({ open, onClose }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const hasKey = selectedProvider === 'local' || keyStatus[selectedProvider]
+  const platform = window.api?.platform
+  const modLabel = platform === 'darwin' ? 'Cmd' : 'Ctrl'
+  const placeholder = chatSendShortcut === 'modEnter'
+    ? tpl(t.ai_chat_popup_placeholder_mod_enter, { mod: modLabel })
+    : t.ai_chat_popup_placeholder
 
   // Auto-focus textarea when popup opens; reset state
   useEffect(() => {
@@ -110,7 +117,7 @@ export function AIChatPopup({ open, onClose }: Props) {
   }, [question, isSending, hasKey, selectedProvider, selectedModels, t])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (shouldSendChatMessage(e.nativeEvent, chatSendShortcut, platform)) {
       e.preventDefault()
       handleSend()
     }
@@ -189,7 +196,7 @@ export function AIChatPopup({ open, onClose }: Props) {
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={t.ai_chat_popup_placeholder}
+            placeholder={placeholder}
             rows={1}
             disabled={isSending}
             className={`flex-1 resize-none rounded-lg px-3 py-2 text-sm leading-relaxed

@@ -6,6 +6,7 @@
 
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { DEFAULT_CHAT_NEW_SESSION_SHORTCUT, DEFAULT_CHAT_SEND_SHORTCUT } from '../../utils/keyboardShortcuts'
 import { useAppStore } from '../useAppStore'
 
 // Reset settings slice state before each test
@@ -22,6 +23,8 @@ beforeEach(() => {
       ttsMode: 'free',
       ttsVoice: 'nova',
       fontSize: 'medium',
+      chatSendShortcut: DEFAULT_CHAT_SEND_SHORTCUT,
+      chatNewSessionShortcut: DEFAULT_CHAT_NEW_SESSION_SHORTCUT,
       keyStatus: { gemini: false, claude: false, openai: false, local: false } as Record<string, boolean>,
       dynamicModels: { gemini: [], claude: [], openai: [], local: [] } as Record<string, []>,
       modelsLoading: { gemini: false, claude: false, openai: false, local: false } as Record<string, boolean>,
@@ -181,6 +184,38 @@ describe('setFontSize', () => {
   it('sets fontSize to large', () => {
     act(() => useAppStore.getState().setFontSize('large'))
     expect(useAppStore.getState().fontSize).toBe('large')
+  })
+})
+
+describe('chat keyboard shortcuts', () => {
+  it('defaults to Enter send and platform-aware new chat shortcut', () => {
+    const state = useAppStore.getState()
+    expect(state.chatSendShortcut).toBe(DEFAULT_CHAT_SEND_SHORTCUT)
+    expect(state.chatNewSessionShortcut).toBe(DEFAULT_CHAT_NEW_SESSION_SHORTCUT)
+  })
+
+  it('updates AI Chat shortcut preferences', () => {
+    act(() => {
+      useAppStore.getState().setChatSendShortcut('modEnter')
+      useAppStore.getState().setChatNewSessionShortcut('Alt+N')
+    })
+
+    const state = useAppStore.getState()
+    expect(state.chatSendShortcut).toBe('modEnter')
+    expect(state.chatNewSessionShortcut).toBe('Alt+N')
+  })
+
+  it('includes AI Chat shortcuts in persisted settings', () => {
+    act(() => {
+      useAppStore.getState().setChatSendShortcut('modEnter')
+      useAppStore.getState().setChatNewSessionShortcut('Shift+N')
+    })
+    // biome-ignore lint/suspicious/noExplicitAny: persist middleware test hook
+    const partialize = (useAppStore as any).persist.getOptions().partialize
+    const persisted = partialize(useAppStore.getState())
+
+    expect(persisted.chatSendShortcut).toBe('modEnter')
+    expect(persisted.chatNewSessionShortcut).toBe('Shift+N')
   })
 })
 

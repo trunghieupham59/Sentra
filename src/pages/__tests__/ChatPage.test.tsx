@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../store/useAppStore'
 import type { ChatResult, ChatStreamEvent } from '../../types'
+import { DEFAULT_CHAT_NEW_SESSION_SHORTCUT, DEFAULT_CHAT_SEND_SHORTCUT } from '../../utils/keyboardShortcuts'
 import { ChatPage } from '../ChatPage'
 
 function mockStreamingChat() {
@@ -42,6 +43,8 @@ beforeEach(() => {
       selectedModels: { gemini: 'gemini-2.0-flash', claude: 'claude-3-5-haiku-20241022', openai: 'gpt-4o', local: 'local-auto' },
       chatSystemPrompt: '',
       systemPromptPresets: [],
+      chatSendShortcut: DEFAULT_CHAT_SEND_SHORTCUT,
+      chatNewSessionShortcut: DEFAULT_CHAT_NEW_SESSION_SHORTCUT,
     })
   })
   vi.mocked(window.api.chatStream).mockReset()
@@ -107,6 +110,26 @@ describe('ChatPage', () => {
     expect(useAppStore.getState().activeChatSessionId).toBeNull()
   })
 
+  it('uses the configured new chat shortcut', () => {
+    let sessionId = ''
+    act(() => {
+      useAppStore.setState({
+        keyStatus: { gemini: true, claude: false, openai: false, local: false },
+        chatNewSessionShortcut: 'Alt+K',
+      })
+      sessionId = useAppStore.getState().createChatSession('gemini', 'gemini-2.0-flash')
+    })
+
+    render(<ChatPage />)
+    expect(useAppStore.getState().activeChatSessionId).toBe(sessionId)
+
+    fireEvent.keyDown(window, { key: 'n', metaKey: true })
+    expect(useAppStore.getState().activeChatSessionId).toBe(sessionId)
+
+    fireEvent.keyDown(window, { key: 'k', altKey: true })
+    expect(useAppStore.getState().activeChatSessionId).toBeNull()
+  })
+
   it('renders system prompt button', () => {
     render(<ChatPage />)
     // System prompt area should be present
@@ -151,6 +174,26 @@ describe('ChatPage', () => {
       expect(assistant?.isLoading).toBe(false)
       expect(assistant?.content[0].text).toBe('Hello')
     })
+  })
+
+  it('uses Cmd+Enter to send when configured', async () => {
+    act(() => {
+      useAppStore.setState({
+        keyStatus: { gemini: true, claude: false, openai: false, local: false },
+        chatSendShortcut: 'modEnter',
+      })
+    })
+    vi.mocked(window.api.chatStream).mockResolvedValue({ success: true, reply: 'Sent with shortcut' })
+    render(<ChatPage />)
+
+    const textarea = screen.getByPlaceholderText(/type a message/i)
+    fireEvent.change(textarea, { target: { value: 'Hello' } })
+    fireEvent.keyDown(textarea, { key: 'Enter' })
+    expect(window.api.chatStream).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true })
+
+    await waitFor(() => expect(window.api.chatStream).toHaveBeenCalled())
   })
 
   it('streams text into the last assistant message when regenerating', async () => {

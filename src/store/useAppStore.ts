@@ -70,6 +70,8 @@ export const useAppStore = create<AppState>()(
         ttsVoice: state.ttsVoice,
         fontSize: state.fontSize,
         sttProvider: state.sttProvider,
+        chatSendShortcut: state.chatSendShortcut,
+        chatNewSessionShortcut: state.chatNewSessionShortcut,
         locale: state.locale,
         localeAuto: state.localeAuto,
         history: state.history,

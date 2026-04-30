@@ -21,19 +21,10 @@ import { deepResearchService } from '../services/deepResearchService'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { ChatMessage, ChatMessageContent } from '../types'
 import { extractImageFromClipboard, resizeImageFile } from '../utils/imageUtils'
+import { eventMatchesShortcut, formatShortcutLabel, shouldSendChatMessage } from '../utils/keyboardShortcuts'
 
 /** Max height (px) của textarea input — giới hạn scroll khi text dài */
 const CHAT_TEXTAREA_MAX_HEIGHT_PX = 160
-
-const isMacPlatform = () => window.api?.platform === 'darwin'
-const NEW_CHAT_SHORTCUT_LABEL = isMacPlatform() ? 'Cmd+N' : 'Ctrl+N'
-
-function isNewChatShortcut(e: KeyboardEvent) {
-  const isMac = isMacPlatform()
-  const primaryModifier = isMac ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey
-  return primaryModifier && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'n'
-}
-
 
 // DUP-05: resizeImageToBase64 replaced by shared resizeImageFile from imageUtils.ts
 // HC-09: MAX_CHAT_IMAGE_DIMENSION imported from constants/image.ts
@@ -69,6 +60,7 @@ const VOICE_BAR_DELAY_STEP_S    = 0.05 // s between each bar's animation start
 export function ChatPage() {
   const {
     selectedProvider, selectedModels, keyStatus,
+    chatSendShortcut, chatNewSessionShortcut,
     chatSessions, activeChatSessionId, chatSystemPrompt, systemPromptPresets,
     createChatSession, setActiveChatSession, addChatMessage, updateChatMessage,
     clearChatSession, setChatSystemPrompt, addSystemPromptPreset, openSettings,
@@ -91,6 +83,8 @@ export function ChatPage() {
   const [deepResearchMode, setDeepResearchMode] = useState(false)
   // Active preset = the preset whose content matches chatSystemPrompt
   const activePreset = systemPromptPresets.find((p) => p.content === chatSystemPrompt) ?? null
+  const platform = window.api?.platform
+  const newChatShortcutLabel = formatShortcutLabel(chatNewSessionShortcut, platform)
 
   // ── Voice input — shared hook (same logic as TranslatePage) ──
   const {
@@ -427,7 +421,7 @@ export function ChatPage() {
   ])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (shouldSendChatMessage(e.nativeEvent, chatSendShortcut, platform)) {
       e.preventDefault()
       handleSend()
     }
@@ -454,14 +448,14 @@ export function ChatPage() {
 
   useEffect(() => {
     const handleNewChatShortcut = (e: KeyboardEvent) => {
-      if (!isNewChatShortcut(e) || e.repeat) return
+      if (e.repeat || !eventMatchesShortcut(e, chatNewSessionShortcut, platform)) return
       e.preventDefault()
       handleNewChat()
     }
 
     window.addEventListener('keydown', handleNewChatShortcut)
     return () => window.removeEventListener('keydown', handleNewChatShortcut)
-  }, [handleNewChat])
+  }, [chatNewSessionShortcut, handleNewChat, platform])
 
   const handleClear = () => {
     if (activeChatSessionId) clearChatSession(activeChatSessionId)
@@ -641,7 +635,7 @@ export function ChatPage() {
             <button
               type="button"
               onClick={handleNewChat}
-              title={`${t.chat_new_session} (${NEW_CHAT_SHORTCUT_LABEL})`}
+              title={newChatShortcutLabel ? `${t.chat_new_session} (${newChatShortcutLabel})` : t.chat_new_session}
               className="toolbar-pill-button cursor-pointer whitespace-nowrap"
             >
               <PlusIcon />

@@ -136,6 +136,7 @@ export const DEFAULT_SETTINGS = {
   defaultTargetLang: 'vi',
   /** Auto-resolved from PROVIDERS using tag:'recommended' — update tags to change defaults */
   defaultModels: {
+    local: getRecommendedModel('local'),
     gemini: getRecommendedModel('gemini'),
     claude: getRecommendedModel('claude'),
     openai: getRecommendedModel('openai'),

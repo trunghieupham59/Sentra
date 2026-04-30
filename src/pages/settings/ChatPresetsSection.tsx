@@ -1,23 +1,32 @@
-import { useState } from 'react'
-import { PlusIcon } from '../../components/ui/icons'
+import { type KeyboardEvent, useRef, useState } from 'react'
+import { ButtonGroup } from '../../components/ui/ButtonGroup'
+import { HotkeyRecordButton } from '../../components/ui/HotkeyRecordButton'
+import { PlusIcon, XIcon } from '../../components/ui/icons'
 import { PresetActions } from '../../components/ui/PresetActions'
 import { SettingsFormActions } from '../../components/ui/SettingsFormActions'
 import { useAppStore, useT } from '../../store/useAppStore'
-import type { SystemPromptPreset } from '../../types'
+import type { ChatSendShortcut, SystemPromptPreset } from '../../types'
+import { DEFAULT_CHAT_NEW_SESSION_SHORTCUT, formatShortcutLabel, keyEventToAccelerator } from '../../utils/keyboardShortcuts'
+import { tpl } from '../../utils/tpl'
 
 export function ChatPresetsSection() {
   const {
     systemPromptPresets, addSystemPromptPreset, updateSystemPromptPreset,
     deleteSystemPromptPreset, setDefaultSystemPromptPreset, setChatSystemPrompt,
+    chatSendShortcut, chatNewSessionShortcut, setChatSendShortcut, setChatNewSessionShortcut,
   } = useAppStore()
   const t = useT()
 
+  const [isRecordingNewChatShortcut, setIsRecordingNewChatShortcut] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
   const [newPresetName, setNewPresetName] = useState('')
   const [newPresetContent, setNewPresetContent] = useState('')
   const [editingPresetId, setEditingPresetId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editContent, setEditContent] = useState('')
+  const newChatShortcutRef = useRef<HTMLButtonElement>(null)
+  const platform = window.api?.platform
+  const modLabel = platform === 'darwin' ? 'Cmd' : 'Ctrl'
 
   const handleAddPreset = () => {
     if (!newPresetName.trim() || !newPresetContent.trim()) return
@@ -41,10 +50,88 @@ export function ChatPresetsSection() {
 
   const cancelEdit = () => setEditingPresetId(null)
 
+  const handleNewChatShortcutKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
+    e.preventDefault()
+    if (e.key === 'Escape') {
+      setIsRecordingNewChatShortcut(false)
+      return
+    }
+
+    const shortcut = keyEventToAccelerator(e.nativeEvent)
+    if (!shortcut) return
+    if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && !/^F(?:[1-9]|1\d|2[0-4])$/.test(e.key)) return
+
+    setChatNewSessionShortcut(shortcut)
+    setIsRecordingNewChatShortcut(false)
+  }
+
   return (
     <section className="space-y-3">
       <h2 className="section-label">{t.settings_chat_section}</h2>
       <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">{t.settings_chat_section_desc}</p>
+
+      <div className="card divide-y divide-gray-100 dark:divide-gray-700">
+        <div className="px-4 py-3.5">
+          <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_chat_shortcuts}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_chat_shortcuts_desc}</p>
+        </div>
+
+        <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_chat_shortcut_send}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_chat_shortcut_send_desc}</p>
+          </div>
+          <ButtonGroup<ChatSendShortcut>
+            value={chatSendShortcut}
+            onChange={setChatSendShortcut}
+            options={[
+              { value: 'enter', label: t.settings_chat_shortcut_send_enter },
+              { value: 'modEnter', label: tpl(t.settings_chat_shortcut_send_mod_enter, { mod: modLabel }) },
+            ]}
+            containerClassName="flex-shrink-0"
+          />
+        </div>
+
+        <div className="px-4 py-3.5 space-y-2">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_chat_shortcut_new_chat}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_chat_shortcut_new_chat_desc}</p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {chatNewSessionShortcut && !isRecordingNewChatShortcut && (
+                <button
+                  type="button"
+                  onClick={() => setChatNewSessionShortcut('')}
+                  className="p-1 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                  title={t.settings_hotkey_clear}
+                >
+                  <XIcon />
+                </button>
+              )}
+              {!chatNewSessionShortcut && !isRecordingNewChatShortcut && (
+                <button
+                  type="button"
+                  onClick={() => setChatNewSessionShortcut(DEFAULT_CHAT_NEW_SESSION_SHORTCUT)}
+                  className="px-2 py-1 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-blue-300 dark:hover:border-blue-700 transition-colors cursor-pointer"
+                >
+                  {t.settings_chat_shortcut_restore_default}
+                </button>
+              )}
+              <HotkeyRecordButton
+                inputRef={newChatShortcutRef}
+                isRecording={isRecordingNewChatShortcut}
+                value={formatShortcutLabel(chatNewSessionShortcut, platform)}
+                onKeyDown={handleNewChatShortcutKeyDown}
+                onClick={() => setIsRecordingNewChatShortcut(true)}
+                onBlur={() => setIsRecordingNewChatShortcut(false)}
+                recordingText={t.settings_hotkey_recording}
+                noneText={t.settings_hotkey_none}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="card divide-y divide-gray-100 dark:divide-gray-700">
         <div className="px-4 py-3.5 space-y-3">

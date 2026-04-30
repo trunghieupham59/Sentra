@@ -8,7 +8,8 @@
 import type { StateCreator } from 'zustand'
 import { DEFAULT_SETTINGS, PROVIDERS } from '../../constants/providers'
 import type { AppLocale } from '../../i18n'
-import type { FetchedModel, PhoneticMode, Provider, SttProvider, TranslationStyle, TtsMode, TtsVoice } from '../../types'
+import type { ChatSendShortcut, FetchedModel, PhoneticMode, Provider, SttProvider, TranslationStyle, TtsMode, TtsVoice } from '../../types'
+import { DEFAULT_CHAT_NEW_SESSION_SHORTCUT, DEFAULT_CHAT_SEND_SHORTCUT } from '../../utils/keyboardShortcuts'
 
 export interface SettingsSlice {
   // Locale
@@ -36,6 +37,8 @@ export interface SettingsSlice {
    * even when the OpenAI API is unavailable or out of credits.
    */
   sttProvider: SttProvider
+  chatSendShortcut: ChatSendShortcut
+  chatNewSessionShortcut: string
 
   // Provider / key status
   keyStatus: Record<Provider, boolean>
@@ -61,6 +64,8 @@ export interface SettingsSlice {
   setTtsVoice: (voice: TtsVoice) => void
   setFontSize: (size: 'small' | 'medium' | 'large') => void
   setSttProvider: (provider: SttProvider) => void
+  setChatSendShortcut: (shortcut: ChatSendShortcut) => void
+  setChatNewSessionShortcut: (shortcut: string) => void
 
   /** Whether a Tavily API key is stored (used for Deep Research web search) */
   hasTavilyKey: boolean
@@ -88,6 +93,8 @@ export const createSettingsSlice: StateCreator<any, [], [], SettingsSlice> = (se
   ttsVoice: 'nova' as TtsVoice,
   fontSize: 'medium' as const,
   sttProvider: 'auto' as SttProvider,
+  chatSendShortcut: DEFAULT_CHAT_SEND_SHORTCUT,
+  chatNewSessionShortcut: DEFAULT_CHAT_NEW_SESSION_SHORTCUT,
   // Build initial provider maps from PROVIDERS registry — adding a new provider only requires
   // updating constants/providers.ts; no need to touch this slice.
   keyStatus: Object.fromEntries(PROVIDERS.map((p) => [p.id, false])) as Record<Provider, boolean>,
@@ -111,6 +118,8 @@ export const createSettingsSlice: StateCreator<any, [], [], SettingsSlice> = (se
   setTtsVoice: (voice) => set({ ttsVoice: voice }),
   setFontSize: (size) => set({ fontSize: size }),
   setSttProvider: (provider) => set({ sttProvider: provider }),
+  setChatSendShortcut: (shortcut) => set({ chatSendShortcut: shortcut }),
+  setChatNewSessionShortcut: (shortcut) => set({ chatNewSessionShortcut: shortcut }),
 
   setKeyStatus: (provider, hasKey) =>
     set((state: SettingsSlice) => ({ keyStatus: { ...state.keyStatus, [provider]: hasKey } })),
