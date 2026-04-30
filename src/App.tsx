@@ -1,16 +1,16 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { SettingsModal } from './components/SettingsModal'
 import { Sidebar } from './components/Sidebar'
 import { PROVIDERS } from './constants/providers'
-import { useAppStore } from './store/useAppStore'
-import type { Provider } from './types'
+import { flushPersistedStore, useAppStore } from './store/useAppStore'
+import type { Provider, QuickChatSeedPayload } from './types'
 import { detectSystemLocale } from './utils/locale'
+
 
 const TranslatePage = lazy(() => import('./pages/TranslatePage').then(module => ({ default: module.TranslatePage })))
 const LiveTranslatePage = lazy(() => import('./pages/LiveTranslatePage').then(module => ({ default: module.LiveTranslatePage })))
 const ChatPage = lazy(() => import('./pages/ChatPage').then(module => ({ default: module.ChatPage })))
 const HistoryPage = lazy(() => import('./pages/HistoryPage').then(module => ({ default: module.HistoryPage })))
-const AIChatPopup = lazy(() => import('./components/AIChatPopup').then(module => ({ default: module.AIChatPopup })))
 
 const FONT_SIZE_MAP = {
   small:  '13px',
@@ -36,8 +36,12 @@ function App() {
     selectedModels,
     ttsMode,
     ttsVoice,
+    createChatSession,
+    setActiveChatSession,
+    addChatMessage,
+    setActivePage,
+    openSettings,
   } = useAppStore()
-  const [aiChatPopupOpen, setAiChatPopupOpen] = useState(false)
 
   // Auto-detect system language on startup (only when localeAuto is enabled)
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally run only once on mount
@@ -58,18 +62,65 @@ function App() {
     if (!window.api?.localServer) return
     const model = selectedModels[selectedProvider] ?? ''
     window.api.localServer.syncConfig({ provider: selectedProvider, model, ttsMode, ttsVoice })
+    // The Quick Chat popup is a separate BrowserWindow with its own Zustand store
+    // hydrated from localStorage. Flush the debounced persist write immediately
+    // whenever the active provider/model changes so the popup sees the latest
+    // selection the next time it shows up — without waiting for the 500 ms
+    // debounce window.
+    flushPersistedStore()
   }, [selectedProvider, selectedModels, ttsMode, ttsVoice])
 
-  // Listen for the AI Chat hotkey event from main process
+  // Also flush on tab/window hide — covers any other persisted state (system
+  // prompt, locale, etc.) that the popup reads from the same store.
   useEffect(() => {
-    if (!window.api?.hotkey?.chat) return
-    const unsub = window.api.hotkey.chat.onOpen(() => {
-      setAiChatPopupOpen(true)
-    })
-    return unsub
+    const onHide = () => flushPersistedStore()
+    document.addEventListener('visibilitychange', onHide)
+    window.addEventListener('blur', onHide)
+    window.addEventListener('beforeunload', onHide)
+    return () => {
+      document.removeEventListener('visibilitychange', onHide)
+      window.removeEventListener('blur', onHide)
+      window.removeEventListener('beforeunload', onHide)
+    }
   }, [])
 
-  const handleCloseAiChatPopup = useCallback(() => setAiChatPopupOpen(false), [])
+
+  // Listen for quick chat window actions forwarded from the main process.
+  useEffect(() => {
+    if (!window.api?.quickChat) return
+    const unsubOpenSettings = window.api.quickChat.onOpenSettings(() => {
+      openSettings()
+    })
+    const unsubOpenInChat = window.api.quickChat.onOpenInChat((payload: QuickChatSeedPayload | null) => {
+      if (!payload) {
+        setActivePage('chat')
+        return
+      }
+
+      const provider = payload.provider as Provider
+      const sessionId = createChatSession(provider, payload.model)
+      setActiveChatSession(sessionId)
+      addChatMessage(sessionId, {
+        id: `msg-${Date.now()}-quick-u`,
+        role: 'user',
+        content: [{ type: 'text', text: payload.question }],
+        timestamp: Date.now(),
+      })
+      if (payload.response) {
+        addChatMessage(sessionId, {
+          id: `msg-${Date.now()}-quick-a`,
+          role: 'assistant',
+          content: [{ type: 'text', text: payload.response }],
+          timestamp: Date.now(),
+        })
+      }
+      setActivePage('chat')
+    })
+    return () => {
+      unsubOpenSettings()
+      unsubOpenInChat()
+    }
+  }, [openSettings, setActivePage, createChatSession, setActiveChatSession, addChatMessage])
 
   // On startup, check which API keys exist in keychain
   useEffect(() => {
@@ -123,12 +174,6 @@ function App() {
       {/* Settings popup modal */}
       <SettingsModal />
 
-      {/* AI Chat quick-ask popup — triggered by global hotkey */}
-      {aiChatPopupOpen && (
-        <Suspense fallback={null}>
-          <AIChatPopup open={aiChatPopupOpen} onClose={handleCloseAiChatPopup} />
-        </Suspense>
-      )}
     </div>
   )
 }

@@ -9,6 +9,7 @@ import { initLegacyAssistant, setLocalServerAccessors } from './ipc/legacyAssist
 import { registerLocalAiHandlers, stopManagedLocalAiRuntime } from './ipc/localAi'
 import { getServerToken, LOCAL_SERVER_PORT, startLocalServer, stopLocalServer } from './ipc/localServer'
 import { registerModelsHandlers } from './ipc/models'
+import { registerQuickChatHandlers } from './ipc/quickChat'
 import { registerSubtitleHandlers } from './ipc/subtitle'
 import { registerSystemHandlers } from './ipc/system'
 import { registerTranscribeHandlers } from './ipc/transcribe'
@@ -48,6 +49,8 @@ app.setName('Viezan')
 /** HC-NEW-11: Named color constants for window background (avoids magic hex strings) */
 const WIN_BG_DARK  = '#1a1a2e'
 const WIN_BG_LIGHT = '#ffffff'
+const QUICK_CHAT_WIDTH = 860
+const QUICK_CHAT_HEIGHT = 540
 
 let mainWindow: BrowserWindow | null = null
 
@@ -120,6 +123,74 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null
   })
+}
+
+// ── Raycast-style Quick Chat Window ──────────────────────────────────────────
+let quickChatWindow: BrowserWindow | null = null
+
+function positionQuickChatWindow(win: BrowserWindow): void {
+  const cursor = screen.getCursorScreenPoint()
+  const { workArea } = screen.getDisplayNearestPoint(cursor)
+  win.setBounds({
+    width: QUICK_CHAT_WIDTH,
+    height: QUICK_CHAT_HEIGHT,
+    x: Math.round(workArea.x + workArea.width / 2 - QUICK_CHAT_WIDTH / 2),
+    y: Math.round(workArea.y + workArea.height * 0.22),
+  })
+}
+
+function createQuickChatWindow(): BrowserWindow {
+  const win = new BrowserWindow({
+    width: QUICK_CHAT_WIDTH,
+    height: QUICK_CHAT_HEIGHT,
+    show: false,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    hasShadow: false,
+    skipTaskbar: true,
+    resizable: false,
+    movable: true,
+    backgroundColor: '#00000000',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  })
+
+  win.setAlwaysOnTop(true, 'pop-up-menu')
+
+  if (isDev) {
+    win.loadURL('http://localhost:5173/quick-chat.html')
+  } else {
+    win.loadFile(path.join(__dirname, '..', 'dist', 'quick-chat.html'))
+  }
+
+  win.on('blur', () => {
+    if (!win.webContents.isDevToolsOpened()) win.hide()
+  })
+
+  win.on('closed', () => {
+    quickChatWindow = null
+  })
+
+  return win
+}
+
+function toggleQuickChatWindow(): void {
+  if (!quickChatWindow || quickChatWindow.isDestroyed()) {
+    quickChatWindow = createQuickChatWindow()
+  } else if (quickChatWindow.isVisible()) {
+    quickChatWindow.hide()
+    return
+  }
+
+  positionQuickChatWindow(quickChatWindow)
+  quickChatWindow.show()
+  quickChatWindow.focus()
+  quickChatWindow.webContents.send('quick-chat:show')
 }
 
 // ── Floating Subtitle Window ──────────────────────────────────────────────────
@@ -210,9 +281,10 @@ app.whenReady().then(() => {
   registerChatHandlers(ipcMain)
   registerWebSearchHandlers(ipcMain)
   registerLocalAiHandlers(ipcMain)
+  registerQuickChatHandlers(ipcMain, () => mainWindow, () => quickChatWindow)
 
   // Global hotkey — translate selected text in any OS application
-  initGlobalHotkey(ipcMain, () => mainWindow)
+  initGlobalHotkey(ipcMain, () => mainWindow, toggleQuickChatWindow)
 
   // Local HTTP server — used by the Viezan Chrome Extension
   startLocalServer(ipcMain)
@@ -255,7 +327,8 @@ app.on('window-all-closed', () => {
 app.on('web-contents-created', (_event, contents) => {
   contents.on('will-navigate', (event, navigationUrl) => {
     const parsedUrl = new URL(navigationUrl)
-    if (parsedUrl.protocol !== 'file:' && navigationUrl !== 'http://localhost:5173/') {
+    const isAllowedDevUrl = isDev && navigationUrl.startsWith('http://localhost:5173/')
+    if (parsedUrl.protocol !== 'file:' && !isAllowedDevUrl) {
       event.preventDefault()
     }
   })

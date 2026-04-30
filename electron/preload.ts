@@ -15,6 +15,7 @@ import { hotkeySection } from './preload/hotkey'
 import { keychainSection } from './preload/keychain'
 import { legacyAssistantSection } from './preload/legacyAssistant'
 import { localServerSection } from './preload/localServer'
+import { quickChatSection } from './preload/quickChat'
 import { subtitleSection } from './preload/subtitle'
 import { systemSection } from './preload/system'
 import { translateSection } from './preload/translate'
@@ -30,6 +31,7 @@ contextBridge.exposeInMainWorld('api', {
   ...systemSection,
   ...updaterSection,
   ...hotkeySection,
+  ...quickChatSection,
   ...legacyAssistantSection,
   ...localServerSection,
   ...webSearchSection,

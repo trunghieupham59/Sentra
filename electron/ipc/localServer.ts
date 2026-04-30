@@ -4,10 +4,10 @@
  *
  * Security model:
  *   • Server only listens on 127.0.0.1 (loopback — not reachable from outside)
- *   • Every request must carry the header  X-Viezan-Token: <secret>
- *   • Tokens are 32-byte random hex strings (64 chars), named, with configurable TTL
- *   • Token values are returned ONLY at creation or regeneration — never again
- *   • Multiple tokens can coexist (one per device/browser)
+ *   • Every request must carry the header  X-Viezan-Token: <api-key>
+ *   • API keys use the sk-vie-<64 lowercase hex chars> format, named, with configurable TTL
+ *   • API key values are returned ONLY at creation or regeneration — never again
+ *   • Multiple API keys can coexist (one per device/browser)
  *
  * Endpoints:
  *   GET  /api/status                                 → { success, version }
@@ -31,9 +31,9 @@ import { synthesizeTts, type TtsMode, type TtsParams } from './tts'
 // ── Config ────────────────────────────────────────────────────────────────────
 
 export const LOCAL_SERVER_PORT = 39875
-/** New multi-token file (replaces legacy single-token file) */
+/** Multi-API-key file (replaces legacy single-secret file) */
 const TOKENS_FILE = 'local-server-tokens.json'
-/** Legacy single-token file — migrated on first run */
+/** Legacy single-secret file — migrated only when it already contains a valid sk-vie API key */
 const LEGACY_TOKEN_FILE = 'local-server-token.json'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -41,12 +41,12 @@ const LEGACY_TOKEN_FILE = 'local-server-token.json'
 export interface TokenEntry {
   id: string         // 8-byte random hex
   name: string       // user-given label
-  token: string      // 32-byte random hex (64 chars) — stored but NEVER returned in list
+  token: string      // sk-vie-<64 lowercase hex chars> — stored but NEVER returned in list
   createdAt: number  // Unix ms
   expiresAt: number  // Unix ms
 }
 
-/** What the list endpoint returns — no token value */
+/** What the list endpoint returns — no API key value */
 export type TokenInfo = Omit<TokenEntry, 'token'>
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -71,6 +71,8 @@ const cachedConfig: {
   ttsVoice: 'nova',
 }
 
+const API_KEY_PATTERN = /^sk-vie-[a-f0-9]{64}$/
+
 // ── Persistence ───────────────────────────────────────────────────────────────
 
 function getTokensPath (): string {
@@ -86,29 +88,31 @@ function saveTokens (tokens: TokenEntry[]): void {
 }
 
 function loadTokens (): TokenEntry[] {
-  // 1. Try new multi-token file
+  // 1. Try current multi-API-key file
   try {
     const p = getTokensPath()
     if (fs.existsSync(p)) {
       const data = JSON.parse(fs.readFileSync(p, 'utf-8'))
       if (Array.isArray(data)) {
         const now = Date.now()
-        return data.filter((t: TokenEntry) =>
+        const validTokens = data.filter((t: TokenEntry) =>
           typeof t.id === 'string' &&
           typeof t.name === 'string' &&
-          typeof t.token === 'string' && t.token.length > 0 &&
+          isValidApiKeyValue(t.token) &&
           typeof t.expiresAt === 'number' && t.expiresAt > now
         )
+        if (validTokens.length !== data.length) saveTokens(validTokens)
+        return validTokens
       }
     }
   } catch { /* fall through */ }
 
-  // 2. Migrate from legacy single-token file
+  // 2. Migrate from legacy single-secret file only when it already uses the new format
   try {
     const lp = getLegacyTokenPath()
     if (fs.existsSync(lp)) {
       const data = JSON.parse(fs.readFileSync(lp, 'utf-8'))
-      if (typeof data.token === 'string' && data.token.length > 0) {
+      if (isValidApiKeyValue(data.token)) {
         const now = Date.now()
         const expiresAt = typeof data.expiresAt === 'number' && data.expiresAt > now
           ? data.expiresAt
@@ -134,17 +138,17 @@ function loadTokens (): TokenEntry[] {
 function purgeExpired (): void {
   const now = Date.now()
   const before = activeTokens.length
-  activeTokens = activeTokens.filter(t => t.expiresAt > now)
+  activeTokens = activeTokens.filter(t => t.expiresAt > now && isValidApiKeyValue(t.token))
   if (activeTokens.length !== before) saveTokens(activeTokens)
 }
 
-// ── Token helpers ─────────────────────────────────────────────────────────────
+// ── API key helpers ───────────────────────────────────────────────────────────
 
 function makeTokenId (): string {
   return crypto.randomBytes(8).toString('hex')
 }
 function makeTokenValue (): string {
-  return crypto.randomBytes(32).toString('hex')
+  return `sk-vie-${crypto.randomBytes(32).toString('hex')}`
 }
 function ttlMs (days: number): number {
   return Math.max(1, Math.min(days, 365)) * 24 * 60 * 60 * 1000
@@ -170,8 +174,8 @@ function isTokenId(value: unknown): value is string {
 }
 
 function normalizeTokenName(value: unknown): string {
-  if (typeof value !== 'string') return 'Extension Token'
-  return value.trim().slice(0, 80) || 'Extension Token'
+  if (typeof value !== 'string') return 'Extension API Key'
+  return value.trim().slice(0, 80) || 'Extension API Key'
 }
 
 function normalizeTtlDays(value: unknown, fallback = 30): number {
@@ -180,9 +184,14 @@ function normalizeTtlDays(value: unknown, fallback = 30): number {
 
 function tokenMatches(storedToken: string, incomingToken: unknown): boolean {
   if (typeof incomingToken !== 'string') return false
+  if (!isValidApiKeyValue(storedToken) || !isValidApiKeyValue(incomingToken)) return false
   const stored = Buffer.from(storedToken)
   const incoming = Buffer.from(incomingToken)
   return stored.length === incoming.length && crypto.timingSafeEqual(stored, incoming)
+}
+
+function isValidApiKeyValue(value: unknown): value is string {
+  return typeof value === 'string' && API_KEY_PATTERN.test(value)
 }
 
 // ── HTTP server helpers ───────────────────────────────────────────────────────
@@ -217,13 +226,13 @@ function readBody (req: http.IncomingMessage): Promise<string> {
 export async function handleLocalServerRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
   if (req.method === 'OPTIONS') { sendJSON(res, 200, {}); return }
 
-  // Validate token against all active, non-expired tokens
+  // Validate API key against all active, non-expired API keys
   const incomingToken = req.headers['x-viezan-token']
   const now = Date.now()
   purgeExpired()
   const valid = activeTokens.some(t => tokenMatches(t.token, incomingToken) && t.expiresAt > now)
   if (!valid) {
-    sendJSON(res, 401, { success: false, error: 'Unauthorized — token expired or invalid' })
+    sendJSON(res, 401, { success: false, error: 'Unauthorized — API key expired or invalid' })
     return
   }
 
@@ -358,10 +367,10 @@ export function startLocalServer (ipcMain: Electron.IpcMain): void {
     return { success: true }
   })
 
-  /** Create a new named token — returns token value ONCE */
+  /** Create a new named API key — returns API key value ONCE */
   ipcMain.handle('localServer:createToken', (_event, rawParams: unknown) => {
     if (!isRecord(rawParams)) {
-      return invalidIpcInput('Create token payload must be an object')
+      return invalidIpcInput('Create API key payload must be an object')
     }
     purgeExpired()
     const now = Date.now()
@@ -375,11 +384,11 @@ export function startLocalServer (ipcMain: Electron.IpcMain): void {
     }
     activeTokens.push(entry)
     saveTokens(activeTokens)
-    // Return token value ONCE — never returned again via listTokens
+    // Return API key value ONCE — never returned again via listTokens
     return { success: true, token: entry.token, id: entry.id, name: entry.name, createdAt: entry.createdAt, expiresAt: entry.expiresAt }
   })
 
-  /** List all active tokens — token values are NEVER included */
+  /** List all active API keys — API key values are NEVER included */
   ipcMain.handle('localServer:listTokens', () => {
     purgeExpired()
     return {
@@ -389,10 +398,10 @@ export function startLocalServer (ipcMain: Electron.IpcMain): void {
     }
   })
 
-  /** Delete a token immediately — it stops working at once */
+  /** Delete an API key immediately — it stops working at once */
   ipcMain.handle('localServer:deleteToken', (_event, rawParams: unknown) => {
     if (!isRecord(rawParams) || !isTokenId(rawParams.id)) {
-      return invalidIpcInput('Invalid token id')
+      return invalidIpcInput('Invalid API key id')
     }
     const { id } = rawParams
     activeTokens = activeTokens.filter(t => t.id !== id)
@@ -400,15 +409,15 @@ export function startLocalServer (ipcMain: Electron.IpcMain): void {
     return { success: true }
   })
 
-  /** Regenerate the token value for an existing entry — returns new value ONCE, resets TTL */
+  /** Regenerate the API key value for an existing entry — returns new value ONCE, resets TTL */
   ipcMain.handle('localServer:regenerateToken', (_event, rawParams: unknown) => {
     if (!isRecord(rawParams) || !isTokenId(rawParams.id)) {
-      return invalidIpcInput('Invalid token id')
+      return invalidIpcInput('Invalid API key id')
     }
     purgeExpired()
     const { id } = rawParams
     const idx = activeTokens.findIndex(t => t.id === id)
-    if (idx === -1) return { success: false, error: 'Token not found' }
+    if (idx === -1) return { success: false, error: 'API key not found' }
     const old = activeTokens[idx]
     const days = normalizeTtlDays(rawParams.ttlDays, Math.round((old.expiresAt - old.createdAt) / (24 * 60 * 60 * 1000)))
     const now = Date.now()
@@ -420,7 +429,7 @@ export function startLocalServer (ipcMain: Electron.IpcMain): void {
     }
     saveTokens(activeTokens)
     const updated = activeTokens[idx]
-    // Return new token value ONCE
+    // Return new API key value ONCE
     return { success: true, token: updated.token, id: updated.id, name: updated.name, createdAt: updated.createdAt, expiresAt: updated.expiresAt }
   })
 }
@@ -430,7 +439,7 @@ export function stopLocalServer (): void {
   server = null
 }
 
-/** Returns first active token value for Legacy Assistant bookmarklet */
+/** Returns first active API key value for Legacy Assistant bookmarklet */
 export function getServerToken (): string {
   purgeExpired()
   return activeTokens[0]?.token ?? ''
@@ -438,4 +447,8 @@ export function getServerToken (): string {
 
 export function setLocalServerTokensForTest(tokens: TokenEntry[]): void {
   activeTokens = tokens
+}
+
+export function createLocalServerApiKeyForTest (): string {
+  return makeTokenValue()
 }

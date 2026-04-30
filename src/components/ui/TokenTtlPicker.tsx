@@ -1,6 +1,6 @@
 /**
  * TokenTtlPicker — row of toggle-buttons for selecting a token TTL.
- * Extracted from SettingsPage (Chrome Extension › Create token form).
+ * Extracted from SettingsPage (Chrome Extension › Create API key form).
  */
 import { ButtonGroup } from './ButtonGroup'
 

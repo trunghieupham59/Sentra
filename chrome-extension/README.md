@@ -14,7 +14,7 @@ The extension is a browser client only. It does not store Gemini, Claude, OpenAI
 ## Requirements
 
 - Viezan desktop app installed and running.
-- A Browser Extension connection token from **Viezan -> Settings -> Browser Extension**.
+- A Browser Extension connection API key from **Viezan -> Settings -> Browser Extension**.
 - Chrome, Arc, Brave, Edge or another Chromium browser that supports Manifest V3 extensions.
 
 ## Install From a Release
@@ -37,9 +37,9 @@ The extension is a browser client only. It does not store Gemini, Claude, OpenAI
 
 1. Open the Viezan desktop app.
 2. Go to **Settings -> Browser Extension**.
-3. Copy or create a **Connection Token**.
+3. Copy or create a **Connection API Key**.
 4. Open the extension **Options** page.
-5. Paste the token, choose your target language/provider and save.
+5. Paste the API key, choose your target language/provider and save.
 6. Use **Test Connection** to verify that the desktop app is reachable.
 
 If the test fails, confirm that Viezan is running and that local requests to `127.0.0.1:39875` are not blocked.
@@ -63,15 +63,15 @@ If the test fails, confirm that Viezan is running and that local requests to `12
 | `content.js` | Injected selected-text button and tooltip flow. |
 | `content.css` | Styles for the injected page UI. |
 | `popup.html` / `popup.js` | Toolbar quick-translate panel. |
-| `options.html` / `options.js` | Token, language and provider settings. |
+| `options.html` / `options.js` | API key, language and provider settings. |
 | `extension-ui.css` | Shared popup/options visual system. |
 | `icons/` | Extension icon assets. |
 
 ## Security Model
 
 - The extension talks only to the Viezan local server at `127.0.0.1:39875`.
-- Every request must include the `X-Viezan-Token` header.
-- The token is generated in the desktop app and stored in Chrome `storage.local`.
+- Every request sends the connection API key through the local auth header.
+- The API key is generated in the desktop app, always starts with `sk-vie-`, and is stored in Chrome `storage.local`.
 - Provider API keys are never stored in the extension.
 - Webpage content is sent only when you trigger a translation.
 - The desktop app decides whether translation uses Local AI or a configured cloud provider.

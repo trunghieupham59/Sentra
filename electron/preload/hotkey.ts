@@ -45,7 +45,7 @@ export const hotkeySection = {
       return () => ipcRenderer.removeListener('hotkey:error', handler)
     },
 
-    /** AI Chat hotkey — opens the quick-ask popup in the renderer. */
+    /** AI Chat hotkey — toggles the quick-ask popup. */
     chat: {
       /** Update (and re-register) AI Chat hotkey settings. */
       update: (settings: { hotkey?: string; enabled?: boolean }) =>

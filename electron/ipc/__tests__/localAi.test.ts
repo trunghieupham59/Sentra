@@ -2,10 +2,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   benchmarkLocalAiSystem,
-  recommendLocalModel,
-  scoreLocalModelForHardware,
   type LocalAiHardwareProfile,
   type LocalAiModel,
+  recommendLocalModel,
+  scoreLocalModelForHardware,
 } from '../localAi'
 
 const lowHardware: LocalAiHardwareProfile = {

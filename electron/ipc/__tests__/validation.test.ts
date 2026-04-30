@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { parseChatParams } from '../chatValidation'
 import { isAllowedExternalUrl } from '../externalUrl'
 import { MAX_CHAT_REQUEST_CHARS } from '../ipcConstants'
+import { parseQuickChatSeedPayload } from '../quickChat'
 import { parseTranslateParams } from '../translateValidation'
 
 const chatPayload = (text: string, overrides: Record<string, unknown> = {}) => ({
@@ -65,6 +66,32 @@ describe('parseChatParams', () => {
 
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.response).toMatchObject({ error: 'Invalid chat image content', errorCode: 'INVALID_INPUT' })
+  })
+})
+
+describe('parseQuickChatSeedPayload', () => {
+  it('accepts a valid quick chat seed payload', () => {
+    expect(parseQuickChatSeedPayload({
+      question: 'Open this in chat',
+      response: 'Done',
+      provider: 'local',
+      model: 'local-auto',
+    })).toEqual({
+      question: 'Open this in chat',
+      response: 'Done',
+      provider: 'local',
+      model: 'local-auto',
+    })
+  })
+
+  it('rejects invalid quick chat seed payloads', () => {
+    expect(parseQuickChatSeedPayload({ question: '', provider: 'local', model: 'local-auto' })).toBeNull()
+    expect(parseQuickChatSeedPayload({
+      question: 'x'.repeat(MAX_CHAT_REQUEST_CHARS + 1),
+      provider: 'local',
+      model: 'local-auto',
+    })).toBeNull()
+    expect(parseQuickChatSeedPayload({ question: 'Hello', provider: 'unknown', model: 'm' })).toBeNull()
   })
 })
 

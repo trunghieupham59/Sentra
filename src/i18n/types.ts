@@ -544,6 +544,8 @@ export interface Translations {
   ai_chat_popup_title: string
   ai_chat_popup_placeholder: string
   ai_chat_popup_placeholder_mod_enter: string
+  ai_chat_popup_followup_placeholder: string
+  ai_chat_popup_empty_desc: string
   ai_chat_popup_open_in_chat: string
 
   // Settings — AI Chat Hotkey

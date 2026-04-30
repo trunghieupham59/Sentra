@@ -10,7 +10,7 @@
  * The selected provider is persisted in the Zustand store (sttProvider field).
  * The Groq API key is stored in the OS keychain — add it in the card below the selector.
  */
-import { useEffect, useState, type ReactNode } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import {
   AlertTriangleIcon,
   AutoModeIcon,

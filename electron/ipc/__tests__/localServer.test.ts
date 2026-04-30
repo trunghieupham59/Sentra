@@ -30,7 +30,13 @@ vi.mock('../tts', async (importOriginal) => {
   }
 })
 
-import { handleLocalServerRequest, setLocalServerTokensForTest } from '../localServer'
+import {
+  createLocalServerApiKeyForTest,
+  handleLocalServerRequest,
+  setLocalServerTokensForTest,
+} from '../localServer'
+
+const VALID_EXTENSION_API_KEY = `sk-vie-${'a'.repeat(64)}`
 
 function makeReq({
   method,
@@ -112,8 +118,8 @@ describe('localServer /api/tts', () => {
     })
     setLocalServerTokensForTest([{
       id: 'token-id',
-      name: 'Test token',
-      token: 'valid-token',
+      name: 'Test API key',
+      token: VALID_EXTENSION_API_KEY,
       createdAt: Date.now(),
       expiresAt: Date.now() + 60_000,
     }])
@@ -121,6 +127,10 @@ describe('localServer /api/tts', () => {
 
   afterEach(() => {
     setLocalServerTokensForTest([])
+  })
+
+  it('generates extension API keys with the sk-vie prefix', () => {
+    expect(createLocalServerApiKeyForTest()).toMatch(/^sk-vie-[a-f0-9]{64}$/)
   })
 
   it('rejects unauthorized TTS requests', async () => {
@@ -134,11 +144,31 @@ describe('localServer /api/tts', () => {
     expect(ttsMock.synthesizeTts).not.toHaveBeenCalled()
   })
 
-  it('calls shared TTS synthesis using the cached settings mode', async () => {
+  it('rejects legacy API key values without the sk-vie prefix', async () => {
+    setLocalServerTokensForTest([{
+      id: 'legacy-id',
+      name: 'Legacy API key',
+      token: 'valid-token',
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 60_000,
+    }])
+
     const response = await request({
       method: 'POST',
       url: '/api/tts',
       token: 'valid-token',
+      body: { text: 'Hello', lang: 'en' },
+    })
+
+    expect(response.statusCode).toBe(401)
+    expect(ttsMock.synthesizeTts).not.toHaveBeenCalled()
+  })
+
+  it('calls shared TTS synthesis using the cached settings mode', async () => {
+    const response = await request({
+      method: 'POST',
+      url: '/api/tts',
+      token: VALID_EXTENSION_API_KEY,
       body: { text: 'Hello', lang: 'en', mode: 'premium' },
     })
 

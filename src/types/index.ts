@@ -336,6 +336,13 @@ export interface ChatStreamEvent {
   errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'NETWORK' | string
 }
 
+export interface QuickChatSeedPayload {
+  question: string
+  response?: string
+  provider: string
+  model: string
+}
+
 // ─── Live Session History ─────────────────────────────────────────────────────
 
 export interface LiveSession {
@@ -606,6 +613,16 @@ export interface WindowApi {
     }
   }
 
+  /** Standalone Raycast-style AI Chat quick window */
+  quickChat: {
+    hide: () => Promise<{ success: boolean; error?: string }>
+    openSettings: () => Promise<{ success: boolean; error?: string }>
+    openInChat: (payload?: QuickChatSeedPayload) => Promise<{ success: boolean; error?: string }>
+    onShow: (cb: () => void) => () => void
+    onOpenSettings: (cb: () => void) => () => void
+    onOpenInChat: (cb: (payload: QuickChatSeedPayload | null) => void) => () => void
+  }
+
   /** Legacy Assistant — floating icon injected into browsers without an extension */
   legacyAssistant: {
     get: () => Promise<{ success: boolean; settings?: Record<string, unknown> }>
@@ -640,7 +657,7 @@ export interface WindowApi {
     }) => void) => () => void
   }
 
-  /** Local HTTP server — Chrome Extension bridge (multi-token) */
+  /** Local HTTP server — Chrome Extension bridge (multi-API-key) */
   localServer: {
     createToken: (p: { name: string; ttlDays: number }) => Promise<{
       success: boolean; token?: string; id?: string; name?: string

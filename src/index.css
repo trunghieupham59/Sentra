@@ -27,6 +27,15 @@
     color: #0f172a;
   }
 
+  html.quick-chat-window,
+  html.quick-chat-window body,
+  html.quick-chat-window #root {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: transparent;
+  }
+
   textarea, input, [contenteditable] {
     user-select: text;
   }
@@ -34,6 +43,10 @@
   /* macOS titlebar drag region */
   .titlebar-drag {
     -webkit-app-region: drag;
+  }
+
+  .titlebar-no-drag {
+    -webkit-app-region: no-drag;
   }
 }
 

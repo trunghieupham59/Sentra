@@ -121,10 +121,10 @@ The extension connects browser-selected text to the Viezan desktop app over `127
 
 1. Install the extension package from the matching release, or load `chrome-extension/` unpacked for local development.
 2. Open **Viezan -> Settings -> Browser Extension**.
-3. Copy or create a connection token.
-4. Open the extension **Options** page, paste the token, set your preferred language/provider, then save.
+3. Copy or create a connection API key.
+4. Open the extension **Options** page, paste the API key, set your preferred language/provider, then save.
 
-The desktop app must be running for browser translations to work. Every extension request includes the `X-Viezan-Token` header, and the extension never stores cloud provider API keys.
+The desktop app must be running for browser translations to work. The connection API key is sent through the local auth header, and the extension never stores cloud provider API keys.
 
 See [chrome-extension/README.md](chrome-extension/README.md) for the detailed extension guide.
 

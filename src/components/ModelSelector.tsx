@@ -1,12 +1,13 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { PROVIDERS } from '../constants/providers'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { Provider } from '../types'
+import { dedupeModelsByFamily, formatModelName } from '../utils/modelDisplay'
 import { PROVIDER_COLORS, ProviderIcon } from './ProviderIcon'
 import { ChevronDownIcon, RefreshIcon, SpinnerIcon } from './ui/icons'
 
 // Truncate model name if too long
-const truncateModelName = (name: string, maxLen = 18): string =>
+const truncateModelName = (name: string, maxLen = 22): string =>
   name.length > maxLen ? `${name.slice(0, maxLen)}…` : name
 
 /** Tiny section label used above provider and model dropdowns */
@@ -68,7 +69,14 @@ export function ModelSelector() {
   }, [selectedProvider, hasKey])
 
   const staticModels = currentProviderConfig?.models ?? []
-  const displayModels = currentDynamic.length > 0 ? currentDynamic : staticModels
+  const rawModels = currentDynamic.length > 0 ? currentDynamic : staticModels
+  // Collapse date-stamped + `-latest` snapshots into one entry per family so
+  // the dropdown shows e.g. one "GPT-5 Mini" instead of five.  Local AI is
+  // exempt — see dedupeModelsByFamily.
+  const displayModels = useMemo(
+    () => dedupeModelsByFamily(selectedProvider, rawModels),
+    [selectedProvider, rawModels],
+  )
   const selectedModel = selectedModels[selectedProvider] ?? displayModels[0]?.id ?? ''
 
   return (
@@ -135,8 +143,11 @@ export function ModelSelector() {
                 className="select-field pl-2.5 pr-7 w-[140px] lg:w-[190px] xl:w-[230px]"
               >
                 {displayModels.map((m) => (
+                  // Show only the short pretty name. Descriptors like "Fast"
+                  // / "Powerful" come from the provider list and just clutter
+                  // the dropdown — they have no UX value here.
                   <option key={m.id} value={m.id}>
-                    {truncateModelName(m.name)}{m.description ? ` — ${m.description}` : ''}
+                    {truncateModelName(formatModelName(selectedProvider, m.id, m.name))}
                   </option>
                 ))}
               </select>

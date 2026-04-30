@@ -10,7 +10,7 @@
  *   6. Simulate Cmd+V / Ctrl+V to paste (replacing original selection)
  *   7. Restore original clipboard content after 1.5 s
  *
- * Also supports an AI Chat hotkey that opens a quick-ask popup in the app.
+ * Also supports an AI Chat hotkey that toggles the standalone quick chat window.
  */
 import { exec } from 'node:child_process'
 import * as fs from 'node:fs'
@@ -153,25 +153,16 @@ function simulatePaste(): Promise<void> {
 
 // ── Hotkey registration ───────────────────────────────────────────────────────
 
-/** Register the AI Chat hotkey — opens the quick-ask popup in the renderer. */
+/** Register the AI Chat hotkey — toggles the quick-ask popup. */
 function registerChatHotkey(
   settings: AIChatHotkeySettings,
-  getMainWindow: () => BrowserWindow | null
+  toggleQuickChatWindow: () => void
 ): boolean {
   if (!settings.hotkey || !settings.enabled) return true
 
   try {
     const ok = globalShortcut.register(settings.hotkey, () => {
-      const win = getMainWindow()
-      if (!win) return
-
-      // Bring the app window to the front
-      if (win.isMinimized()) win.restore()
-      win.show()
-      win.focus()
-
-      // Tell the renderer to open the AI Chat popup
-      win.webContents.send('hotkey:chat-open')
+      toggleQuickChatWindow()
     })
     return ok
   } catch (e) {
@@ -249,7 +240,8 @@ function registerHotkey(
 
 export function initGlobalHotkey(
   ipcMain: Electron.IpcMain,
-  getMainWindow: () => BrowserWindow | null
+  getMainWindow: () => BrowserWindow | null,
+  toggleQuickChatWindow: () => void
 ): void {
   // Load persisted settings and register translate hotkey if enabled
   currentSettings = loadSettings()
@@ -263,7 +255,7 @@ export function initGlobalHotkey(
   // Load and register AI Chat hotkey if enabled
   currentChatSettings = loadChatSettings()
   if (currentChatSettings.enabled && currentChatSettings.hotkey) {
-    const ok = registerChatHotkey(currentChatSettings, getMainWindow)
+    const ok = registerChatHotkey(currentChatSettings, toggleQuickChatWindow)
     if (!ok) {
       console.warn('[GlobalHotkey] Could not register saved chat hotkey (already in use?)')
     }
@@ -327,7 +319,7 @@ export function initGlobalHotkey(
       saveChatSettings(currentChatSettings)
 
       if (currentChatSettings.enabled && currentChatSettings.hotkey) {
-        const ok = registerChatHotkey(currentChatSettings, getMainWindow)
+        const ok = registerChatHotkey(currentChatSettings, toggleQuickChatWindow)
         if (!ok) {
           currentChatSettings.enabled = false
           saveChatSettings(currentChatSettings)

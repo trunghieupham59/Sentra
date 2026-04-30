@@ -327,7 +327,7 @@ $('btn-translate').addEventListener('click', async () => {
   } catch (err) {
     const msg = err.message || 'Unknown error'
     if (msg.includes('401') || msg.includes('Unauthorized')) {
-      showStatus('Invalid token. Update it in Options.', 'error')
+      showStatus('Invalid API key. Update it in Options.', 'error')
     } else if (msg.includes('fetch') || msg.includes('Failed')) {
       showStatus('Cannot reach Viezan app. Is it running?', 'error')
     } else {
@@ -367,7 +367,7 @@ $('btn-speak-result').addEventListener('click', async () => {
 
   try {
     const settings = await getSettings()
-    if (!settings.token) throw new Error('Missing token')
+    if (!settings.token) throw new Error('Missing API key')
     ttsLoading = true
     const requestId = ++ttsRequestId
     $('btn-speak-result').textContent = 'Loading...'
@@ -394,7 +394,7 @@ $('btn-speak-result').addEventListener('click', async () => {
     if (speakWithBrowserSpeech(lastTranslated, lang)) return
     const msg = err.message || 'TTS failed'
     if (msg.includes('401') || msg.includes('Unauthorized')) {
-      showStatus('Invalid token. Update it in Options.', 'error')
+      showStatus('Invalid API key. Update it in Options.', 'error')
     } else if (msg.includes('fetch') || msg.includes('Failed')) {
       showStatus('Cannot reach Viezan app. Is it running?', 'error')
     } else {

@@ -95,6 +95,14 @@ if (typeof window !== 'undefined') {
           onOpen: vi.fn().mockReturnValue(() => {}),
         },
       },
+      quickChat: {
+        hide: vi.fn().mockResolvedValue({ success: true }),
+        openSettings: vi.fn().mockResolvedValue({ success: true }),
+        openInChat: vi.fn().mockResolvedValue({ success: true }),
+        onShow: vi.fn().mockReturnValue(() => {}),
+        onOpenSettings: vi.fn().mockReturnValue(() => {}),
+        onOpenInChat: vi.fn().mockReturnValue(() => {}),
+      },
       legacyAssistant: {
         get: vi.fn().mockResolvedValue({ success: true, settings: {} }),
         update: vi.fn().mockResolvedValue({ success: true }),

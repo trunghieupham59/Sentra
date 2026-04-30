@@ -515,7 +515,7 @@
 
     try {
       const settings = await getSettings()
-      if (!settings.token) throw new Error('Missing token')
+      if (!settings.token) throw new Error('Missing API key')
       ttsLoading = true
       const requestId = ++ttsRequestId
       listenBtn.textContent = 'Loading...'
@@ -864,7 +864,7 @@
       const settings = await getSettings()
       if (!settings.token) {
         hideButton()
-        alert('Viezan Extension: Please set your connection token in the extension Options page first.')
+        alert('Viezan Extension: Please set your connection API key in the extension Options page first.')
         return
       }
 
@@ -893,7 +893,7 @@
       if (errMsg.includes('context invalidated') || errMsg.includes('reload the page')) {
         alert('Viezan Extension: Extension was updated. Please reload this page (F5) to use it again.')
       } else if (errMsg.includes('401') || errMsg.includes('Unauthorized')) {
-        alert('Viezan Extension: Token is invalid. Please update it in the Options page.')
+        alert('Viezan Extension: API key is invalid. Please update it in the Options page.')
       } else if (errMsg.includes('fetch') || errMsg.includes('Failed to fetch')) {
         alert('Viezan Extension: Cannot connect to Viezan app. Make sure the Viezan app is running.')
       } else {

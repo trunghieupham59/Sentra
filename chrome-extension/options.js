@@ -22,7 +22,7 @@ $('btn-save').addEventListener('click', () => {
   const translationStyle = $('translation-style').value
 
   if (!token) {
-    showStatus('Please enter a Connection Token.', 'error')
+    showStatus('Please enter a Connection API Key.', 'error')
     return
   }
 
@@ -36,7 +36,7 @@ $('btn-save').addEventListener('click', () => {
 $('btn-test').addEventListener('click', async () => {
   const token = $('token').value.trim()
   if (!token) {
-    showStatus('Enter a token first.', 'error')
+    showStatus('Enter an API key first.', 'error')
     return
   }
 
@@ -48,7 +48,7 @@ $('btn-test').addEventListener('click', async () => {
     })
 
     if (resp.status === 401) {
-      showStatus('Token is invalid. Copy it again from the Viezan app.', 'error')
+      showStatus('API key is invalid. Copy it again from the Viezan app.', 'error')
       return
     }
     if (!resp.ok) {
@@ -59,7 +59,7 @@ $('btn-test').addEventListener('click', async () => {
     const data = await resp.json()
     if (data.success) {
       // Auto-save settings on successful connection so content script & popup
-      // always have the correct token without requiring a separate "Save" click.
+      // always have the correct API key without requiring a separate "Save" click.
       const targetLang = $('target-lang').value
       const translationStyle = $('translation-style').value
       chrome.storage.local.set({ treToken: token, treTargetLang: targetLang, treTranslationStyle: translationStyle })
@@ -144,7 +144,7 @@ function init () {
     if (data.treToken) {
       loadAiConfig(data.treToken)
     } else {
-      // No token yet — show "not connected" state
+      // No API key yet — show "not connected" state
       document.getElementById('ai-config-loading').style.display = 'none'
       document.getElementById('ai-config-error').style.display = 'block'
     }
