@@ -152,6 +152,10 @@ function createQuickChatWindow(): BrowserWindow {
     resizable: false,
     movable: true,
     backgroundColor: '#00000000',
+    // On macOS, use a panel-style window so showing/hiding the Quick Chat
+    // does NOT activate the Viezan app or transfer focus to the main window
+    // when it gets hidden. Behaves like Raycast/Spotlight.
+    ...(process.platform === 'darwin' ? { type: 'panel' as const } : {}),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -303,10 +307,20 @@ app.whenReady().then(() => {
   registerUpdaterHandlers(ipcMain, () => mainWindow)
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+    // Recreate the main window if it has been closed (X button on macOS).
+    // We must NOT rely on `BrowserWindow.getAllWindows().length === 0` because
+    // auxiliary windows (Quick Chat panel, Subtitle floating window) may still
+    // be alive — that would prevent the main window from ever being reopened
+    // via the dock icon.
+    if (!mainWindow || mainWindow.isDestroyed()) {
       createWindow()
+    } else {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.show()
+      mainWindow.focus()
     }
   })
+
 })
 
 app.on('will-quit', () => {
