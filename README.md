@@ -51,17 +51,15 @@ Viezan is a desktop translation workspace for text, images, live audio, chat and
 
 View all versions on the [GitHub Releases page](https://github.com/trunghieupham59/Viezan/releases).
 
-## What's New in v1.1.5
+## What's New in v2.0.0
 
 | Area | Change |
 | --- | --- |
-| Local AI | Local AI is the default provider path. Viezan can detect Ollama, LM Studio and llama.cpp. |
-| Setup | Ollama install/start flow, local runtime refresh, hardware benchmarking and model recommendations. |
-| Models | Streamed Ollama download progress, size labels, installed badges and uninstall actions. |
-| History | Bulk selection and deletion for Translate, Chat and Live history entries. |
-| Browser | Redesigned selected-text Chrome Extension UI with translation style support. |
-| Reliability | Stricter IPC validation, streaming chat coverage and hedged STT routing. |
-| Tooling | Biome 2.4.13 upgrade and release-runner fixes. |
+| Quick Chat | Fixed macOS focus stealing and Dock reopen behavior for a smoother floating-chat workflow. |
+| AI Chat | Added configurable chat shortcuts with test coverage for shortcut handling. |
+| Browser Extension | Renamed the desktop connection token wording to connection API key across docs and setup copy. |
+| Local-first docs | Refreshed README and release guidance around local runtimes, BYOK providers and unsigned macOS builds. |
+| Release | Updated macOS GitHub Actions runners to supported `macos-15` / `macos-15-intel` labels. |
 
 ## Features
 
