@@ -85,23 +85,31 @@ $('btn-test').addEventListener('click', async () => {
 
 // ── Fetch & display active AI config ─────────────────────────────────────────
 
-const PROVIDER_LABELS = {
-  gemini: { name: 'Google Gemini', color: '#1A73E8' },
-  openai: { name: 'OpenAI GPT', color: '#10A37F' },
-  claude: { name: 'Anthropic Claude', color: '#D97706' },
+/**
+ * Brand colors per provider — names come from ViezanModelDisplay so the
+ * extension and the desktop app stay in lock-step.
+ */
+const PROVIDER_COLORS = {
+  gemini: '#1A73E8',
+  openai: '#10A37F',
+  claude: '#D97706',
+  local:  '#6B7280',
 }
 
 function setProviderBadge (provider) {
   const badge = document.getElementById('ai-provider-badge')
-  const meta = PROVIDER_LABELS[provider]
+  const color = PROVIDER_COLORS[provider]
+  const displayName = (window.ViezanModelDisplay
+    ? window.ViezanModelDisplay.getProviderDisplayName(provider)
+    : provider) || '-'
   badge.textContent = ''
-  if (meta) {
+  if (color) {
     const mark = document.createElement('span')
     mark.className = 'provider-mark'
-    mark.style.background = meta.color
-    badge.append(mark, document.createTextNode(meta.name))
+    mark.style.background = color
+    badge.append(mark, document.createTextNode(displayName))
   } else {
-    badge.textContent = provider || '-'
+    badge.textContent = displayName
   }
 }
 
@@ -123,7 +131,11 @@ async function loadAiConfig (token) {
     if (!data.success) throw new Error('bad response')
 
     setProviderBadge(data.provider)
-    document.getElementById('ai-model-badge').textContent = data.model || '-'
+    // Use the desktop app's short pretty model name (e.g. "GPT 5.5 Mini")
+    // instead of the raw provider id like "gpt-5.5-mini-2026-05-01".
+    document.getElementById('ai-model-badge').textContent = window.ViezanModelDisplay
+      ? window.ViezanModelDisplay.formatModelName(data.provider, data.model) || '-'
+      : (data.model || '-')
 
     loading.style.display = 'none'
     info.style.display    = 'grid'

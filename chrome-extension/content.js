@@ -190,30 +190,34 @@
     return { provider: data.provider, model: data.model }
   }
 
-  /** Provider metadata — full name + brand colors (mirrors the main app) */
+  /**
+   * Brand colors per provider — names are sourced from the shared
+   * ViezanModelDisplay helper (see chrome-extension/model-display.js loaded
+   * before this script via manifest).  Keeping them aligned with the desktop
+   * app means a single edit there propagates everywhere.
+   */
   const PROVIDER_META = {
-    gemini: {
-      name: 'Google Gemini',
-      color: '#1A73E8',
-      bg: 'rgba(26,115,232,0.08)',
-      border: 'rgba(26,115,232,0.2)',
-    },
-    openai: {
-      name: 'OpenAI GPT',
-      color: '#10A37F',
-      bg: 'rgba(16,163,127,0.08)',
-      border: 'rgba(16,163,127,0.2)',
-    },
-    claude: {
-      name: 'Anthropic Claude',
-      color: '#D97706',
-      bg: 'rgba(217,119,6,0.08)',
-      border: 'rgba(217,119,6,0.2)',
-    },
+    gemini: { color: '#1A73E8', bg: 'rgba(26,115,232,0.08)',  border: 'rgba(26,115,232,0.2)'  },
+    openai: { color: '#10A37F', bg: 'rgba(16,163,127,0.08)',  border: 'rgba(16,163,127,0.2)'  },
+    claude: { color: '#D97706', bg: 'rgba(217,119,6,0.08)',   border: 'rgba(217,119,6,0.2)'   },
+    local:  { color: '#6B7280', bg: 'rgba(107,114,128,0.08)', border: 'rgba(107,114,128,0.2)' },
+  }
+
+  function getProviderDisplayName (provider) {
+    return (globalThis.ViezanModelDisplay
+      ? globalThis.ViezanModelDisplay.getProviderDisplayName(provider)
+      : provider) || '-'
+  }
+
+  function getModelDisplayName (provider, model) {
+    return (globalThis.ViezanModelDisplay
+      ? globalThis.ViezanModelDisplay.formatModelName(provider, model)
+      : model) || '-'
   }
 
   function setProviderBadge (el, provider) {
     const meta = PROVIDER_META[provider]
+    const name = getProviderDisplayName(provider)
     el.textContent = ''
     el.className = 'tre-ctrl-item tre-ctrl-provider'
     el.style.cssText = ''
@@ -223,11 +227,11 @@
       const mark = document.createElement('span')
       mark.className = 'provider-mark'
       mark.style.background = meta.color
-      el.append(mark, document.createTextNode(meta.name))
+      el.append(mark, document.createTextNode(name))
       return
     }
 
-    el.textContent = provider || '-'
+    el.textContent = name
   }
 
   /** Populate the provider/model badges and status in the controls row */
@@ -247,9 +251,10 @@
       // Provider badge
       setProviderBadge(providerEl, config.provider)
 
-      // Model badge
+      // Model badge — use the desktop app's short pretty name
+      // (e.g. "GPT 5.5 Mini" not "gpt-5.5-mini-2026-05-01").
       modelEl.className = 'tre-ctrl-item tre-ctrl-model'
-      modelEl.textContent = config.model || '-'
+      modelEl.textContent = getModelDisplayName(config.provider, config.model)
       modelEl.style.cssText = ''
     } catch {
       if (statusDot)  { statusDot.className = 'tre-status-dot tre-status-error' }

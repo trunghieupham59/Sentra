@@ -18,6 +18,7 @@ import { COPY_FEEDBACK_DURATION_MS } from '../constants/ui'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import { chatService } from '../services/chatService'
 import { deepResearchService } from '../services/deepResearchService'
+import { smartThinkingService } from '../services/smartThinkingService'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { ChatMessage, ChatMessageContent } from '../types'
 import { extractImageFromClipboard, resizeImageFile } from '../utils/imageUtils'
@@ -318,9 +319,7 @@ export function ChatPage() {
       return
     }
 
-    // ── Normal chat path ──────────────────────────────────────────────────────
-
-    // Build content
+    // ── Build the user message (shared by both paths below) ──────────────────
     const userContent: ChatMessageContent[] = []
     if (attachedImage) {
       userContent.push({
@@ -347,6 +346,97 @@ export function ChatPage() {
     setAttachedImage(null)
     setIsSending(true)
 
+    // Build IPC-format conversation history (includes the user message just added).
+    const ipcHistory = (
+      useAppStore.getState().chatSessions.find((s) => s.id === sessionId)?.messages ?? []
+    )
+      .filter((m) => !m.isLoading && !m.error)
+      .map(toIpcMessage)
+
+    // ── Smart Thinking path (DEFAULT for text-only chat) ─────────────────────
+    // AI itself classifies the question and decides whether to web-search.
+    // Skipped only when:
+    //   • The user attached an image (vision flow uses straight chatService.stream)
+    //   • There is no text (image-only message)
+    if (text && !attachedImage) {
+      try {
+        await smartThinkingService.run({
+          provider: selectedProvider,
+          model: selectedModels[selectedProvider],
+          question: text,
+          messages: ipcHistory,
+          systemPrompt: chatSystemPrompt || undefined,
+          callbacks: {
+            onStepStart: (label) => {
+              const msgId = `msg-${Date.now()}-st${Math.random().toString(36).slice(2, 6)}`
+              addChatMessage(sessionId, {
+                id: msgId,
+                role: 'assistant',
+                content: [{ type: 'text', text: '' }],
+                timestamp: Date.now(),
+                isLoading: true,
+                isResearchStep: true,
+                researchStepLabel: label,
+              })
+              return msgId
+            },
+            onStepComplete: (msgId, content) => {
+              updateChatMessage(sessionId, msgId, {
+                content: [{ type: 'text', text: content }],
+                isLoading: false,
+                isResearchStep: true,
+              })
+            },
+            onStepError: (msgId, error) => {
+              updateChatMessage(sessionId, msgId, {
+                isLoading: false,
+                error,
+                isResearchStep: true,
+              })
+            },
+            onAnswerStart: () => {
+              const msgId = `msg-${Date.now()}-a`
+              addChatMessage(sessionId, {
+                id: msgId,
+                role: 'assistant',
+                content: [{ type: 'text', text: '' }],
+                timestamp: Date.now(),
+                isLoading: true,
+              })
+              return msgId
+            },
+            onAnswerToken: (msgId, content) => {
+              updateChatMessage(sessionId, msgId, {
+                content: [{ type: 'text', text: content }],
+                isLoading: true,
+                error: undefined,
+              })
+            },
+            onAnswerComplete: (msgId, content) => {
+              updateChatMessage(sessionId, msgId, {
+                content: [{ type: 'text', text: content }],
+                isLoading: false,
+              })
+            },
+            onAnswerError: (msgId, error) => {
+              updateChatMessage(sessionId, msgId, {
+                isLoading: false,
+                error,
+              })
+            },
+          },
+        })
+      } catch {
+        // Per-step errors are handled by callbacks; ignore catastrophic ones.
+      } finally {
+        setIsSending(false)
+      }
+      return
+    }
+
+    // ── Vision / image-attached path ─────────────────────────────────────────
+    // Smart Thinking does not support images; route straight through chatService.
+
     // Placeholder assistant message
     const assistantMsgId = `msg-${Date.now()}-a`
     const assistantPlaceholder: ChatMessage = {
@@ -359,18 +449,12 @@ export function ChatPage() {
     addChatMessage(sessionId, assistantPlaceholder)
 
     try {
-      // Get fresh session to build history
-      const session = useAppStore.getState().chatSessions.find((s) => s.id === sessionId)
-      const messages = (session?.messages ?? [])
-        .filter((m) => !m.isLoading && !m.error)
-        .map(toIpcMessage)
-
       let streamedText = ''
       const result = await chatService.stream(
         {
           provider: selectedProvider,
           model: selectedModels[selectedProvider],
-          messages,
+          messages: ipcHistory,
           systemPrompt: chatSystemPrompt || undefined,
         },
         {
@@ -555,7 +639,7 @@ export function ChatPage() {
               e.target.value = ''
             }}
           />
-          {/* Deep Research toggle */}
+          {/* Deep Research toggle (Smart Thinking is automatic — no toggle needed) */}
           <button
             type="button"
             onClick={() => setDeepResearchMode((v) => !v)}

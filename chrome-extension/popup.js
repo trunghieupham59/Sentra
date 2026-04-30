@@ -139,30 +139,24 @@ function stopTtsAudio () {
   $('btn-speak-result').textContent = LISTEN_LABEL
 }
 
-/** Provider metadata — full name + brand colors */
+/**
+ * Provider metadata — brand color + accent rgba values used for the badge
+ * background.  The visible name comes from ViezanModelDisplay so the
+ * extension stays in sync with the desktop app's labels.
+ */
 const PROVIDER_META = {
-  gemini: {
-    name: 'Google Gemini',
-    color: '#1A73E8',
-    bg: 'rgba(26,115,232,0.09)',
-    border: 'rgba(26,115,232,0.22)',
-  },
-  openai: {
-    name: 'OpenAI GPT',
-    color: '#10A37F',
-    bg: 'rgba(16,163,127,0.09)',
-    border: 'rgba(16,163,127,0.22)',
-  },
-  claude: {
-    name: 'Anthropic Claude',
-    color: '#D97706',
-    bg: 'rgba(217,119,6,0.09)',
-    border: 'rgba(217,119,6,0.22)',
-  },
+  gemini: { color: '#1A73E8', bg: 'rgba(26,115,232,0.09)',  border: 'rgba(26,115,232,0.22)'  },
+  openai: { color: '#10A37F', bg: 'rgba(16,163,127,0.09)',  border: 'rgba(16,163,127,0.22)'  },
+  claude: { color: '#D97706', bg: 'rgba(217,119,6,0.09)',   border: 'rgba(217,119,6,0.22)'   },
+  local:  { color: '#6B7280', bg: 'rgba(107,114,128,0.09)', border: 'rgba(107,114,128,0.22)' },
 }
 
 function setProviderBadge (el, provider) {
   const meta = PROVIDER_META[provider]
+  const displayName = (window.ViezanModelDisplay
+    ? window.ViezanModelDisplay.getProviderDisplayName(provider)
+    : provider) || '-'
+
   el.textContent = ''
   el.className = 'meta-badge ctrl-badge-provider'
   el.style.background = meta?.bg || ''
@@ -173,11 +167,11 @@ function setProviderBadge (el, provider) {
     const mark = document.createElement('span')
     mark.className = 'provider-mark'
     mark.style.background = meta.color
-    el.append(mark, document.createTextNode(meta.name))
+    el.append(mark, document.createTextNode(displayName))
     return
   }
 
-  el.textContent = provider || '-'
+  el.textContent = displayName
 }
 
 /** Update header status badge + controls bar provider/model badges */
@@ -206,9 +200,13 @@ async function loadAppInfo (token) {
     // Controls bar: provider badge
     setProviderBadge(providerEl, data.provider)
 
-    // Controls bar: model badge
+    // Controls bar: model badge — use the same short pretty name shown in
+    // the desktop app's footer (e.g. "GPT 5.5 Mini" instead of
+    // "gpt-5.5-mini-2026-05-01").
     modelEl.className = 'meta-badge ctrl-badge-model'
-    modelEl.textContent = data.model || '-'
+    modelEl.textContent = window.ViezanModelDisplay
+      ? window.ViezanModelDisplay.formatModelName(data.provider, data.model) || '-'
+      : (data.model || '-')
     modelEl.removeAttribute('style')
   } catch {
     dot.className = 'status-dot error'

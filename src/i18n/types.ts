@@ -606,6 +606,13 @@ export interface Translations {
   chat_deep_research_disable: string
   chat_deep_research_api: string
 
+  // Chat — Smart Thinking (AI auto-decides whether to web-search)
+  chat_smart_thinking_enable: string
+  chat_smart_thinking_disable: string
+  chat_smart_thinking_hint: string
+  chat_smart_thinking_badge: string
+  chat_smart_thinking_searching: string
+
   // Chat — error messages
   chat_error_failed_regenerate: string
   chat_error_unexpected: string

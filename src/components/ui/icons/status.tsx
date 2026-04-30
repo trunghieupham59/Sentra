@@ -35,6 +35,20 @@ export function InfoCircleIcon({ className = 'w-3.5 h-3.5' }: IconProps) {
   )
 }
 
+/** Sparkles icon — used on Smart Thinking / AI auto-decide features. */
+export function SparklesIcon({ className = 'w-3.5 h-3.5' }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z" />
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M19 14l.7 1.9L21.5 16.5l-1.8.6L19 19l-.7-1.9L16.5 16.5l1.8-.6L19 14z" />
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M5 16l.6 1.6 1.6.6-1.6.6L5 20.4l-.6-1.6-1.6-.6 1.6-.6L5 16z" />
+    </svg>
+  )
+}
+
 /** Lightbulb icon — used on summarize / AI insight buttons. */
 export function LightbulbIcon({ className = 'w-3.5 h-3.5' }: IconProps) {
   return (
