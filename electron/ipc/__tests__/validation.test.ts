@@ -28,16 +28,24 @@ const translatePayload = (overrides: Record<string, unknown> = {}) => ({
 })
 
 describe('isAllowedExternalUrl', () => {
-  it('allows approved HTTPS and macOS Settings URLs', () => {
+  it('allows public web URLs and approved macOS Settings URLs', () => {
     expect(isAllowedExternalUrl('https://github.com/trunghieupham59/Viezan/releases/latest')).toBe(true)
     expect(isAllowedExternalUrl('https://console.groq.com')).toBe(true)
+    expect(isAllowedExternalUrl('https://luatvietnam.vn/co-cau-to-chuc/quy-dinh.html')).toBe(true)
+    expect(isAllowedExternalUrl('http://www.cchccantho.gov.vn/danh-muc-chuc-danh')).toBe(true)
     expect(isAllowedExternalUrl('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture')).toBe(true)
   })
 
-  it('rejects unapproved hosts, protocols, and near-miss paths', () => {
-    expect(isAllowedExternalUrl('http://github.com/trunghieupham59/Viezan/releases/latest')).toBe(false)
+  it('rejects unsafe hosts, protocols, credentials, and near-miss system paths', () => {
+    expect(isAllowedExternalUrl('javascript:alert(1)')).toBe(false)
+    expect(isAllowedExternalUrl('file:///etc/passwd')).toBe(false)
+    expect(isAllowedExternalUrl('data:text/html,hello')).toBe(false)
     expect(isAllowedExternalUrl('https://evil.example.com')).toBe(false)
-    expect(isAllowedExternalUrl('https://github.com/trunghieupham59/Viezan/releases-malicious')).toBe(false)
+    expect(isAllowedExternalUrl('https://localhost:5173')).toBe(false)
+    expect(isAllowedExternalUrl('https://127.0.0.1:11434')).toBe(false)
+    expect(isAllowedExternalUrl('https://192.168.1.10')).toBe(false)
+    expect(isAllowedExternalUrl('http://[::1]:3000')).toBe(false)
+    expect(isAllowedExternalUrl('https://user:pass@example.org')).toBe(false)
     expect(isAllowedExternalUrl('x-apple.systempreferences:com.apple.preference.security?Privacy_Camera')).toBe(false)
     expect(isAllowedExternalUrl('not a url')).toBe(false)
   })

@@ -3,13 +3,14 @@
  *
  * Tests cover:
  *   1. Plain text pass-through
- *   2. **bold** → <strong>
- *   3. *italic* → <em>
- *   4. _italic_ → <em>
- *   5. `code` → <code>
- *   6. Mixed content: text + marks + text
- *   7. Multiple consecutive marks
- *   8. Edge cases: empty string, unclosed markers, nested-like patterns
+ *   2. Links: [label](url) and bare URLs
+ *   3. **bold** → <strong>
+ *   4. *italic* → <em>
+ *   5. _italic_ → <em>
+ *   6. `code` → <code>
+ *   7. Mixed content: text + marks + text
+ *   8. Multiple consecutive marks
+ *   9. Edge cases: empty string, unclosed markers, nested-like patterns
  */
 import type React from 'react'
 import { describe, expect, it } from 'vitest'
@@ -38,6 +39,64 @@ describe('renderInline — plain text', () => {
     const text = 'No formatting here at all'
     const result = renderInline(text)
     expect(result[0]).toBe(text)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('renderInline — links', () => {
+  it('wraps markdown links in <a>', () => {
+    const result = renderInline('[Viezan](https://viezan.app/docs)')
+    expect(result).toHaveLength(1)
+    const el = getElement(result[0])
+    expect(el.type).toBe('a')
+    expect(el.props.href).toBe('https://viezan.app/docs')
+    expect(el.props.children).toBe('Viezan')
+  })
+
+  it('wraps source-style title and URL pairs in <a>', () => {
+    const result = renderInline('[Quy định 368-QĐ/TW] (https://luatvietnam.vn/co-cau-to-chuc/quy-dinh.html)')
+    expect(result).toHaveLength(1)
+    const el = getElement(result[0])
+    expect(el.type).toBe('a')
+    expect(el.props.href).toBe('https://luatvietnam.vn/co-cau-to-chuc/quy-dinh.html')
+    expect(el.props.children).toBe('Quy định 368-QĐ/TW')
+  })
+
+  it('linkifies bare https URLs', () => {
+    const result = renderInline('Source: https://luatvietnam.vn/co-cau-to-chuc/quy-dinh.html')
+    expect(result).toHaveLength(2)
+    expect(result[0]).toBe('Source: ')
+    const el = getElement(result[1])
+    expect(el.type).toBe('a')
+    expect(el.props.href).toBe('https://luatvietnam.vn/co-cau-to-chuc/quy-dinh.html')
+    expect(el.props.children).toBe('https://luatvietnam.vn/co-cau-to-chuc/quy-dinh.html')
+  })
+
+  it('linkifies public http URLs from source lists', () => {
+    const result = renderInline('(http://www.cchccantho.gov.vn/danh-muc-chuc-danh)')
+    expect(result).toHaveLength(3)
+    expect(result[0]).toBe('(')
+    const el = getElement(result[1])
+    expect(el.type).toBe('a')
+    expect(el.props.href).toBe('http://www.cchccantho.gov.vn/danh-muc-chuc-danh')
+    expect(result[2]).toBe(')')
+  })
+
+  it('keeps sentence punctuation outside bare links', () => {
+    const result = renderInline('Read https://example.com/docs?q=1.')
+    expect(result).toHaveLength(3)
+    const el = getElement(result[1])
+    expect(el.type).toBe('a')
+    expect(el.props.href).toBe('https://example.com/docs?q=1')
+    expect(result[2]).toBe('.')
+  })
+
+  it('adds https to www-only URLs', () => {
+    const result = renderInline('Visit www.viezan.app/docs')
+    const el = getElement(result[1])
+    expect(el.type).toBe('a')
+    expect(el.props.href).toBe('https://www.viezan.app/docs')
+    expect(el.props.children).toBe('www.viezan.app/docs')
   })
 })
 

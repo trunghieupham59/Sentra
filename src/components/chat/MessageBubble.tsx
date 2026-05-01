@@ -3,11 +3,15 @@ import { useT } from '../../store/useAppStore'
 import type { ChatMessage, ChatMessageContent } from '../../types'
 import { AppLogoIcon } from '../AppLogo'
 import { MarkdownText } from '../MarkdownText'
-import { ClipboardIcon, CopyIcon, DownloadIcon, RefreshIcon, SpinnerIcon, UserIcon, XIcon } from '../ui/icons'
+import { CopyIcon, DownloadIcon, RefreshIcon, SpinnerIcon, UserIcon, XIcon } from '../ui/icons'
 
 // HC-11: Named constant for loading dot animation stagger
 const DOT_ANIM_DELAY_STEP_S = 0.15   // s between each loading dot's bounce start
 const DOT_BOUNCE_INTERVAL_MS = 400   // ms interval for dots 1→2→3→1 cycle
+const MESSAGE_ACTION_BUTTON_CLASS = 'flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors duration-150 cursor-pointer dark:text-gray-500'
+const MESSAGE_COPY_BUTTON_CLASS = `${MESSAGE_ACTION_BUTTON_CLASS} hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300`
+const MESSAGE_DOWNLOAD_BUTTON_CLASS = `${MESSAGE_ACTION_BUTTON_CLASS} hover:bg-emerald-50 hover:text-emerald-500 dark:hover:bg-emerald-950 dark:hover:text-emerald-400`
+const MESSAGE_REGENERATE_BUTTON_CLASS = `${MESSAGE_ACTION_BUTTON_CLASS} hover:bg-blue-50 hover:text-blue-500 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-blue-950 dark:hover:text-blue-400`
 
 /** Animated "Thinking..." label — dots cycle 1 → 2 → 3 → 1 every 400 ms */
 function ThinkingLabel() {
@@ -169,7 +173,7 @@ export function MessageBubble({
 
           {/* Timestamp + copy */}
           {!message.isLoading && textContent && (
-            <div className="flex items-center gap-2 px-1">
+            <div className="flex items-center gap-1 px-1">
               <span className="text-[10px] text-gray-400 dark:text-gray-600">
                 {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
@@ -177,10 +181,10 @@ export function MessageBubble({
                 type="button"
                 onClick={() => onCopy(textContent)}
                 title={copyLabel ?? t.translate_copy}
-                className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-700 dark:hover:text-gray-200
-                           transition-colors duration-150 cursor-pointer"
+                aria-label={copyLabel ?? t.translate_copy}
+                className={MESSAGE_COPY_BUTTON_CLASS}
               >
-                <ClipboardIcon />
+                <CopyIcon className="w-4 h-4" />
               </button>
             </div>
           )}
@@ -263,7 +267,7 @@ export function MessageBubble({
         )}
 
         {/* Timestamp + Copy + Regenerate */}
-        <div className={`flex items-center gap-2 px-1 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+        <div className={`flex items-center gap-1 px-1 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
           <span className="text-[10px] text-gray-400 dark:text-gray-600">
             {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
@@ -274,10 +278,10 @@ export function MessageBubble({
               type="button"
               onClick={() => onCopy(textContent)}
               title={copyLabel ?? t.translate_copy}
-              className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-700 dark:hover:text-gray-200
-                         transition-colors duration-150 cursor-pointer"
+              aria-label={copyLabel ?? t.translate_copy}
+              className={MESSAGE_COPY_BUTTON_CLASS}
             >
-              <ClipboardIcon />
+              <CopyIcon className="w-4 h-4" />
             </button>
           )}
 
@@ -287,10 +291,10 @@ export function MessageBubble({
               type="button"
               onClick={() => onDownloadImage(downloadableImage)}
               title={downloadImageLabel}
-              className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-emerald-500 dark:hover:text-emerald-400
-                         transition-colors duration-150 cursor-pointer"
+              aria-label={downloadImageLabel ?? t.chat_download_image}
+              className={MESSAGE_DOWNLOAD_BUTTON_CLASS}
             >
-              <DownloadIcon className="w-3 h-3" />
+              <DownloadIcon className="w-4 h-4" />
             </button>
           )}
 
@@ -301,10 +305,10 @@ export function MessageBubble({
               onClick={onRegenerate}
               disabled={isSending}
               title={regenerateLabel ?? t.chat_regenerate}
-              className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-blue-500 dark:hover:text-blue-400
-                         disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer"
+              aria-label={regenerateLabel ?? t.chat_regenerate}
+              className={MESSAGE_REGENERATE_BUTTON_CLASS}
             >
-              <RefreshIcon />
+              <RefreshIcon className="w-4 h-4" />
             </button>
           )}
         </div>
