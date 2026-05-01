@@ -508,8 +508,8 @@ export function AIChatPopup() {
                 type="button"
                 onClick={handleClearInput}
                 className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
-                aria-label="Clear"
-                title="Clear"
+                aria-label={t.chat_clear}
+                title={t.chat_clear}
               >
                 <XIcon className="h-3.5 w-3.5" />
               </button>
@@ -559,7 +559,7 @@ export function AIChatPopup() {
               <p className="text-sm font-medium text-amber-600">
                 {trimmedLength.toLocaleString()} / {MAX_CHAT_INPUT_CHARS.toLocaleString()}
               </p>
-              <p className="text-xs text-gray-500">Input is too long. Trim it down to send.</p>
+              <p className="text-xs text-gray-500">{t.ai_chat_popup_input_too_long}</p>
             </EmptyContainer>
           ) : !activeQuestion && !isSending ? (
             <EmptyContainer>
@@ -568,7 +568,7 @@ export function AIChatPopup() {
               </div>
               <div className="text-center">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-500/80">
-                  Quick AI
+                  {t.ai_chat_popup_short_label}
                 </p>
                 <h2 className="mt-0.5 text-xl font-semibold text-gray-900">
                   {t.ai_chat_popup_title}
@@ -581,21 +581,21 @@ export function AIChatPopup() {
               <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-gray-400">
                 <span className="inline-flex items-center gap-1.5">
                   <KeyCap>↵</KeyCap>
-                  <span>Send</span>
+                  <span>{t.chat_send}</span>
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <KeyCap>⇧</KeyCap>
                   <KeyCap>↵</KeyCap>
-                  <span>New line</span>
+                  <span>{t.ai_chat_popup_new_line}</span>
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <KeyCap>{primaryModifierKey}</KeyCap>
                   <KeyCap>↵</KeyCap>
-                  <span>Open in Chat</span>
+                  <span>{t.ai_chat_popup_open_in_chat}</span>
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <KeyCap>Esc</KeyCap>
-                  <span>Close</span>
+                  <span>{t.ai_chat_popup_close}</span>
                 </span>
               </div>
             </EmptyContainer>

@@ -600,7 +600,7 @@ export function ChatPage() {
                            bg-indigo-50 dark:bg-indigo-950/40
                            border border-indigo-200 dark:border-indigo-700">
             <LightbulbIcon className="w-2.5 h-2.5 text-indigo-500" />
-            <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">Deep Research</span>
+            <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">{t.chat_deep_research_badge}</span>
           </span>
           <span className="text-[10px] text-gray-400 dark:text-gray-600">{t.chat_deep_research_hint}</span>
         </div>

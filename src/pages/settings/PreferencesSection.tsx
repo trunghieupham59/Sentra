@@ -107,7 +107,7 @@ export function PreferencesSection() {
           <ToggleSwitch
             checked={autoTranslate}
             onChange={setAutoTranslate}
-            aria-label="Auto translate toggle"
+            aria-label={t.settings_auto_translate}
             color="green"
           />
         </div>

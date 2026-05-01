@@ -171,7 +171,7 @@ export function formatModelName(
  * to a single bucket. We strip date stamps + `-latest` suffixes and lowercase
  * the rest.
  */
-function modelFamilyKey(provider: Provider, id: string): string {
+function modelFamilyKey(_provider: Provider, id: string): string {
   return stripVersionSuffix(id).toLowerCase()
 }
 

@@ -83,7 +83,7 @@
           const cur = parts[i]
           const next = parts[i + 1]
           if (/^\d+$/.test(cur) && next && /^\d+$/.test(next)) {
-            collapsed.push(cur + '.' + next)
+            collapsed.push(`${cur}.${next}`)
             i++
           } else {
             collapsed.push(cur)

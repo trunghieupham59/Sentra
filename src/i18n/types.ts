@@ -547,6 +547,10 @@ export interface Translations {
   ai_chat_popup_followup_placeholder: string
   ai_chat_popup_empty_desc: string
   ai_chat_popup_open_in_chat: string
+  ai_chat_popup_short_label: string
+  ai_chat_popup_input_too_long: string
+  ai_chat_popup_new_line: string
+  ai_chat_popup_close: string
 
   // Settings — AI Chat Hotkey
   settings_chat_hotkey_section: string
