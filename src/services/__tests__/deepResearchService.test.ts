@@ -1,5 +1,36 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { deepResearchService } from '../deepResearchService'
+import { deepResearchService, type DeepResearchUiText } from '../deepResearchService'
+
+const TEST_UI_TEXT: DeepResearchUiText = {
+  stepAnalyze: 'Analyze',
+  stepRound1: 'Round 1: {aspect}',
+  stepGap: 'Gap round {round}',
+  stepDeep: 'Deep dive: {aspect}',
+  stepCross: 'Cross-reference',
+  stepSynth: 'Synthesis',
+  modeRealtime: 'Real-time mode',
+  modeAiOnly: 'AI-only mode',
+  willStudy: 'Studying {count} aspects',
+  imageContext: 'Image context: {context}',
+  imageTerms: 'Image terms: {terms}',
+  imageKbLabel: 'Attached image context',
+  complete: 'Research complete',
+  gapsFound: 'Found {count} gaps',
+  deeperLabel: '[Deeper]',
+  cannotAnalyze: '[cannot analyze: {error}]',
+  cannotResearch: '[cannot research: {error}]',
+  crossFailed: 'Cross-reference failed: {error}',
+  crossFailedInline: '[cross-reference failed: {error}]',
+  synthFailed: 'Synthesis failed ({error})',
+  errorInline: '[Error: {error}]',
+  errorAnalyze: 'Analysis error',
+  errorGeneric: 'Error',
+  errorEval: 'Evaluation error',
+  errorCross: 'Cross-reference error',
+  errorSynth: 'Synthesis error',
+  errorUnknown: 'Unknown error',
+  webSummary: 'Web summary',
+}
 
 describe('deepResearchService', () => {
   beforeEach(() => {
@@ -41,6 +72,7 @@ describe('deepResearchService', () => {
       model: 'gemini-2.0-flash',
       question: 'Research this image',
       images: [{ imageBase64: 'image-base64', imageMimeType: 'image/png' }],
+      uiText: TEST_UI_TEXT,
       callbacks: {
         onStepStart: vi.fn((label: string) => `step-${label}`),
         onStepComplete: vi.fn(),
@@ -95,6 +127,7 @@ describe('deepResearchService', () => {
       provider: 'gemini',
       model: 'gemini-2.0-flash',
       question: 'Research a large topic',
+      uiText: TEST_UI_TEXT,
       callbacks: {
         onStepStart: vi.fn((label: string) => `step-${label}`),
         onStepComplete: vi.fn(),

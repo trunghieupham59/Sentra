@@ -472,16 +472,27 @@ jobs:
 
             - name: Package Chrome Extension as CRX
               shell: bash
+              env:
+                  CHROME_EXTENSION_PEM_BASE64: ${{ secrets.CHROME_EXTENSION_PEM_BASE64 }}
               run: |
-                  # Copy extension to a temp folder without the .pem key file
-                  # (Chrome refuses to pack if the key file is inside the extension folder)
-                  cp -r chrome-extension chrome-extension-build
-                  rm chrome-extension-build/chrome-extension.pem
+                  if [ -z "$CHROME_EXTENSION_PEM_BASE64" ]; then
+                    echo "::error::Missing CHROME_EXTENSION_PEM_BASE64 secret for CRX signing."
+                    exit 1
+                  fi
 
-                  # Pack the extension using the existing .pem private key
+                  EXTENSION_KEY_PATH="$RUNNER_TEMP/chrome-extension.pem"
+                  printf '%s' "$CHROME_EXTENSION_PEM_BASE64" | base64 --decode > "$EXTENSION_KEY_PATH"
+                  chmod 600 "$EXTENSION_KEY_PATH"
+
+                  # Copy extension to a temp folder. Keep signing key outside the
+                  # extension folder so Chrome does not package it into the CRX.
+                  cp -r chrome-extension chrome-extension-build
+                  rm -f chrome-extension-build/chrome-extension.pem
+
+                  # Pack the extension using the CI-provided private key.
                   google-chrome-stable \
                     --pack-extension=chrome-extension-build \
-                    --pack-extension-key=chrome-extension/chrome-extension.pem \
+                    --pack-extension-key="$EXTENSION_KEY_PATH" \
                     --no-sandbox
 
                   mv chrome-extension-build.crx viezan-chrome-extension.crx

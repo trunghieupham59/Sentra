@@ -4,6 +4,10 @@ dist-electron
 release
 .env
 .env.local
+*.pem
+*.key
+*.p12
+*.pfx
 *.log
 .DS_Store
 Thumbs.db

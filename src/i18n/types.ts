@@ -73,6 +73,13 @@ export interface Translations {
   model_load_error: string
   model_refresh: string
 
+  // Markdown chart renderer
+  markdown_chart_value: string
+  markdown_chart_bar: string
+  markdown_chart_line: string
+  markdown_chart_pie: string
+  markdown_chart_total: string
+
   // Language selector
   lang_auto: string
   /** Localized names for each language code (used in LanguageSelector) */
@@ -614,6 +621,67 @@ export interface Translations {
   chat_deep_research_enable: string
   chat_deep_research_disable: string
   chat_deep_research_api: string
+
+  // Chat — Deep Research pipeline (steps + statuses surfaced inside the chat thread)
+  /** Phase 1 step label */
+  chat_deep_research_step_analyze: string
+  /** Phase 2 step label — template `{aspect}` */
+  chat_deep_research_step_round1: string
+  /** Phase 3 step label — template `{round}` */
+  chat_deep_research_step_gap: string
+  /** Phase 3b deep-dive step label — template `{aspect}` */
+  chat_deep_research_step_deep: string
+  /** Phase 4 step label */
+  chat_deep_research_step_cross: string
+  /** Phase 5 step label */
+  chat_deep_research_step_synth: string
+  /** Banner shown when Tavily web search is available */
+  chat_deep_research_mode_realtime: string
+  /** Banner shown when no Tavily key is configured */
+  chat_deep_research_mode_ai_only: string
+  /** Plan summary header — template `{count}` */
+  chat_deep_research_will_study: string
+  /** Image context line — template `{context}` */
+  chat_deep_research_image_context: string
+  /** Image-derived search terms line — template `{terms}` */
+  chat_deep_research_image_terms: string
+  /** Knowledge-base label for image context (Phase 1) */
+  chat_deep_research_image_kb_label: string
+  /** Gap analysis: research is sufficient */
+  chat_deep_research_complete: string
+  /** Gap analysis: gaps found header — template `{count}` */
+  chat_deep_research_gaps_found: string
+  /** Inline label prefix for deep-dive sub-aspects */
+  chat_deep_research_deeper_label: string
+  /** Inline message: cannot analyze aspect — template `{error}` */
+  chat_deep_research_cannot_analyze: string
+  /** Inline message: cannot research deep gap — template `{error}` */
+  chat_deep_research_cannot_research: string
+  /** Inline message: cross-reference failed (returned to UI) — template `{error}` */
+  chat_deep_research_cross_failed: string
+  /** Inline message: cross-reference failed (knowledge-base entry) — template `{error}` */
+  chat_deep_research_cross_failed_inline: string
+  /** Inline message: synthesis failed — template `{error}` */
+  chat_deep_research_synth_failed: string
+  /** Inline error wrapper — template `{error}` */
+  chat_deep_research_error_inline: string
+  /** Step-error fallback when analyze fails */
+  chat_deep_research_error_analyze: string
+  /** Generic single-word "error" used as fallback */
+  chat_deep_research_error_generic: string
+  /** Step-error fallback when gap evaluation fails */
+  chat_deep_research_error_eval: string
+  /** Step-error fallback when cross-reference fails */
+  chat_deep_research_error_cross: string
+  /** Step-error fallback when synthesis fails */
+  chat_deep_research_error_synth: string
+  /** Generic "Unknown error" fallback used when chat returns empty */
+  chat_deep_research_error_unknown: string
+  /** Web search summary block label */
+  chat_deep_research_web_summary: string
+
+  /** Service fallback used by chatService when the editChatImage IPC bridge is missing */
+  chat_error_image_edit_bridge: string
 
   // Chat — Smart Thinking (AI auto-decides whether to web-search)
   chat_smart_thinking_enable: string

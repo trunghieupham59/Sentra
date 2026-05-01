@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { MarkdownText } from '../MarkdownText'
 import { parseChartArtifact } from '../markdown/ChartBlock'
 
+const DEFAULT_SERIES_NAME = 'Value'
+
 describe('parseChartArtifact', () => {
   it('normalizes simple chart JSON into a single-series artifact', () => {
     const result = parseChartArtifact(JSON.stringify({
@@ -10,7 +12,7 @@ describe('parseChartArtifact', () => {
       title: 'Revenue',
       labels: ['Jan', 'Feb'],
       values: [120, 180],
-    }))
+    }), DEFAULT_SERIES_NAME)
 
     expect(result.ok).toBe(true)
     if (result.ok) {
@@ -28,7 +30,7 @@ describe('parseChartArtifact', () => {
       type: 'line',
       labels: ['Jan', 'Feb'],
       values: [120],
-    }))
+    }), DEFAULT_SERIES_NAME)
 
     expect(result.ok).toBe(false)
   })

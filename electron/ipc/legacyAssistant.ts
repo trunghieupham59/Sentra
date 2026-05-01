@@ -44,6 +44,50 @@ export interface LegacyAssistantSettings {
 
 const SETTINGS_FILE = 'legacy-assistant-settings.json'
 const DEFAULT: LegacyAssistantSettings = { enabled: false, targetLang: 'en' }
+const LEGACY_ASSISTANT_BUTTON_TEXT = 'V'
+const LEGACY_ASSISTANT_BUTTON_CSS = [
+  'position:fixed',
+  'bottom:20px',
+  'right:20px',
+  'z-index:2147483647',
+  'width:46px',
+  'height:46px',
+  'border-radius:50%',
+  'background:linear-gradient(135deg,#4f46e5,#7c3aed)',
+  'box-shadow:0 3px 14px rgba(79,70,229,.55)',
+  'cursor:pointer',
+  'display:flex',
+  'align-items:center',
+  'justify-content:center',
+  'transition:transform .15s,opacity .15s',
+  'opacity:.85',
+  'user-select:none',
+  'color:#fff',
+  'font:700 18px/1 -apple-system,BlinkMacSystemFont,sans-serif',
+].join(';')
+const LEGACY_ASSISTANT_TOOLTIP_CSS = [
+  'position:fixed',
+  'bottom:74px',
+  'right:20px',
+  'z-index:2147483647',
+  'max-width:300px',
+  'min-width:160px',
+  'background:#1e1b4b',
+  'color:#e0e7ff',
+  'padding:10px 13px',
+  'border-radius:10px',
+  'font:13px/1.5 -apple-system,sans-serif',
+  'box-shadow:0 4px 18px rgba(0,0,0,.4)',
+  'display:none',
+  'word-break:break-word',
+].join(';')
+const LEGACY_ASSISTANT_MESSAGES = {
+  noText: 'Select text on the page first.',
+  translating: '<span style="opacity:.6;font-size:11px">Translating...</span>',
+  header: '<span style="opacity:.55;font-size:10px;display:block;margin-bottom:3px">Viezan TRANSLATION</span>',
+  failed: 'Translation failed',
+  offline: 'Cannot reach Viezan app. Make sure it is running.',
+} as const
 
 let currentSettings: LegacyAssistantSettings = { ...DEFAULT }
 
@@ -73,30 +117,35 @@ const CHROME_LIKE = [
 ]
 const SAFARI_APPS = ['Safari', 'Safari Technology Preview']
 
-// ── The inline floating-assistant script ──────────────────────────────────────
-// This is injected directly into the page (no external fetch needed).
-// Kept small and self-contained on purpose.
+// ── The floating-assistant script ─────────────────────────────────────────────
+// Injected directly into the page, so the payload is kept self-contained.
+// Keep user-facing payload pieces named above instead of scattering literals
+// through the generated script.
+
+function scriptLiteral(value: unknown): string {
+  return JSON.stringify(value)
+}
 
 function buildAssistantScript (token: string, port: number, targetLang: string): string {
   return `(function(){
-if(window.__viezanLA)return;window.__viezanLA=true;
-var TK='${token}',PT=${port},TL='${targetLang}';
-// --- button ---
-var b=document.createElement('div');
-b.id='__viezanLA_btn';
-b.style.cssText='position:fixed;bottom:20px;right:20px;z-index:2147483647;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#7c3aed);box-shadow:0 3px 14px rgba(79,70,229,.55);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s,opacity .15s;opacity:.85;user-select:none;';
-b.innerHTML='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>';
-b.addEventListener('mouseover',function(){b.style.transform='scale(1.08)';b.style.opacity='1';});
-b.addEventListener('mouseout',function(){b.style.transform='';b.style.opacity='.85';});
-document.body.appendChild(b);
-// --- tooltip ---
-var t=document.createElement('div');
-t.id='__viezanLA_tip';
-t.style.cssText='position:fixed;bottom:74px;right:20px;z-index:2147483647;max-width:300px;min-width:160px;background:#1e1b4b;color:#e0e7ff;padding:10px 13px;border-radius:10px;font:13px/1.5 -apple-system,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.4);display:none;word-break:break-word;';
-document.body.appendChild(t);
-var timer;
-var MSG={noText:'Select text on the page first.',translating:'<span style="opacity:.6;font-size:11px">Translating\u2026</span>',header:'<span style="opacity:.55;font-size:10px;display:block;margin-bottom:3px">Viezan TRANSLATION</span>',failed:'Translation failed',offline:'Cannot reach Viezan app. Make sure it is running.'};
-function show(msg,dur){t.innerHTML=msg;t.style.display='block';clearTimeout(timer);if(dur)timer=setTimeout(function(){t.style.display='none';},dur);}
+	if(window.__viezanLA)return;window.__viezanLA=true;
+	var TK=${scriptLiteral(token)},PT=${Number(port)},TL=${scriptLiteral(targetLang)};
+	// --- button ---
+	var b=document.createElement('div');
+	b.id='__viezanLA_btn';
+	b.style.cssText=${scriptLiteral(LEGACY_ASSISTANT_BUTTON_CSS)};
+	b.textContent=${scriptLiteral(LEGACY_ASSISTANT_BUTTON_TEXT)};
+	b.addEventListener('mouseover',function(){b.style.transform='scale(1.08)';b.style.opacity='1';});
+	b.addEventListener('mouseout',function(){b.style.transform='';b.style.opacity='.85';});
+	document.body.appendChild(b);
+	// --- tooltip ---
+	var t=document.createElement('div');
+	t.id='__viezanLA_tip';
+	t.style.cssText=${scriptLiteral(LEGACY_ASSISTANT_TOOLTIP_CSS)};
+	document.body.appendChild(t);
+	var timer;
+	var MSG=${scriptLiteral(LEGACY_ASSISTANT_MESSAGES)};
+	function show(msg,dur){t.innerHTML=msg;t.style.display='block';clearTimeout(timer);if(dur)timer=setTimeout(function(){t.style.display='none';},dur);}
 // --- click ---
 b.addEventListener('click',function(){
   var sel=window.getSelection(),txt=sel?sel.toString().trim():'';

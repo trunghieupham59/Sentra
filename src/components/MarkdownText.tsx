@@ -3,6 +3,7 @@
 // ordered lists, tables, horizontal rules, paragraphs.
 // No external dependencies - pure React.
 
+import { useT } from '../store/useAppStore'
 import { renderInline } from '../utils/markdownInline'
 import { ChartBlock, parseChartArtifact } from './markdown/ChartBlock'
 
@@ -28,6 +29,13 @@ function parseTableRow(line: string): string[] {
 }
 
 export function MarkdownText({ text, className }: Props) {
+  const t = useT()
+  const chartLabels = {
+    bar: t.markdown_chart_bar,
+    line: t.markdown_chart_line,
+    pie: t.markdown_chart_pie,
+    total: t.markdown_chart_total,
+  }
   const lines = text.split('\n')
   const elements: React.ReactNode[] = []
   let listItems: string[] = []
@@ -127,9 +135,9 @@ export function MarkdownText({ text, className }: Props) {
       return
     }
     if (codeLanguage === 'chart') {
-      const parsed = parseChartArtifact(codeLines.join('\n'))
+      const parsed = parseChartArtifact(codeLines.join('\n'), t.markdown_chart_value)
       if (parsed.ok) {
-        elements.push(<ChartBlock key={`chart-${key++}`} chart={parsed.chart} />)
+        elements.push(<ChartBlock key={`chart-${key++}`} chart={parsed.chart} labels={chartLabels} />)
         codeLines = []
         codeLanguage = ''
         return

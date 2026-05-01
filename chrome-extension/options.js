@@ -85,28 +85,17 @@ $('btn-test').addEventListener('click', async () => {
 
 // ── Fetch & display active AI config ─────────────────────────────────────────
 
-/**
- * Brand colors per provider — names come from ViezanModelDisplay so the
- * extension and the desktop app stay in lock-step.
- */
-const PROVIDER_COLORS = {
-  gemini: '#1A73E8',
-  openai: '#10A37F',
-  claude: '#D97706',
-  local:  '#6B7280',
-}
-
 function setProviderBadge (provider) {
   const badge = document.getElementById('ai-provider-badge')
-  const color = PROVIDER_COLORS[provider]
+  const meta = window.ViezanProviderMeta?.getProviderMeta(provider)
   const displayName = (window.ViezanModelDisplay
     ? window.ViezanModelDisplay.getProviderDisplayName(provider)
     : provider) || '-'
   badge.textContent = ''
-  if (color) {
+  if (meta) {
     const mark = document.createElement('span')
     mark.className = 'provider-mark'
-    mark.style.background = color
+    mark.style.background = meta.color
     badge.append(mark, document.createTextNode(displayName))
   } else {
     badge.textContent = displayName

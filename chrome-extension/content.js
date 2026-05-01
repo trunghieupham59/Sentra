@@ -190,19 +190,6 @@
     return { provider: data.provider, model: data.model }
   }
 
-  /**
-   * Brand colors per provider — names are sourced from the shared
-   * ViezanModelDisplay helper (see chrome-extension/model-display.js loaded
-   * before this script via manifest).  Keeping them aligned with the desktop
-   * app means a single edit there propagates everywhere.
-   */
-  const PROVIDER_META = {
-    gemini: { color: '#1A73E8', bg: 'rgba(26,115,232,0.08)',  border: 'rgba(26,115,232,0.2)'  },
-    openai: { color: '#10A37F', bg: 'rgba(16,163,127,0.08)',  border: 'rgba(16,163,127,0.2)'  },
-    claude: { color: '#D97706', bg: 'rgba(217,119,6,0.08)',   border: 'rgba(217,119,6,0.2)'   },
-    local:  { color: '#6B7280', bg: 'rgba(107,114,128,0.08)', border: 'rgba(107,114,128,0.2)' },
-  }
-
   function getProviderDisplayName (provider) {
     return (globalThis.ViezanModelDisplay
       ? globalThis.ViezanModelDisplay.getProviderDisplayName(provider)
@@ -216,7 +203,7 @@
   }
 
   function setProviderBadge (el, provider) {
-    const meta = PROVIDER_META[provider]
+    const meta = globalThis.ViezanProviderMeta?.getProviderMeta(provider, { bgAlpha: 0.08, borderAlpha: 0.2 })
     const name = getProviderDisplayName(provider)
     el.textContent = ''
     el.className = 'tre-ctrl-item tre-ctrl-provider'

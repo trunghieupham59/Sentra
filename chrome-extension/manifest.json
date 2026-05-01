@@ -24,7 +24,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["model-display.js", "content.js"],
+      "js": ["model-display.js", "provider-meta.js", "content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"
     }

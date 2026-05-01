@@ -24,8 +24,15 @@
  *
  * With Tavily web search: real-time data at every phase.
  * Without Tavily key: AI-knowledge-only with explicit staleness warnings.
+ *
+ * i18n: All user-facing step labels, error fallbacks and Markdown prefixes
+ * are passed in via the {@link DeepResearchUiText} object so the service
+ * stays language-agnostic. AI-facing system prompts intentionally remain
+ * in English to avoid biasing the model's output language (the AI is told
+ * via LANG_RULE to mirror the user's question language).
  */
 
+import { tpl } from '../utils/tpl'
 import type { ChatMessageContent } from './chatService'
 import { chatService } from './chatService'
 
@@ -51,11 +58,62 @@ export interface DeepResearchCallbacks {
   onStepError: (msgId: string, error: string) => void
 }
 
+/**
+ * Localized strings rendered into the chat thread by the deep-research pipeline.
+ *
+ * Keys whose template uses `{name}` placeholders accept variables consumed by
+ * {@link tpl}. Callers should map renderer i18n keys → fields here.
+ */
+export interface DeepResearchUiText {
+  stepAnalyze: string
+  /** Template `{aspect}` */
+  stepRound1: string
+  /** Template `{round}` */
+  stepGap: string
+  /** Template `{aspect}` */
+  stepDeep: string
+  stepCross: string
+  stepSynth: string
+  modeRealtime: string
+  modeAiOnly: string
+  /** Template `{count}` */
+  willStudy: string
+  /** Template `{context}` */
+  imageContext: string
+  /** Template `{terms}` */
+  imageTerms: string
+  imageKbLabel: string
+  complete: string
+  /** Template `{count}` */
+  gapsFound: string
+  deeperLabel: string
+  /** Template `{error}` */
+  cannotAnalyze: string
+  /** Template `{error}` */
+  cannotResearch: string
+  /** Template `{error}` */
+  crossFailed: string
+  /** Template `{error}` */
+  crossFailedInline: string
+  /** Template `{error}` */
+  synthFailed: string
+  /** Template `{error}` */
+  errorInline: string
+  errorAnalyze: string
+  errorGeneric: string
+  errorEval: string
+  errorCross: string
+  errorSynth: string
+  errorUnknown: string
+  webSummary: string
+}
+
 export interface DeepResearchParams {
   provider: string
   model: string
   question: string
   images?: DeepResearchImageAttachment[]
+  uiText: DeepResearchUiText
   callbacks: DeepResearchCallbacks
 }
 
@@ -74,30 +132,33 @@ type ChatServiceResult = Awaited<ReturnType<typeof chatService.send>>
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const getDate = () =>
-  new Date().toLocaleString('vi-VN', { dateStyle: 'full', timeStyle: 'short' })
+const getDate = () => {
+  const locale = typeof navigator !== 'undefined' ? navigator.language : undefined
+  return new Date().toLocaleString(locale, { dateStyle: 'full', timeStyle: 'short' })
+}
 
 const hasWebSearch = () =>
   typeof window !== 'undefined' && typeof window.api?.webSearch === 'function'
 
 function formatSearchResults(
   results: Array<{ title: string; url: string; content: string; score: number }>,
-  answer?: string,
+  answer: string | undefined,
+  webSummaryLabel: string,
 ): string {
   const lines: string[] = []
-  if (answer) lines.push(`**Tóm tắt web:** ${answer}`, '')
+  if (answer) lines.push(`**${webSummaryLabel}:** ${answer}`, '')
   results.forEach((r, i) => {
     lines.push(`**[${i + 1}] ${r.title}**`, `URL: ${r.url}`, r.content.slice(0, 700), '')
   })
   return lines.join('\n')
 }
 
-async function webSearch(query: string): Promise<string> {
+async function webSearch(query: string, webSummaryLabel: string): Promise<string> {
   if (!hasWebSearch()) return ''
   try {
     const result = await window.api.webSearch({ query: query.slice(0, 200), maxResults: MAX_SEARCH_RESULTS })
     if (result.success && result.results?.length) {
-      return formatSearchResults(result.results, result.answer)
+      return formatSearchResults(result.results, result.answer, webSummaryLabel)
     }
   } catch { /* ignore */ }
   return ''
@@ -110,7 +171,7 @@ function getReply(result: ChatServiceResult): string | null {
 
 function describeChatFailure(result: ChatServiceResult, fallback: string): string {
   if (result.error?.trim()) return result.error
-  if (result.success && !result.reply?.trim()) return 'AI trả về nội dung rỗng'
+  if (result.success && !result.reply?.trim()) return fallback
   return fallback
 }
 
@@ -233,7 +294,7 @@ ${imageContext ? `Attached image context: ${imageContext}\n` : ''}
 
 ━━━ ALL RESEARCH FINDINGS ━━━
 ${allFindings}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━`
 
 const SYNTHESIS_PROMPT = (date: string, hadWeb: boolean) => {
   const note = hadWeb
@@ -261,7 +322,7 @@ const DEFAULT_ASPECTS = [
 // ─── Main pipeline ────────────────────────────────────────────────────────────
 
 export const deepResearchService = {
-  async run({ provider, model, question, images = [], callbacks }: DeepResearchParams): Promise<void> {
+  async run({ provider, model, question, images = [], uiText, callbacks }: DeepResearchParams): Promise<void> {
     const date = getDate()
     const webAvailable = hasWebSearch()
     const { onStepStart, onStepComplete, onStepError } = callbacks
@@ -274,7 +335,7 @@ export const deepResearchService = {
     let imageSearchTerms: string[] = []
 
     // ── Phase 1: Initial Analysis ─────────────────────────────────────────
-    const analyzeMsgId = onStepStart('Phân tích câu hỏi')
+    const analyzeMsgId = onStepStart(uiText.stepAnalyze)
     let aspects = DEFAULT_ASPECTS
 
     try {
@@ -301,28 +362,31 @@ export const deepResearchService = {
         }
       }
     } catch (err) {
-      onStepError(analyzeMsgId, err instanceof Error ? err.message : 'Lỗi phân tích')
+      onStepError(analyzeMsgId, err instanceof Error ? err.message : uiText.errorAnalyze)
       throw err
     }
 
     const analyzeContent = [
-      webAvailable ? '**Real-time mode** — Tìm kiếm web thực tế cho mỗi bước' : '**AI-only mode** — Không có Tavily key. Thêm key trong Settings → API Keys để bật web search.',
+      webAvailable ? uiText.modeRealtime : uiText.modeAiOnly,
       '',
-      `**Sẽ nghiên cứu ${aspects.length} khía cạnh, qua nhiều vòng lặp:**`,
+      tpl(uiText.willStudy, { count: aspects.length }),
       ...aspects.map((a, i) => `${i + 1}. ${a}`),
-      ...(imageContext ? ['', `**Ngữ cảnh ảnh:** ${imageContext}`] : []),
-      ...(imageSearchTerms.length > 0 ? [`**Từ khóa từ ảnh:** ${imageSearchTerms.join(', ')}`] : []),
+      ...(imageContext ? ['', tpl(uiText.imageContext, { context: imageContext })] : []),
+      ...(imageSearchTerms.length > 0 ? [tpl(uiText.imageTerms, { terms: imageSearchTerms.join(', ') })] : []),
     ].join('\n')
     onStepComplete(analyzeMsgId, analyzeContent, false)
     if (imageContext) {
-      knowledgeBase.push({ label: 'Attached image context', content: imageContext })
+      knowledgeBase.push({ label: uiText.imageKbLabel, content: imageContext })
     }
 
     // ── Phase 2: First-pass research (Breadth) ────────────────────────────
     for (const aspect of aspects) {
-      const msgId = onStepStart(`Vòng 1 — Nghiên cứu: ${aspect}`)
+      const msgId = onStepStart(tpl(uiText.stepRound1, { aspect }))
       try {
-        const webCtx = await webSearch(buildSearchQuery(aspect, question, imageContext, imageSearchTerms))
+        const webCtx = await webSearch(
+          buildSearchQuery(aspect, question, imageContext, imageSearchTerms),
+          uiText.webSummary,
+        )
         if (webCtx) anyWebSearch = true
 
         const result = await chatService.send({
@@ -330,13 +394,15 @@ export const deepResearchService = {
           messages: [{ role: 'user', content: buildResearchContent(`Analyze this aspect: ${aspect}`, images) }],
           systemPrompt: RESEARCH_PROMPT(date, aspect, question, webCtx, imageContext),
         })
-        const content = getReply(result) ?? `[Không thể phân tích: ${describeChatFailure(result, 'Lỗi không xác định')}]`
+        const content = getReply(result) ?? tpl(uiText.cannotAnalyze, {
+          error: describeChatFailure(result, uiText.errorUnknown),
+        })
         knowledgeBase.push({ label: aspect, content })
         onStepComplete(msgId, content, false)
       } catch (err) {
-        const e = err instanceof Error ? err.message : 'Lỗi'
+        const e = err instanceof Error ? err.message : uiText.errorGeneric
         onStepError(msgId, e)
-        knowledgeBase.push({ label: aspect, content: `[Lỗi: ${e}]` })
+        knowledgeBase.push({ label: aspect, content: tpl(uiText.errorInline, { error: e }) })
       }
     }
 
@@ -347,7 +413,7 @@ export const deepResearchService = {
         .join('\n\n---\n\n')
 
       // Ask AI: is the research complete? What's missing?
-      const gapMsgId = onStepStart(`Đánh giá khoảng trống — Vòng ${iteration}`)
+      const gapMsgId = onStepStart(tpl(uiText.stepGap, { round: iteration }))
       let gapResult: GapAnalysisResult = { isComplete: true, gaps: [], queries: [] }
 
       try {
@@ -374,15 +440,15 @@ export const deepResearchService = {
         }
 
         const gapContent = gapResult.isComplete
-          ? `**Nghiên cứu đã đầy đủ** — Không phát hiện khoảng trống đáng kể. Tiến hành tổng hợp.`
+          ? uiText.complete
           : [
-              `**Phát hiện ${gapResult.gaps.length} khoảng trống cần bổ sung:**`,
+              tpl(uiText.gapsFound, { count: gapResult.gaps.length }),
               ...gapResult.gaps.map((g, i) => `${i + 1}. ${g}`),
             ].join('\n')
 
         onStepComplete(gapMsgId, gapContent, false)
       } catch (err) {
-        onStepError(gapMsgId, err instanceof Error ? err.message : 'Lỗi đánh giá')
+        onStepError(gapMsgId, err instanceof Error ? err.message : uiText.errorEval)
         gapResult.isComplete = true // fall through to synthesis on error
       }
 
@@ -393,10 +459,13 @@ export const deepResearchService = {
       for (let g = 0; g < Math.min(gapResult.queries.length, MAX_GAPS_PER_ROUND); g++) {
         const query = gapResult.queries[g]
         const gapLabel = gapResult.gaps[g] ?? query
-        const deepMsgId = onStepStart(`Nghiên cứu sâu: ${gapLabel}`)
+        const deepMsgId = onStepStart(tpl(uiText.stepDeep, { aspect: gapLabel }))
 
         try {
-          const webCtx = await webSearch(buildSearchQuery(query, question, imageContext, imageSearchTerms))
+          const webCtx = await webSearch(
+            buildSearchQuery(query, question, imageContext, imageSearchTerms),
+            uiText.webSummary,
+          )
           if (webCtx) anyWebSearch = true
 
           const result = await chatService.send({
@@ -404,19 +473,21 @@ export const deepResearchService = {
             messages: [{ role: 'user', content: buildResearchContent(`Deep dive research: ${gapLabel}`, images) }],
             systemPrompt: RESEARCH_PROMPT(date, gapLabel, question, webCtx, imageContext),
           })
-          const content = getReply(result) ?? `[Không thể nghiên cứu: ${describeChatFailure(result, 'Lỗi không xác định')}]`
-          knowledgeBase.push({ label: `[Sâu hơn] ${gapLabel}`, content })
+          const content = getReply(result) ?? tpl(uiText.cannotResearch, {
+            error: describeChatFailure(result, uiText.errorUnknown),
+          })
+          knowledgeBase.push({ label: `${uiText.deeperLabel} ${gapLabel}`, content })
           onStepComplete(deepMsgId, content, false)
         } catch (err) {
-          const e = err instanceof Error ? err.message : 'Lỗi'
+          const e = err instanceof Error ? err.message : uiText.errorGeneric
           onStepError(deepMsgId, e)
-          knowledgeBase.push({ label: gapLabel, content: `[Lỗi: ${e}]` })
+          knowledgeBase.push({ label: gapLabel, content: tpl(uiText.errorInline, { error: e }) })
         }
       }
     }
 
     // ── Phase 4: Cross-reference ──────────────────────────────────────────
-    const crossMsgId = onStepStart('Kiểm chứng chéo')
+    const crossMsgId = onStepStart(uiText.stepCross)
     const allFindingsFinal = knowledgeBase
       .map((k, i) => `### ${i + 1}. ${k.label}\n${k.content}`)
       .join('\n\n---\n\n')
@@ -430,16 +501,16 @@ export const deepResearchService = {
         bypassLengthCheck: true,
       })
       crossContent = getReply(result)
-        ?? `Không thể thực hiện cross-reference: ${describeChatFailure(result, 'Lỗi không xác định')}.`
+        ?? tpl(uiText.crossFailed, { error: describeChatFailure(result, uiText.errorUnknown) })
       onStepComplete(crossMsgId, crossContent, false)
     } catch (err) {
-      const e = err instanceof Error ? err.message : 'Lỗi cross-reference'
+      const e = err instanceof Error ? err.message : uiText.errorCross
       onStepError(crossMsgId, e)
-      crossContent = `[Cross-reference thất bại: ${e}]`
+      crossContent = tpl(uiText.crossFailedInline, { error: e })
     }
 
     // ── Phase 5: Final Synthesis ──────────────────────────────────────────
-    const synthMsgId = onStepStart('Tổng hợp cuối cùng')
+    const synthMsgId = onStepStart(uiText.stepSynth)
 
     const synthContext = [
       `## Research Findings (${knowledgeBase.length} sources)`,
@@ -466,11 +537,11 @@ export const deepResearchService = {
       })
 
       const synthesis = getReply(result)
-        ?? `Không thể tổng hợp (${describeChatFailure(result, 'Lỗi không xác định')}).`
+        ?? tpl(uiText.synthFailed, { error: describeChatFailure(result, uiText.errorUnknown) })
 
       onStepComplete(synthMsgId, synthesis, true)
     } catch (err) {
-      const e = err instanceof Error ? err.message : 'Lỗi tổng hợp'
+      const e = err instanceof Error ? err.message : uiText.errorSynth
       onStepError(synthMsgId, e)
       throw err
     }

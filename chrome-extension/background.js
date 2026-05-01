@@ -90,7 +90,7 @@ async function ensureContentScript (tabId) {
 async function injectContentScript (tabId) {
   try {
     await chrome.scripting.insertCSS({ target: { tabId }, files: ['content.css'] })
-    await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] })
+    await chrome.scripting.executeScript({ target: { tabId }, files: ['model-display.js', 'provider-meta.js', 'content.js'] })
   } catch {
     // Tab is not injectable — ignore
   }

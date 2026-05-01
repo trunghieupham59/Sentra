@@ -13,15 +13,30 @@ export interface ChartArtifact {
   series: ChartSeries[]
 }
 
+export interface ChartLabels {
+  bar: string
+  line: string
+  pie: string
+  total: string
+}
+
+type ChartParseError =
+  | 'invalid-json'
+  | 'invalid-object'
+  | 'invalid-type'
+  | 'invalid-labels'
+  | 'invalid-series'
+  | 'invalid-series-values'
+  | 'invalid-values'
+
 type ParseResult =
   | { ok: true; chart: ChartArtifact }
-  | { ok: false; error: string }
+  | { ok: false; error: ChartParseError }
 
 const MAX_CHART_LABELS = 24
 const MAX_CHART_SERIES = 4
 const MAX_CHART_LABEL_CHARS = 40
 const MAX_CHART_TITLE_CHARS = 80
-const DEFAULT_SERIES_NAME = 'Value'
 
 const CHART_COLORS = ['#2563eb', '#059669', '#dc2626', '#7c3aed', '#ea580c', '#0891b2']
 
@@ -54,48 +69,48 @@ function parseFiniteValues(value: unknown, expectedLength: number): number[] | n
   return values.every((item) => Number.isFinite(item)) ? values : null
 }
 
-export function parseChartArtifact(rawText: string): ParseResult {
+export function parseChartArtifact(rawText: string, defaultSeriesName: string): ParseResult {
   let parsed: unknown
   try {
     parsed = JSON.parse(rawText)
   } catch {
-    return { ok: false, error: 'Chart data must be valid JSON.' }
+    return { ok: false, error: 'invalid-json' }
   }
 
-  if (!isRecord(parsed)) return { ok: false, error: 'Chart data must be an object.' }
+  if (!isRecord(parsed)) return { ok: false, error: 'invalid-object' }
 
   const type = normalizeChartType(parsed.type ?? parsed.chartType)
-  if (!type) return { ok: false, error: 'Chart type must be bar, line, or pie.' }
+  if (!type) return { ok: false, error: 'invalid-type' }
 
   if (!Array.isArray(parsed.labels) || parsed.labels.length === 0 || parsed.labels.length > MAX_CHART_LABELS) {
-    return { ok: false, error: `Chart labels must contain 1-${MAX_CHART_LABELS} items.` }
+    return { ok: false, error: 'invalid-labels' }
   }
 
   const labels = parsed.labels.map((label) => cleanText(label, MAX_CHART_LABEL_CHARS))
-  if (labels.some((label) => !label)) return { ok: false, error: 'Chart labels must be strings.' }
+  if (labels.some((label) => !label)) return { ok: false, error: 'invalid-labels' }
 
   const rawSeries = Array.isArray(parsed.series) ? parsed.series : null
   const series: ChartSeries[] = []
 
   if (rawSeries) {
     if (rawSeries.length === 0 || rawSeries.length > MAX_CHART_SERIES) {
-      return { ok: false, error: `Chart series must contain 1-${MAX_CHART_SERIES} items.` }
+      return { ok: false, error: 'invalid-series' }
     }
 
     for (const item of rawSeries) {
-      if (!isRecord(item)) return { ok: false, error: 'Chart series entries must be objects.' }
+      if (!isRecord(item)) return { ok: false, error: 'invalid-series' }
       const values = parseFiniteValues(item.values, labels.length)
-      if (!values) return { ok: false, error: 'Each chart series must match the label count.' }
+      if (!values) return { ok: false, error: 'invalid-series-values' }
       series.push({
-        name: cleanText(item.name, MAX_CHART_LABEL_CHARS) || DEFAULT_SERIES_NAME,
+        name: cleanText(item.name, MAX_CHART_LABEL_CHARS) || defaultSeriesName,
         values,
         color: cleanColor(item.color),
       })
     }
   } else {
     const values = parseFiniteValues(parsed.values, labels.length)
-    if (!values) return { ok: false, error: 'Chart values must match the label count.' }
-    series.push({ name: cleanText(parsed.name, MAX_CHART_LABEL_CHARS) || DEFAULT_SERIES_NAME, values })
+    if (!values) return { ok: false, error: 'invalid-values' }
+    series.push({ name: cleanText(parsed.name, MAX_CHART_LABEL_CHARS) || defaultSeriesName, values })
   }
 
   return {
@@ -131,7 +146,11 @@ function truncateLabel(label: string): string {
   return label.length > 12 ? `${label.slice(0, 11)}...` : label
 }
 
-function BarChart({ chart }: { chart: ChartArtifact }) {
+function getSeriesKey(item: ChartSeries): string {
+  return `${item.name}-${item.values.join(',')}-${item.color ?? ''}`
+}
+
+function BarChart({ chart, labels }: { chart: ChartArtifact; labels: ChartLabels }) {
   const width = 640
   const height = 280
   const padding = { top: 28, right: 28, bottom: 52, left: 56 }
@@ -144,7 +163,7 @@ function BarChart({ chart }: { chart: ChartArtifact }) {
   const barWidth = Math.max(8, (groupWidth - 18) / chart.series.length - barGap)
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={chart.title ?? 'Bar chart'} className="w-full h-auto">
+    <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={chart.title ?? labels.bar} className="w-full h-auto">
       <line x1={padding.left} y1={zeroY} x2={width - padding.right} y2={zeroY} stroke="currentColor" className="text-gray-300 dark:text-gray-700" />
       <line x1={padding.left} y1={padding.top} x2={padding.left} y2={height - padding.bottom} stroke="currentColor" className="text-gray-300 dark:text-gray-700" />
       {[minValue, maxValue].map((value) => {
@@ -170,9 +189,8 @@ function BarChart({ chart }: { chart: ChartArtifact }) {
               const x = xStart + seriesIndex * (barWidth + barGap)
               const isNegative = value < 0
               return (
-                // biome-ignore lint/suspicious/noArrayIndexKey: series order is part of the chart schema
                 <rect
-                  key={`${item.name}-${seriesIndex}`}
+                  key={`${getSeriesKey(item)}-${x}`}
                   x={x}
                   y={isNegative ? zeroY : y}
                   width={barWidth}
@@ -192,17 +210,17 @@ function BarChart({ chart }: { chart: ChartArtifact }) {
   )
 }
 
-function LineChart({ chart }: { chart: ChartArtifact }) {
+function LineChart({ chart, labels }: { chart: ChartArtifact; labels: ChartLabels }) {
   const width = 640
   const height = 280
   const padding = { top: 28, right: 28, bottom: 52, left: 56 }
   const plotWidth = width - padding.left - padding.right
   const plotHeight = height - padding.top - padding.bottom
-  const { minValue, maxValue, span } = getValueRange(chart.series)
+  const { maxValue, span } = getValueRange(chart.series)
   const xStep = chart.labels.length > 1 ? plotWidth / (chart.labels.length - 1) : plotWidth
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={chart.title ?? 'Line chart'} className="w-full h-auto">
+    <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={chart.title ?? labels.line} className="w-full h-auto">
       {[0, 0.5, 1].map((ratio) => {
         const value = maxValue - span * ratio
         const y = padding.top + plotHeight * ratio
@@ -226,8 +244,7 @@ function LineChart({ chart }: { chart: ChartArtifact }) {
         const path = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')
         const color = item.color ?? CHART_COLORS[seriesIndex % CHART_COLORS.length]
         return (
-          // biome-ignore lint/suspicious/noArrayIndexKey: series order is part of the chart schema
-          <g key={`${item.name}-${seriesIndex}`}>
+          <g key={getSeriesKey(item)}>
             <path d={path} fill="none" stroke={color} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
             {points.map((point, pointIndex) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: point order is part of the chart series data
@@ -261,7 +278,7 @@ function describeArc(centerX: number, centerY: number, radius: number, startAngl
   return `M ${centerX} ${centerY} L ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y} Z`
 }
 
-function PieChart({ chart }: { chart: ChartArtifact }) {
+function PieChart({ chart, labels }: { chart: ChartArtifact; labels: ChartLabels }) {
   const width = 640
   const height = 280
   const centerX = 176
@@ -272,7 +289,7 @@ function PieChart({ chart }: { chart: ChartArtifact }) {
   let currentAngle = 0
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={chart.title ?? 'Pie chart'} className="w-full h-auto">
+    <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={chart.title ?? labels.pie} className="w-full h-auto">
       {values.map((value, index) => {
         const angle = (value / total) * 360
         const path = describeArc(centerX, centerY, radius, currentAngle, currentAngle + angle)
@@ -285,7 +302,7 @@ function PieChart({ chart }: { chart: ChartArtifact }) {
         {formatValue(total)}
       </text>
       <text x={centerX} y={centerY + 17} textAnchor="middle" className="fill-gray-500 dark:fill-gray-400 text-[11px]">
-        Total
+        {labels.total}
       </text>
       {chart.labels.map((label, index) => {
         const y = 62 + index * 24
@@ -311,8 +328,7 @@ function ChartLegend({ chart }: { chart: ChartArtifact }) {
   return (
     <div className="flex flex-wrap gap-x-3 gap-y-1 px-1 pb-2">
       {chart.series.map((item, index) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: legend rows follow series order and names may repeat
-        <span key={`${item.name}-${index}`} className="inline-flex items-center gap-1.5 text-[11px] text-gray-600 dark:text-gray-300">
+        <span key={getSeriesKey(item)} className="inline-flex items-center gap-1.5 text-[11px] text-gray-600 dark:text-gray-300">
           <span
             className="h-2.5 w-2.5 rounded-full"
             style={{ backgroundColor: item.color ?? CHART_COLORS[index % CHART_COLORS.length] }}
@@ -324,7 +340,7 @@ function ChartLegend({ chart }: { chart: ChartArtifact }) {
   )
 }
 
-export function ChartBlock({ chart }: { chart: ChartArtifact }) {
+export function ChartBlock({ chart, labels }: { chart: ChartArtifact; labels: ChartLabels }) {
   return (
     <figure className="my-3 overflow-hidden rounded-lg border border-gray-200 bg-white text-gray-900 shadow-sm dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100">
       {chart.title && (
@@ -333,9 +349,9 @@ export function ChartBlock({ chart }: { chart: ChartArtifact }) {
         </figcaption>
       )}
       <div className="px-2 py-2">
-        {chart.type === 'bar' && <BarChart chart={chart} />}
-        {chart.type === 'line' && <LineChart chart={chart} />}
-        {chart.type === 'pie' && <PieChart chart={chart} />}
+        {chart.type === 'bar' && <BarChart chart={chart} labels={labels} />}
+        {chart.type === 'line' && <LineChart chart={chart} labels={labels} />}
+        {chart.type === 'pie' && <PieChart chart={chart} labels={labels} />}
       </div>
       <ChartLegend chart={chart} />
     </figure>

@@ -64,7 +64,14 @@ export const chatService = {
   send: (params: ChatParams): Promise<ChatResult> =>
     window.api.chat(params),
 
-  /** Edit an attached image and return the generated image result. */
+  /**
+   * Edit an attached image and return the generated image result.
+   *
+   * The English `error` string is a defensive fallback — it is normally not
+   * surfaced to the user because the renderer maps `errorCode === 'PRELOAD_OUTDATED'`
+   * to `t.chat_error_image_edit_reload_required` via `localizeChatError`.
+   * It is only shown if a future caller bypasses that mapper.
+   */
   editImage: (params: ChatImageEditParams): Promise<ChatImageEditResult> =>
     window.api.editChatImage?.(params) ?? Promise.resolve({
       success: false,
