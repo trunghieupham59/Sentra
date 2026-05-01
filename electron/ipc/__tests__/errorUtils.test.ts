@@ -31,7 +31,7 @@ describe('classifyProviderError', () => {
       expect(result.errorCode).toBe('INVALID_KEY')
     })
 
-    it('is case-sensitive — does not match "401" as substring in non-error context', () => {
+    it('classifies HTTP 401 messages as INVALID_KEY', () => {
       // "401" appears in the error string → still classified
       const result = classifyProviderError('HTTP 401')
       expect(result.errorCode).toBe('INVALID_KEY')
@@ -61,6 +61,26 @@ describe('classifyProviderError', () => {
       // Gemini sometimes returns quota messages with RESOURCE_EXHAUSTED
       const result = classifyProviderError('RESOURCE_EXHAUSTED: quota for model exceeded')
       expect(result.errorCode).toBe('RATE_LIMIT')
+    })
+  })
+
+  // ── TIMEOUT / abort detection ─────────────────────────────────────────────
+  describe('timeout / abort patterns', () => {
+    it('classifies aborted requests as TIMEOUT', () => {
+      const result = classifyProviderError('This operation was aborted')
+      expect(result.success).toBe(false)
+      expect(result.errorCode).toBe('TIMEOUT')
+      expect(result.error).toContain('timed out')
+    })
+
+    it('classifies request timeout messages as TIMEOUT', () => {
+      const result = classifyProviderError('Request timed out after 90000 ms')
+      expect(result.errorCode).toBe('TIMEOUT')
+    })
+
+    it('classifies AbortError as TIMEOUT', () => {
+      const result = classifyProviderError('AbortError: The operation was aborted.')
+      expect(result.errorCode).toBe('TIMEOUT')
     })
   })
 

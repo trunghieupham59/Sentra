@@ -4,6 +4,7 @@
 // No external dependencies - pure React.
 
 import { renderInline } from '../utils/markdownInline'
+import { ChartBlock, parseChartArtifact } from './markdown/ChartBlock'
 
 interface Props {
   text: string
@@ -33,6 +34,7 @@ export function MarkdownText({ text, className }: Props) {
   let orderedListItems: string[] = []
   let tableLines: string[] = []
   let inCodeBlock = false
+  let codeLanguage = ''
   let codeLines: string[] = []
   let key = 0
 
@@ -120,13 +122,26 @@ export function MarkdownText({ text, className }: Props) {
   }
 
   const flushCodeBlock = () => {
-    if (codeLines.length === 0) return
+    if (codeLines.length === 0) {
+      codeLanguage = ''
+      return
+    }
+    if (codeLanguage === 'chart') {
+      const parsed = parseChartArtifact(codeLines.join('\n'))
+      if (parsed.ok) {
+        elements.push(<ChartBlock key={`chart-${key++}`} chart={parsed.chart} />)
+        codeLines = []
+        codeLanguage = ''
+        return
+      }
+    }
     elements.push(
       <pre key={`pre-${key++}`} className="my-2 px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-gray-800 overflow-x-auto text-[0.82em] font-mono text-gray-800 dark:text-gray-200 leading-relaxed">
         <code>{codeLines.join('\n')}</code>
       </pre>
     )
     codeLines = []
+    codeLanguage = ''
   }
 
   for (const line of lines) {
@@ -138,6 +153,7 @@ export function MarkdownText({ text, className }: Props) {
         flushList()
         flushOrderedList()
         flushTable()
+        codeLanguage = trimmed.slice(3).trim().split(/\s+/)[0]?.toLowerCase() ?? ''
         inCodeBlock = true
       } else {
         inCodeBlock = false

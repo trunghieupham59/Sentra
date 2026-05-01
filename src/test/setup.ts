@@ -49,6 +49,7 @@ if (typeof window !== 'undefined') {
       translateImage: vi.fn().mockResolvedValue({ success: false }),
       translateStream: vi.fn().mockResolvedValue({ success: false }),
       chat: vi.fn().mockResolvedValue({ success: false }),
+      editChatImage: vi.fn().mockResolvedValue({ success: false }),
       chatStream: vi.fn().mockResolvedValue({ success: false }),
       onChatStreamEvent: vi.fn().mockReturnValue(() => {}),
       fetchModels: vi.fn().mockResolvedValue({ success: false, models: [] }),

@@ -416,6 +416,11 @@ export interface Translations {
   /** HC-NEW-04: Description for the "None" option in SystemPromptDropdown */
   chat_system_prompt_none_desc: string
   chat_regenerate: string
+  chat_download_image: string
+  chat_open_image: string
+  chat_image_preview: string
+  chat_close_image_preview: string
+  chat_image_edit_done: string
 
   // Settings — Global Hotkey
   settings_hotkey_section: string
@@ -621,6 +626,13 @@ export interface Translations {
   chat_error_failed_regenerate: string
   chat_error_unexpected: string
   chat_error_failed_response: string
+  chat_error_failed_image_edit: string
+  chat_error_image_edit_reload_required: string
+  chat_error_invalid_key: string
+  chat_error_rate_limit: string
+  chat_error_network: string
+  chat_error_timeout: string
+  chat_error_no_image_edit: string
 
   // Live — audio source section label
   live_audio_source_label: string

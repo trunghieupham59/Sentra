@@ -31,6 +31,14 @@ type ChatParams = {
   maxOutputTokens?: number | 'model-max'
 }
 
+type ChatImageEditParams = {
+  provider: string
+  model: string
+  prompt: string
+  imageBase64: string
+  imageMimeType: string
+}
+
 export const chatSection = {
   // Image translation — extracts text regions from image and returns translated regions
   translateImage: (params: {
@@ -55,6 +63,10 @@ export const chatSection = {
 
   // AI Chat — supports text + image messages, multi-turn conversation
   chat: (params: ChatParams) => ipcRenderer.invoke('chat:send', params),
+
+  // AI Chat image editing — returns an edited image for image+edit prompts.
+  editChatImage: (params: ChatImageEditParams) =>
+    ipcRenderer.invoke('chat:image-edit', params),
 
   chatStream: (params: ChatParams & { requestId: string }) =>
     ipcRenderer.invoke('chat:stream', params),

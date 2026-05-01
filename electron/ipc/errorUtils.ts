@@ -23,18 +23,29 @@ export interface IpcErrorResponse {
  *   }
  */
 export function classifyProviderError(msg: string): IpcErrorResponse {
-  if (msg.includes('401') || msg.includes('invalid_api_key') || msg.includes('authentication')) {
+  const lower = msg.toLowerCase()
+
+  if (lower.includes('401') || lower.includes('invalid_api_key') || lower.includes('authentication')) {
     return { success: false, error: 'Invalid API key. Please check your key in Settings.', errorCode: 'INVALID_KEY' }
   }
-  if (msg.includes('429') || msg.includes('rate_limit') || msg.includes('quota')) {
+  if (lower.includes('429') || lower.includes('rate_limit') || lower.includes('quota')) {
     return { success: false, error: 'Rate limit exceeded. Please wait and try again.', errorCode: 'RATE_LIMIT' }
   }
   if (
-    msg.includes('ENOTFOUND') ||
-    msg.includes('ECONNREFUSED') ||
-    msg.includes('Failed to fetch') ||
-    msg.includes('FetchError') ||
-    msg.includes('Connection error')
+    lower.includes('aborterror') ||
+    lower.includes('operation was aborted') ||
+    lower.includes('request timed out') ||
+    lower.includes('timed out') ||
+    lower.includes('timeout')
+  ) {
+    return { success: false, error: 'The request timed out. Please try again.', errorCode: 'TIMEOUT' }
+  }
+  if (
+    lower.includes('enotfound') ||
+    lower.includes('econnrefused') ||
+    lower.includes('failed to fetch') ||
+    lower.includes('fetcherror') ||
+    lower.includes('connection error')
   ) {
     return { success: false, error: 'No internet connection.', errorCode: 'NETWORK' }
   }

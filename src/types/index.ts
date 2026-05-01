@@ -324,7 +324,17 @@ export interface ChatResult {
   success: boolean
   reply?: string
   error?: string
-  errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'NETWORK' | string
+  errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'NETWORK' | 'TIMEOUT' | string
+}
+
+export interface ChatImageEditResult {
+  success: boolean
+  imageBase64?: string
+  imageMimeType?: string
+  usedProvider?: string
+  usedModel?: string
+  error?: string
+  errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'NETWORK' | 'TIMEOUT' | 'NO_IMAGE_EDIT' | string
 }
 
 export interface ChatStreamEvent {
@@ -333,7 +343,7 @@ export interface ChatStreamEvent {
   token?: string
   reply?: string
   error?: string
-  errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'NETWORK' | string
+  errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'NETWORK' | 'TIMEOUT' | string
 }
 
 export interface QuickChatSeedPayload {
@@ -501,6 +511,13 @@ export interface WindowApi {
     /** Optional larger output budget for long-form synthesis calls */
     maxOutputTokens?: number | 'model-max'
   }) => Promise<ChatResult>
+  editChatImage?: (params: {
+    provider: string
+    model: string
+    prompt: string
+    imageBase64: string
+    imageMimeType: string
+  }) => Promise<ChatImageEditResult>
   chatStream: (params: {
     requestId: string
     provider: string

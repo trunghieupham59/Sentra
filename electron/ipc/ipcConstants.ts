@@ -79,8 +79,17 @@ export const VERIFY_MODEL_OPENAI = 'gpt-4.1-mini'
 /** Gemini TTS model — optimised for low-latency, low-cost speech synthesis. */
 export const GEMINI_TTS_MODEL = 'gemini-2.5-flash-preview-tts'
 
-/** Gemini image-editing model — used for in-image text translation. */
-export const GEMINI_IMAGE_EDIT_MODEL = 'gemini-2.0-flash-preview-image-generation'
+/** Primary Gemini image-editing model for AI Chat image outputs. */
+export const GEMINI_IMAGE_EDIT_MODEL = 'gemini-3.1-flash-image-preview'
+
+/** Fallback Gemini image-editing model when the newest preview model is unavailable for a key/region. */
+export const GEMINI_IMAGE_EDIT_FALLBACK_MODEL = 'gemini-2.5-flash-image'
+
+/** Ordered Gemini image-edit candidates. Keep the newest image model first. */
+export const GEMINI_IMAGE_EDIT_MODELS = [GEMINI_IMAGE_EDIT_MODEL, GEMINI_IMAGE_EDIT_FALLBACK_MODEL] as const
+
+/** OpenAI image-editing model — used when AI Chat must return an edited image. */
+export const OPENAI_IMAGE_EDIT_MODEL = 'gpt-image-1'
 
 // ── External API base URLs ────────────────────────────────────────────────────
 /** Anthropic REST API base URL. HC: centralised so it can be updated in one place. */
@@ -95,6 +104,9 @@ export const ANTHROPIC_MODELS_LIMIT = 20
 
 /** Timeout (ms) for provider models-list API calls used during vision fallback discovery. */
 export const VISION_DISCOVERY_TIMEOUT_MS = 5_000
+
+/** Timeout (ms) for AI Chat image editing; image generation/editing can take much longer than model discovery. */
+export const CHAT_IMAGE_EDIT_TIMEOUT_MS = 180_000
 
 // ── Language detection input limit ───────────────────────────────────────────
 /**

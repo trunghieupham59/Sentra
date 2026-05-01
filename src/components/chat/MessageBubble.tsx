@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useT } from '../../store/useAppStore'
-import type { ChatMessage } from '../../types'
+import type { ChatMessage, ChatMessageContent } from '../../types'
 import { AppLogoIcon } from '../AppLogo'
 import { MarkdownText } from '../MarkdownText'
-import { ClipboardIcon, RefreshIcon, SpinnerIcon, UserIcon } from '../ui/icons'
+import { ClipboardIcon, CopyIcon, DownloadIcon, RefreshIcon, SpinnerIcon, UserIcon, XIcon } from '../ui/icons'
 
 // HC-11: Named constant for loading dot animation stagger
 const DOT_ANIM_DELAY_STEP_S = 0.15   // s between each loading dot's bounce start
@@ -24,32 +24,60 @@ function ThinkingLabel() {
   )
 }
 
+function getImageSource(content: ChatMessageContent): string | null {
+  if (content.imagePreviewUrl) return content.imagePreviewUrl
+  if (content.imageBase64 && content.imageMimeType) {
+    return `data:${content.imageMimeType};base64,${content.imageBase64}`
+  }
+  return null
+}
+
 interface MessageBubbleProps {
   message: ChatMessage
   onCopy: (text: string) => void
+  onCopyImage?: (content: ChatMessageContent) => void
+  onDownloadImage?: (content: ChatMessageContent) => void
   onRegenerate?: () => void
   isLastAssistant?: boolean
   isSending?: boolean
   copyLabel?: string
+  downloadImageLabel?: string
   regenerateLabel?: string
 }
 
 export function MessageBubble({
   message,
   onCopy,
+  onCopyImage,
+  onDownloadImage,
   onRegenerate,
   isLastAssistant,
   isSending,
   copyLabel,
+  downloadImageLabel,
   regenerateLabel,
 }: MessageBubbleProps) {
   const t = useT()
   const isUser = message.role === 'user'
   const textContent = message.content.find((c) => c.type === 'text')?.text ?? ''
   const imageContents = message.content.filter((c) => c.type === 'image')
+  const downloadableImage = !isUser
+    ? imageContents.find((img) => img.imagePreviewUrl || (img.imageBase64 && img.imageMimeType))
+    : null
 
   // Collapse state for research step bubbles (starts collapsed)
   const [isStepCollapsed, setIsStepCollapsed] = useState(true)
+  const [previewImage, setPreviewImage] = useState<ChatMessageContent | null>(null)
+  const previewImageSrc = previewImage ? getImageSource(previewImage) : null
+
+  useEffect(() => {
+    if (!previewImage) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPreviewImage(null)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [previewImage])
 
   // ── Research Step bubble (collapsible, gray) ──────────────────────────────
   if (message.isResearchStep) {
@@ -176,17 +204,27 @@ export function MessageBubble({
 
       <div className={`flex flex-col gap-1.5 max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
         {/* Image attachments */}
-        {imageContents.map((img, i) => (
-          img.imagePreviewUrl && (
-            <img
+        {imageContents.map((img, i) => {
+          const imageSrc = getImageSource(img)
+          return imageSrc && (
+            <button
+              type="button"
               // biome-ignore lint/suspicious/noArrayIndexKey: stable index for images
               key={i}
-              src={img.imagePreviewUrl}
-              alt={img.imageFileName ?? 'attachment'}
-              className="max-w-full rounded-xl max-h-64 object-contain border border-gray-200 dark:border-gray-700"
-            />
+              onClick={() => setPreviewImage(img)}
+              title={t.chat_open_image}
+              className="block max-w-full rounded-xl cursor-pointer
+                         focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-neutral-950"
+            >
+              <img
+                src={imageSrc}
+                alt={img.imageFileName ?? 'attachment'}
+                className="max-w-full rounded-xl max-h-64 object-contain border border-gray-200 dark:border-gray-700
+                           transition-shadow duration-150 hover:shadow-lg"
+              />
+            </button>
           )
-        ))}
+        })}
 
         {/* Text / status */}
         {message.isLoading && !textContent ? (
@@ -243,6 +281,19 @@ export function MessageBubble({
             </button>
           )}
 
+          {/* Download generated assistant image */}
+          {downloadableImage && onDownloadImage && !message.isLoading && (
+            <button
+              type="button"
+              onClick={() => onDownloadImage(downloadableImage)}
+              title={downloadImageLabel}
+              className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-emerald-500 dark:hover:text-emerald-400
+                         transition-colors duration-150 cursor-pointer"
+            >
+              <DownloadIcon className="w-3 h-3" />
+            </button>
+          )}
+
           {/* Regenerate button — only on last assistant message */}
           {!isUser && isLastAssistant && onRegenerate && !message.isLoading && (
             <button
@@ -258,6 +309,72 @@ export function MessageBubble({
           )}
         </div>
       </div>
+
+      {previewImageSrc && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t.chat_image_preview}
+        >
+          <button
+            type="button"
+            className="absolute inset-0 cursor-pointer"
+            onClick={() => setPreviewImage(null)}
+            aria-label={t.chat_close_image_preview}
+          />
+          <div className="relative z-10 max-w-[96vw] max-h-[92vh]">
+            <div
+              className="absolute right-3 top-3 z-20 flex items-center gap-1 rounded-full
+                         bg-neutral-950/70 p-1 text-white shadow-xl backdrop-blur
+                         dark:bg-neutral-900/80"
+            >
+              {previewImage && onCopyImage && (
+                <button
+                  type="button"
+                  onClick={() => onCopyImage(previewImage)}
+                  title={copyLabel ?? t.chat_copy}
+                  className="flex h-9 w-9 items-center justify-center rounded-full
+                             text-white/80 hover:bg-white/10 hover:text-white
+                             focus:outline-none focus:ring-2 focus:ring-white/70
+                             transition-colors duration-150 cursor-pointer"
+                >
+                  <CopyIcon className="w-4 h-4" />
+                </button>
+              )}
+              {previewImage && onDownloadImage && (
+                <button
+                  type="button"
+                  onClick={() => onDownloadImage(previewImage)}
+                  title={downloadImageLabel ?? t.chat_download_image}
+                  className="flex h-9 w-9 items-center justify-center rounded-full
+                             text-white/80 hover:bg-white/10 hover:text-white
+                             focus:outline-none focus:ring-2 focus:ring-white/70
+                             transition-colors duration-150 cursor-pointer"
+                >
+                  <DownloadIcon className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setPreviewImage(null)}
+              title={t.chat_close_image_preview}
+              className="absolute -top-3 -right-3 w-8 h-8 flex items-center justify-center rounded-full
+                         bg-white text-gray-600 shadow-lg hover:bg-gray-100 hover:text-gray-900
+                         dark:bg-neutral-900 dark:text-gray-300 dark:hover:bg-neutral-800 dark:hover:text-white
+                         transition-colors duration-150 cursor-pointer"
+            >
+              <XIcon className="w-4 h-4" />
+            </button>
+            <img
+              src={previewImageSrc}
+              alt={previewImage?.imageFileName ?? t.chat_image_preview}
+              className="max-w-[92vw] max-h-[88vh] object-contain rounded-lg bg-white shadow-2xl"
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -13,7 +13,7 @@
 // It has extra renderer-only fields (imagePreviewUrl, imageFileName) compared to the
 // main-process version in electron/ipc/chat.ts, but the IPC layer ignores unknown fields,
 // so using the richer type here is safe.
-import type { ChatMessageContent, ChatResult, ChatStreamEvent } from '../types'
+import type { ChatImageEditResult, ChatMessageContent, ChatResult, ChatStreamEvent } from '../types'
 
 // Re-export for any consumers that import ChatMessageContent from chatService
 export type { ChatMessageContent }
@@ -40,6 +40,14 @@ interface ChatParams {
   maxOutputTokens?: number | 'model-max'
 }
 
+interface ChatImageEditParams {
+  provider: string
+  model: string
+  prompt: string
+  imageBase64: string
+  imageMimeType: string
+}
+
 interface ChatStreamCallbacks {
   onStart?: () => void
   onToken?: (token: string) => void
@@ -55,6 +63,14 @@ export const chatService = {
   /** Send a conversational message — supports text + image content, multi-turn. */
   send: (params: ChatParams): Promise<ChatResult> =>
     window.api.chat(params),
+
+  /** Edit an attached image and return the generated image result. */
+  editImage: (params: ChatImageEditParams): Promise<ChatImageEditResult> =>
+    window.api.editChatImage?.(params) ?? Promise.resolve({
+      success: false,
+      error: 'Image editing bridge is unavailable. Restart Viezan and try again.',
+      errorCode: 'PRELOAD_OUTDATED',
+    }),
 
   /** Stream a conversational message and receive provider tokens as they arrive. */
   stream: async (params: ChatParams, callbacks: ChatStreamCallbacks = {}): Promise<ChatResult> => {

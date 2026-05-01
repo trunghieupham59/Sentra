@@ -72,7 +72,7 @@ View all versions on the [GitHub Releases page](https://github.com/trunghieupham
 | Image Translation | Drag, drop or paste images; AI extracts and translates visible text. |
 | Voice Input | Web Speech API plus Whisper, Gemini STT and Groq fallback routing. |
 | Text-to-Speech | OpenAI, Gemini, Edge TTS and ElevenLabs fallback chain. |
-| AI Chat | Chat with image attachments, voice input, saved system prompts, history and optional web search. |
+| AI Chat | Chat with image attachments, voice input, saved system prompts, history, optional web search and native chart blocks in AI responses. |
 | Web Search | Tavily and Brave key support with a Jina fallback path. |
 | Browser Integration | Chrome Extension, context menu, floating selected-text button and `Alt+T` shortcut. |
 | History | Separate searchable history for Translate, Chat and Live sessions. |

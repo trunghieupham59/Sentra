@@ -38,15 +38,129 @@ const CHAT_TEXTAREA_MAX_HEIGHT_PX = 160
  * Centralised here so handleSend and handleRegenerate share a single implementation.
  */
 function toIpcMessage(msg: ChatMessage) {
-  return {
-    role: msg.role,
-    content: msg.content.map((c) => ({
+  const content = msg.content
+    .filter((c) => msg.role === 'user' || c.type === 'text')
+    .map((c) => ({
       type: c.type,
       text: c.text,
       imageBase64: c.imageBase64,
       imageMimeType: c.imageMimeType,
-    })),
+    }))
+
+  return {
+    role: msg.role,
+    content,
   }
+}
+
+const IMAGE_EDIT_INTENT_PATTERN = new RegExp([
+  '\\b(edit|change|modify|retouch|remove|replace|add|turn|make|convert|transform|erase|fill|extend|upscale|enhance|recolor)\\b',
+  '(sửa|chỉnh|đổi|thay|xóa|xoá|bỏ|thêm|chuyển|biến|làm|tạo|ghép)',
+  '(編集|変更|修正|削除|追加)',
+].join('|'), 'i')
+
+function shouldRouteToImageEdit(text: string, hasImage: boolean): boolean {
+  return hasImage && IMAGE_EDIT_INTENT_PATTERN.test(text)
+}
+
+function buildImageDataUrl(imageBase64: string, imageMimeType: string): string {
+  return `data:${imageMimeType};base64,${imageBase64}`
+}
+
+function getChatImageUrl(content: ChatMessageContent): string | null {
+  return content.imagePreviewUrl ??
+    (content.imageBase64 && content.imageMimeType
+      ? buildImageDataUrl(content.imageBase64, content.imageMimeType)
+      : null)
+}
+
+function imageExtensionFromMime(mimeType?: string): string {
+  if (mimeType === 'image/jpeg') return 'jpg'
+  if (mimeType?.startsWith('image/')) return mimeType.replace('image/', '')
+  return 'png'
+}
+
+function loadImageElement(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error('Failed to load image for clipboard'))
+    img.src = src
+  })
+}
+
+async function imageUrlToPngBlob(imageUrl: string): Promise<Blob> {
+  const img = await loadImageElement(imageUrl)
+  const width = img.naturalWidth || img.width
+  const height = img.naturalHeight || img.height
+  if (!width || !height) throw new Error('Invalid image dimensions')
+
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Canvas is unavailable')
+  ctx.drawImage(img, 0, 0, width, height)
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob)
+      } else {
+        reject(new Error('Failed to encode image for clipboard'))
+      }
+    }, 'image/png')
+  })
+}
+
+async function copyImageToClipboard(imageUrl: string): Promise<void> {
+  if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
+    await navigator.clipboard?.writeText?.(imageUrl)
+    return
+  }
+
+  const blob = await imageUrlToPngBlob(imageUrl)
+  await navigator.clipboard.write([
+    new ClipboardItem({ [blob.type]: blob }),
+  ])
+}
+
+type ChatErrorLike = {
+  error?: string
+  errorCode?: string
+}
+
+function isTimeoutLikeError(error: string): boolean {
+  const lower = error.toLowerCase()
+  return lower.includes('abort') || lower.includes('timeout') || lower.includes('timed out')
+}
+
+function localizeChatError(t: ReturnType<typeof useT>, result: ChatErrorLike, fallback: string): string {
+  switch (result.errorCode) {
+    case 'NO_API_KEY':
+      return t.chat_error_no_key
+    case 'INVALID_KEY':
+      return t.chat_error_invalid_key
+    case 'RATE_LIMIT':
+      return t.chat_error_rate_limit
+    case 'NETWORK':
+      return t.chat_error_network
+    case 'TIMEOUT':
+      return t.chat_error_timeout
+    case 'NO_IMAGE_EDIT':
+      return t.chat_error_no_image_edit
+    case 'PRELOAD_OUTDATED':
+      return t.chat_error_image_edit_reload_required
+    default:
+      if (result.error && isTimeoutLikeError(result.error)) return t.chat_error_timeout
+      return result.error || fallback
+  }
+}
+
+function localizeChatException(t: ReturnType<typeof useT>, error: unknown, fallback: string): string {
+  const message = error instanceof Error ? error.message : String(error ?? '')
+  if (message && isTimeoutLikeError(message)) return t.chat_error_timeout
+  return message || fallback
 }
 
 // HC-11: Named animation constants for voice bars
@@ -233,13 +347,13 @@ export function ChatPage() {
       } else {
         updateChatMessage(activeChatSessionId, assistantMsgId, {
           isLoading: false,
-          error: result.error || t.chat_error_failed_regenerate,
+          error: localizeChatError(t, result, t.chat_error_failed_regenerate),
         })
       }
     } catch (err) {
       updateChatMessage(activeChatSessionId, assistantMsgId, {
         isLoading: false,
-        error: err instanceof Error ? err.message : t.chat_error_unexpected,
+        error: localizeChatException(t, err, t.chat_error_unexpected),
       })
     } finally {
       setIsSending(false)
@@ -251,8 +365,7 @@ export function ChatPage() {
     selectedProvider,
     selectedModels,
     chatSystemPrompt,
-    t.chat_error_failed_regenerate,
-    t.chat_error_unexpected,
+    t,
   ])
 
   const handleSend = useCallback(async () => {
@@ -262,23 +375,46 @@ export function ChatPage() {
 
     const sessionId = ensureSession()
 
+    // ── Build the user message (shared by normal, vision, and Deep Research paths)
+    const userContent: ChatMessageContent[] = []
+    if (attachedImage) {
+      userContent.push({
+        type: 'image',
+        imageBase64: attachedImage.base64,
+        imageMimeType: attachedImage.mimeType,
+        imagePreviewUrl: attachedImage.previewUrl,
+        imageFileName: attachedImage.fileName,
+      })
+    }
+    if (text) {
+      userContent.push({ type: 'text', text })
+    }
+
+    const userMsg: ChatMessage = {
+      id: `msg-${Date.now()}-u`,
+      role: 'user',
+      content: userContent,
+      timestamp: Date.now(),
+    }
+
     // ── Deep Research path ────────────────────────────────────────────────────
-    if (deepResearchMode && text) {
-      const userMsg: ChatMessage = {
-        id: `msg-${Date.now()}-u`,
-        role: 'user',
-        content: [{ type: 'text', text }],
-        timestamp: Date.now(),
-      }
+    if (deepResearchMode && (text || attachedImage)) {
       addChatMessage(sessionId, userMsg)
       setInputText('')
+      setAttachedImage(null)
       setIsSending(true)
 
       try {
         await deepResearchService.run({
           provider: selectedProvider,
           model: selectedModels[selectedProvider],
-          question: text,
+          question: text || 'Research the attached image in depth.',
+          images: attachedImage
+            ? [{
+                imageBase64: attachedImage.base64,
+                imageMimeType: attachedImage.mimeType,
+              }]
+            : undefined,
           callbacks: {
             onStepStart: (label) => {
               const msgId = `msg-${Date.now()}-dr${Math.random().toString(36).slice(2, 6)}`
@@ -305,7 +441,7 @@ export function ChatPage() {
             onStepError: (msgId, error) => {
               updateChatMessage(sessionId, msgId, {
                 isLoading: false,
-                error,
+                error: localizeChatException(t, error, t.chat_error_failed_response),
                 isResearchStep: true,
               })
             },
@@ -317,28 +453,6 @@ export function ChatPage() {
         setIsSending(false)
       }
       return
-    }
-
-    // ── Build the user message (shared by both paths below) ──────────────────
-    const userContent: ChatMessageContent[] = []
-    if (attachedImage) {
-      userContent.push({
-        type: 'image',
-        imageBase64: attachedImage.base64,
-        imageMimeType: attachedImage.mimeType,
-        imagePreviewUrl: attachedImage.previewUrl,
-        imageFileName: attachedImage.fileName,
-      })
-    }
-    if (text) {
-      userContent.push({ type: 'text', text })
-    }
-
-    const userMsg: ChatMessage = {
-      id: `msg-${Date.now()}-u`,
-      role: 'user',
-      content: userContent,
-      timestamp: Date.now(),
     }
 
     addChatMessage(sessionId, userMsg)
@@ -390,7 +504,7 @@ export function ChatPage() {
             onStepError: (msgId, error) => {
               updateChatMessage(sessionId, msgId, {
                 isLoading: false,
-                error,
+                error: localizeChatException(t, error, t.chat_error_failed_response),
                 isResearchStep: true,
               })
             },
@@ -421,7 +535,7 @@ export function ChatPage() {
             onAnswerError: (msgId, error) => {
               updateChatMessage(sessionId, msgId, {
                 isLoading: false,
-                error,
+                error: localizeChatException(t, error, t.chat_error_failed_response),
               })
             },
           },
@@ -434,8 +548,72 @@ export function ChatPage() {
       return
     }
 
+    // ── Image edit path ──────────────────────────────────────────────────────
+    // Chat/vision endpoints can analyze images but cannot return edited pixels.
+    // When the prompt asks for a visual edit, call the dedicated image-edit API.
+    const shouldEditImage = Boolean(attachedImage && text && shouldRouteToImageEdit(text, true))
+
+    if (attachedImage && shouldEditImage) {
+      const assistantMsgId = `msg-${Date.now()}-a`
+      addChatMessage(sessionId, {
+        id: assistantMsgId,
+        role: 'assistant',
+        content: [{ type: 'text', text: '' }],
+        timestamp: Date.now(),
+        isLoading: true,
+      })
+
+      if (typeof window.api.editChatImage !== 'function') {
+        updateChatMessage(sessionId, assistantMsgId, {
+          isLoading: false,
+          error: t.chat_error_image_edit_reload_required,
+        })
+        setIsSending(false)
+        return
+      }
+
+      try {
+        const result = await chatService.editImage({
+          provider: selectedProvider,
+          model: selectedModels[selectedProvider],
+          prompt: text,
+          imageBase64: attachedImage.base64,
+          imageMimeType: attachedImage.mimeType,
+        })
+
+        if (result.success && result.imageBase64 && result.imageMimeType) {
+          updateChatMessage(sessionId, assistantMsgId, {
+            content: [
+              {
+                type: 'image',
+                imageBase64: result.imageBase64,
+                imageMimeType: result.imageMimeType,
+                imagePreviewUrl: buildImageDataUrl(result.imageBase64, result.imageMimeType),
+                imageFileName: `edited-image-${Date.now()}.${imageExtensionFromMime(result.imageMimeType)}`,
+              },
+              { type: 'text', text: t.chat_image_edit_done },
+            ],
+            isLoading: false,
+          })
+        } else {
+          updateChatMessage(sessionId, assistantMsgId, {
+            isLoading: false,
+            error: localizeChatError(t, result, t.chat_error_failed_image_edit),
+          })
+        }
+      } catch (err) {
+        updateChatMessage(sessionId, assistantMsgId, {
+          isLoading: false,
+          error: localizeChatException(t, err, t.chat_error_failed_image_edit),
+        })
+      } finally {
+        setIsSending(false)
+      }
+      return
+    }
+
     // ── Vision / image-attached path ─────────────────────────────────────────
-    // Smart Thinking does not support images; route straight through chatService.
+    // Smart Thinking does not support images; non-edit image prompts use vision chat.
 
     // Placeholder assistant message
     const assistantMsgId = `msg-${Date.now()}-a`
@@ -477,13 +655,13 @@ export function ChatPage() {
       } else {
         updateChatMessage(sessionId, assistantMsgId, {
           isLoading: false,
-          error: result.error || t.chat_error_failed_response,
+          error: localizeChatError(t, result, t.chat_error_failed_response),
         })
       }
     } catch (err) {
       updateChatMessage(sessionId, assistantMsgId, {
         isLoading: false,
-        error: err instanceof Error ? err.message : t.chat_error_unexpected,
+        error: localizeChatException(t, err, t.chat_error_failed_response),
       })
     } finally {
       setIsSending(false)
@@ -500,8 +678,7 @@ export function ChatPage() {
     selectedProvider,
     selectedModels,
     chatSystemPrompt,
-    t.chat_error_failed_response,
-    t.chat_error_unexpected,
+    t,
   ])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -519,11 +696,36 @@ export function ChatPage() {
     handleImageSelect(file)
   }, [handleImageSelect])
 
+  const showCopiedToast = useCallback(() => {
+    setCopiedId(String(Date.now()))
+    setTimeout(() => setCopiedId(null), COPY_FEEDBACK_DURATION_MS)
+  }, [])
+
+  const handleDownloadImage = useCallback((content: ChatMessageContent) => {
+    const imageUrl = getChatImageUrl(content)
+    if (!imageUrl) return
+
+    const a = document.createElement('a')
+    a.href = imageUrl
+    a.download = content.imageFileName ?? `viezan-chat-image-${Date.now()}.${imageExtensionFromMime(content.imageMimeType)}`
+    a.click()
+  }, [])
+
+  const handleCopyImage = useCallback(async (content: ChatMessageContent) => {
+    const imageUrl = getChatImageUrl(content)
+    if (!imageUrl) return
+
+    try {
+      await copyImageToClipboard(imageUrl)
+    } catch {
+      await navigator.clipboard?.writeText?.(imageUrl).catch(() => {})
+    }
+    showCopiedToast()
+  }, [showCopiedToast])
+
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text).catch(() => {})
-    // Use timestamp as unique copy ID — avoids collision when 2 messages share the same opening chars
-    setCopiedId(String(Date.now()))
-    setTimeout(() => setCopiedId(null), COPY_FEEDBACK_DURATION_MS)  // HC-03
+    showCopiedToast()
   }
 
   const handleNewChat = useCallback(() => {
@@ -823,10 +1025,13 @@ export function ChatPage() {
                         key={msg.id}
                         message={msg}
                         onCopy={handleCopy}
+                        onCopyImage={handleCopyImage}
+                        onDownloadImage={handleDownloadImage}
                         onRegenerate={idx === lastAssistantIdx ? handleRegenerate : undefined}
                         isLastAssistant={idx === lastAssistantIdx}
                         isSending={isSending}
                         copyLabel={t.translate_copy}
+                        downloadImageLabel={t.chat_download_image}
                         regenerateLabel={t.chat_regenerate}
                       />
                     ))

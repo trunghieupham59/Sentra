@@ -28,7 +28,7 @@ const TRANSLATIONS = {
       { title: 'Text Translation',   desc: 'Translate with 7 tone styles — Neutral, Friendly, Professional, Business, Slack, Polite, Technical. Auto or manual mode. 19 languages supported.', tag: 'Core' },
       { title: 'Live Translation',   desc: 'Real-time subtitles from microphone or system audio. Floating overlay with custom font size, color, and opacity. AI session summary after each call.', tag: 'Real-time' },
       { title: 'Image Translation',  desc: 'Drag-and-drop or paste any image. AI Vision extracts and translates all text — documents, screenshots, menus, slides — and lets you download the result.', tag: 'AI Vision' },
-      { title: 'AI Chat',            desc: 'Full-featured AI chat with image attachments, voice input, custom System Prompts, preset templates, web search, and complete searchable chat history.', tag: 'Assistant' },
+      { title: 'AI Chat',            desc: 'Full-featured AI chat with image attachments, voice input, custom System Prompts, preset templates, web search, native chart responses, and complete searchable chat history.', tag: 'Assistant' },
       { title: 'Voice I/O',          desc: 'Voice input via Web Speech API, OpenAI Whisper, Gemini STT, and Groq fallback. Text-to-Speech uses free-first and premium provider paths.', tag: 'Audio' },
       { title: 'Furigana Support',   desc: 'Automatic furigana overlay on Japanese translations. Essential for learners, BrSE, and anyone working daily with Japanese text.', tag: 'Japanese' },
       { title: 'Chrome Extension',   desc: 'Translate selected text in your browser with Alt+T shortcut, platform-aware hints, and a redesigned two-column popup UI. Works via local server.', tag: 'Browser' },

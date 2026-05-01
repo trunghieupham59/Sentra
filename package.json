@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently -k -n \"VITE,ELECTRON\" -c \"cyan,yellow\" \"npm run dev:vite\" \"npm run dev:electron\"",
     "dev:vite": "vite",
-    "dev:electron": "wait-on tcp:5173 && npm run build:electron && electron dist-electron/main.js",
+    "dev:electron": "wait-on tcp:5173 && npm run build:electron && node scripts/run-electron-dev.mjs",
     "build:electron": "tsc -p tsconfig.electron.json && npm run bundle:preloads",
     "bundle:preloads": "esbuild electron/preload.ts --bundle --platform=node --external:electron --outfile=dist-electron/preload.js && esbuild electron/subtitle-preload.ts --bundle --platform=node --external:electron --outfile=dist-electron/subtitle-preload.js",
     "build": "npm run build:electron && vite build",

@@ -25,6 +25,8 @@
  * With Tavily web search: real-time data at every phase.
  * Without Tavily key: AI-knowledge-only with explicit staleness warnings.
  */
+
+import type { ChatMessageContent } from './chatService'
 import { chatService } from './chatService'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -53,7 +55,13 @@ export interface DeepResearchParams {
   provider: string
   model: string
   question: string
+  images?: DeepResearchImageAttachment[]
   callbacks: DeepResearchCallbacks
+}
+
+export interface DeepResearchImageAttachment {
+  imageBase64: string
+  imageMimeType: string
 }
 
 interface GapAnalysisResult {
@@ -106,6 +114,40 @@ function describeChatFailure(result: ChatServiceResult, fallback: string): strin
   return fallback
 }
 
+function buildResearchContent(text: string, images: DeepResearchImageAttachment[] = []): ChatMessageContent[] {
+  const content: ChatMessageContent[] = images.map((image) => ({
+    type: 'image',
+    imageBase64: image.imageBase64,
+    imageMimeType: image.imageMimeType,
+  }))
+
+  if (text.trim()) {
+    content.push({ type: 'text', text })
+  }
+
+  return content.length > 0 ? content : [{ type: 'text', text }]
+}
+
+function parseStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    .map((item) => item.trim())
+}
+
+function buildSearchQuery(
+  topic: string,
+  question: string,
+  imageContext: string,
+  imageSearchTerms: string[],
+): string {
+  const visualContext = imageSearchTerms.length > 0 ? imageSearchTerms.join(' ') : imageContext
+  return [visualContext, topic, question]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(' ')
+}
+
 // ─── Language rule (prepended to every AI-facing prompt) ─────────────────────
 
 const LANG_RULE = `LANGUAGE RULE — NON-NEGOTIABLE:
@@ -118,16 +160,23 @@ const LANG_RULE = `LANGUAGE RULE — NON-NEGOTIABLE:
 
 // ─── System Prompts (written in English to avoid language bias) ───────────────
 
-const ANALYZE_PROMPT = (date: string) => `${LANG_RULE}You are a research expert. The question was asked at: ${date}.
-Analyze the user's question and identify 3-4 most important aspects to research in depth.
-Return ONLY valid JSON, no other text:
-{"aspects": ["aspect 1", "aspect 2", "aspect 3"]}`
+const ANALYZE_PROMPT = (date: string, hasImages: boolean) => `${LANG_RULE}You are a research expert. The question was asked at: ${date}.
+${hasImages
+    ? `The user attached image(s) as part of the research request. Inspect the image(s), identify visible entities/text/context, and use that visual information when choosing research aspects and search terms.
 
-const RESEARCH_PROMPT = (date: string, aspect: string, question: string, webCtx: string) =>
+`
+    : ''}Analyze the user's question and identify 3-4 most important aspects to research in depth.
+Return ONLY valid JSON, no other text:
+${hasImages
+    ? '{"aspects": ["aspect 1", "aspect 2", "aspect 3"], "imageContext": "concise visual context from the attached image(s)", "searchTerms": ["specific entity or keyword from image 1", "specific entity or keyword from image 2"]}'
+    : '{"aspects": ["aspect 1", "aspect 2", "aspect 3"]}'}`
+
+const RESEARCH_PROMPT = (date: string, aspect: string, question: string, webCtx: string, imageContext: string) =>
   webCtx
     ? `${LANG_RULE}You are an expert analyst. Timestamp: ${date}.
 Original question: ${question}
 Aspect to analyze: ${aspect}
+${imageContext ? `Attached image context: ${imageContext}\n` : ''}
 
 ━━━ REAL-TIME WEB SEARCH RESULTS ━━━
 ${webCtx}
@@ -137,19 +186,15 @@ Analyze the web data above. Cite sources. Note contradictions if any. Prioritize
     : `${LANG_RULE}You are an expert analyst. Timestamp: ${date}.
 Original question: ${question}
 Aspect to analyze: ${aspect}
+${imageContext ? `Attached image context: ${imageContext}\n` : ''}
 
 No web search available — using training data only.
 Please: state your training cutoff clearly, and mark information that MAY HAVE CHANGED since then.`
 
-const GAP_ANALYSIS_PROMPT = (date: string, question: string, allFindings: string) =>
-  `You are a research quality evaluator. Timestamp: ${date}.
-Original question: ${question}
-
-━━━ ALL RESEARCH FINDINGS SO FAR ━━━
-${allFindings}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Evaluate: Is the research above sufficient to answer the original question ACCURATELY and COMPLETELY?
+const GAP_ANALYSIS_PROMPT = (date: string) =>
+  `${LANG_RULE}You are a research quality evaluator. Timestamp: ${date}.
+Evaluate the original question and research findings provided by the user.
+Is the research sufficient to answer the original question ACCURATELY and COMPLETELY?
 - What important information is still missing?
 - Are there any contradictions that need verification?
 - Which aspects need deeper investigation?
@@ -162,21 +207,33 @@ Return ONLY valid JSON:
   "queries": ["specific search query 1", "specific search query 2"]
 }`
 
-const CROSS_REFERENCE_PROMPT = (date: string, question: string, allFindings: string, hadWeb: boolean) =>
+const GAP_ANALYSIS_CONTENT = (question: string, allFindings: string, imageContext: string) =>
+  `Original question: ${question}
+${imageContext ? `Attached image context: ${imageContext}\n` : ''}
+
+━━━ ALL RESEARCH FINDINGS SO FAR ━━━
+${allFindings}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+
+const CROSS_REFERENCE_PROMPT = (date: string, hadWeb: boolean) =>
   `${LANG_RULE}You are a research verification expert. Timestamp: ${date}.
-Original question: ${question}
 ${hadWeb ? 'Data was collected from real-time web search.' : 'Data is from AI training data only.'}
 
-━━━ ALL RESEARCH FINDINGS ━━━
-${allFindings}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Perform cross-reference analysis:
+The user will provide the original question and all research findings.
+Perform cross-reference analysis on those findings:
 1. List points CONFIRMED by multiple sources
 2. List points UNCERTAIN — from only one source or potentially outdated
 3. List points CONTRADICTED across sources and explain
 
 Be concise and well-structured.`
+
+const CROSS_REFERENCE_CONTENT = (question: string, allFindings: string, imageContext: string) =>
+  `Original question: ${question}
+${imageContext ? `Attached image context: ${imageContext}\n` : ''}
+
+━━━ ALL RESEARCH FINDINGS ━━━
+${allFindings}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
 
 const SYNTHESIS_PROMPT = (date: string, hadWeb: boolean) => {
   const note = hadWeb
@@ -204,14 +261,17 @@ const DEFAULT_ASPECTS = [
 // ─── Main pipeline ────────────────────────────────────────────────────────────
 
 export const deepResearchService = {
-  async run({ provider, model, question, callbacks }: DeepResearchParams): Promise<void> {
+  async run({ provider, model, question, images = [], callbacks }: DeepResearchParams): Promise<void> {
     const date = getDate()
     const webAvailable = hasWebSearch()
     const { onStepStart, onStepComplete, onStepError } = callbacks
+    const hasImages = images.length > 0
 
     // Accumulated knowledge base (all findings from all phases)
     const knowledgeBase: Array<{ label: string; content: string }> = []
     let anyWebSearch = false
+    let imageContext = ''
+    let imageSearchTerms: string[] = []
 
     // ── Phase 1: Initial Analysis ─────────────────────────────────────────
     const analyzeMsgId = onStepStart('Phân tích câu hỏi')
@@ -220,8 +280,8 @@ export const deepResearchService = {
     try {
       const result = await chatService.send({
         provider, model,
-        messages: [{ role: 'user', content: [{ type: 'text', text: question }] }],
-        systemPrompt: ANALYZE_PROMPT(date),
+        messages: [{ role: 'user', content: buildResearchContent(question, images) }],
+        systemPrompt: ANALYZE_PROMPT(date, hasImages),
       })
       const reply = getReply(result)
       if (reply) {
@@ -229,7 +289,14 @@ export const deepResearchService = {
         if (m) {
           try {
             const p = JSON.parse(m[0])
-            if (Array.isArray(p.aspects) && p.aspects.length >= 2) aspects = p.aspects.slice(0, 4)
+            const parsedAspects = parseStringArray(p.aspects)
+            if (parsedAspects.length >= 2) aspects = parsedAspects.slice(0, 4)
+            if (hasImages && typeof p.imageContext === 'string') {
+              imageContext = p.imageContext.trim()
+            }
+            if (hasImages) {
+              imageSearchTerms = parseStringArray(p.searchTerms).slice(0, 6)
+            }
           } catch { /* use defaults */ }
         }
       }
@@ -243,20 +310,25 @@ export const deepResearchService = {
       '',
       `**Sẽ nghiên cứu ${aspects.length} khía cạnh, qua nhiều vòng lặp:**`,
       ...aspects.map((a, i) => `${i + 1}. ${a}`),
+      ...(imageContext ? ['', `**Ngữ cảnh ảnh:** ${imageContext}`] : []),
+      ...(imageSearchTerms.length > 0 ? [`**Từ khóa từ ảnh:** ${imageSearchTerms.join(', ')}`] : []),
     ].join('\n')
     onStepComplete(analyzeMsgId, analyzeContent, false)
+    if (imageContext) {
+      knowledgeBase.push({ label: 'Attached image context', content: imageContext })
+    }
 
     // ── Phase 2: First-pass research (Breadth) ────────────────────────────
     for (const aspect of aspects) {
       const msgId = onStepStart(`Vòng 1 — Nghiên cứu: ${aspect}`)
       try {
-        const webCtx = await webSearch(`${aspect} ${question}`)
+        const webCtx = await webSearch(buildSearchQuery(aspect, question, imageContext, imageSearchTerms))
         if (webCtx) anyWebSearch = true
 
         const result = await chatService.send({
           provider, model,
-          messages: [{ role: 'user', content: [{ type: 'text', text: `Analyze this aspect: ${aspect}` }] }],
-          systemPrompt: RESEARCH_PROMPT(date, aspect, question, webCtx),
+          messages: [{ role: 'user', content: buildResearchContent(`Analyze this aspect: ${aspect}`, images) }],
+          systemPrompt: RESEARCH_PROMPT(date, aspect, question, webCtx, imageContext),
         })
         const content = getReply(result) ?? `[Không thể phân tích: ${describeChatFailure(result, 'Lỗi không xác định')}]`
         knowledgeBase.push({ label: aspect, content })
@@ -281,8 +353,8 @@ export const deepResearchService = {
       try {
         const result = await chatService.send({
           provider, model,
-          messages: [{ role: 'user', content: [{ type: 'text', text: 'Evaluate all research findings so far.' }] }],
-          systemPrompt: GAP_ANALYSIS_PROMPT(date, question, allFindings),
+          messages: [{ role: 'user', content: buildResearchContent(GAP_ANALYSIS_CONTENT(question, allFindings, imageContext), images) }],
+          systemPrompt: GAP_ANALYSIS_PROMPT(date),
           bypassLengthCheck: true,
         })
 
@@ -324,13 +396,13 @@ export const deepResearchService = {
         const deepMsgId = onStepStart(`Nghiên cứu sâu: ${gapLabel}`)
 
         try {
-          const webCtx = await webSearch(query)
+          const webCtx = await webSearch(buildSearchQuery(query, question, imageContext, imageSearchTerms))
           if (webCtx) anyWebSearch = true
 
           const result = await chatService.send({
             provider, model,
-            messages: [{ role: 'user', content: [{ type: 'text', text: `Deep dive research: ${gapLabel}` }] }],
-            systemPrompt: RESEARCH_PROMPT(date, gapLabel, question, webCtx),
+            messages: [{ role: 'user', content: buildResearchContent(`Deep dive research: ${gapLabel}`, images) }],
+            systemPrompt: RESEARCH_PROMPT(date, gapLabel, question, webCtx, imageContext),
           })
           const content = getReply(result) ?? `[Không thể nghiên cứu: ${describeChatFailure(result, 'Lỗi không xác định')}]`
           knowledgeBase.push({ label: `[Sâu hơn] ${gapLabel}`, content })
@@ -353,8 +425,8 @@ export const deepResearchService = {
     try {
       const result = await chatService.send({
         provider, model,
-        messages: [{ role: 'user', content: [{ type: 'text', text: 'Cross-reference all research findings.' }] }],
-        systemPrompt: CROSS_REFERENCE_PROMPT(date, question, allFindingsFinal, anyWebSearch),
+        messages: [{ role: 'user', content: buildResearchContent(CROSS_REFERENCE_CONTENT(question, allFindingsFinal, imageContext), images) }],
+        systemPrompt: CROSS_REFERENCE_PROMPT(date, anyWebSearch),
         bypassLengthCheck: true,
       })
       crossContent = getReply(result)
@@ -382,7 +454,11 @@ export const deepResearchService = {
         provider, model,
         messages: [{
           role: 'user',
-          content: [{ type: 'text', text: `Original question: ${question}\n\n${synthContext}` }],
+          content: buildResearchContent([
+            `Original question: ${question}`,
+            imageContext ? `Attached image context: ${imageContext}` : '',
+            synthContext,
+          ].filter(Boolean).join('\n\n'), images),
         }],
         systemPrompt: SYNTHESIS_PROMPT(date, anyWebSearch),
         bypassLengthCheck: true,

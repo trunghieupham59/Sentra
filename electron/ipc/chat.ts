@@ -4,9 +4,17 @@ import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import type { ChatCompletionContentPartImage, ChatCompletionContentPartText, ChatCompletionMessageParam } from 'openai/resources/chat/completions'
 import { type ChatMessage, type MaxOutputTokensRequest, parseChatParams } from './chatValidation'
 import { classifyProviderError, noApiKeyResponse } from './errorUtils'
-import { GEMINI_API_BASE, MAX_CHAT_OUTPUT_TOKENS } from './ipcConstants'
+import {
+  CHAT_IMAGE_EDIT_TIMEOUT_MS,
+  GEMINI_API_BASE,
+  GEMINI_IMAGE_EDIT_MODELS,
+  MAX_CHAT_OUTPUT_TOKENS,
+  MAX_CHAT_REQUEST_CHARS,
+  OPENAI_IMAGE_EDIT_MODEL,
+} from './ipcConstants'
+import { invalidIpcInput, isNonEmptyString, isRecord } from './ipcValidation'
 import { isLocalProvider, LOCAL_AI_PLACEHOLDER_KEY, resolveLocalAiRequestModel } from './localAi'
-import { unknownProviderError } from './providers/types'
+import { isValidProvider, unknownProviderError } from './providers/types'
 import { withRetry } from './retry'
 import { getStoredApiKey } from './storage'
 
@@ -14,8 +22,22 @@ import { getStoredApiKey } from './storage'
 
 const FALLBACK_MODEL_MAX_OUTPUT_TOKENS = 16_384
 const CHAT_STREAM_EVENT = 'chat:stream:event'
+const CHAT_IMAGE_EDIT_SUPPORTED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
+const MAX_CHAT_IMAGE_EDIT_MODEL_ID_CHARS = 200
 
 const geminiOutputLimitCache = new Map<string, number>()
+
+interface ChatImageEditParams {
+  provider: string
+  model: string
+  prompt: string
+  imageBase64: string
+  imageMimeType: string
+}
+
+type ParsedChatImageEditParams =
+  | { ok: true; value: ChatImageEditParams }
+  | { ok: false; response: { success: false; error: string; errorCode?: string } }
 
 type ChatStreamEvent =
   { requestId: string } & ChatStreamEventPayload
@@ -100,6 +122,67 @@ function buildEnforcedSystemPrompt(userPrompt: string): string {
   return `${userPrompt.trim()}
 
 IMPORTANT: You MUST strictly follow the instructions above in every response. Do not deviate, explain or refuse these instructions. Apply them to all messages unconditionally.`
+}
+
+function parseChatImageEditParams(rawParams: unknown): ParsedChatImageEditParams {
+  if (!isRecord(rawParams)) {
+    return { ok: false, response: invalidIpcInput('Chat image edit payload must be an object') }
+  }
+
+  if (!isNonEmptyString(rawParams.provider)) {
+    return { ok: false, response: invalidIpcInput('Provider is required') }
+  }
+  const provider = rawParams.provider.trim()
+  if (!isValidProvider(provider)) {
+    return { ok: false, response: unknownProviderError(provider) }
+  }
+
+  if (!isNonEmptyString(rawParams.model)) {
+    return { ok: false, response: invalidIpcInput('Model is required') }
+  }
+  const model = rawParams.model.trim()
+  if (model.length > MAX_CHAT_IMAGE_EDIT_MODEL_ID_CHARS) {
+    return { ok: false, response: invalidIpcInput('Model is too long') }
+  }
+
+  if (!isNonEmptyString(rawParams.prompt)) {
+    return { ok: false, response: invalidIpcInput('Image edit prompt is required') }
+  }
+  const prompt = rawParams.prompt.trim()
+  if (prompt.length > MAX_CHAT_REQUEST_CHARS) {
+    return {
+      ok: false,
+      response: invalidIpcInput(`Image edit prompt is too long. Maximum is ${MAX_CHAT_REQUEST_CHARS} characters.`),
+    }
+  }
+
+  if (!isNonEmptyString(rawParams.imageBase64)) {
+    return { ok: false, response: invalidIpcInput('No image data provided') }
+  }
+  if (
+    !isNonEmptyString(rawParams.imageMimeType) ||
+    !CHAT_IMAGE_EDIT_SUPPORTED_MIME_TYPES.has(rawParams.imageMimeType)
+  ) {
+    return { ok: false, response: invalidIpcInput('Unsupported image MIME type') }
+  }
+
+  return {
+    ok: true,
+    value: {
+      provider,
+      model,
+      prompt,
+      imageBase64: rawParams.imageBase64,
+      imageMimeType: rawParams.imageMimeType,
+    },
+  }
+}
+
+function buildChatImageEditPrompt(prompt: string): string {
+  return `Edit the attached image according to this user request:
+${prompt.trim()}
+
+Return the edited image as the primary result. Preserve the subject identity, image quality, framing, lighting, and natural details unless the user explicitly asks to change them.`
 }
 
 function buildGeminiChatPayload(messages: ChatMessage[]) {
@@ -572,6 +655,175 @@ async function streamChatWithLocal(
   return text
 }
 
+type ChatImageEditResultPayload = {
+  imageBase64: string
+  imageMimeType: string
+  usedModel: string
+}
+
+function getImageFileNameForMime(mimeType: string): string {
+  const ext = mimeType === 'image/jpeg' ? 'jpg' : mimeType.replace('image/', '')
+  return `chat-image-edit.${ext}`
+}
+
+async function convertRemoteImageUrlToBase64(url: string): Promise<{ imageBase64: string; imageMimeType: string }> {
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error(`OpenAI image edit returned a URL, but downloading it failed (${response.status}).`)
+  }
+
+  const contentType = response.headers.get('content-type') ?? 'image/png'
+  const imageMimeType = contentType.split(';')[0] || 'image/png'
+  const buffer = Buffer.from(await response.arrayBuffer())
+  return { imageBase64: buffer.toString('base64'), imageMimeType }
+}
+
+async function editChatImageWithOpenAI(
+  apiKey: string,
+  _model: string,
+  prompt: string,
+  imageBase64: string,
+  imageMimeType: string,
+): Promise<ChatImageEditResultPayload> {
+  const openaiModule = await import('openai')
+  const OpenAI = openaiModule.default
+  const client = new OpenAI({ apiKey, timeout: CHAT_IMAGE_EDIT_TIMEOUT_MS })
+  const image = await openaiModule.toFile(
+    Buffer.from(imageBase64, 'base64'),
+    getImageFileNameForMime(imageMimeType),
+    { type: imageMimeType },
+  )
+
+  const response = await client.images.edit({
+    model: OPENAI_IMAGE_EDIT_MODEL,
+    image,
+    prompt: buildChatImageEditPrompt(prompt),
+    n: 1,
+    size: 'auto',
+    quality: 'auto',
+  })
+  const result = response.data?.[0]
+
+  if (result?.b64_json) {
+    return {
+      imageBase64: result.b64_json,
+      imageMimeType: 'image/png',
+      usedModel: OPENAI_IMAGE_EDIT_MODEL,
+    }
+  }
+
+  if (result?.url) {
+    const downloaded = await convertRemoteImageUrlToBase64(result.url)
+    return { ...downloaded, usedModel: OPENAI_IMAGE_EDIT_MODEL }
+  }
+
+  throw new Error('OpenAI image edit did not return an image.')
+}
+
+type GeminiInlineDataPart = {
+  text?: string
+  inline_data?: { mime_type?: string; data?: string }
+  inlineData?: { mimeType?: string; data?: string }
+}
+
+function shouldTryNextGeminiImageModel(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
+  return (
+    msg.includes('404') ||
+    msg.includes('not found') ||
+    msg.includes('not supported') ||
+    msg.includes('not available') ||
+    msg.includes('unsupported model')
+  )
+}
+
+async function requestGeminiImageEdit(
+  apiKey: string,
+  imageModel: string,
+  prompt: string,
+  imageBase64: string,
+  imageMimeType: string,
+): Promise<ChatImageEditResultPayload> {
+  const url = `${GEMINI_API_BASE}/models/${imageModel}:generateContent`
+  const body = {
+    contents: [
+      {
+        parts: [
+          { text: buildChatImageEditPrompt(prompt) },
+          {
+            inline_data: {
+              mime_type: imageMimeType,
+              data: imageBase64,
+            },
+          },
+        ],
+      },
+    ],
+    generationConfig: {
+      responseModalities: ['TEXT', 'IMAGE'],
+    },
+  }
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), CHAT_IMAGE_EDIT_TIMEOUT_MS)
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey,
+    },
+    body: JSON.stringify(body),
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timer))
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Gemini image edit failed: ${response.status} ${errorText}`)
+  }
+
+  const json = await response.json() as {
+    candidates?: Array<{ content?: { parts?: GeminiInlineDataPart[] } }>
+  }
+  const parts = json.candidates?.[0]?.content?.parts ?? []
+
+  for (const part of parts) {
+    const inlineData = part.inline_data ?? part.inlineData
+    if (inlineData?.data) {
+      const outputInlineData = inlineData as { mime_type?: string; mimeType?: string; data: string }
+      const outputMimeType = outputInlineData.mime_type ?? outputInlineData.mimeType
+      return {
+        imageBase64: outputInlineData.data,
+        imageMimeType: outputMimeType ?? 'image/png',
+        usedModel: imageModel,
+      }
+    }
+  }
+
+  const text = parts.map((part) => part.text).filter(Boolean).join('\n').trim()
+  throw new Error(text ? `Gemini returned text but no edited image: ${text}` : 'Gemini image edit did not return an image.')
+}
+
+async function editChatImageWithGemini(
+  apiKey: string,
+  _model: string,
+  prompt: string,
+  imageBase64: string,
+  imageMimeType: string,
+): Promise<ChatImageEditResultPayload> {
+  let lastError: unknown
+
+  for (const imageModel of GEMINI_IMAGE_EDIT_MODELS) {
+    try {
+      return await requestGeminiImageEdit(apiKey, imageModel, prompt, imageBase64, imageMimeType)
+    } catch (error) {
+      lastError = error
+      if (!shouldTryNextGeminiImageModel(error)) break
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(String(lastError))
+}
+
 // ── Provider registry — DUP-04 / DUP-06 ──────────────────────────────────────
 // Registry eliminates the switch/case dispatch block and makes the provider
 // contract explicit. Per-provider functions remain separate (each SDK is different).
@@ -589,6 +841,14 @@ type ChatStreamFn = (
   onToken: ChatStreamTokenHandler,
 ) => Promise<string>
 
+type ChatImageEditFn = (
+  apiKey: string,
+  model: string,
+  prompt: string,
+  imageBase64: string,
+  imageMimeType: string,
+) => Promise<ChatImageEditResultPayload>
+
 const CHAT_PROVIDERS: Record<string, ChatFn> = {
   gemini: chatWithGemini,
   claude: chatWithClaude,
@@ -601,6 +861,11 @@ const CHAT_STREAM_PROVIDERS: Record<string, ChatStreamFn> = {
   claude: streamChatWithClaude,
   openai: streamChatWithOpenAI,
   local: streamChatWithLocal,
+}
+
+const CHAT_IMAGE_EDIT_PROVIDERS: Record<string, ChatImageEditFn> = {
+  gemini: editChatImageWithGemini,
+  openai: editChatImageWithOpenAI,
 }
 
 function getProviderCredential(provider: string) {
@@ -623,6 +888,7 @@ function sendChatStreamEvent(event: IpcMainInvokeEvent, payload: ChatStreamEvent
  * Handlers registered:
  *  - `chat:send` — Send a conversational message (with optional image attachments
  *                  and system prompt); returns `{ success, reply?, error?, errorCode? }`
+ *  - `chat:image-edit` — Edit an attached image and return a base64 image payload.
  *
  * All handlers:
  *  - Read the API key from the OS Keychain via `getStoredApiKey` (never from renderer).
@@ -660,6 +926,38 @@ export function registerChatHandlers(ipcMain: IpcMain) {
       return { success: true, reply }
     } catch (error: unknown) {
       console.error(`Chat error with ${provider}:`, error)
+      return toChatFailure(error)
+    }
+  })
+
+  ipcMain.handle('chat:image-edit', async (_event, rawParams: unknown) => {
+    const parsed = parseChatImageEditParams(rawParams)
+    if (!parsed.ok) return parsed.response
+    const { provider, model, prompt, imageBase64, imageMimeType } = parsed.value
+
+    const editFn = CHAT_IMAGE_EDIT_PROVIDERS[provider]
+    if (!editFn) {
+      return {
+        success: false,
+        error: 'Image editing is currently available with Gemini or OpenAI. Switch provider to edit images directly.',
+        errorCode: 'NO_IMAGE_EDIT',
+      }
+    }
+
+    const apiKey = getProviderCredential(provider)
+    if (!apiKey) return noApiKeyResponse(provider)
+
+    try {
+      const result = await withRetry(() => editFn(apiKey, model, prompt, imageBase64, imageMimeType))
+      return {
+        success: true,
+        imageBase64: result.imageBase64,
+        imageMimeType: result.imageMimeType,
+        usedProvider: provider,
+        usedModel: result.usedModel,
+      }
+    } catch (error: unknown) {
+      console.error(`Chat image edit error with ${provider}:`, error)
       return toChatFailure(error)
     }
   })

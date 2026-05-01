@@ -1,9 +1,25 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { deepResearchService } from '../../services/deepResearchService'
 import { useAppStore } from '../../store/useAppStore'
 import type { ChatResult, ChatStreamEvent } from '../../types'
 import { DEFAULT_CHAT_NEW_SESSION_SHORTCUT, DEFAULT_CHAT_SEND_SHORTCUT } from '../../utils/keyboardShortcuts'
 import { ChatPage } from '../ChatPage'
+
+vi.mock('../../utils/imageUtils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../utils/imageUtils')>()
+  return {
+    ...actual,
+    resizeImageFile: vi.fn().mockResolvedValue({
+      base64: 'research-image-base64',
+      mimeType: 'image/png',
+      previewUrl: 'data:image/png;base64,research-image-base64',
+      width: 100,
+      height: 100,
+      fileName: 'research.png',
+    }),
+  }
+})
 
 function mockStreamingChat() {
   let listener: ((event: ChatStreamEvent) => void) | null = null
@@ -41,6 +57,7 @@ beforeEach(() => {
       keyStatus: { gemini: false, claude: false, openai: false, local: false },
       selectedProvider: 'gemini',
       selectedModels: { gemini: 'gemini-2.0-flash', claude: 'claude-3-5-haiku-20241022', openai: 'gpt-4o', local: 'local-auto' },
+      locale: 'en',
       chatSystemPrompt: '',
       systemPromptPresets: [],
       chatSendShortcut: DEFAULT_CHAT_SEND_SHORTCUT,
@@ -49,6 +66,8 @@ beforeEach(() => {
   })
   vi.mocked(window.api.chatStream).mockReset()
   vi.mocked(window.api.chatStream).mockResolvedValue({ success: false })
+  vi.mocked(window.api.editChatImage!).mockReset()
+  vi.mocked(window.api.editChatImage!).mockResolvedValue({ success: false })
   vi.mocked(window.api.onChatStreamEvent).mockReset()
   vi.mocked(window.api.onChatStreamEvent).mockReturnValue(() => {})
 })
@@ -194,6 +213,171 @@ describe('ChatPage', () => {
     fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true })
 
     await waitFor(() => expect(window.api.chatStream).toHaveBeenCalled())
+  })
+
+  it('passes attached images through Deep Research mode', async () => {
+    act(() => {
+      useAppStore.setState({ keyStatus: { gemini: true, claude: false, openai: false, local: false } })
+    })
+    const runSpy = vi.spyOn(deepResearchService, 'run').mockImplementation(async ({ callbacks }) => {
+      const msgId = callbacks.onStepStart('Tổng hợp cuối cùng')
+      callbacks.onStepComplete(msgId, 'Research done', true)
+    })
+
+    try {
+      render(<ChatPage />)
+
+      fireEvent.click(screen.getByTitle(/enable deep research mode/i))
+
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+      fireEvent.change(fileInput, {
+        target: { files: [new File(['fake'], 'research.png', { type: 'image/png' })] },
+      })
+      await waitFor(() => expect(screen.getByAltText('research.png')).toBeInTheDocument())
+
+      const textarea = screen.getByPlaceholderText(/type a message/i)
+      fireEvent.change(textarea, { target: { value: 'Research this image' } })
+      fireEvent.keyDown(textarea, { key: 'Enter' })
+
+      await waitFor(() => expect(runSpy).toHaveBeenCalled())
+      expect(runSpy).toHaveBeenCalledWith(expect.objectContaining({
+        question: 'Research this image',
+        images: [{
+          imageBase64: 'research-image-base64',
+          imageMimeType: 'image/png',
+        }],
+      }))
+
+      const userMessage = useAppStore.getState().chatSessions[0].messages.find((m) => m.role === 'user')
+      expect(userMessage?.content).toEqual([
+        expect.objectContaining({
+          type: 'image',
+          imageBase64: 'research-image-base64',
+          imageMimeType: 'image/png',
+        }),
+        expect.objectContaining({ type: 'text', text: 'Research this image' }),
+      ])
+    } finally {
+      runSpy.mockRestore()
+    }
+  })
+
+  it('routes image edit prompts to the image-edit API and renders the generated image', async () => {
+    act(() => {
+      useAppStore.setState({ keyStatus: { gemini: true, claude: false, openai: false, local: false } })
+    })
+    vi.mocked(window.api.editChatImage!).mockResolvedValue({
+      success: true,
+      imageBase64: 'edited-image-base64',
+      imageMimeType: 'image/png',
+      usedProvider: 'gemini',
+      usedModel: 'gemini-2.5-flash-image',
+    })
+
+    render(<ChatPage />)
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(fileInput, {
+      target: { files: [new File(['fake'], 'research.png', { type: 'image/png' })] },
+    })
+    await waitFor(() => expect(screen.getByAltText('research.png')).toBeInTheDocument())
+
+    const textarea = screen.getByPlaceholderText(/type a message/i)
+    fireEvent.change(textarea, { target: { value: 'Sửa thành phông nền màu trắng' } })
+    fireEvent.keyDown(textarea, { key: 'Enter' })
+
+    await waitFor(() => expect(window.api.editChatImage).toHaveBeenCalledWith(expect.objectContaining({
+      provider: 'gemini',
+      model: 'gemini-2.0-flash',
+      prompt: 'Sửa thành phông nền màu trắng',
+      imageBase64: 'research-image-base64',
+      imageMimeType: 'image/png',
+    })))
+    expect(window.api.chatStream).not.toHaveBeenCalled()
+
+    await waitFor(() => {
+      const assistant = useAppStore.getState().chatSessions[0].messages.find((m) => m.role === 'assistant')
+      expect(assistant?.isLoading).toBe(false)
+      expect(assistant?.content).toEqual([
+        expect.objectContaining({
+          type: 'image',
+          imageBase64: 'edited-image-base64',
+          imageMimeType: 'image/png',
+          imagePreviewUrl: 'data:image/png;base64,edited-image-base64',
+        }),
+        expect.objectContaining({ type: 'text', text: 'Edited image' }),
+      ])
+    })
+    const editedImage = screen.getByAltText(/edited-image-/i)
+    expect(editedImage).toBeInTheDocument()
+
+    fireEvent.click(editedImage)
+    expect(screen.getByRole('dialog', { name: /image preview/i })).toBeInTheDocument()
+    expect(screen.getAllByAltText(/edited-image-/i).length).toBe(2)
+
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: /image preview/i })).not.toBeInTheDocument()
+    })
+  })
+
+  it('shows a reload-required error when the Electron preload bridge is stale', async () => {
+    act(() => {
+      useAppStore.setState({ keyStatus: { gemini: true, claude: false, openai: false, local: false } })
+    })
+    const originalEditChatImage = window.api.editChatImage
+    // biome-ignore lint/suspicious/noExplicitAny: simulates a running app with an older preload bundle
+    ;(window.api as any).editChatImage = undefined
+
+    try {
+      render(<ChatPage />)
+
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+      fireEvent.change(fileInput, {
+        target: { files: [new File(['fake'], 'research.png', { type: 'image/png' })] },
+      })
+      await waitFor(() => expect(screen.getByAltText('research.png')).toBeInTheDocument())
+
+      const textarea = screen.getByPlaceholderText(/type a message/i)
+      fireEvent.change(textarea, { target: { value: 'Thay nền trắng cho ảnh' } })
+      fireEvent.keyDown(textarea, { key: 'Enter' })
+
+      await waitFor(() => expect(screen.getByText(/restart/i)).toBeInTheDocument())
+      expect(window.api.chatStream).not.toHaveBeenCalled()
+    } finally {
+      window.api.editChatImage = originalEditChatImage
+    }
+  })
+
+  it('localizes typed image-edit timeout errors in Vietnamese', async () => {
+    act(() => {
+      useAppStore.setState({
+        locale: 'vi',
+        keyStatus: { gemini: true, claude: false, openai: false, local: false },
+      })
+    })
+    vi.mocked(window.api.editChatImage!).mockResolvedValue({
+      success: false,
+      error: 'Chat failed: This operation was aborted',
+      errorCode: 'TIMEOUT',
+    })
+
+    render(<ChatPage />)
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(fileInput, {
+      target: { files: [new File(['fake'], 'research.png', { type: 'image/png' })] },
+    })
+    await waitFor(() => expect(screen.getByAltText('research.png')).toBeInTheDocument())
+
+    const textarea = screen.getByRole('textbox')
+    fireEvent.change(textarea, { target: { value: 'Thay nền ảnh thành màu trắng' } })
+    fireEvent.keyDown(textarea, { key: 'Enter' })
+
+    await waitFor(() => {
+      expect(screen.getByText('Yêu cầu mất quá lâu và đã bị hủy. Vui lòng thử lại.')).toBeInTheDocument()
+    })
+    expect(screen.queryByText(/This operation was aborted/i)).not.toBeInTheDocument()
   })
 
   it('streams text into the last assistant message when regenerating', async () => {

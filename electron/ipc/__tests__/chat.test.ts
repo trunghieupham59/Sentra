@@ -380,6 +380,151 @@ describe('registerChatHandlers — streaming', () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
+describe('registerChatHandlers — image editing', () => {
+  let invoke: ReturnType<typeof buildMockIpcMain>['invoke']
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(getStoredApiKey).mockReturnValue('fake-key')
+    const mock = buildMockIpcMain()
+    // biome-ignore lint/suspicious/noExplicitAny: mock IpcMain
+    registerChatHandlers(mock.ipcMain as any)
+    invoke = mock.invoke
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('uses Gemini image edit and returns the generated image payload', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        candidates: [{
+          content: {
+            parts: [{
+              inlineData: {
+                mimeType: 'image/png',
+                data: 'edited-base64',
+              },
+            }],
+          },
+        }],
+      }),
+    })))
+
+    const result = await invoke('chat:image-edit', {
+      provider: 'gemini',
+      model: 'gemini-2.0-flash',
+      prompt: 'Sửa thành phông nền màu trắng',
+      imageBase64: 'source-base64',
+      imageMimeType: 'image/png',
+    })
+
+    expect(result).toEqual({
+      success: true,
+      imageBase64: 'edited-base64',
+      imageMimeType: 'image/png',
+      usedProvider: 'gemini',
+      usedModel: 'gemini-3.1-flash-image-preview',
+    })
+    expect(fetch).toHaveBeenCalledWith(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': 'fake-key',
+        },
+      }),
+    )
+  })
+
+  it('falls back to Gemini 2.5 image model when the primary image model is unavailable', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        text: async () => 'model not found',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          candidates: [{
+            content: {
+              parts: [{
+                inline_data: {
+                  mime_type: 'image/png',
+                  data: 'fallback-edited-base64',
+                },
+              }],
+            },
+          }],
+        }),
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await invoke('chat:image-edit', {
+      provider: 'gemini',
+      model: 'gemini-2.0-flash',
+      prompt: 'Sửa thành phông nền màu trắng',
+      imageBase64: 'source-base64',
+      imageMimeType: 'image/png',
+    })
+
+    expect(result).toEqual({
+      success: true,
+      imageBase64: 'fallback-edited-base64',
+      imageMimeType: 'image/png',
+      usedProvider: 'gemini',
+      usedModel: 'gemini-2.5-flash-image',
+    })
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent',
+      expect.any(Object),
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent',
+      expect.any(Object),
+    )
+  })
+
+  it('returns TIMEOUT when Gemini image editing is aborted', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      throw new Error('This operation was aborted')
+    }))
+
+    const result = await invoke('chat:image-edit', {
+      provider: 'gemini',
+      model: 'gemini-2.0-flash',
+      prompt: 'Sửa thành phông nền màu trắng',
+      imageBase64: 'source-base64',
+      imageMimeType: 'image/png',
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.errorCode).toBe('TIMEOUT')
+    expect(result.error).toContain('timed out')
+  })
+
+  it('returns a typed error for providers that cannot return edited images', async () => {
+    const result = await invoke('chat:image-edit', {
+      provider: 'claude',
+      model: 'claude-3-5-sonnet-20241022',
+      prompt: 'Change the background',
+      imageBase64: 'source-base64',
+      imageMimeType: 'image/png',
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.errorCode).toBe('NO_IMAGE_EDIT')
+    expect(result.error).toContain('Gemini or OpenAI')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
 describe('registerChatHandlers — error code categorization', () => {
   let invoke: ReturnType<typeof buildMockIpcMain>['invoke']
 

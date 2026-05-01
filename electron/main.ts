@@ -21,8 +21,9 @@ import { registerWebSearchHandlers } from './ipc/webSearch'
 // Allow audio autoplay after async operations (TTS API calls lose user-gesture context)
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 
-// Suppress macOS Metal overlay mailbox errors (SharedImageManager / Skia buffer queue bug in Chromium)
+// Suppress macOS Metal/Skia mailbox noise from Chromium's GPU compositor.
 if (process.platform === 'darwin') {
+  app.disableHardwareAcceleration()
   app.commandLine.appendSwitch('disable-features', 'UseSkiaRenderer')
 }
 
@@ -33,10 +34,7 @@ if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
   app.on('second-instance', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore()
-      mainWindow.focus()
-    }
+    showMainWindow({ focus: true })
   })
 }
 
@@ -53,6 +51,14 @@ const QUICK_CHAT_WIDTH = 860
 const QUICK_CHAT_HEIGHT = 540
 
 let mainWindow: BrowserWindow | null = null
+
+function showMainWindow(options: { focus?: boolean } = {}) {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.webContents.setZoomLevel(0)
+  mainWindow.show()
+  if (options.focus) mainWindow.focus()
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -76,17 +82,25 @@ function createWindow() {
       : path.join(__dirname, '..', 'build', 'icon.png'),
   })
 
+  mainWindow.once('ready-to-show', () => {
+    showMainWindow()
+  })
+
+  mainWindow.webContents.once('did-finish-load', () => {
+    if (!mainWindow?.isVisible()) showMainWindow()
+  })
+
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    console.error('[mainWindow] Failed to load renderer:', { errorCode, errorDescription, validatedURL })
+    showMainWindow({ focus: true })
+  })
+
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173')
     mainWindow.webContents.openDevTools()
   } else {
     mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'))
   }
-
-  mainWindow.once('ready-to-show', () => {
-    mainWindow?.webContents.setZoomLevel(0)
-    mainWindow?.show()
-  })
 
   // Disable default Cmd+=/Cmd+- zoom shortcuts
   mainWindow.webContents.on('before-input-event', (event, input) => {
