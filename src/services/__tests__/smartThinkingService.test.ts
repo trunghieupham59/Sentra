@@ -19,7 +19,7 @@ describe('smartThinkingService', () => {
     window.api.onChatStreamEvent = originalOnChatStreamEvent
   })
 
-  it('keeps the original question as the search intent and only appends the planned query as context', async () => {
+  it('keeps overlapping planned web queries concise without dropping answer focus', async () => {
     const classifierReply = JSON.stringify({
       needs_web: true,
       query: 'current leadership roles example agency',
@@ -87,15 +87,15 @@ describe('smartThinkingService', () => {
 
     expect(webSearchMock).toHaveBeenCalledWith(expect.objectContaining({
       maxResults: 8,
-      query: expect.stringContaining('Who currently holds the senior leadership roles at the example agency?'),
+      query: 'current leadership roles example agency',
     }))
-    expect(webSearchMock.mock.calls[0][0].query).toContain('current leadership roles example agency')
-    expect(callbacks.onStepStart).toHaveBeenCalledWith(expect.stringContaining('Search Who currently holds'))
+    expect(callbacks.onStepStart).toHaveBeenCalledWith('Search current leadership roles example agency')
     expect(callbacks.onStepComplete).toHaveBeenCalledWith('step-1', expect.stringContaining('**Sources:**'))
 
     const finalCall = vi.mocked(window.api.chat).mock.calls[1][0]
     const finalPrompt = finalCall.systemPrompt ?? ''
     expect(finalPrompt).toContain('Answer focus from the routing step: Identify the current people')
+    expect(finalPrompt).toContain('Do not invent or complete facts')
     expect(finalPrompt).toContain('Evaluate source credibility')
     expect(finalPrompt).toContain('Answer the exact question')
     expect(callbacks.onAnswerComplete).toHaveBeenCalledWith(
@@ -180,7 +180,7 @@ describe('smartThinkingService', () => {
     expect(classifierCall.bypassLengthCheck).toBe(true)
 
     expect(webSearchMock).toHaveBeenCalledWith(expect.objectContaining({
-      query: expect.stringContaining('Tô Lâm Tổng Bí thư Việt Nam hiện nay'),
+      query: 'Tô Lâm Tổng Bí thư Việt Nam hiện nay',
     }))
     expect(callbacks.onStepComplete).toHaveBeenCalledWith(
       'step-1',
@@ -190,5 +190,135 @@ describe('smartThinkingService', () => {
       'step-1',
       expect.stringContaining('Search is needed.'),
     )
+  })
+
+  it('uses the classifier query as canonical search input and applies generic source grounding', async () => {
+    const classifierReply = JSON.stringify({
+      needs_web: true,
+      query: 'example policy notice exact wording',
+      reason: 'The user asks for source-backed wording.',
+      answer_focus: 'Find the exact wording in retrieved source material.',
+      source_guidance: 'Prefer primary source pages that contain the requested wording.',
+    })
+    vi.mocked(window.api.chat)
+      .mockResolvedValueOnce({ success: true, reply: classifierReply })
+      .mockResolvedValueOnce({ success: true, reply: 'The retrieved snippet confirms only part of the wording [1].' })
+
+    const webSearchMock = vi.fn().mockResolvedValue({
+      success: true,
+      results: [{
+        title: 'Example Policy Notice',
+        url: 'https://docs.example.com/policy-notice',
+        content: 'A source snippet with only partial notice wording.',
+        score: 0.95,
+      }],
+    })
+    window.api.webSearch = webSearchMock
+
+    const callbacks = {
+      onStepStart: vi.fn(() => 'step-1'),
+      onStepComplete: vi.fn(),
+      onStepError: vi.fn(),
+      onAnswerStart: vi.fn(() => 'answer-1'),
+      onAnswerToken: vi.fn(),
+      onAnswerComplete: vi.fn(),
+      onAnswerError: vi.fn(),
+    }
+
+    await smartThinkingService.run({
+      provider: 'gemini',
+      model: 'gemini-2.0-flash',
+      question: 'show the exact wording of the example policy notice',
+      messages: [{
+        role: 'user',
+        content: [{ type: 'text', text: 'show the exact wording of the example policy notice' }],
+      }],
+      uiText: {
+        webSearchStepLabelPrefix: 'Search',
+        webSearchSummaryTitle: 'Summary',
+        webSearchDefaultReason: 'Search is needed.',
+        webSearchSourcesTitle: 'Sources',
+        webSearchNoSources: 'No sources',
+        webSearchNoResults: 'No matching web results.',
+        webSearchErrorFallback: 'Search failed',
+        noResponseError: 'No response',
+        unknownError: 'Unknown error',
+      },
+      callbacks,
+    })
+
+    expect(webSearchMock).toHaveBeenCalledWith(expect.objectContaining({
+      query: 'example policy notice exact wording',
+    }))
+    expect(callbacks.onStepStart).toHaveBeenCalledWith('Search example policy notice exact wording')
+
+    const finalCall = vi.mocked(window.api.chat).mock.calls[1][0]
+    const finalPrompt = finalCall.systemPrompt ?? ''
+    expect(finalPrompt).toContain('requested answer depends on exact wording')
+    expect(finalPrompt).toContain('If the retrieved results are snippets or incomplete')
+    expect(finalPrompt).not.toContain('Verbatim-content guard')
+  })
+
+  it('applies the Smart Thinking contract even when web search is not needed', async () => {
+    const classifierReply = JSON.stringify({
+      needs_web: false,
+      query: '',
+      reason: 'The answer can be reasoned from the current conversation.',
+      answer_focus: 'Provide a practical decision framework.',
+      source_guidance: '',
+    })
+    vi.mocked(window.api.chat)
+      .mockResolvedValueOnce({ success: true, reply: classifierReply })
+      .mockResolvedValueOnce({ success: true, reply: 'Use the option with the best risk-adjusted payoff.' })
+
+    const callbacks = {
+      onStepStart: vi.fn(() => 'step-1'),
+      onStepComplete: vi.fn(),
+      onStepError: vi.fn(),
+      onAnswerStart: vi.fn(() => 'answer-1'),
+      onAnswerToken: vi.fn(),
+      onAnswerComplete: vi.fn(),
+      onAnswerError: vi.fn(),
+    }
+
+    await smartThinkingService.run({
+      provider: 'gemini',
+      model: 'gemini-2.0-flash',
+      question: 'How should I decide between these two implementation options?',
+      messages: [{
+        role: 'user',
+        content: [{ type: 'text', text: 'How should I decide between these two implementation options?' }],
+      }],
+      uiText: {
+        webSearchStepLabelPrefix: 'Search',
+        webSearchSummaryTitle: 'Summary',
+        webSearchDefaultReason: 'Search is needed.',
+        webSearchSourcesTitle: 'Sources',
+        webSearchNoSources: 'No sources',
+        webSearchNoResults: 'No matching web results.',
+        webSearchErrorFallback: 'Search failed',
+        noResponseError: 'No response',
+        unknownError: 'Unknown error',
+      },
+      callbacks,
+    })
+
+    expect(window.api.webSearch).not.toHaveBeenCalled()
+    expect(callbacks.onStepStart).not.toHaveBeenCalled()
+
+    const classifierCall = vi.mocked(window.api.chat).mock.calls[0][0]
+    expect(classifierCall.systemPrompt).toContain('Identify the real problem')
+    expect(classifierCall.systemPrompt).toContain('external, source-specific, or verifiable facts')
+
+    const finalCall = vi.mocked(window.api.chat).mock.calls[1][0]
+    const finalPrompt = finalCall.systemPrompt ?? ''
+    expect(finalPrompt).toContain('You are Smart Thinking')
+    expect(finalPrompt).toContain('Find the real problem')
+    expect(finalPrompt).toContain('Trace root causes')
+    expect(finalPrompt).toContain('Challenge weak assumptions')
+    expect(finalPrompt).toContain('multiple perspectives')
+    expect(finalPrompt).toContain("Occam's razor")
+    expect(finalPrompt).toContain('feedback loops')
+    expect(finalPrompt).toContain('Scale depth to the task')
   })
 })

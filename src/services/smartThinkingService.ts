@@ -1,33 +1,23 @@
 /**
- * Smart Thinking Service — automatic, AI-decides-when-to-search.
+ * Smart Thinking Service — structured reasoning with optional web grounding.
  *
  * This is the DEFAULT path for normal chat (text-only, not Deep Research).
- * The user does NOT toggle it on or off — every message just runs through here,
- * and the AI itself decides whether a web search is needed.
+ * The user does NOT toggle it on or off — every message runs through a
+ * disciplined thinking contract, and the AI decides whether external evidence
+ * is needed before answering.
  *
  * Pipeline:
- *   Step 1 — Classify (one cheap call, JSON output):
- *     AI looks at the latest user message + recent context, returns
- *     { needs_web, query, reason }.
- *
- *     Heuristics that trigger needs_web=true:
- *       • Time-sensitive: prices, weather, news, sports, "today/now/this week"
- *       • Year/date that may be after training cutoff (e.g. 2025+)
- *       • Specific real-world facts: rankings, statistics, releases, version numbers
- *       • Brand-new products, people, terms
- *       • Verifying claims, recent events
- *
- *     Should NOT trigger: pure logic, code, math, opinions, general explanations,
- *     anything the model already knows confidently.
+ *   Step 1 — Route and plan:
+ *     AI reads the latest message plus recent context, identifies the real
+ *     problem, assumptions, uncertainty, and whether web evidence is required.
  *
  *   Step 2a — needs_web=true:
- *     Run ONE web search (existing webSearch IPC, multi-provider with Jina fallback).
- *     Show a small collapsible search step bubble with the sources found.
- *     Stream the final answer with web results injected into the system prompt.
+ *     Run ONE canonical web search (existing webSearch IPC, multi-provider
+ *     fallback). The final answer is source-grounded and cites result indexes.
  *
  *   Step 2b — needs_web=false:
- *     Skip the step bubble entirely; just stream a normal answer using full
- *     conversation history. Indistinguishable from a plain chat reply.
+ *     Answer from the conversation and model knowledge under the same Smart
+ *     Thinking contract.
  *
  * Compared to Deep Research:
  *   • 1–2 AI calls (vs 6–10+)
@@ -85,7 +75,7 @@ export interface SmartThinkingParams {
   /**
    * Full IPC-shaped conversation history (including the latest user message).
    * Used for the FINAL streaming answer and the routing classifier so
-   * multi-turn references such as "this news" or "tin này" keep their target.
+   * multi-turn references keep their target.
    */
   messages: IpcChatMessage[]
   systemPrompt?: string
@@ -136,14 +126,11 @@ function normalizeWhitespace(value: string): string {
 function composeSearchQuery(question: string, plannedQuery: string): string {
   const normalizedQuestion = normalizeWhitespace(question)
   const normalizedPlan = normalizeWhitespace(plannedQuery)
-  if (!normalizedPlan) return normalizedQuestion.slice(0, 200)
+  return (normalizedPlan || normalizedQuestion).slice(0, 200)
+}
 
-  const lowerQuestion = normalizedQuestion.toLowerCase()
-  const lowerPlan = normalizedPlan.toLowerCase()
-  const query = lowerQuestion.includes(lowerPlan)
-    ? normalizedQuestion
-    : `${normalizedQuestion} ${normalizedPlan}`
-  return query.slice(0, 200)
+function combineSystemPrompt(basePrompt: string, userSystemPrompt?: string): string {
+  return userSystemPrompt ? `${userSystemPrompt}\n\n---\n\n${basePrompt}` : basePrompt
 }
 
 function messageText(message: IpcChatMessage): string {
@@ -188,7 +175,7 @@ function formatClassifierContext(messages: IpcChatMessage[], fallbackQuestion: s
  * line that contains one of the known section titles to the end of the message.
  *
  * Recognised triggers (case-insensitive):
- *   - The exact localised sources title (e.g. "Nguồn tìm được", "Sources found")
+ *   - The exact localised sources title passed by the UI
  *   - English fallbacks: "Sources", "References", "Citations"
  *   - Lines that start with "[1]" / "[2]" markdown reference style at the very end
  */
@@ -200,10 +187,6 @@ function stripTrailingSourcesSection(text: string, localizedTitle: string): stri
     'Sources',
     'References',
     'Citations',
-    'Nguồn tìm được',
-    'Nguồn tham khảo',
-    '見つかったソース',
-    'ソース',
   ]
     .map((t) => t.trim())
     .filter(Boolean)
@@ -277,10 +260,34 @@ async function runWebSearch(query: string, uiText: SmartThinkingUiText): Promise
 
 // ─── Prompts (English to keep classifier output stable) ──────────────────────
 
+const SMART_THINKING_ANSWER_PROMPT = (date: string) =>
+  `You are Smart Thinking, a disciplined reasoning system. Current time: ${date}.
+
+Core operating contract:
+  • Find the real problem behind the user's wording before solving the surface request.
+  • Trace root causes instead of treating symptoms as the whole problem.
+  • Break complex problems into parts, constraints, causes, tradeoffs, and decision criteria.
+  • Evaluate information quality, uncertainty, assumptions, and missing evidence.
+  • Challenge weak assumptions instead of accepting them silently.
+  • Consider multiple perspectives, including credible counterarguments.
+  • Synthesize a coherent answer from the available evidence and the conversation context.
+  • Apply useful mental models when they genuinely improve the answer: systems thinking, inversion, Pareto prioritization, Occam's razor, and probabilistic reasoning.
+  • Create practical next steps, options, experiments, and feedback loops when the user is solving a problem or making a decision.
+  • Scale depth to the task: be concise for simple requests and more structured for complex, ambiguous, or high-impact questions.
+  • State assumptions or uncertainty when they materially affect the answer.
+  • Reply in the same language as the user's latest message unless the user asks otherwise.
+
+Do not expose a long hidden reasoning trace. Give the user the conclusions, key rationale, tradeoffs, and next actions that matter.`
+
 const CLASSIFY_PROMPT = (date: string) =>
-  `You are a smart routing and search-planning classifier. Current time: ${date}.
-Decide whether the user's latest question REQUIRES a real-time web search to answer accurately.
-Before deciding, identify the exact answer target: who, what, when, where, how many, comparison, or explanation.
+  `You are the routing and evidence-planning stage for Smart Thinking. Current time: ${date}.
+Decide whether the user's latest message requires web evidence before the final answer.
+
+Think internally with this process:
+  • Identify the real problem and requested answer target, not just surface keywords.
+  • Identify assumptions, uncertainty, and missing information.
+  • Decide whether the answer depends on current, external, source-specific, or verifiable facts.
+  • If web evidence is needed, produce one canonical, self-contained query that resolves follow-up references from recent context.
 
 Return needs_web = TRUE when an accurate answer depends on external information that can change over time,
 recent or real-time facts, specific published facts, or verification against current sources.
@@ -296,9 +303,9 @@ Query rules when needs_web=true:
   • Preserve the user's exact intent and requested answer target.
   • Keep the key entity, relationship, requested attribute, and time qualifier.
   • Do not replace the requested attribute with a nearby topic.
-  • Resolve pronouns and follow-up references from recent conversation context.
-  • If the latest question says "this", "that", "tin này", "việc này", etc.,
-    make the query about the concrete topic or claim referenced earlier.
+  • Resolve any follow-up reference from recent conversation context and make
+    the query about the concrete topic or claim referenced earlier.
+  • Prefer a concise canonical query over repeating the user's full sentence.
   • State what source quality is needed in source_guidance.
 
 Return ONLY valid JSON, no other text:
@@ -321,7 +328,7 @@ const WEB_AUGMENTED_PROMPT_PREFIX = (
   const sourceGuidance = options.sourceGuidance?.trim()
   const sourcesTitle = options.sourcesTitle.trim()
 
-  return `${userSystemPrompt ? `${userSystemPrompt}\n\n---\n\n` : ''}You are a helpful assistant. Current time: ${date}.
+  return combineSystemPrompt(`${SMART_THINKING_ANSWER_PROMPT(date)}
 
 I performed a web search for the user's latest message. Use these REAL-TIME results as the primary source — they are more recent than your training data:
 
@@ -332,13 +339,15 @@ ${webContext}
 ${answerFocus ? `Answer focus from the routing step: ${answerFocus}\n` : ''}${sourceGuidance ? `Source-quality guidance: ${sourceGuidance}\n` : ''}
 Instructions:
   • Answer the exact question the user asked. If they ask "who", give names/people; if they ask "what", give entities or facts; do not answer only a nearby topic.
+  • Do not invent or complete facts, names, wording, dates, or quoted/source text that are absent from the WEB SEARCH RESULTS.
+  • If the requested answer depends on exact wording or complete source text, use only text that appears in the WEB SEARCH RESULTS. If the retrieved results are snippets or incomplete, say what cannot be verified from the retrieved results.
   • Evaluate source credibility from each result's URL, publisher, title, and content. Prefer primary or official sources when the topic needs them.
   • For current public roles, leadership positions, laws, prices, releases, and other time-sensitive facts, include the effective "as of" date when useful.
   • Prioritize the web data over your training knowledge when they conflict.
   • Cite sources inline using [1], [2], etc. matching the numbered results above.
   • DO NOT add a "${sourcesTitle}" / "Sources" / "References" section at the end. Do NOT list raw URLs at the end. The UI will append a clean source list automatically.
   • Reply in the same language as the user's latest question.
-  • If the search results don't actually answer the question, say so honestly and state what is missing.`
+  • If the search results don't actually answer the question, say so honestly and state what is missing.`, userSystemPrompt)
 }
 
 // ─── Main pipeline ────────────────────────────────────────────────────────────
@@ -458,7 +467,7 @@ export const smartThinkingService = {
           sourceGuidance: classify.sourceGuidance,
           sourcesTitle: uiText.webSearchSourcesTitle,
         })
-      : systemPrompt || undefined
+      : combineSystemPrompt(SMART_THINKING_ANSWER_PROMPT(date), systemPrompt)
 
     let streamed = ''
 
