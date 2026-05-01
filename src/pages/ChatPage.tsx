@@ -21,6 +21,7 @@ import { deepResearchService } from '../services/deepResearchService'
 import { smartThinkingService } from '../services/smartThinkingService'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { ChatMessage, ChatMessageContent } from '../types'
+import { localizeChatError, localizeChatException } from '../utils/chatErrors'
 import { extractImageFromClipboard, resizeImageFile } from '../utils/imageUtils'
 import { eventMatchesShortcut, formatShortcutLabel, shouldSendChatMessage } from '../utils/keyboardShortcuts'
 
@@ -123,44 +124,6 @@ async function copyImageToClipboard(imageUrl: string): Promise<void> {
   await navigator.clipboard.write([
     new ClipboardItem({ [blob.type]: blob }),
   ])
-}
-
-type ChatErrorLike = {
-  error?: string
-  errorCode?: string
-}
-
-function isTimeoutLikeError(error: string): boolean {
-  const lower = error.toLowerCase()
-  return lower.includes('abort') || lower.includes('timeout') || lower.includes('timed out')
-}
-
-function localizeChatError(t: ReturnType<typeof useT>, result: ChatErrorLike, fallback: string): string {
-  switch (result.errorCode) {
-    case 'NO_API_KEY':
-      return t.chat_error_no_key
-    case 'INVALID_KEY':
-      return t.chat_error_invalid_key
-    case 'RATE_LIMIT':
-      return t.chat_error_rate_limit
-    case 'NETWORK':
-      return t.chat_error_network
-    case 'TIMEOUT':
-      return t.chat_error_timeout
-    case 'NO_IMAGE_EDIT':
-      return t.chat_error_no_image_edit
-    case 'PRELOAD_OUTDATED':
-      return t.chat_error_image_edit_reload_required
-    default:
-      if (result.error && isTimeoutLikeError(result.error)) return t.chat_error_timeout
-      return result.error || fallback
-  }
-}
-
-function localizeChatException(t: ReturnType<typeof useT>, error: unknown, fallback: string): string {
-  const message = error instanceof Error ? error.message : String(error ?? '')
-  if (message && isTimeoutLikeError(message)) return t.chat_error_timeout
-  return message || fallback
 }
 
 // HC-11: Named animation constants for voice bars
@@ -480,6 +443,17 @@ export function ChatPage() {
           question: text,
           messages: ipcHistory,
           systemPrompt: chatSystemPrompt || undefined,
+          uiText: {
+            webSearchStepLabelPrefix: t.chat_smart_thinking_step_label_prefix,
+            webSearchSummaryTitle: t.chat_smart_thinking_summary_title,
+            webSearchDefaultReason: t.chat_smart_thinking_default_reason,
+            webSearchSourcesTitle: t.chat_smart_thinking_sources_title,
+            webSearchNoSources: t.chat_smart_thinking_no_sources,
+            webSearchNoResults: t.chat_smart_thinking_no_results,
+            webSearchErrorFallback: t.chat_smart_thinking_search_error,
+            noResponseError: t.chat_smart_thinking_no_response,
+            unknownError: t.chat_smart_thinking_unknown_error,
+          },
           callbacks: {
             onStepStart: (label) => {
               const msgId = `msg-${Date.now()}-st${Math.random().toString(36).slice(2, 6)}`
@@ -532,10 +506,10 @@ export function ChatPage() {
                 isLoading: false,
               })
             },
-            onAnswerError: (msgId, error) => {
+            onAnswerError: (msgId, error, errorCode) => {
               updateChatMessage(sessionId, msgId, {
                 isLoading: false,
-                error: localizeChatException(t, error, t.chat_error_failed_response),
+                error: localizeChatError(t, { error, errorCode }, t.chat_error_failed_response),
               })
             },
           },

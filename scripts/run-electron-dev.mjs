@@ -9,8 +9,35 @@ delete env.ELECTRON_RUN_AS_NODE
 
 const child = spawn(electronPath, ['dist-electron/main.js'], {
   env,
-  stdio: 'inherit',
+  stdio: ['inherit', 'pipe', 'pipe'],
 })
+
+// Filter noisy Chromium GPU/Skia compositor warnings on macOS that have no
+// functional impact (the renderer still works). Keep everything else verbatim.
+const NOISY_PATTERNS = [
+  /SharedImageManager::Produce(?:Memory|Skia|GLTexture)/,
+  /Trying to Produce a (?:Memory|Skia|GLTexture) representation from a non-existent mailbox/,
+  /Failed to bind .* image to a texture/,
+]
+
+function pipeFiltered(source, target) {
+  let buffer = ''
+  source.on('data', (chunk) => {
+    buffer += chunk.toString('utf8')
+    let idx
+    while ((idx = buffer.indexOf('\n')) !== -1) {
+      const line = buffer.slice(0, idx + 1)
+      buffer = buffer.slice(idx + 1)
+      if (!NOISY_PATTERNS.some((p) => p.test(line))) target.write(line)
+    }
+  })
+  source.on('end', () => {
+    if (buffer && !NOISY_PATTERNS.some((p) => p.test(buffer))) target.write(buffer)
+  })
+}
+
+pipeFiltered(child.stdout, process.stdout)
+pipeFiltered(child.stderr, process.stderr)
 
 child.on('exit', (code, signal) => {
   if (signal) {

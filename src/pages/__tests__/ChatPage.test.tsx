@@ -433,6 +433,30 @@ describe('ChatPage', () => {
     expect(assistant?.isLoading).toBe(false)
   })
 
+  it('localizes Gemini recitation blocks in Vietnamese', async () => {
+    act(() => {
+      useAppStore.setState({
+        locale: 'vi',
+        keyStatus: { gemini: true, claude: false, openai: false, local: false },
+      })
+    })
+    vi.mocked(window.api.chatStream).mockResolvedValue({
+      success: false,
+      error: '[GoogleGenerativeAI Error]: Candidate was blocked due to RECITATION: The generated content was filtered because it may contain material that resembles existing copyrighted works.',
+      errorCode: 'BLOCKED_RECITATION',
+    })
+
+    render(<ChatPage />)
+    const textarea = screen.getByRole('textbox')
+    fireEvent.change(textarea, { target: { value: 'Phân tích đoạn lời bài hát này' } })
+    fireEvent.keyDown(textarea, { key: 'Enter' })
+
+    await waitFor(() => {
+      expect(screen.getByText(/Gemini đã chặn phản hồi/)).toBeInTheDocument()
+    })
+    expect(screen.queryByText(/GoogleGenerativeAI|RECITATION|copyrighted works/i)).not.toBeInTheDocument()
+  })
+
   it('falls back to non-streaming chat when the preload stream API is unavailable', async () => {
     act(() => {
       useAppStore.setState({ keyStatus: { gemini: true, claude: false, openai: false, local: false } })

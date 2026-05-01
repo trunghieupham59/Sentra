@@ -2,6 +2,35 @@ import type { ImageBlockParam, TextBlockParam } from '@anthropic-ai/sdk/resource
 import type { Content, Part } from '@google/generative-ai'
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import type { ChatCompletionContentPartImage, ChatCompletionContentPartText, ChatCompletionMessageParam } from 'openai/resources/chat/completions'
+import {
+  type ChatProviderId,
+  type ClaudeImageMimeType,
+  CHAT_IMAGE_EDIT_DEFAULT_MIME_TYPE,
+  CHAT_IMAGE_EDIT_EXTENSION_BY_MIME,
+  CHAT_IMAGE_EDIT_FILE_BASENAME,
+  CHAT_IMAGE_EDIT_JSON_CONTENT_TYPE,
+  CHAT_IMAGE_EDIT_RESPONSE_MODALITIES,
+  CHAT_IMAGE_EDIT_SUPPORTED_MIME_TYPES,
+  CHAT_IPC_CHANNELS,
+  CHAT_MODEL_OUTPUT_TOKEN_RULES,
+  CHAT_PROVIDER_IDS,
+  CONFIGURED_CHAT_PROVIDERS,
+  FALLBACK_MODEL_MAX_OUTPUT_TOKENS,
+  GEMINI_IMAGE_MODEL_RETRY_ERROR_MARKERS,
+  GEMINI_MODEL_RESOURCE_PREFIX,
+  GEMINI_SUCCESS_FINISH_REASON,
+  MAX_CHAT_IMAGE_EDIT_MODEL_ID_CHARS,
+  OPENAI_CHAT_ENDPOINT_ERROR_MARKERS,
+  OPENAI_CHAT_IMAGE_DETAIL,
+  OPENAI_CHAT_MODEL_HARD_EXCLUDES,
+  OPENAI_CHAT_MODEL_PREFIX,
+  OPENAI_CHAT_MODEL_SCORE,
+  OPENAI_DEFAULT_CHAT_FALLBACK_MODEL,
+  OPENAI_IMAGE_EDIT_OPTIONS,
+  OPENAI_NON_CHAT_MODEL_PATTERNS,
+} from './chatConfig'
+import { CHAT_IMAGE_EDIT_VALIDATION_MESSAGES, CHAT_LOG_MESSAGES, CHAT_RUNTIME_MESSAGES } from './chatMessages'
+import { buildChatImageEditPrompt, buildEnforcedSystemPrompt } from './chatPrompts'
 import { type ChatMessage, type MaxOutputTokensRequest, parseChatParams } from './chatValidation'
 import { classifyProviderError, noApiKeyResponse } from './errorUtils'
 import {
@@ -19,11 +48,6 @@ import { withRetry } from './retry'
 import { getStoredApiKey } from './storage'
 
 // DUP-02: Removed local `getApiKey` wrapper — call getStoredApiKey directly.
-
-const FALLBACK_MODEL_MAX_OUTPUT_TOKENS = 16_384
-const CHAT_STREAM_EVENT = 'chat:stream:event'
-const CHAT_IMAGE_EDIT_SUPPORTED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
-const MAX_CHAT_IMAGE_EDIT_MODEL_ID_CHARS = 200
 
 const geminiOutputLimitCache = new Map<string, number>()
 
@@ -50,26 +74,18 @@ type ChatStreamEventPayload =
 
 type ChatStreamTokenHandler = (token: string) => void
 
+function isConfiguredChatProvider(provider: string): provider is ChatProviderId {
+  return CONFIGURED_CHAT_PROVIDERS.includes(provider as ChatProviderId)
+}
+
 function getCurrentFamilyModelMaxOutputTokens(provider: string, model: string): number {
+  if (!isConfiguredChatProvider(provider)) return FALLBACK_MODEL_MAX_OUTPUT_TOKENS
+
   const id = model.toLowerCase()
-
-  if (provider === 'openai') {
-    if (id.includes('chat-latest')) return 16_384
-    if (id.startsWith('gpt-5')) return 128_000
-    if (id.startsWith('gpt-4.1')) return 32_768
-    if (id.startsWith('gpt-4o') || id.startsWith('chatgpt-4o')) return 16_384
-  }
-
-  if (provider === 'claude') {
-    if (id.startsWith('claude-sonnet-4')) return 64_000
-    if (id.startsWith('claude-opus-4')) return 32_000
-  }
-
-  if (provider === 'gemini') {
-    if (id.includes('2.5')) return 65_536
-  }
-
-  return FALLBACK_MODEL_MAX_OUTPUT_TOKENS
+  const rule = CHAT_MODEL_OUTPUT_TOKEN_RULES[provider].find((entry) =>
+    'includes' in entry ? id.includes(entry.includes) : id.startsWith(entry.startsWith)
+  )
+  return rule?.maxOutputTokens ?? FALLBACK_MODEL_MAX_OUTPUT_TOKENS
 }
 
 async function fetchGeminiModelMaxOutputTokens(apiKey: string, model: string): Promise<number | null> {
@@ -77,7 +93,9 @@ async function fetchGeminiModelMaxOutputTokens(apiKey: string, model: string): P
   if (cached) return cached
 
   try {
-    const modelName = model.startsWith('models/') ? model : `models/${model}`
+    const modelName = model.startsWith(GEMINI_MODEL_RESOURCE_PREFIX)
+      ? model
+      : `${GEMINI_MODEL_RESOURCE_PREFIX}${model}`
     const response = await fetch(`${GEMINI_API_BASE}/${modelName}?key=${apiKey}`)
     if (!response.ok) return null
     const data = await response.json() as { outputTokenLimit?: number }
@@ -86,14 +104,14 @@ async function fetchGeminiModelMaxOutputTokens(apiKey: string, model: string): P
       return data.outputTokenLimit
     }
   } catch (err) {
-    console.warn('[chat] Failed to fetch Gemini model output limit:', err)
+    console.warn(CHAT_LOG_MESSAGES.geminiOutputLimitFetchFailed, err)
   }
 
   return null
 }
 
 async function resolveModelMaxOutputTokens(provider: string, model: string, apiKey: string): Promise<number> {
-  if (provider === 'gemini') {
+  if (provider === CHAT_PROVIDER_IDS.gemini) {
     return await fetchGeminiModelMaxOutputTokens(apiKey, model)
       ?? getCurrentFamilyModelMaxOutputTokens(provider, model)
   }
@@ -114,23 +132,13 @@ async function resolveChatOutputTokens(
   return Math.min(Math.max(integerValue, 1), modelMax)
 }
 
-/** Wrap user system prompt to enforce strict compliance */
-function buildEnforcedSystemPrompt(userPrompt: string): string {
-  if (!userPrompt.trim()) {
-    return 'You are a helpful AI assistant. Be concise, friendly, and accurate.'
-  }
-  return `${userPrompt.trim()}
-
-IMPORTANT: You MUST strictly follow the instructions above in every response. Do not deviate, explain or refuse these instructions. Apply them to all messages unconditionally.`
-}
-
 function parseChatImageEditParams(rawParams: unknown): ParsedChatImageEditParams {
   if (!isRecord(rawParams)) {
-    return { ok: false, response: invalidIpcInput('Chat image edit payload must be an object') }
+    return { ok: false, response: invalidIpcInput(CHAT_IMAGE_EDIT_VALIDATION_MESSAGES.payloadMustBeObject) }
   }
 
   if (!isNonEmptyString(rawParams.provider)) {
-    return { ok: false, response: invalidIpcInput('Provider is required') }
+    return { ok: false, response: invalidIpcInput(CHAT_IMAGE_EDIT_VALIDATION_MESSAGES.providerRequired) }
   }
   const provider = rawParams.provider.trim()
   if (!isValidProvider(provider)) {
@@ -138,32 +146,32 @@ function parseChatImageEditParams(rawParams: unknown): ParsedChatImageEditParams
   }
 
   if (!isNonEmptyString(rawParams.model)) {
-    return { ok: false, response: invalidIpcInput('Model is required') }
+    return { ok: false, response: invalidIpcInput(CHAT_IMAGE_EDIT_VALIDATION_MESSAGES.modelRequired) }
   }
   const model = rawParams.model.trim()
   if (model.length > MAX_CHAT_IMAGE_EDIT_MODEL_ID_CHARS) {
-    return { ok: false, response: invalidIpcInput('Model is too long') }
+    return { ok: false, response: invalidIpcInput(CHAT_IMAGE_EDIT_VALIDATION_MESSAGES.modelTooLong) }
   }
 
   if (!isNonEmptyString(rawParams.prompt)) {
-    return { ok: false, response: invalidIpcInput('Image edit prompt is required') }
+    return { ok: false, response: invalidIpcInput(CHAT_IMAGE_EDIT_VALIDATION_MESSAGES.promptRequired) }
   }
   const prompt = rawParams.prompt.trim()
   if (prompt.length > MAX_CHAT_REQUEST_CHARS) {
     return {
       ok: false,
-      response: invalidIpcInput(`Image edit prompt is too long. Maximum is ${MAX_CHAT_REQUEST_CHARS} characters.`),
+      response: invalidIpcInput(CHAT_IMAGE_EDIT_VALIDATION_MESSAGES.promptTooLong(MAX_CHAT_REQUEST_CHARS)),
     }
   }
 
   if (!isNonEmptyString(rawParams.imageBase64)) {
-    return { ok: false, response: invalidIpcInput('No image data provided') }
+    return { ok: false, response: invalidIpcInput(CHAT_IMAGE_EDIT_VALIDATION_MESSAGES.noImageData) }
   }
   if (
     !isNonEmptyString(rawParams.imageMimeType) ||
     !CHAT_IMAGE_EDIT_SUPPORTED_MIME_TYPES.has(rawParams.imageMimeType)
   ) {
-    return { ok: false, response: invalidIpcInput('Unsupported image MIME type') }
+    return { ok: false, response: invalidIpcInput(CHAT_IMAGE_EDIT_VALIDATION_MESSAGES.unsupportedImageMimeType) }
   }
 
   return {
@@ -176,13 +184,6 @@ function parseChatImageEditParams(rawParams: unknown): ParsedChatImageEditParams
       imageMimeType: rawParams.imageMimeType,
     },
   }
-}
-
-function buildChatImageEditPrompt(prompt: string): string {
-  return `Edit the attached image according to this user request:
-${prompt.trim()}
-
-Return the edited image as the primary result. Preserve the subject identity, image quality, framing, lighting, and natural details unless the user explicitly asks to change them.`
 }
 
 function buildGeminiChatPayload(messages: ChatMessage[]) {
@@ -234,7 +235,9 @@ async function chatWithGemini(
   if (!text) {
     const finishReason = result.response.candidates?.[0]?.finishReason
     throw new Error(
-      `Gemini returned an empty response${finishReason ? ` (finishReason=${finishReason})` : ''}.`
+      finishReason
+        ? CHAT_RUNTIME_MESSAGES.geminiEmptyResponseWithFinishReason(finishReason)
+        : CHAT_RUNTIME_MESSAGES.geminiEmptyResponse
     )
   }
   return text
@@ -259,9 +262,20 @@ async function streamChatWithGemini(
   const chat = genModel.startChat({ history })
   const result = await chat.sendMessageStream(parts)
   let fullText = ''
+  let lastFinishReason: string | undefined
 
   for await (const chunk of result.stream) {
-    const token = chunk.text()
+    // Capture finishReason from each chunk; Gemini sets it (e.g. RECITATION, SAFETY)
+    // even when the chunk yields no text, so the SDK's chunk.text() may throw.
+    const candidateFinishReason = chunk.candidates?.[0]?.finishReason
+    if (candidateFinishReason) lastFinishReason = candidateFinishReason
+    let token = ''
+    try {
+      token = chunk.text()
+    } catch {
+      // chunk.text() throws when the candidate was blocked (RECITATION/SAFETY).
+      // Swallow here — we surface a typed error below from finishReason.
+    }
     if (token) {
       fullText += token
       onToken(token)
@@ -269,7 +283,12 @@ async function streamChatWithGemini(
   }
 
   const text = fullText.trim()
-  if (!text) throw new Error('Gemini returned an empty response.')
+  if (!text) {
+    if (lastFinishReason && lastFinishReason !== GEMINI_SUCCESS_FINISH_REASON) {
+      throw new Error(CHAT_RUNTIME_MESSAGES.geminiEmptyResponseWithFinishReason(lastFinishReason))
+    }
+    throw new Error(CHAT_RUNTIME_MESSAGES.geminiEmptyResponse)
+  }
   return text
 }
 
@@ -284,7 +303,7 @@ function formatClaudeMessages(messages: ChatMessage[]) {
           type: 'image',
           source: {
             type: 'base64',
-            media_type: c.imageMimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+            media_type: c.imageMimeType as ClaudeImageMimeType,
             data: c.imageBase64,
           },
         })
@@ -317,11 +336,11 @@ async function chatWithClaude(
   if (block.type === 'text') {
     const text = block.text.trim()
     if (!text) {
-      throw new Error(`Claude returned an empty response (stop_reason=${message.stop_reason ?? 'unknown'}).`)
+      throw new Error(CHAT_RUNTIME_MESSAGES.claudeEmptyResponse(message.stop_reason ?? 'unknown'))
     }
     return text
   }
-  throw new Error('Unexpected response type from Claude')
+  throw new Error(CHAT_RUNTIME_MESSAGES.claudeUnexpectedResponseType)
 }
 
 async function streamChatWithClaude(
@@ -353,7 +372,7 @@ async function streamChatWithClaude(
   }
 
   const text = fullText.trim()
-  if (!text) throw new Error('Claude returned an empty response.')
+  if (!text) throw new Error(CHAT_RUNTIME_MESSAGES.claudeStreamEmptyResponse)
   return text
 }
 
@@ -370,20 +389,8 @@ export {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Patterns for models that do NOT support v1/chat/completions */
-const NON_CHAT_PATTERNS = [
-  /instruct/i, /^babbage/i, /^davinci/i, /^curie/i, /^ada/i,
-  /text-davinci/i, /code-davinci/i,
-  // Search / web-search models use different endpoint parameters
-  /search/i,
-  // Image generation
-  /image/i,
-  // Codex
-  /codex/i,
-]
-
 function isLikelyChatModel(id: string): boolean {
-  return !NON_CHAT_PATTERNS.some((p) => p.test(id))
+  return !OPENAI_NON_CHAT_MODEL_PATTERNS.some((p) => p.test(id))
 }
 
 /**
@@ -396,33 +403,35 @@ function scoreOpenAIChatModel(id: string): number {
   const lower = id.toLowerCase()
 
   // Hard exclude non-chat models
-  if (!isLikelyChatModel(lower)) return -9999
+  if (!isLikelyChatModel(lower)) return OPENAI_CHAT_MODEL_SCORE.nonChat
 
   let score = 0
 
-  // Extract version number: gpt-X.Y or gpt-X
-  // e.g. gpt-5.4 -> major=5, minor=4 -> 54
-  // e.g. gpt-4o  -> treat as 4.0 -> 40
+  // Extract version number from model family IDs; the major version dominates.
   const versionMatch = lower.match(/gpt-(\d+)(?:\.(\d+))?/)
   if (versionMatch) {
     const major = parseInt(versionMatch[1], 10)
     const minor = parseInt(versionMatch[2] ?? '0', 10)
     // Major version dominates: gpt-5 >> gpt-4
-    score += major * 1000 + minor * 10
+    score += major * OPENAI_CHAT_MODEL_SCORE.majorMultiplier +
+      minor * OPENAI_CHAT_MODEL_SCORE.minorMultiplier
   }
 
   // Prefer full model over nano/mini variants (full = higher capability)
   // But mini is still better than nothing
-  if (lower.includes('nano')) score -= 5
-  else if (lower.includes('mini')) score -= 2
-  // 'o' suffix (e.g. gpt-4o) is the optimised variant — slight bonus
-  if (lower.match(/gpt-\d+o\b/)) score += 1
+  if (lower.includes('nano')) score -= OPENAI_CHAT_MODEL_SCORE.nanoPenalty
+  else if (lower.includes('mini')) score -= OPENAI_CHAT_MODEL_SCORE.miniPenalty
+  // Optimised suffix gets a small bonus.
+  if (lower.match(/gpt-\d+o\b/)) score += OPENAI_CHAT_MODEL_SCORE.optimizedSuffixBonus
 
   // Prefer models with a date (more recent release)
   const dateMatch = lower.match(/(\d{4})-(\d{2})-(\d{2})/)
   if (dateMatch) {
     const dateNum = parseInt(dateMatch[1] + dateMatch[2] + dateMatch[3], 10)
-    score += Math.min(dateNum - 20230101, 9999) / 10000 // small tiebreaker
+    score += Math.min(
+      dateNum - OPENAI_CHAT_MODEL_SCORE.dateBaseline,
+      OPENAI_CHAT_MODEL_SCORE.dateMaxBonus,
+    ) / OPENAI_CHAT_MODEL_SCORE.dateBonusDivisor
   }
 
   return score
@@ -430,7 +439,7 @@ function scoreOpenAIChatModel(id: string): number {
 
 /**
  * Fetch the best chat-capable OpenAI model from the API.
- * Falls back to 'gpt-4o' only if the API call itself fails.
+ * Falls back to OPENAI_DEFAULT_CHAT_FALLBACK_MODEL only if the API call itself fails.
  */
 async function fetchBestOpenAIChatModel(apiKey: string): Promise<string> {
   try {
@@ -438,32 +447,26 @@ async function fetchBestOpenAIChatModel(apiKey: string): Promise<string> {
     const client = new OpenAI({ apiKey })
     const response = await client.models.list()
 
-    // Hard excludes beyond what isLikelyChatModel checks
-    const hardExcluded = [
-      'embedding', 'tts', 'whisper', 'dall-e', 'moderation',
-      'text-search', 'text-similarity', 'code-search', 'realtime', 'audio', 'transcribe',
-    ]
-
     const chatModels = response.data
       .filter((m) => {
         const id = m.id.toLowerCase()
         return (
-          id.startsWith('gpt-') &&
+          id.startsWith(OPENAI_CHAT_MODEL_PREFIX) &&
           isLikelyChatModel(id) &&
-          !hardExcluded.some((e) => id.includes(e))
+          !OPENAI_CHAT_MODEL_HARD_EXCLUDES.some((e) => id.includes(e))
         )
       })
       .sort((a, b) => scoreOpenAIChatModel(b.id) - scoreOpenAIChatModel(a.id))
 
     if (chatModels.length > 0) {
-      console.log(`[chat] Fallback to best chat model: ${chatModels[0].id}`)
+      console.log(CHAT_LOG_MESSAGES.openAiFallbackModelSelected(chatModels[0].id))
       return chatModels[0].id
     }
   } catch (e) {
-    console.warn('[chat] Failed to fetch models for fallback:', e)
+    console.warn(CHAT_LOG_MESSAGES.openAiFallbackModelsFetchFailed, e)
   }
   // Hard fallback — only reached when models API itself fails
-  return 'gpt-4o'
+  return OPENAI_DEFAULT_CHAT_FALLBACK_MODEL
 }
 
 function formatOpenAIChatMessages(messages: ChatMessage[], systemPrompt?: string): ChatCompletionMessageParam[] {
@@ -484,7 +487,7 @@ function formatOpenAIChatMessages(messages: ChatMessage[], systemPrompt?: string
           type: 'image_url',
           image_url: {
             url: `data:${c.imageMimeType};base64,${c.imageBase64}`,
-            detail: 'high',
+            detail: OPENAI_CHAT_IMAGE_DETAIL,
           },
         })
       }
@@ -504,9 +507,12 @@ function formatOpenAIChatMessages(messages: ChatMessage[], systemPrompt?: string
 function isOpenAIChatEndpointError(error: unknown) {
   const errMsg = error instanceof Error ? error.message : String(error)
   return (
-    errMsg.includes('not a chat model') ||
-    errMsg.includes('v1/completions') ||
-    (errMsg.includes('404') && errMsg.includes('completions'))
+    errMsg.includes(OPENAI_CHAT_ENDPOINT_ERROR_MARKERS.notChatModel) ||
+    errMsg.includes(OPENAI_CHAT_ENDPOINT_ERROR_MARKERS.completionsPath) ||
+    (
+      errMsg.includes(OPENAI_CHAT_ENDPOINT_ERROR_MARKERS.notFoundStatus) &&
+      errMsg.includes(OPENAI_CHAT_ENDPOINT_ERROR_MARKERS.completionsResource)
+    )
   )
 }
 
@@ -534,9 +540,7 @@ async function chatWithOpenAI(
       const refusal = choice?.message && 'refusal' in choice.message
         ? choice.message.refusal
         : undefined
-      throw new Error(
-        `OpenAI returned an empty response (finish_reason=${finishReason}${refusal ? `, refusal=${refusal}` : ''}).`
-      )
+      throw new Error(CHAT_RUNTIME_MESSAGES.openAiEmptyResponse(finishReason, refusal))
     }
     return text
   }
@@ -572,7 +576,9 @@ async function chatWithLocal(
   })
   const choice = completion.choices[0]
   const text = (choice?.message?.content ?? '').trim()
-  if (!text) throw new Error(`Local AI returned an empty response (finish_reason=${choice?.finish_reason ?? 'unknown'}).`)
+  if (!text) {
+    throw new Error(CHAT_RUNTIME_MESSAGES.localAiEmptyResponse(choice?.finish_reason ?? 'unknown'))
+  }
   return text
 }
 
@@ -608,7 +614,7 @@ async function streamChatWithOpenAI(
     }
 
     const text = fullText.trim()
-    if (!text) throw new Error('OpenAI returned an empty response.')
+    if (!text) throw new Error(CHAT_RUNTIME_MESSAGES.openAiStreamEmptyResponse)
     return text
   }
 
@@ -651,7 +657,7 @@ async function streamChatWithLocal(
   }
 
   const text = fullText.trim()
-  if (!text) throw new Error('Local AI returned an empty response.')
+  if (!text) throw new Error(CHAT_RUNTIME_MESSAGES.localAiStreamEmptyResponse)
   return text
 }
 
@@ -662,18 +668,18 @@ type ChatImageEditResultPayload = {
 }
 
 function getImageFileNameForMime(mimeType: string): string {
-  const ext = mimeType === 'image/jpeg' ? 'jpg' : mimeType.replace('image/', '')
-  return `chat-image-edit.${ext}`
+  const ext = CHAT_IMAGE_EDIT_EXTENSION_BY_MIME[mimeType] ?? mimeType.replace('image/', '')
+  return `${CHAT_IMAGE_EDIT_FILE_BASENAME}.${ext}`
 }
 
 async function convertRemoteImageUrlToBase64(url: string): Promise<{ imageBase64: string; imageMimeType: string }> {
   const response = await fetch(url)
   if (!response.ok) {
-    throw new Error(`OpenAI image edit returned a URL, but downloading it failed (${response.status}).`)
+    throw new Error(CHAT_RUNTIME_MESSAGES.openAiImageUrlDownloadFailed(response.status))
   }
 
-  const contentType = response.headers.get('content-type') ?? 'image/png'
-  const imageMimeType = contentType.split(';')[0] || 'image/png'
+  const contentType = response.headers.get('content-type') ?? CHAT_IMAGE_EDIT_DEFAULT_MIME_TYPE
+  const imageMimeType = contentType.split(';')[0] || CHAT_IMAGE_EDIT_DEFAULT_MIME_TYPE
   const buffer = Buffer.from(await response.arrayBuffer())
   return { imageBase64: buffer.toString('base64'), imageMimeType }
 }
@@ -698,16 +704,14 @@ async function editChatImageWithOpenAI(
     model: OPENAI_IMAGE_EDIT_MODEL,
     image,
     prompt: buildChatImageEditPrompt(prompt),
-    n: 1,
-    size: 'auto',
-    quality: 'auto',
+    ...OPENAI_IMAGE_EDIT_OPTIONS,
   })
   const result = response.data?.[0]
 
   if (result?.b64_json) {
     return {
       imageBase64: result.b64_json,
-      imageMimeType: 'image/png',
+      imageMimeType: CHAT_IMAGE_EDIT_DEFAULT_MIME_TYPE,
       usedModel: OPENAI_IMAGE_EDIT_MODEL,
     }
   }
@@ -717,7 +721,7 @@ async function editChatImageWithOpenAI(
     return { ...downloaded, usedModel: OPENAI_IMAGE_EDIT_MODEL }
   }
 
-  throw new Error('OpenAI image edit did not return an image.')
+  throw new Error(CHAT_RUNTIME_MESSAGES.openAiNoEditedImage)
 }
 
 type GeminiInlineDataPart = {
@@ -728,13 +732,7 @@ type GeminiInlineDataPart = {
 
 function shouldTryNextGeminiImageModel(error: unknown): boolean {
   const msg = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
-  return (
-    msg.includes('404') ||
-    msg.includes('not found') ||
-    msg.includes('not supported') ||
-    msg.includes('not available') ||
-    msg.includes('unsupported model')
-  )
+  return GEMINI_IMAGE_MODEL_RETRY_ERROR_MARKERS.some((marker) => msg.includes(marker))
 }
 
 async function requestGeminiImageEdit(
@@ -760,7 +758,7 @@ async function requestGeminiImageEdit(
       },
     ],
     generationConfig: {
-      responseModalities: ['TEXT', 'IMAGE'],
+      responseModalities: CHAT_IMAGE_EDIT_RESPONSE_MODALITIES,
     },
   }
 
@@ -769,7 +767,7 @@ async function requestGeminiImageEdit(
   const response = await fetch(url, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': CHAT_IMAGE_EDIT_JSON_CONTENT_TYPE,
       'x-goog-api-key': apiKey,
     },
     body: JSON.stringify(body),
@@ -778,7 +776,7 @@ async function requestGeminiImageEdit(
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Gemini image edit failed: ${response.status} ${errorText}`)
+    throw new Error(CHAT_RUNTIME_MESSAGES.geminiImageEditFailed(response.status, errorText))
   }
 
   const json = await response.json() as {
@@ -793,14 +791,16 @@ async function requestGeminiImageEdit(
       const outputMimeType = outputInlineData.mime_type ?? outputInlineData.mimeType
       return {
         imageBase64: outputInlineData.data,
-        imageMimeType: outputMimeType ?? 'image/png',
+        imageMimeType: outputMimeType ?? CHAT_IMAGE_EDIT_DEFAULT_MIME_TYPE,
         usedModel: imageModel,
       }
     }
   }
 
   const text = parts.map((part) => part.text).filter(Boolean).join('\n').trim()
-  throw new Error(text ? `Gemini returned text but no edited image: ${text}` : 'Gemini image edit did not return an image.')
+  throw new Error(
+    text ? CHAT_RUNTIME_MESSAGES.geminiTextWithoutImage(text) : CHAT_RUNTIME_MESSAGES.geminiNoEditedImage
+  )
 }
 
 async function editChatImageWithGemini(
@@ -875,20 +875,20 @@ function getProviderCredential(provider: string) {
 function toChatFailure(error: unknown) {
   const msg = error instanceof Error ? error.message : String(error)
   const classified = classifyProviderError(msg)
-  return { ...classified, error: classified.errorCode ? classified.error : `Chat failed: ${msg}` }
+  return { ...classified, error: classified.errorCode ? classified.error : CHAT_RUNTIME_MESSAGES.chatFailed(msg) }
 }
 
 function sendChatStreamEvent(event: IpcMainInvokeEvent, payload: ChatStreamEvent) {
-  event.sender.send(CHAT_STREAM_EVENT, payload)
+  event.sender.send(CHAT_IPC_CHANNELS.streamEvent, payload)
 }
 
 /**
  * Register all chat-related IPC handlers with the Electron main process.
  *
  * Handlers registered:
- *  - `chat:send` — Send a conversational message (with optional image attachments
- *                  and system prompt); returns `{ success, reply?, error?, errorCode? }`
- *  - `chat:image-edit` — Edit an attached image and return a base64 image payload.
+ *  - send channel — Send a conversational message (with optional image attachments
+ *                   and system prompt); returns `{ success, reply?, error?, errorCode? }`
+ *  - image-edit channel — Edit an attached image and return a base64 image payload.
  *
  * All handlers:
  *  - Read the API key from the OS Keychain via `getStoredApiKey` (never from renderer).
@@ -901,7 +901,7 @@ function sendChatStreamEvent(event: IpcMainInvokeEvent, payload: ChatStreamEvent
  * @param ipcMain - Electron's IpcMain instance (passed from main.ts at startup).
  */
 export function registerChatHandlers(ipcMain: IpcMain) {
-  ipcMain.handle('chat:send', async (_event, rawParams: unknown) => {
+  ipcMain.handle(CHAT_IPC_CHANNELS.send, async (_event, rawParams: unknown) => {
     const parsed = parseChatParams(rawParams)
     if (!parsed.ok) return parsed.response
     const params = parsed.value
@@ -925,12 +925,12 @@ export function registerChatHandlers(ipcMain: IpcMain) {
 
       return { success: true, reply }
     } catch (error: unknown) {
-      console.error(`Chat error with ${provider}:`, error)
+      console.error(CHAT_LOG_MESSAGES.providerError(provider), error)
       return toChatFailure(error)
     }
   })
 
-  ipcMain.handle('chat:image-edit', async (_event, rawParams: unknown) => {
+  ipcMain.handle(CHAT_IPC_CHANNELS.imageEdit, async (_event, rawParams: unknown) => {
     const parsed = parseChatImageEditParams(rawParams)
     if (!parsed.ok) return parsed.response
     const { provider, model, prompt, imageBase64, imageMimeType } = parsed.value
@@ -939,7 +939,7 @@ export function registerChatHandlers(ipcMain: IpcMain) {
     if (!editFn) {
       return {
         success: false,
-        error: 'Image editing is currently available with Gemini or OpenAI. Switch provider to edit images directly.',
+        error: CHAT_RUNTIME_MESSAGES.imageEditUnsupportedProvider,
         errorCode: 'NO_IMAGE_EDIT',
       }
     }
@@ -957,17 +957,23 @@ export function registerChatHandlers(ipcMain: IpcMain) {
         usedModel: result.usedModel,
       }
     } catch (error: unknown) {
-      console.error(`Chat image edit error with ${provider}:`, error)
+      console.error(CHAT_LOG_MESSAGES.imageEditProviderError(provider), error)
       return toChatFailure(error)
     }
   })
 
-  ipcMain.handle('chat:stream', async (event, rawParams: unknown) => {
+  ipcMain.handle(CHAT_IPC_CHANNELS.stream, async (event, rawParams: unknown) => {
     const parsed = parseChatParams(rawParams)
     if (!parsed.ok) return parsed.response
     const params = parsed.value
     const { provider, model, messages, systemPrompt, requestId } = params
-    if (!requestId) return { success: false, error: 'Chat stream requestId is required', errorCode: 'INVALID_INPUT' }
+    if (!requestId) {
+      return {
+        success: false,
+        error: CHAT_RUNTIME_MESSAGES.streamRequestIdRequired,
+        errorCode: 'INVALID_INPUT',
+      }
+    }
 
     const emit = (payload: ChatStreamEventPayload) => {
       sendChatStreamEvent(event, { requestId, ...payload })
@@ -998,7 +1004,7 @@ export function registerChatHandlers(ipcMain: IpcMain) {
       emit({ type: 'end', reply })
       return { success: true, reply }
     } catch (error: unknown) {
-      console.error(`Chat stream error with ${provider}:`, error)
+      console.error(CHAT_LOG_MESSAGES.streamProviderError(provider), error)
       const response = toChatFailure(error)
       emit({ type: 'error', error: response.error, errorCode: response.errorCode })
       return response

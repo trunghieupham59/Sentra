@@ -75,6 +75,7 @@ function renderLink(key: React.Key, href: string, children: React.ReactNode) {
       className={LINK_CLASS}
       onClick={(event) => {
         event.preventDefault()
+        event.stopPropagation()
         openExternalUrl(normalizedHref)
       }}
     >

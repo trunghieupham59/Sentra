@@ -13,7 +13,7 @@
  *   9. Edge cases: empty string, unclosed markers, nested-like patterns
  */
 import type React from 'react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { renderInline } from '../markdownInline'
 
 // ── Helper: extract element type and text from a ReactNode ────────────────────
@@ -97,6 +97,24 @@ describe('renderInline — links', () => {
     expect(el.type).toBe('a')
     expect(el.props.href).toBe('https://www.viezan.app/docs')
     expect(el.props.children).toBe('www.viezan.app/docs')
+  })
+
+  it('opens links through the Electron external URL bridge when clicked', () => {
+    const openExternal = vi.mocked(window.api.openExternal)
+    openExternal.mockClear()
+
+    const result = renderInline('Source: https://viezan.app/docs')
+    const el = getElement(result[1])
+    const event = {
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    }
+
+    el.props.onClick(event)
+
+    expect(event.preventDefault).toHaveBeenCalled()
+    expect(event.stopPropagation).toHaveBeenCalled()
+    expect(openExternal).toHaveBeenCalledWith('https://viezan.app/docs')
   })
 })
 

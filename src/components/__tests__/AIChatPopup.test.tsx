@@ -59,6 +59,23 @@ describe('AIChatPopup quick window', () => {
     expect(await screen.findByText('Hello there')).toBeInTheDocument()
   })
 
+  it('localizes provider content blocks instead of showing raw SDK errors', async () => {
+    vi.mocked(window.api.chatStream).mockResolvedValue({
+      success: false,
+      error: '[GoogleGenerativeAI Error]: Candidate was blocked due to RECITATION',
+      errorCode: 'BLOCKED_RECITATION',
+    })
+
+    render(<AIChatPopup />)
+
+    const input = screen.getByRole('textbox')
+    fireEvent.change(input, { target: { value: 'Analyze these lyrics' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    expect(await screen.findByText(/Gemini blocked this response/)).toBeInTheDocument()
+    expect(screen.queryByText(/GoogleGenerativeAI|RECITATION/i)).not.toBeInTheDocument()
+  })
+
   it('does not send on Shift+Enter', () => {
     render(<AIChatPopup />)
 

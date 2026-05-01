@@ -17,6 +17,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { MAX_CHAT_INPUT_CHARS } from '../constants/providers'
 import { type ChatMessage, chatService } from '../services/chatService'
 import { useAppStore, useT } from '../store/useAppStore'
+import { localizeChatError, localizeChatException } from '../utils/chatErrors'
 import { shouldSendChatMessage } from '../utils/keyboardShortcuts'
 import { formatModelName } from '../utils/modelDisplay'
 import { tpl } from '../utils/tpl'
@@ -288,17 +289,19 @@ export function AIChatPopup() {
             onEnd: (reply) => {
               if (reply) setResponse(reply)
             },
-            onError: (message) => setError(message),
+            onError: (message, errorCode) => {
+              setError(localizeChatError(t, { error: message, errorCode }, t.chat_error_failed_response))
+            },
           },
         )
 
         if (result.success) {
           if (result.reply && !streamed) setResponse(result.reply)
         } else {
-          setError(result.error ?? t.chat_error_failed_response)
+          setError(localizeChatError(t, result, t.chat_error_failed_response))
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : t.chat_error_unexpected)
+        setError(localizeChatException(t, err, t.chat_error_unexpected))
       } finally {
         setIsSending(false)
         focusInput()

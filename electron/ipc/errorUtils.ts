@@ -31,6 +31,33 @@ export function classifyProviderError(msg: string): IpcErrorResponse {
   if (lower.includes('429') || lower.includes('rate_limit') || lower.includes('quota')) {
     return { success: false, error: 'Rate limit exceeded. Please wait and try again.', errorCode: 'RATE_LIMIT' }
   }
+  // Gemini blocks responses that resemble copyrighted material with a RECITATION finish reason.
+  // Surface a friendly, actionable message instead of the raw SDK error string.
+  if (
+    lower.includes('recitation') ||
+    (lower.includes('copyright') && (lower.includes('blocked') || lower.includes('filtered')))
+  ) {
+    return {
+      success: false,
+      error: 'The model blocked this response because it may resemble copyrighted material. Try rephrasing your prompt or asking for a summary in your own words.',
+      errorCode: 'BLOCKED_RECITATION',
+    }
+  }
+  if (
+    lower.includes('blocked due to safety') ||
+    lower.includes('candidate was blocked') ||
+    lower.includes('prompt was blocked') ||
+    lower.includes('content was filtered') ||
+    lower.includes('finishreason=safety') ||
+    lower.includes('finish_reason=content_filter') ||
+    lower.includes('safety_settings')
+  ) {
+    return {
+      success: false,
+      error: 'The model blocked this response due to safety filters. Try rephrasing your prompt.',
+      errorCode: 'BLOCKED_SAFETY',
+    }
+  }
   if (
     lower.includes('aborterror') ||
     lower.includes('operation was aborted') ||

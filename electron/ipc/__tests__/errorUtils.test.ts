@@ -117,6 +117,37 @@ describe('classifyProviderError', () => {
     })
   })
 
+  // ── BLOCKED_RECITATION / BLOCKED_SAFETY detection ─────────────────────────
+  describe('Gemini RECITATION / safety filter patterns', () => {
+    it('classifies RECITATION error as BLOCKED_RECITATION', () => {
+      const result = classifyProviderError(
+        '[GoogleGenerativeAI Error]: Candidate was blocked due to RECITATION'
+      )
+      expect(result.success).toBe(false)
+      expect(result.errorCode).toBe('BLOCKED_RECITATION')
+      expect(result.error.toLowerCase()).toContain('copyrighted')
+    })
+
+    it('classifies copyrighted-content filters as BLOCKED_RECITATION', () => {
+      const result = classifyProviderError(
+        'The generated content was filtered because it may contain material that resembles existing copyrighted works.'
+      )
+      expect(result.errorCode).toBe('BLOCKED_RECITATION')
+    })
+
+    it('classifies finishReason=SAFETY as BLOCKED_SAFETY', () => {
+      const result = classifyProviderError(
+        'Gemini returned an empty response (finishReason=SAFETY).'
+      )
+      expect(result.errorCode).toBe('BLOCKED_SAFETY')
+    })
+
+    it('classifies "blocked due to safety" as BLOCKED_SAFETY', () => {
+      const result = classifyProviderError('Candidate was blocked due to SAFETY')
+      expect(result.errorCode).toBe('BLOCKED_SAFETY')
+    })
+  })
+
   // ── Unknown errors — pass through ─────────────────────────────────────────
   describe('unknown / unclassified errors', () => {
     it('passes through unrecognized error message without errorCode', () => {

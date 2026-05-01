@@ -621,6 +621,15 @@ export interface Translations {
   chat_smart_thinking_hint: string
   chat_smart_thinking_badge: string
   chat_smart_thinking_searching: string
+  chat_smart_thinking_step_label_prefix: string
+  chat_smart_thinking_summary_title: string
+  chat_smart_thinking_default_reason: string
+  chat_smart_thinking_sources_title: string
+  chat_smart_thinking_no_sources: string
+  chat_smart_thinking_no_results: string
+  chat_smart_thinking_search_error: string
+  chat_smart_thinking_no_response: string
+  chat_smart_thinking_unknown_error: string
 
   // Chat — error messages
   chat_error_failed_regenerate: string
@@ -632,6 +641,8 @@ export interface Translations {
   chat_error_rate_limit: string
   chat_error_network: string
   chat_error_timeout: string
+  chat_error_blocked_recitation: string
+  chat_error_blocked_safety: string
   chat_error_no_image_edit: string
 
   // Live — audio source section label
