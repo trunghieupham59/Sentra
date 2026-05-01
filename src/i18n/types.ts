@@ -709,6 +709,7 @@ export interface Translations {
   chat_error_rate_limit: string
   chat_error_network: string
   chat_error_timeout: string
+  chat_error_empty_response: string
   chat_error_blocked_recitation: string
   chat_error_blocked_safety: string
   chat_error_no_image_edit: string

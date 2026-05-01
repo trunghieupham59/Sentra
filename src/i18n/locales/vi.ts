@@ -581,6 +581,7 @@ const vi: Translations = {
   chat_error_rate_limit: 'Đã vượt giới hạn yêu cầu. Vui lòng chờ rồi thử lại.',
   chat_error_network: 'Không thể kết nối mạng. Vui lòng kiểm tra Internet rồi thử lại.',
   chat_error_timeout: 'Yêu cầu mất quá lâu và đã bị hủy. Vui lòng thử lại.',
+  chat_error_empty_response: 'Provider không trả nội dung. Vui lòng thử lại hoặc đổi cách hỏi ngắn gọn hơn.',
   chat_error_blocked_recitation: 'Gemini đã chặn phản hồi vì nội dung có thể giống tác phẩm có bản quyền. Hãy hỏi tóm tắt, phân tích hoặc diễn đạt lại bằng lời của bạn.',
   chat_error_blocked_safety: 'Provider đã chặn phản hồi do bộ lọc an toàn. Hãy diễn đạt lại yêu cầu rõ hơn rồi thử lại.',
   chat_error_no_image_edit: 'Provider hiện tại chưa hỗ trợ trả về ảnh đã chỉnh. Hãy chuyển sang Gemini hoặc OpenAI.',

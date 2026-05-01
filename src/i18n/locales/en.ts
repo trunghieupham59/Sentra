@@ -581,6 +581,7 @@ const en: Translations = {
   chat_error_rate_limit: 'Rate limit exceeded. Please wait and try again.',
   chat_error_network: 'Unable to connect. Please check your internet connection and try again.',
   chat_error_timeout: 'The request took too long and was canceled. Please try again.',
+  chat_error_empty_response: 'The provider returned no content. Please try again or ask more directly.',
   chat_error_blocked_recitation: 'Gemini blocked this response because it may resemble copyrighted material. Ask for a summary, analysis, or a rewritten version in your own words.',
   chat_error_blocked_safety: 'The provider blocked this response due to safety filters. Try rephrasing your request.',
   chat_error_no_image_edit: 'The current provider cannot return edited images yet. Switch to Gemini or OpenAI.',

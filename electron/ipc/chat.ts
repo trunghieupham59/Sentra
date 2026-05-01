@@ -282,6 +282,21 @@ async function streamChatWithGemini(
     }
   }
 
+  if (!fullText.trim()) {
+    try {
+      const response = await result.response
+      const responseFinishReason = response.candidates?.[0]?.finishReason
+      if (responseFinishReason) lastFinishReason = responseFinishReason
+      const responseText = response.text().trim()
+      if (responseText) {
+        fullText = responseText
+        onToken(responseText)
+      }
+    } catch {
+      // Keep the typed empty-response handling below.
+    }
+  }
+
   const text = fullText.trim()
   if (!text) {
     if (lastFinishReason && lastFinishReason !== GEMINI_SUCCESS_FINISH_REASON) {

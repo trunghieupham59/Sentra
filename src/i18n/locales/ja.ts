@@ -581,6 +581,7 @@ const ja: Translations = {
   chat_error_rate_limit: 'リクエスト上限を超えました。しばらく待ってからもう一度お試しください。',
   chat_error_network: 'ネットワークに接続できません。インターネット接続を確認してからもう一度お試しください。',
   chat_error_timeout: 'リクエストに時間がかかりすぎたためキャンセルされました。もう一度お試しください。',
+  chat_error_empty_response: 'プロバイダーが内容を返しませんでした。もう一度試すか、より直接的に質問してください。',
   chat_error_blocked_recitation: 'Geminiが、著作物に似ている可能性があるため応答をブロックしました。要約、分析、または自分の言葉での言い換えを依頼してください。',
   chat_error_blocked_safety: 'プロバイダーの安全フィルターにより応答がブロックされました。依頼内容を言い換えてもう一度お試しください。',
   chat_error_no_image_edit: '現在のプロバイダーは編集済み画像を返せません。GeminiまたはOpenAIに切り替えてください。',

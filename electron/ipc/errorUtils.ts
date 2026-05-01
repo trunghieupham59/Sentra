@@ -67,6 +67,9 @@ export function classifyProviderError(msg: string): IpcErrorResponse {
   ) {
     return { success: false, error: 'The request timed out. Please try again.', errorCode: 'TIMEOUT' }
   }
+  if (lower.includes('empty response') || lower.includes('no response')) {
+    return { success: false, error: 'No response received. Please try again.', errorCode: 'EMPTY_RESPONSE' }
+  }
   if (
     lower.includes('enotfound') ||
     lower.includes('econnrefused') ||

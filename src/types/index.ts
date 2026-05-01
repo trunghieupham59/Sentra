@@ -324,7 +324,7 @@ export interface ChatResult {
   success: boolean
   reply?: string
   error?: string
-  errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'NETWORK' | 'TIMEOUT' | 'BLOCKED_RECITATION' | 'BLOCKED_SAFETY' | string
+  errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'NETWORK' | 'TIMEOUT' | 'EMPTY_RESPONSE' | 'BLOCKED_RECITATION' | 'BLOCKED_SAFETY' | string
 }
 
 export interface ChatImageEditResult {
@@ -334,7 +334,7 @@ export interface ChatImageEditResult {
   usedProvider?: string
   usedModel?: string
   error?: string
-  errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'NETWORK' | 'TIMEOUT' | 'BLOCKED_RECITATION' | 'BLOCKED_SAFETY' | 'NO_IMAGE_EDIT' | string
+  errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'NETWORK' | 'TIMEOUT' | 'EMPTY_RESPONSE' | 'BLOCKED_RECITATION' | 'BLOCKED_SAFETY' | 'NO_IMAGE_EDIT' | string
 }
 
 export interface ChatStreamEvent {
@@ -343,7 +343,7 @@ export interface ChatStreamEvent {
   token?: string
   reply?: string
   error?: string
-  errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'NETWORK' | 'TIMEOUT' | 'BLOCKED_RECITATION' | 'BLOCKED_SAFETY' | string
+  errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'NETWORK' | 'TIMEOUT' | 'EMPTY_RESPONSE' | 'BLOCKED_RECITATION' | 'BLOCKED_SAFETY' | string
 }
 
 export interface QuickChatSeedPayload {

@@ -54,6 +54,12 @@ function toIpcMessage(msg: ChatMessage) {
   }
 }
 
+function toIpcHistory(messages: ChatMessage[]) {
+  return messages
+    .filter((m) => !m.isLoading && !m.error && !m.isResearchStep)
+    .map(toIpcMessage)
+}
+
 const IMAGE_EDIT_INTENT_PATTERN = new RegExp([
   '\\b(edit|change|modify|retouch|remove|replace|add|turn|make|convert|transform|erase|fill|extend|upscale|enhance|recolor)\\b',
   '(sửa|chỉnh|đổi|thay|xóa|xoá|bỏ|thêm|chuyển|biến|làm|tạo|ghép)',
@@ -267,7 +273,9 @@ export function ChatPage() {
     const assistantMsgId = lastAssistantIdx.m.id
 
     // History = all messages up to (not including) the last assistant message
-    const historyMessages = msgs.slice(0, lastAssistantIdx.i).filter((m) => !m.isLoading && !m.error)
+    const historyMessages = msgs
+      .slice(0, lastAssistantIdx.i)
+      .filter((m) => !m.isLoading && !m.error && !m.isResearchStep)
 
     if (historyMessages.length === 0) return
 
@@ -454,11 +462,9 @@ export function ChatPage() {
     setIsSending(true)
 
     // Build IPC-format conversation history (includes the user message just added).
-    const ipcHistory = (
+    const ipcHistory = toIpcHistory(
       useAppStore.getState().chatSessions.find((s) => s.id === sessionId)?.messages ?? []
     )
-      .filter((m) => !m.isLoading && !m.error)
-      .map(toIpcMessage)
 
     // ── Smart Thinking path (DEFAULT for text-only chat) ─────────────────────
     // AI itself classifies the question and decides whether to web-search.

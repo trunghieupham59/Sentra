@@ -42,6 +42,8 @@ import { chatService } from './chatService'
 
 const MAX_SEARCH_RESULTS = 8
 const MAX_SEARCH_CONTEXT_CHARS = 8000
+const MAX_CLASSIFIER_CONTEXT_MESSAGES = 8
+const MAX_CLASSIFIER_CONTEXT_CHARS = 4000
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -82,8 +84,8 @@ export interface SmartThinkingParams {
   question: string
   /**
    * Full IPC-shaped conversation history (including the latest user message).
-   * Used for the FINAL streaming answer so multi-turn chat keeps working.
-   * The classifier only reads the latest question for speed.
+   * Used for the FINAL streaming answer and the routing classifier so
+   * multi-turn references such as "this news" or "tin này" keep their target.
    */
   messages: IpcChatMessage[]
   systemPrompt?: string
@@ -142,6 +144,42 @@ function composeSearchQuery(question: string, plannedQuery: string): string {
     ? normalizedQuestion
     : `${normalizedQuestion} ${normalizedPlan}`
   return query.slice(0, 200)
+}
+
+function messageText(message: IpcChatMessage): string {
+  return message.content
+    .map((content) => {
+      if (content.type === 'text') return normalizeWhitespace(content.text ?? '')
+      if (content.type === 'image') return '[image]'
+      return ''
+    })
+    .filter(Boolean)
+    .join(' ')
+}
+
+function formatClassifierContext(messages: IpcChatMessage[], fallbackQuestion: string): string {
+  const formatted = messages
+    .slice(-MAX_CLASSIFIER_CONTEXT_MESSAGES)
+    .map((message) => {
+      const text = messageText(message)
+      if (!text) return ''
+      return `${message.role.toUpperCase()}: ${text}`
+    })
+    .filter(Boolean)
+
+  if (!formatted.length) return `USER: ${normalizeWhitespace(fallbackQuestion)}`
+
+  const selected: string[] = []
+  let total = 0
+  for (let i = formatted.length - 1; i >= 0; i--) {
+    const line = formatted[i]
+    const nextTotal = total + line.length + 1
+    if (selected.length > 0 && nextTotal > MAX_CLASSIFIER_CONTEXT_CHARS) break
+    selected.unshift(line)
+    total = nextTotal
+  }
+
+  return selected.join('\n')
 }
 
 /**
@@ -258,6 +296,9 @@ Query rules when needs_web=true:
   • Preserve the user's exact intent and requested answer target.
   • Keep the key entity, relationship, requested attribute, and time qualifier.
   • Do not replace the requested attribute with a nearby topic.
+  • Resolve pronouns and follow-up references from recent conversation context.
+  • If the latest question says "this", "that", "tin này", "việc này", etc.,
+    make the query about the concrete topic or claim referenced earlier.
   • State what source quality is needed in source_guidance.
 
 Return ONLY valid JSON, no other text:
@@ -334,11 +375,24 @@ export const smartThinkingService = {
 
     if (hasWebSearch()) {
       try {
+        const classifierContext = formatClassifierContext(messages, question)
         const result = await chatService.send({
           provider,
           model,
-          messages: [{ role: 'user', content: [{ type: 'text', text: question }] }],
+          messages: [{
+            role: 'user',
+            content: [{
+              type: 'text',
+              text: [
+                'Recent conversation, oldest to newest:',
+                classifierContext,
+                '',
+                'Classify ONLY the latest USER message. Return JSON only.',
+              ].join('\n'),
+            }],
+          }],
           systemPrompt: CLASSIFY_PROMPT(date),
+          bypassLengthCheck: true,
         })
         const reply = result.success ? result.reply?.trim() : null
         if (reply) {
@@ -381,9 +435,7 @@ export const smartThinkingService = {
 
         if (context) {
           const stepBody = [
-            classify.reason
-              ? `_${classify.reason}_`
-              : `_${uiText.webSearchDefaultReason}_`,
+            `_${uiText.webSearchDefaultReason}_`,
             '',
             `**${uiText.webSearchSourcesTitle}:**`,
             sourcesMarkdown || `_${uiText.webSearchNoSources}_`,

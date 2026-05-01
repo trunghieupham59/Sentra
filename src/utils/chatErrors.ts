@@ -39,6 +39,8 @@ export function localizeChatError(t: Translations, result: ChatErrorLike, fallba
       return t.chat_error_network
     case 'TIMEOUT':
       return t.chat_error_timeout
+    case 'EMPTY_RESPONSE':
+      return t.chat_error_empty_response
     case 'BLOCKED_RECITATION':
       return t.chat_error_blocked_recitation
     case 'BLOCKED_SAFETY':

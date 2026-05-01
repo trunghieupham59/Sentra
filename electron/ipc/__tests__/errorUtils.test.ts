@@ -84,6 +84,16 @@ describe('classifyProviderError', () => {
     })
   })
 
+  // ── EMPTY_RESPONSE detection ──────────────────────────────────────────────
+  describe('empty response patterns', () => {
+    it('classifies provider empty responses as EMPTY_RESPONSE', () => {
+      const result = classifyProviderError('Gemini returned an empty response.')
+      expect(result.success).toBe(false)
+      expect(result.errorCode).toBe('EMPTY_RESPONSE')
+      expect(result.error).toContain('No response')
+    })
+  })
+
   // ── NETWORK detection ─────────────────────────────────────────────────────
   describe('network error patterns', () => {
     it('classifies "ENOTFOUND" as NETWORK', () => {
