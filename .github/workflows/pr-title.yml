@@ -1,0 +1,47 @@
+name: Validate PR Title
+
+on:
+    pull_request:
+        types: [opened, edited, reopened, synchronize]
+
+permissions:
+    pull-requests: write
+    statuses: write
+
+jobs:
+    semantic-pr:
+        name: Conventional Commits
+        runs-on: ubuntu-latest
+        steps:
+            - uses: amannn/action-semantic-pull-request@v5
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                  # Các type được chấp nhận. Khớp với phân loại trong release.yml
+                  types: |
+                      feat
+                      fix
+                      hotfix
+                      patch
+                      revert
+                      improve
+                      enhance
+                      update
+                      refactor
+                      perf
+                      chore
+                      style
+                      docs
+                      test
+                      ci
+                      build
+                      deps
+                      security
+                  # Cho phép scope tự do, ví dụ: feat(translate): ...
+                  requireScope: false
+                  # Subject phải bắt đầu bằng chữ thường để giữ nhất quán
+                  subjectPattern: ^(?![A-Z]).+$
+                  subjectPatternError: |
+                      Subject của PR ("{subject}") phải bắt đầu bằng chữ thường.
+                      Ví dụ hợp lệ: "feat: add streaming translate"
+                  validateSingleCommit: false

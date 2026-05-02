@@ -1,0 +1,45 @@
+# Cấu hình cho "Generate release notes" (GitHub Auto-generated notes).
+# Sẽ được dùng khi nhấn nút "Generate release notes" trên UI hoặc gọi
+# REST API tạo release. release.yml workflow tag chính của project tự
+# build release body riêng, file này phục vụ cho các release tay/manual.
+
+changelog:
+    exclude:
+        labels:
+            - duplicate
+            - invalid
+            - wontfix
+            - stale
+            - "type/chore"
+        authors:
+            - dependabot
+            - dependabot[bot]
+    categories:
+        - title: ✨ New Features
+          labels:
+              - "type/feature"
+              - "type/enhancement"
+        - title: 🐛 Bug Fixes
+          labels:
+              - "type/bug"
+              - "type/hotfix"
+        - title: 🔒 Security
+          labels:
+              - security
+              - "type/security"
+        - title: 🔧 Refactor & Performance
+          labels:
+              - "type/refactor"
+              - "type/perf"
+        - title: 📝 Documentation
+          labels:
+              - "type/docs"
+              - "area/docs"
+        - title: 🏗️ Build & CI
+          labels:
+              - "area/ci"
+              - "area/build"
+              - "area/dependencies"
+        - title: 📦 Other Changes
+          labels:
+              - "*"

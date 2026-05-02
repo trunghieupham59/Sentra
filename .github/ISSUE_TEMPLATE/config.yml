@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+    - name: 💬 Q&A / Thảo luận chung
+      url: https://github.com/trunghieupham59/viezan/discussions
+      about: Câu hỏi sử dụng, trao đổi ý tưởng, xin trợ giúp — vui lòng dùng Discussions.
+    - name: 🔐 Báo cáo lỗ hổng bảo mật
+      url: https://github.com/trunghieupham59/viezan/security/advisories/new
+      about: Vui lòng KHÔNG mở issue công khai cho lỗ hổng bảo mật. Báo cáo riêng tư qua advisory.

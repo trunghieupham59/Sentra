@@ -1,0 +1,56 @@
+name: ✨ Feature Request
+description: Đề xuất tính năng hoặc cải tiến mới cho Viezan
+title: "feat: <mô tả ngắn>"
+labels: ["type/feature", "needs-triage"]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Cảm ơn bạn đã đóng góp ý tưởng! 💡
+              Càng cụ thể về bài toán bạn đang gặp, chúng tôi càng dễ thiết kế giải pháp đúng.
+
+    - type: textarea
+      id: problem
+      attributes:
+          label: Vấn đề bạn đang gặp
+          description: Tính năng này giải quyết vấn đề gì? Bạn đang phải workaround thế nào?
+          placeholder: "Tôi thường xuyên cần ... nhưng hiện tại Viezan chưa hỗ trợ ..."
+      validations:
+          required: true
+
+    - type: textarea
+      id: solution
+      attributes:
+          label: Giải pháp đề xuất
+          description: Bạn hình dung tính năng này hoạt động ra sao?
+      validations:
+          required: true
+
+    - type: textarea
+      id: alternatives
+      attributes:
+          label: Giải pháp thay thế đã cân nhắc
+          description: Có cách nào khác giải quyết bài toán không? Vì sao chưa đủ tốt?
+
+    - type: dropdown
+      id: surface
+      attributes:
+          label: Khu vực ảnh hưởng
+          multiple: true
+          options:
+              - Translate
+              - Chat / AI Chat
+              - Quick Chat
+              - Subtitle / Live caption
+              - Voice / TTS / Transcribe
+              - Image translate
+              - Settings / API keys
+              - Updater
+              - Chrome Extension
+              - Other
+
+    - type: textarea
+      id: additional
+      attributes:
+          label: Bối cảnh bổ sung
+          description: Mockup, link, ví dụ từ app khác, v.v.

@@ -1,0 +1,62 @@
+# Cấu hình cho actions/labeler@v5
+# Tự động gán nhãn theo path file thay đổi trong PR.
+
+"area/electron":
+    - changed-files:
+          - any-glob-to-any-file:
+                - electron/**
+
+"area/renderer":
+    - changed-files:
+          - any-glob-to-any-file:
+                - src/**
+                - index.html
+                - quick-chat.html
+
+"area/chrome-extension":
+    - changed-files:
+          - any-glob-to-any-file:
+                - chrome-extension/**
+
+"area/build":
+    - changed-files:
+          - any-glob-to-any-file:
+                - build/**
+                - vite.config.ts
+                - vitest.config.ts
+                - postcss.config.mjs
+                - tailwind.config.js
+                - tsconfig*.json
+                - scripts/**
+
+"area/ci":
+    - changed-files:
+          - any-glob-to-any-file:
+                - .github/workflows/**
+                - .github/labeler.yml
+                - .github/dependabot.yml
+
+"area/docs":
+    - changed-files:
+          - any-glob-to-any-file:
+                - "**/*.md"
+                - docs/**
+
+"area/tests":
+    - changed-files:
+          - any-glob-to-any-file:
+                - "**/__tests__/**"
+                - "**/*.test.ts"
+                - "**/*.test.tsx"
+                - src/test/**
+
+"area/dependencies":
+    - changed-files:
+          - any-glob-to-any-file:
+                - package.json
+                - package-lock.json
+
+"area/agent":
+    - changed-files:
+          - any-glob-to-any-file:
+                - viezanagent/**

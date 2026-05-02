@@ -1,0 +1,27 @@
+# CODEOWNERS — auto-request review từ chủ sở hữu khi đụng tới các file/khu vực này.
+# Quy tắc dưới cùng có ưu tiên cao hơn.
+
+# Mặc định: chủ repo review tất cả
+*                                   @trunghieupham59
+
+# Workflows + cấu hình release
+/.github/                           @trunghieupham59
+/.github/workflows/                 @trunghieupham59
+
+# Electron main process & IPC
+/electron/                          @trunghieupham59
+
+# Renderer (React)
+/src/                               @trunghieupham59
+
+# Chrome extension
+/chrome-extension/                  @trunghieupham59
+
+# Build / packaging
+/build/                             @trunghieupham59
+/scripts/                           @trunghieupham59
+electron-builder*                   @trunghieupham59
+
+# Tài liệu
+/docs/                              @trunghieupham59
+*.md                                @trunghieupham59

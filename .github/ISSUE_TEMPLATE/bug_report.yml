@@ -1,0 +1,109 @@
+name: 🐛 Bug Report
+description: Báo cáo lỗi hoặc hành vi không như mong đợi của Viezan
+title: "bug: <mô tả ngắn>"
+labels: ["type/bug", "needs-triage"]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Cảm ơn bạn đã dành thời gian báo cáo lỗi! 🙏
+              Vui lòng điền đầy đủ thông tin để chúng tôi có thể tái hiện và sửa nhanh nhất.
+
+    - type: checkboxes
+      id: prereqs
+      attributes:
+          label: Trước khi gửi
+          options:
+              - label: Tôi đã tìm trên Issues / Discussions và không thấy báo cáo trùng lặp.
+                required: true
+              - label: Tôi đang dùng phiên bản Viezan mới nhất.
+                required: true
+
+    - type: input
+      id: version
+      attributes:
+          label: Phiên bản Viezan
+          placeholder: "v2.0.0"
+      validations:
+          required: true
+
+    - type: dropdown
+      id: os
+      attributes:
+          label: Hệ điều hành
+          options:
+              - macOS (Apple Silicon)
+              - macOS (Intel)
+              - Windows 10
+              - Windows 11
+              - Linux (AppImage)
+              - Other
+      validations:
+          required: true
+
+    - type: input
+      id: os-version
+      attributes:
+          label: Phiên bản OS
+          placeholder: "macOS 15.1, Windows 11 23H2, Ubuntu 24.04, ..."
+      validations:
+          required: true
+
+    - type: dropdown
+      id: surface
+      attributes:
+          label: Khu vực bị lỗi
+          multiple: true
+          options:
+              - Translate
+              - Chat / AI Chat
+              - Quick Chat
+              - Subtitle / Live caption
+              - Voice / TTS / Transcribe
+              - Image translate
+              - Settings / API keys
+              - Updater
+              - Chrome Extension
+              - Other
+      validations:
+          required: true
+
+    - type: textarea
+      id: what-happened
+      attributes:
+          label: Mô tả lỗi
+          description: Điều gì đã xảy ra? Bạn mong đợi điều gì?
+          placeholder: "Khi tôi nhấn ..., app báo lỗi ... thay vì ..."
+      validations:
+          required: true
+
+    - type: textarea
+      id: steps
+      attributes:
+          label: Các bước tái hiện
+          value: |
+              1. Mở Viezan
+              2. Đi tới ...
+              3. Nhấn ...
+              4. Quan sát ...
+      validations:
+          required: true
+
+    - type: textarea
+      id: logs
+      attributes:
+          label: Log / lỗi console
+          description: Dán log từ DevTools hoặc terminal (xoá bớt thông tin nhạy cảm).
+          render: shell
+
+    - type: textarea
+      id: screenshots
+      attributes:
+          label: Screenshots / Recording
+          description: Kéo thả ảnh hoặc video minh hoạ.
+
+    - type: textarea
+      id: additional
+      attributes:
+          label: Thông tin bổ sung
+          description: Provider AI đang dùng, model, mạng, v.v.

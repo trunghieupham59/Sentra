@@ -1,0 +1,29 @@
+name: ❓ Question / Help
+description: Câu hỏi sử dụng hoặc cần hỗ trợ (ưu tiên dùng GitHub Discussions trước)
+title: "question: <tóm tắt>"
+labels: ["type/question", "needs-triage"]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              👉 **Trước tiên** vui lòng kiểm tra [README](../../README.md) và [Discussions](https://github.com/trunghieupham59/viezan/discussions).
+              Nếu vẫn cần hỗ trợ, hãy điền form bên dưới.
+
+    - type: textarea
+      id: question
+      attributes:
+          label: Câu hỏi của bạn
+      validations:
+          required: true
+
+    - type: textarea
+      id: tried
+      attributes:
+          label: Bạn đã thử những gì?
+          description: Liệt kê các bước bạn đã làm trước khi đặt câu hỏi.
+
+    - type: input
+      id: version
+      attributes:
+          label: Phiên bản Viezan
+          placeholder: "v2.0.0"
