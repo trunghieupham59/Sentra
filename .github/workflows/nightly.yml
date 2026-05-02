@@ -28,13 +28,13 @@ jobs:
                 os: [ubuntu-latest, macos-latest, windows-latest]
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
               with:
                   ref: ${{ inputs.ref || 'develop' }}
                   fetch-depth: 0
 
             - name: Setup Node
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v6
               with:
                   node-version: 22
                   cache: npm
@@ -75,7 +75,7 @@ jobs:
               run: npx electron-builder --publish never
 
             - name: Upload nightly artifacts
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: viezan-nightly-${{ runner.os }}-${{ steps.ver.outputs.version }}
                   path: |
