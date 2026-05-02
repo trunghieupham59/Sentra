@@ -4,7 +4,7 @@ import { useT } from '../store/useAppStore'
 import type { ProviderConfig } from '../types'
 import { tpl } from '../utils/tpl'
 import { ProviderIcon } from './ProviderIcon'
-import { CheckCircleIcon, CheckIcon, SpinnerIcon, TrashIcon } from './ui/icons'
+import { CredentialCard, type CredentialMessageTone } from './ui/CredentialCard'
 
 interface ApiKeyInputProps {
   provider: ProviderConfig
@@ -26,9 +26,8 @@ export function ApiKeyInput({ provider, onSave, onDelete, hasKey, maskedKey }: A
   const isVerifying = verifyStatus === 'verifying'
   const isSuccess = verifyStatus === 'valid' || verifyStatus === 'rate_limited'
   const isError = verifyStatus === 'invalid' || verifyStatus === 'network_error'
-
-  // Show masked dots in the input when a key is saved and the user hasn't started typing a new one
-  const showMasked = hasKey && inputValue === ''
+  const messageTone: CredentialMessageTone =
+    isSuccess ? 'success' : verifyStatus === 'network_error' ? 'warning' : 'error'
 
   const handleVerify = async () => {
     if (!inputValue.trim()) return
@@ -79,170 +78,37 @@ export function ApiKeyInput({ provider, onSave, onDelete, hasKey, maskedKey }: A
     try { await onDelete() } finally { setIsDeleting(false) }
   }
 
-  // Badge element
-  const badge = () => {
-    if (isError) {
-      return (
-        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
-          <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
-          </span>
-          {t.settings_key_invalid}
-        </span>
-      )
-    }
-    if (isSuccess || hasKey) {
-      return (
-        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">
-          <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-            {/* Ping animation on fresh verify; gentle pulse when key already saved */}
-            <span className={[
-              'absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75',
-              isSuccess ? 'animate-ping' : 'animate-pulse',
-            ].join(' ')} />
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
-          </span>
-          {t.settings_key_saved}
-        </span>
-      )
-    }
-    return (
-      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">
-        <span className="w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
-        {t.settings_no_key}
-      </span>
-    )
-  }
-
   return (
-    <div className="card p-4 space-y-3 border border-gray-200 dark:border-gray-700">
-      {/* Provider header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-100 dark:bg-gray-700 flex-shrink-0">
-            <ProviderIcon provider={provider.id} size={22} />
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{provider.name}</h3>
-            <a
-              href={provider.docsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-blue-500 hover:text-blue-700 hover:underline"
-              onClick={(e) => {
-                e.preventDefault()
-                if (window.api) window.open(provider.docsUrl, '_blank')
-              }}
-            >
-              {t.settings_get_key}
-            </a>
-          </div>
-        </div>
-        {badge()}
-      </div>
-
-      {/* Input row — masked key shown inline; delete icon inside input */}
-      <div className="flex gap-2">
-        <div className="flex-1 relative">
-          <input
-            type="password"
-            value={showMasked ? (maskedKey ?? '••••••••••••••••••••••••••••••••') : inputValue}
-            readOnly={showMasked}
-            onChange={showMasked ? undefined : (e) => {
-              setInputValue(e.target.value)
-              if (verifyStatus !== 'idle') setVerifyStatus('idle')
-            }}
-            onClick={showMasked ? () => setInputValue('') : undefined}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !showMasked) handleVerify() }}
-            placeholder={hasKey ? t.settings_key_placeholder_new : tpl(t.settings_key_placeholder_paste, { name: provider.name })}
-            className={[
-              'w-full px-3 py-2 border rounded-lg text-sm font-mono',
-              'focus:outline-none focus:ring-2 focus:ring-blue-500',
-              'text-gray-800 dark:text-gray-200 placeholder-gray-400 transition-colors',
-              showMasked
-                ? 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 text-gray-400 cursor-pointer pr-9'
-                : isSuccess
-                  ? 'bg-white dark:bg-gray-700 border-green-400 dark:border-green-600'
-                  : isError
-                    ? 'bg-white dark:bg-gray-700 border-red-400 dark:border-red-600'
-                    : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600',
-              showMasked ? '' : hasKey ? 'pr-3' : 'pr-3',
-            ].join(' ')}
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
-          />
-          {/* Delete icon — shown inside input when key exists and not editing */}
-          {showMasked && hasKey && (
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={isDeleting}
-              title={t.settings_remove}
-              className="absolute right-2 inset-y-0 flex items-center text-gray-300 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
-            >
-              {isDeleting ? (
-                <SpinnerIcon className="w-4 h-4 animate-spin" />
-              ) : (
-                <TrashIcon className="w-4 h-4" />
-              )}
-            </button>
-          )}
-        </div>
-
-        {/* Verify button — only shown when user is typing a new key */}
-        {!showMasked && (
-          <button
-            type="button"
-            onClick={handleVerify}
-            disabled={!inputValue.trim() || isVerifying}
-            className={[
-              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
-              'whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed',
-              isSuccess
-                ? 'bg-green-600 text-white hover:bg-green-700'
-                : isError
-                  ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300'
-                  : 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800',
-            ].join(' ')}
-          >
-            {isVerifying ? (
-              <>
-                <SpinnerIcon className="w-4 h-4 animate-spin" />
-                {t.settings_verifying}
-              </>
-            ) : isSuccess ? (
-              <>
-                <CheckIcon className="w-4 h-4" />
-                {t.settings_verified}
-              </>
-            ) : isError ? (
-              t.settings_try_again
-            ) : (
-              <>
-                <CheckCircleIcon className="w-4 h-4" />
-                {t.settings_verify_save}
-              </>
-            )}
-          </button>
-        )}
-      </div>
-
-      {/* Result message */}
-      {verifyMessage && (
-        <div className={[
-          'px-3 py-2 rounded-lg text-xs font-medium',
-          isSuccess
-            ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300 border border-green-200 dark:border-green-800'
-            : verifyStatus === 'network_error'
-              ? 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-300 border border-yellow-200'
-              : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300 border border-red-200 dark:border-red-800',
-        ].join(' ')}>
-          {verifyMessage}
-        </div>
-      )}
-
-    </div>
+    <CredentialCard
+      icon={<ProviderIcon provider={provider.id} size={22} />}
+      title={provider.name}
+      docsLabel={t.settings_get_key}
+      labels={{
+        saved: t.settings_key_saved,
+        empty: t.settings_no_key,
+        invalid: t.settings_key_invalid,
+        remove: t.settings_remove,
+        verifying: t.settings_verifying,
+        verified: t.settings_verified,
+        tryAgain: t.settings_try_again,
+        submit: t.settings_verify_save,
+      }}
+      inputValue={inputValue}
+      maskedValue={maskedKey}
+      placeholder={hasKey ? t.settings_key_placeholder_new : tpl(t.settings_key_placeholder_paste, { name: provider.name })}
+      hasSecret={hasKey}
+      isBusy={isVerifying}
+      isSuccess={isSuccess}
+      isError={isError}
+      isDeleting={isDeleting}
+      statusMessage={verifyMessage ? { text: verifyMessage, tone: messageTone } : undefined}
+      onOpenDocs={() => window.api?.openExternal(provider.docsUrl)}
+      onInputChange={setInputValue}
+      onSubmit={handleVerify}
+      onDelete={handleDelete}
+      onStatusReset={() => {
+        if (verifyStatus !== 'idle') setVerifyStatus('idle')
+      }}
+    />
   )
 }

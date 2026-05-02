@@ -1,6 +1,5 @@
 import { MAX_CHAT_REQUEST_CHARS } from './ipcConstants'
-import { invalidIpcInput, isNonEmptyString, isRecord } from './ipcValidation'
-import { isValidProvider, unknownProviderError } from './providers/types'
+import { invalidIpcInput, isNonEmptyString, isRecord, parseProviderModel } from './ipcValidation'
 
 export type MaxOutputTokensRequest = number | 'model-max'
 
@@ -38,35 +37,23 @@ const MAX_SYSTEM_PROMPT_CHARS = 20_000
 const MAX_CHAT_REQUEST_ID_CHARS = 100
 
 export function parseChatParams(rawParams: unknown): ParsedChatParams {
-  if (!isRecord(rawParams)) {
-    return { ok: false, response: invalidIpcInput('Chat payload must be an object') }
-  }
+  const providerModel = parseProviderModel(rawParams, {
+    payloadName: 'Chat',
+    maxModelChars: MAX_CHAT_MODEL_ID_CHARS,
+  })
+  if (!providerModel.ok) return providerModel
+  const { provider, model } = providerModel.value
+  const params = providerModel.params
 
-  if (!isNonEmptyString(rawParams.provider)) {
-    return { ok: false, response: invalidIpcInput('Provider is required') }
-  }
-  const provider = rawParams.provider.trim()
-  if (!isValidProvider(provider)) {
-    return { ok: false, response: unknownProviderError(provider) }
-  }
-
-  if (!isNonEmptyString(rawParams.model)) {
-    return { ok: false, response: invalidIpcInput('Model is required') }
-  }
-  const model = rawParams.model.trim()
-  if (model.length > MAX_CHAT_MODEL_ID_CHARS) {
-    return { ok: false, response: invalidIpcInput('Model is too long') }
-  }
-
-  if (!Array.isArray(rawParams.messages)) {
+  if (!Array.isArray(params.messages)) {
     return { ok: false, response: invalidIpcInput('Messages are required') }
   }
-  if (rawParams.messages.length === 0) {
+  if (params.messages.length === 0) {
     return { ok: false, response: invalidIpcInput('No messages provided') }
   }
 
   const messages: ChatMessage[] = []
-  for (const message of rawParams.messages) {
+  for (const message of params.messages) {
     if (!isRecord(message) || typeof message.role !== 'string' || !CHAT_ROLES.has(message.role) || !Array.isArray(message.content)) {
       return { ok: false, response: invalidIpcInput('Invalid chat message') }
     }
@@ -93,26 +80,26 @@ export function parseChatParams(rawParams: unknown): ParsedChatParams {
     messages.push({ role: message.role as ChatMessage['role'], content })
   }
 
-  if (rawParams.systemPrompt !== undefined && (typeof rawParams.systemPrompt !== 'string' || rawParams.systemPrompt.length > MAX_SYSTEM_PROMPT_CHARS)) {
+  if (params.systemPrompt !== undefined && (typeof params.systemPrompt !== 'string' || params.systemPrompt.length > MAX_SYSTEM_PROMPT_CHARS)) {
     return { ok: false, response: invalidIpcInput('Invalid system prompt') }
   }
-  if (rawParams.bypassLengthCheck !== undefined && typeof rawParams.bypassLengthCheck !== 'boolean') {
+  if (params.bypassLengthCheck !== undefined && typeof params.bypassLengthCheck !== 'boolean') {
     return { ok: false, response: invalidIpcInput('Invalid bypass flag') }
   }
   if (
-    rawParams.maxOutputTokens !== undefined &&
-    rawParams.maxOutputTokens !== 'model-max' &&
-    (typeof rawParams.maxOutputTokens !== 'number' || !Number.isFinite(rawParams.maxOutputTokens))
+    params.maxOutputTokens !== undefined &&
+    params.maxOutputTokens !== 'model-max' &&
+    (typeof params.maxOutputTokens !== 'number' || !Number.isFinite(params.maxOutputTokens))
   ) {
     return { ok: false, response: invalidIpcInput('Invalid max output tokens') }
   }
-  if (rawParams.requestId !== undefined) {
-    if (!isNonEmptyString(rawParams.requestId) || rawParams.requestId.length > MAX_CHAT_REQUEST_ID_CHARS) {
+  if (params.requestId !== undefined) {
+    if (!isNonEmptyString(params.requestId) || params.requestId.length > MAX_CHAT_REQUEST_ID_CHARS) {
       return { ok: false, response: invalidIpcInput('Invalid chat stream request id') }
     }
   }
 
-  if (!rawParams.bypassLengthCheck) {
+  if (!params.bypassLengthCheck) {
     const lastMsg = messages[messages.length - 1]
     if (lastMsg.role === 'user') {
       const lastMsgTextChars = lastMsg.content.reduce((sum, c) => sum + (c.text?.length ?? 0), 0)
@@ -134,10 +121,10 @@ export function parseChatParams(rawParams: unknown): ParsedChatParams {
       provider,
       model,
       messages,
-      systemPrompt: rawParams.systemPrompt,
-      bypassLengthCheck: rawParams.bypassLengthCheck,
-      maxOutputTokens: rawParams.maxOutputTokens as MaxOutputTokensRequest | undefined,
-      requestId: typeof rawParams.requestId === 'string' ? rawParams.requestId.trim() : undefined,
+      systemPrompt: params.systemPrompt,
+      bypassLengthCheck: params.bypassLengthCheck,
+      maxOutputTokens: params.maxOutputTokens as MaxOutputTokensRequest | undefined,
+      requestId: typeof params.requestId === 'string' ? params.requestId.trim() : undefined,
     },
   }
 }

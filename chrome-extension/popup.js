@@ -1,6 +1,5 @@
-const PORT = 39875
-
 const $ = (id) => document.getElementById(id)
+const Bridge = window.ViezanLocalBridge
 
 const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
 const COPY_LABEL = 'Copy'
@@ -11,11 +10,20 @@ const LISTEN_LABEL = 'Listen'
 
 // Last translated text — used by Copy and Replace buttons
 let lastTranslated = ''
-let ttsAudio = null
-let ttsAudioUrl = ''
-let ttsLoading = false
-let ttsRequestId = 0
-let ttsUsingSpeech = false
+const ttsPlayer = Bridge.createTtsController({
+  getButton: () => $('btn-speak-result'),
+  listenLabel: LISTEN_LABEL,
+  onError: (err) => {
+    const msg = err?.message || 'TTS failed'
+    if (msg.includes('401') || msg.includes('Unauthorized')) {
+      showStatus('Invalid API key. Update it in Options.', 'error')
+    } else if (msg.includes('fetch') || msg.includes('Failed')) {
+      showStatus('Cannot reach Viezan app. Is it running?', 'error')
+    } else {
+      showStatus(msg, 'error')
+    }
+  },
+})
 
 async function getSettings () {
   return new Promise((resolve) => {
@@ -27,17 +35,6 @@ async function getSettings () {
       })
     })
   })
-}
-
-/** Fetch the active provider/model from the native app via /api/config */
-async function getAppConfig (token) {
-  const resp = await fetch(`http://127.0.0.1:${PORT}/api/config`, {
-    headers: { 'X-Viezan-Token': token },
-  })
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-  const data = await resp.json()
-  if (!data.success) throw new Error('Could not fetch app config')
-  return { provider: data.provider, model: data.model }
 }
 
 function showStatus (msg, type) {
@@ -52,91 +49,6 @@ function showStatus (msg, type) {
 
 function hideStatus () {
   $('status-msg').style.display = 'none'
-}
-
-async function fetchTtsAudio (text, lang, token) {
-  const resp = await fetch(`http://127.0.0.1:${PORT}/api/tts`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Viezan-Token': token,
-    },
-    body: JSON.stringify({ text, lang }),
-  })
-  const data = await resp.json().catch(() => null)
-  if (!resp.ok) throw new Error(data?.error || `HTTP ${resp.status}`)
-  if (!data.success || !data.audioBase64) throw new Error(data.error || 'TTS failed')
-  return data
-}
-
-const TTS_LANG_TO_BCP47 = {
-  en: 'en-US',
-  vi: 'vi-VN',
-  ja: 'ja-JP',
-  zh: 'zh-CN',
-  'zh-TW': 'zh-TW',
-  ko: 'ko-KR',
-  fr: 'fr-FR',
-  de: 'de-DE',
-  es: 'es-ES',
-  pt: 'pt-PT',
-  th: 'th-TH',
-  ru: 'ru-RU',
-  ar: 'ar-SA',
-  id: 'id-ID',
-  it: 'it-IT',
-  nl: 'nl-NL',
-  tr: 'tr-TR',
-  hi: 'hi-IN',
-}
-
-function speakWithBrowserSpeech (text, lang) {
-  if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) return false
-  const bcp47 = TTS_LANG_TO_BCP47[lang] || 'en-US'
-  const utter = new SpeechSynthesisUtterance(text)
-  utter.lang = bcp47
-  const voices = window.speechSynthesis.getVoices()
-  const prefix = bcp47.split('-')[0]
-  const local = voices.filter((voice) => voice.localService)
-  utter.voice =
-    local.find((voice) => voice.lang === bcp47) ||
-    voices.find((voice) => voice.lang === bcp47) ||
-    local.find((voice) => voice.lang.startsWith(prefix)) ||
-    voices.find((voice) => voice.lang.startsWith(prefix)) ||
-    null
-  utter.onend = stopTtsAudio
-  utter.onerror = stopTtsAudio
-  ttsUsingSpeech = true
-  window.speechSynthesis.cancel()
-  window.speechSynthesis.speak(utter)
-  $('btn-speak-result').textContent = 'Stop'
-  return true
-}
-
-function base64ToBlobUrl (base64, mimeType) {
-  const binary = atob(base64)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-  const blob = new Blob([bytes], { type: mimeType || 'audio/mpeg' })
-  return URL.createObjectURL(blob)
-}
-
-function stopTtsAudio () {
-  ttsRequestId++
-  if (ttsAudio) {
-    try { ttsAudio.pause() } catch { /* ignore */ }
-    ttsAudio = null
-  }
-  if (ttsUsingSpeech && window.speechSynthesis) {
-    ttsUsingSpeech = false
-    window.speechSynthesis.cancel()
-  }
-  if (ttsAudioUrl) {
-    URL.revokeObjectURL(ttsAudioUrl)
-    ttsAudioUrl = ''
-  }
-  ttsLoading = false
-  $('btn-speak-result').textContent = LISTEN_LABEL
 }
 
 function setProviderBadge (el, provider) {
@@ -174,12 +86,7 @@ async function loadAppInfo (token) {
   label.textContent = 'Connecting...'
 
   try {
-    const resp = await fetch(`http://127.0.0.1:${PORT}/api/config`, {
-      headers: { 'X-Viezan-Token': token },
-    })
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-    const data = await resp.json()
-    if (!data.success) throw new Error('bad')
+    const data = await Bridge.getAppConfig(token)
 
     // Header: active status
     dot.className = 'status-dot'
@@ -208,7 +115,7 @@ async function loadAppInfo (token) {
 
 /** Show translation result and reveal Copy/Replace buttons */
 function showResult (text) {
-  stopTtsAudio()
+  ttsPlayer.stop()
   lastTranslated = text
   const resultEl = $('result-text')
   resultEl.innerHTML = ''
@@ -226,7 +133,7 @@ function showResult (text) {
 
 /** Hide Copy/Replace and reset result panel */
 function clearResult () {
-  stopTtsAudio()
+  ttsPlayer.stop()
   lastTranslated = ''
   $('result-text').innerHTML = '<span class="result-placeholder">Translation appears here...</span>'
   $('footer-result').style.display = 'none'
@@ -287,28 +194,14 @@ $('btn-translate').addEventListener('click', async () => {
   showStatus('Translating...', 'loading')
 
   try {
-    const appConfig = await getAppConfig(settings.token)
-
-    const resp = await fetch(`http://127.0.0.1:${PORT}/api/translate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Viezan-Token': settings.token,
-      },
-      body: JSON.stringify({
-        text,
-        targetLang,
-        provider: appConfig.provider,
-        model: appConfig.model,
-        translationStyle: $('translation-style').value || 'general',
-      }),
+    const translatedText = await Bridge.translateText({
+      text,
+      token: settings.token,
+      targetLang,
+      translationStyle: $('translation-style').value || 'general',
     })
 
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-    const data = await resp.json()
-    if (!data.success) throw new Error(data.error || 'Translation failed')
-
-    showResult(data.translatedText)
+    showResult(translatedText)
     hideStatus()
   } catch (err) {
     const msg = err.message || 'Unknown error'
@@ -342,42 +235,12 @@ $('btn-copy-result').addEventListener('click', async () => {
 // ── Listen button ──────────────────────────────────────────────────────────
 
 $('btn-speak-result').addEventListener('click', async () => {
-  if (!lastTranslated || ttsLoading) {
-    if (ttsLoading) stopTtsAudio()
-    return
-  }
-  if (ttsAudio) {
-    stopTtsAudio()
-    return
-  }
-
   try {
     const settings = await getSettings()
     if (!settings.token) throw new Error('Missing API key')
-    ttsLoading = true
-    const requestId = ++ttsRequestId
-    $('btn-speak-result').textContent = 'Loading...'
     const lang = $('target-lang').value || settings.targetLang
-    const result = await fetchTtsAudio(lastTranslated, lang, settings.token)
-    if (requestId !== ttsRequestId) return
-    ttsAudioUrl = base64ToBlobUrl(result.audioBase64, result.mimeType)
-    ttsAudio = new Audio(ttsAudioUrl)
-    ttsAudio.onended = stopTtsAudio
-    ttsAudio.onerror = () => {
-      stopTtsAudio()
-      showStatus('Failed to play audio', 'error')
-    }
-    ttsLoading = false
-    $('btn-speak-result').textContent = 'Stop'
-    await ttsAudio.play().catch((err) => {
-      stopTtsAudio()
-      if (speakWithBrowserSpeech(lastTranslated, lang)) return
-      throw err
-    })
+    await ttsPlayer.play(lastTranslated, lang, settings.token)
   } catch (err) {
-    const lang = $('target-lang').value || 'en'
-    stopTtsAudio()
-    if (speakWithBrowserSpeech(lastTranslated, lang)) return
     const msg = err.message || 'TTS failed'
     if (msg.includes('401') || msg.includes('Unauthorized')) {
       showStatus('Invalid API key. Update it in Options.', 'error')

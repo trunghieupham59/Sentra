@@ -60,6 +60,7 @@ If the test fails, confirm that Viezan is running and that local requests to `12
 | --- | --- |
 | `manifest.json` | Manifest V3 metadata, permissions and commands. |
 | `background.js` | Service worker and context menu handling. |
+| `local-bridge.js` | Shared local-server, app-config and TTS helpers used by all extension entrypoints. |
 | `content.js` | Injected selected-text button and tooltip flow. |
 | `content.css` | Styles for the injected page UI. |
 | `popup.html` / `popup.js` | Toolbar quick-translate panel. |
@@ -75,3 +76,7 @@ If the test fails, confirm that Viezan is running and that local requests to `12
 - Provider API keys are never stored in the extension.
 - Webpage content is sent only when you trigger a translation.
 - The desktop app decides whether translation uses Local AI or a configured cloud provider.
+
+## Localization Policy
+
+The desktop app owns the localized product experience. The Chrome Extension UI is intentionally English-only in this package; translate/provider output still follows the target language and model settings selected by the user.

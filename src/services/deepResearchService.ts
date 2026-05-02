@@ -35,6 +35,7 @@
 import { tpl } from '../utils/tpl'
 import type { ChatMessageContent } from './chatService'
 import { chatService } from './chatService'
+import { formatWebSearchResults, getCurrentLocaleDateTime, hasWebSearchApi } from './searchResultFormatting'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -132,33 +133,12 @@ type ChatServiceResult = Awaited<ReturnType<typeof chatService.send>>
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const getDate = () => {
-  const locale = typeof navigator !== 'undefined' ? navigator.language : undefined
-  return new Date().toLocaleString(locale, { dateStyle: 'full', timeStyle: 'short' })
-}
-
-const hasWebSearch = () =>
-  typeof window !== 'undefined' && typeof window.api?.webSearch === 'function'
-
-function formatSearchResults(
-  results: Array<{ title: string; url: string; content: string; score: number }>,
-  answer: string | undefined,
-  webSummaryLabel: string,
-): string {
-  const lines: string[] = []
-  if (answer) lines.push(`**${webSummaryLabel}:** ${answer}`, '')
-  results.forEach((r, i) => {
-    lines.push(`**[${i + 1}] ${r.title}**`, `URL: ${r.url}`, r.content.slice(0, 700), '')
-  })
-  return lines.join('\n')
-}
-
 async function webSearch(query: string, webSummaryLabel: string): Promise<string> {
-  if (!hasWebSearch()) return ''
+  if (!hasWebSearchApi()) return ''
   try {
     const result = await window.api.webSearch({ query: query.slice(0, 200), maxResults: MAX_SEARCH_RESULTS })
     if (result.success && result.results?.length) {
-      return formatSearchResults(result.results, result.answer, webSummaryLabel)
+      return formatWebSearchResults(result.results, result.answer, webSummaryLabel)
     }
   } catch { /* ignore */ }
   return ''
@@ -323,8 +303,8 @@ const DEFAULT_ASPECTS = [
 
 export const deepResearchService = {
   async run({ provider, model, question, images = [], uiText, callbacks }: DeepResearchParams): Promise<void> {
-    const date = getDate()
-    const webAvailable = hasWebSearch()
+    const date = getCurrentLocaleDateTime()
+    const webAvailable = hasWebSearchApi()
     const { onStepStart, onStepComplete, onStepError } = callbacks
     const hasImages = images.length > 0
 

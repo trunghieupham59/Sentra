@@ -2,11 +2,13 @@ import { useState } from 'react'
 import { HistoryBulkHeader } from '../../components/ui/HistoryBulkHeader'
 import { HistoryDeleteButton } from '../../components/ui/HistoryDeleteButton'
 import { HistoryEmptyState } from '../../components/ui/HistoryEmptyState'
-import { CheckIcon, ChevronDownIcon, ClockIcon, ReuseIcon } from '../../components/ui/icons'
+import { ClockIcon, ReuseIcon } from '../../components/ui/icons'
 import { useAppStore, useT } from '../../store/useAppStore'
 import type { HistoryItem } from '../../types'
 import { tpl } from '../../utils/tpl'
+import { HistorySelectableRow } from './HistorySelectableRow'
 import { formatTime, historyMatches, langLabel, normalizeHistoryQuery, ProviderBadge } from './historyUtils'
+import { useHistoryBulkSelection } from './useHistoryBulkSelection'
 
 interface TranslationHistoryTabProps {
   query: string
@@ -16,7 +18,6 @@ export function TranslationHistoryTab({ query }: TranslationHistoryTabProps) {
   const { history, deleteHistoryItem, setActivePage, setSourceText, setTranslatedText, setSourceLang, setTargetLang } = useAppStore()
   const t = useT()
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const normalizedQuery = normalizeHistoryQuery(query)
   const filteredHistory = history.filter((item) => historyMatches(normalizedQuery, [
     item.sourceText,
@@ -29,8 +30,8 @@ export function TranslationHistoryTab({ query }: TranslationHistoryTabProps) {
     item.model,
   ]))
   const filteredIds = filteredHistory.map((item) => item.id)
-  const selectedVisibleIds = filteredIds.filter((id) => selectedIds.has(id))
-  const selectedCount = selectedVisibleIds.length
+  const { selectedIds, selectedCount, toggleSelect, handleSelectAll, handleDeleteSelected } =
+    useHistoryBulkSelection(filteredIds, deleteHistoryItem)
 
   const handleReuse = (item: HistoryItem) => {
     setSourceText(item.sourceText)
@@ -38,31 +39,6 @@ export function TranslationHistoryTab({ query }: TranslationHistoryTabProps) {
     setSourceLang(item.sourceLang)
     setTargetLang(item.targetLang)
     setActivePage('translate')
-  }
-
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  const handleSelectAll = () => {
-    if (filteredIds.length > 0 && filteredIds.every((id) => selectedIds.has(id))) {
-      setSelectedIds(new Set())
-    } else {
-      setSelectedIds(new Set(filteredIds))
-    }
-  }
-
-  const handleDeleteSelected = () => {
-    if (selectedCount === 0) return
-    for (const id of selectedVisibleIds) {
-      deleteHistoryItem(id)
-    }
-    setSelectedIds(new Set())
   }
 
   return (
@@ -101,62 +77,35 @@ export function TranslationHistoryTab({ query }: TranslationHistoryTabProps) {
               const isExpanded = expandedId === item.id
               const isSelected = selectedIds.has(item.id)
               return (
-                <li
+                <HistorySelectableRow
                   key={item.id}
-                  className={[
-                    'group rounded-lg border transition-colors duration-150',
-                    isSelected
-                      ? 'border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/20'
-                      : 'border-gray-100 bg-white hover:border-blue-100 hover:bg-blue-50/30 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-blue-950 dark:hover:bg-gray-800/50',
-                  ].join(' ')}
-                >
-                  <div className="flex items-start gap-3 px-4 py-3">
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); toggleSelect(item.id) }}
-                      className="mt-0.5 flex-shrink-0"
-                    >
-                      <span className={[
-                        'w-4 h-4 rounded border-2 flex items-center justify-center transition-colors',
-                        isSelected
-                          ? 'bg-blue-500 border-blue-500'
-                          : 'border-gray-300 dark:border-gray-600 hover:border-blue-400',
-                      ].join(' ')}>
-                        {isSelected && <CheckIcon className="w-2.5 h-2.5 text-white" />}
+                  id={item.id}
+                  isSelected={isSelected}
+                  isExpanded={isExpanded}
+                  onToggleSelect={toggleSelect}
+                  onToggleExpand={(id) => setExpandedId(expandedId === id ? null : id)}
+                  preview={(
+                    <>
+                      <p className="text-sm text-gray-800 dark:text-gray-100 leading-snug line-clamp-2 font-medium">
+                        {item.sourceText}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 leading-snug mt-1 line-clamp-1">
+                        {item.translatedText}
+                      </p>
+                    </>
+                  )}
+                  meta={(
+                    <>
+                      <ProviderBadge provider={item.provider} />
+                      <span className="text-[10px] text-gray-400 dark:text-gray-600">
+                        {langLabel(item.sourceLang)} → {langLabel(item.targetLang)}
                       </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className="flex-1 min-w-0 text-left"
-                      onClick={() => setExpandedId(isExpanded ? null : item.id)}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-gray-800 dark:text-gray-100 leading-snug line-clamp-2 font-medium">
-                            {item.sourceText}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 leading-snug mt-1 line-clamp-1">
-                            {item.translatedText}
-                          </p>
-                        </div>
-                        <ChevronDownIcon
-                          className={`flex-shrink-0 w-4 h-4 text-gray-300 dark:text-gray-600 transition-transform duration-200 mt-0.5 ${isExpanded ? 'rotate-180' : ''}`}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2 mt-2 flex-wrap">
-                        <ProviderBadge provider={item.provider} />
-                        <span className="text-[10px] text-gray-400 dark:text-gray-600">
-                          {langLabel(item.sourceLang)} → {langLabel(item.targetLang)}
-                        </span>
-                        <span className="text-[10px] text-gray-300 dark:text-gray-700 ml-auto">
-                          {formatTime(item.timestamp, t)}
-                        </span>
-                      </div>
-                    </button>
-                  </div>
-
-                  {isExpanded && (
+                      <span className="text-[10px] text-gray-300 dark:text-gray-700 ml-auto">
+                        {formatTime(item.timestamp, t)}
+                      </span>
+                    </>
+                  )}
+                  expandedContent={(
                     <div className="px-4 pb-3 pl-11 fade-in">
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs">
                         <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 rounded-lg">
@@ -192,7 +141,7 @@ export function TranslationHistoryTab({ query }: TranslationHistoryTabProps) {
                       </div>
                     </div>
                   )}
-                </li>
+                />
               )
             })}
           </ul>

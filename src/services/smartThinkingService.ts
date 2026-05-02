@@ -27,6 +27,7 @@
  */
 import type { ChatMessage as IpcChatMessage } from './chatService'
 import { chatService } from './chatService'
+import { formatWebSearchResults, getCurrentLocaleDateTime, hasWebSearchApi } from './searchResultFormatting'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -92,32 +93,6 @@ interface ClassifyResult {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const getDate = () => {
-  const locale = typeof navigator !== 'undefined' ? navigator.language : undefined
-  return new Date().toLocaleString(locale, { dateStyle: 'full', timeStyle: 'short' })
-}
-
-const hasWebSearch = () =>
-  typeof window !== 'undefined' && typeof window.api?.webSearch === 'function'
-
-function formatSearchResults(
-  results: Array<{ title: string; url: string; content: string; score: number }>,
-  answer: string | undefined,
-  summaryTitle: string,
-): string {
-  const lines: string[] = []
-  if (answer) lines.push(`**${summaryTitle}:** ${answer}`, '')
-  results.forEach((r, i) => {
-    lines.push(
-      `**[${i + 1}] ${r.title}**`,
-      `URL: ${r.url}`,
-      r.content.slice(0, 700),
-      '',
-    )
-  })
-  return lines.join('\n').slice(0, MAX_SEARCH_CONTEXT_CHARS)
-}
 
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, ' ').trim()
@@ -239,14 +214,19 @@ async function runWebSearch(query: string, uiText: SmartThinkingUiText): Promise
   context: string
   sourcesMarkdown: string
 }> {
-  if (!hasWebSearch()) return { context: '', sourcesMarkdown: '' }
+  if (!hasWebSearchApi()) return { context: '', sourcesMarkdown: '' }
   try {
     const result = await window.api.webSearch({
       query: query.slice(0, 200),
       maxResults: MAX_SEARCH_RESULTS,
     })
     if (result.success && result.results?.length) {
-      const context = formatSearchResults(result.results, result.answer, uiText.webSearchSummaryTitle)
+      const context = formatWebSearchResults(
+        result.results,
+        result.answer,
+        uiText.webSearchSummaryTitle,
+        MAX_SEARCH_CONTEXT_CHARS,
+      )
       const sourcesMarkdown = result.results
         .map((r, i) => `${i + 1}. [${r.title || r.url}](${r.url})`)
         .join('\n')
@@ -362,7 +342,7 @@ export const smartThinkingService = {
     uiText,
     callbacks,
   }: SmartThinkingParams): Promise<void> {
-    const date = getDate()
+    const date = getCurrentLocaleDateTime()
     const {
       onStepStart,
       onStepComplete,
@@ -382,7 +362,7 @@ export const smartThinkingService = {
       sourceGuidance: '',
     }
 
-    if (hasWebSearch()) {
+    if (hasWebSearchApi()) {
       try {
         const classifierContext = formatClassifierContext(messages, question)
         const result = await chatService.send({

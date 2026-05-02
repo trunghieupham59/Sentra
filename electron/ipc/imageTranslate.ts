@@ -8,8 +8,7 @@ import {
   VISION_SCORE_CHEAP, VISION_SCORE_GEN_WEIGHT, VISION_SCORE_LITE_PENALTY,VISION_SCORE_MID, 
   VISION_SCORE_SLOW, 
 } from './ipcConstants'
-import { invalidIpcInput, isNonEmptyString, isRecord, isSafeLanguageCode } from './ipcValidation'
-import { isValidProvider, unknownProviderError } from './providers/types'
+import { invalidIpcInput, isNonEmptyString, isSafeLanguageCode, parseProviderModel } from './ipcValidation'
 import { getStoredApiKey } from './storage'
 
 /** Allowed image MIME types for Gemini image-edit (whitelist prevents injection via IPC). */
@@ -181,35 +180,24 @@ type ParsedImageTranslateParams =
 const MAX_IMAGE_MODEL_ID_CHARS = 200
 
 function parseImageTranslateParams(rawParams: unknown): ParsedImageTranslateParams {
-  if (!isRecord(rawParams)) {
-    return { ok: false, response: invalidIpcInput('Image translate payload must be an object') }
-  }
+  const providerModel = parseProviderModel(rawParams, {
+    payloadName: 'Image translate',
+    maxModelChars: MAX_IMAGE_MODEL_ID_CHARS,
+  })
+  if (!providerModel.ok) return providerModel
+  const { provider, model } = providerModel.value
+  const params = providerModel.params
 
-  if (!isNonEmptyString(rawParams.provider)) {
-    return { ok: false, response: invalidIpcInput('Provider is required') }
-  }
-  const provider = rawParams.provider.trim()
-  if (!isValidProvider(provider)) {
-    return { ok: false, response: unknownProviderError(provider) }
-  }
-
-  if (!isNonEmptyString(rawParams.model)) {
-    return { ok: false, response: invalidIpcInput('Model is required') }
-  }
-  const model = rawParams.model.trim()
-  if (model.length > MAX_IMAGE_MODEL_ID_CHARS) {
-    return { ok: false, response: invalidIpcInput('Model is too long') }
-  }
-  if (!isNonEmptyString(rawParams.imageBase64)) {
+  if (!isNonEmptyString(params.imageBase64)) {
     return { ok: false, response: invalidIpcInput('No image data provided') }
   }
-  if (!isNonEmptyString(rawParams.imageMimeType) || !ALLOWED_IMAGE_MIME_TYPES.has(rawParams.imageMimeType)) {
+  if (!isNonEmptyString(params.imageMimeType) || !ALLOWED_IMAGE_MIME_TYPES.has(params.imageMimeType)) {
     return { ok: false, response: invalidIpcInput('Unsupported image MIME type') }
   }
-  if (!isSafeLanguageCode(rawParams.sourceLang)) {
+  if (!isSafeLanguageCode(params.sourceLang)) {
     return { ok: false, response: invalidIpcInput('Invalid source language') }
   }
-  if (!isSafeLanguageCode(rawParams.targetLang)) {
+  if (!isSafeLanguageCode(params.targetLang)) {
     return { ok: false, response: invalidIpcInput('Invalid target language') }
   }
 
@@ -218,10 +206,10 @@ function parseImageTranslateParams(rawParams: unknown): ParsedImageTranslatePara
     value: {
       provider,
       model,
-      imageBase64: rawParams.imageBase64,
-      imageMimeType: rawParams.imageMimeType,
-      sourceLang: rawParams.sourceLang,
-      targetLang: rawParams.targetLang,
+      imageBase64: params.imageBase64,
+      imageMimeType: params.imageMimeType,
+      sourceLang: params.sourceLang,
+      targetLang: params.targetLang,
     },
   }
 }

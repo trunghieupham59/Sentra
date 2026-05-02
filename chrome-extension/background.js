@@ -7,7 +7,10 @@
  *  • Relaying translate requests from content scripts if needed
  */
 
-const PORT = 39875
+try { importScripts('local-bridge.js') } catch { /* ignore */ }
+
+const LOCAL_BRIDGE = globalThis.ViezanLocalBridge
+const PORT = LOCAL_BRIDGE?.PORT ?? 39875
 
 // ── Context menu ──────────────────────────────────────────────────────────────
 
@@ -90,7 +93,7 @@ async function ensureContentScript (tabId) {
 async function injectContentScript (tabId) {
   try {
     await chrome.scripting.insertCSS({ target: { tabId }, files: ['content.css'] })
-    await chrome.scripting.executeScript({ target: { tabId }, files: ['model-display.js', 'provider-meta.js', 'content.js'] })
+    await chrome.scripting.executeScript({ target: { tabId }, files: ['model-display.js', 'provider-meta.js', 'local-bridge.js', 'content.js'] })
   } catch {
     // Tab is not injectable — ignore
   }
@@ -135,6 +138,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 async function handleTranslate (message) {
   const { text, token, targetLang, provider, model } = message
+
+  if (LOCAL_BRIDGE?.translateText) {
+    const translatedText = await LOCAL_BRIDGE.translateText({ text, token, targetLang, provider, model })
+    return { success: true, translatedText }
+  }
 
   const resp = await fetch(`http://127.0.0.1:${PORT}/api/translate`, {
     method: 'POST',

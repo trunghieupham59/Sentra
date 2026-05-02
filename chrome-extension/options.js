@@ -1,6 +1,5 @@
-const PORT = 39875
-
 const $ = (id) => document.getElementById(id)
+const Bridge = window.ViezanLocalBridge
 
 // ── Show status ───────────────────────────────────────────────────────────────
 
@@ -43,37 +42,22 @@ $('btn-test').addEventListener('click', async () => {
   showStatus('Testing connection...', 'info', 0)
 
   try {
-    const resp = await fetch(`http://127.0.0.1:${PORT}/api/status`, {
-      headers: { 'X-Viezan-Token': token },
-    })
-
-    if (resp.status === 401) {
-      showStatus('API key is invalid. Copy it again from the Viezan app.', 'error')
-      return
-    }
-    if (!resp.ok) {
-      showStatus(`Server responded with HTTP ${resp.status}`, 'error')
-      return
-    }
-
-    const data = await resp.json()
-    if (data.success) {
-      // Auto-save settings on successful connection so content script & popup
-      // always have the correct API key without requiring a separate "Save" click.
-      const targetLang = $('target-lang').value
-      const translationStyle = $('translation-style').value
-      chrome.storage.local.set({ treToken: token, treTargetLang: targetLang, treTranslationStyle: translationStyle })
-      showStatus(`Connected to Viezan v${data.version || '?'}. Settings saved.`, 'success')
-      // Refresh the active provider/model display
-      loadAiConfig(token)
-    } else {
-      showStatus('Unexpected response from Viezan app.', 'error')
-    }
+    const data = await Bridge.getStatus(token)
+    // Auto-save settings on successful connection so content script & popup
+    // always have the correct API key without requiring a separate "Save" click.
+    const targetLang = $('target-lang').value
+    const translationStyle = $('translation-style').value
+    chrome.storage.local.set({ treToken: token, treTargetLang: targetLang, treTranslationStyle: translationStyle })
+    showStatus(`Connected to Viezan v${data.version || '?'}. Settings saved.`, 'success')
+    // Refresh the active provider/model display
+    loadAiConfig(token)
   } catch (err) {
     const msg = err?.message || String(err)
-    if (msg.includes('fetch') || msg.includes('Failed') || msg.includes('NetworkError')) {
+    if (msg.includes('401') || msg.includes('Unauthorized')) {
+      showStatus('API key is invalid. Copy it again from the Viezan app.', 'error')
+    } else if (msg.includes('fetch') || msg.includes('Failed') || msg.includes('NetworkError')) {
       showStatus(
-        'Cannot reach Viezan app on port 39875. ' +
+        `Cannot reach Viezan app on port ${Bridge.PORT}. ` +
         'Make sure the app is running. If it is, try reloading the extension (chrome://extensions > Reload).',
         'error'
       )
@@ -112,12 +96,7 @@ async function loadAiConfig (token) {
   error.style.display   = 'none'
 
   try {
-    const resp = await fetch(`http://127.0.0.1:${PORT}/api/config`, {
-      headers: { 'X-Viezan-Token': token },
-    })
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-    const data = await resp.json()
-    if (!data.success) throw new Error('bad response')
+    const data = await Bridge.getAppConfig(token)
 
     setProviderBadge(data.provider)
     // Use the desktop app's short pretty model name (e.g. "GPT 5.5 Mini")

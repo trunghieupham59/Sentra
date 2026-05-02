@@ -17,7 +17,7 @@
     return
   }
 
-  const PORT = 39875
+  const Bridge = globalThis.ViezanLocalBridge
   const ICON_URL = chrome.runtime.getURL('icons/icon48.png')
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
   const COPY_LABEL = 'Copy'
@@ -134,6 +134,14 @@
   const langSelect = tooltip.querySelector('.tre-lang-select')
   const styleSelect = tooltip.querySelector('.tre-style-select')
   const closeBtn = tooltip.querySelector('.tre-close-btn')
+  const ttsPlayer = Bridge.createTtsController({
+    getButton: () => listenBtn,
+    listenLabel: LISTEN_LABEL,
+    onError: () => {
+      listenBtn.textContent = 'Failed'
+      setTimeout(() => { listenBtn.textContent = LISTEN_LABEL }, 1500)
+    },
+  })
 
   // Apply OS-aware shortcut labels to action buttons
   copyBtn.textContent = COPY_LABEL
@@ -150,11 +158,6 @@
   let savedInputStart = 0        // textarea selectionStart
   let savedInputEnd = 0          // textarea selectionEnd
   let currentTranslation = ''
-  let ttsAudio = null
-  let ttsAudioUrl = ''
-  let ttsLoading = false
-  let ttsRequestId = 0
-  let ttsUsingSpeech = false
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -177,17 +180,6 @@
         reject(new Error('Extension context invalidated. Please reload the page.'))
       }
     })
-  }
-
-  /** Fetch active provider/model from the native app — always mirrors app's current selection */
-  async function getAppConfig (token) {
-    const resp = await fetch(`http://127.0.0.1:${PORT}/api/config`, {
-      headers: { 'X-Viezan-Token': token },
-    })
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-    const data = await resp.json()
-    if (!data.success) throw new Error('Could not fetch app config')
-    return { provider: data.provider, model: data.model }
   }
 
   function getProviderDisplayName (provider) {
@@ -229,7 +221,7 @@
     const statusText  = tooltip.querySelector('.tre-status-text')
     if (!providerEl || !modelEl) return
     try {
-      const config = await getAppConfig(token)
+      const config = await Bridge.getAppConfig(token)
 
       // Update status to Active.
       if (statusDot)  { statusDot.className = 'tre-status-dot tre-status-active' }
@@ -260,111 +252,12 @@
   }
 
   async function translateText (text, settings) {
-    const appConfig = await getAppConfig(settings.token)
-    const resp = await fetch(`http://127.0.0.1:${PORT}/api/translate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Viezan-Token': settings.token,
-      },
-      body: JSON.stringify({
-        text,
-        targetLang: settings.targetLang,
-        provider: appConfig.provider,
-        model: appConfig.model,
-        translationStyle: settings.translationStyle || styleSelect.value || 'general',
-      }),
+    return Bridge.translateText({
+      text,
+      token: settings.token,
+      targetLang: settings.targetLang,
+      translationStyle: settings.translationStyle || styleSelect.value || 'general',
     })
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-    const data = await resp.json()
-    if (!data.success) throw new Error(data.error || 'Translation failed')
-    return data.translatedText
-  }
-
-  async function fetchTtsAudio (text, lang, token) {
-    const resp = await fetch(`http://127.0.0.1:${PORT}/api/tts`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Viezan-Token': token,
-      },
-      body: JSON.stringify({ text, lang }),
-    })
-    const data = await resp.json().catch(() => null)
-    if (!resp.ok) throw new Error(data?.error || `HTTP ${resp.status}`)
-    if (!data.success || !data.audioBase64) throw new Error(data.error || 'TTS failed')
-    return data
-  }
-
-  const TTS_LANG_TO_BCP47 = {
-    en: 'en-US',
-    vi: 'vi-VN',
-    ja: 'ja-JP',
-    zh: 'zh-CN',
-    'zh-TW': 'zh-TW',
-    ko: 'ko-KR',
-    fr: 'fr-FR',
-    de: 'de-DE',
-    es: 'es-ES',
-    pt: 'pt-PT',
-    th: 'th-TH',
-    ru: 'ru-RU',
-    ar: 'ar-SA',
-    id: 'id-ID',
-    it: 'it-IT',
-    nl: 'nl-NL',
-    tr: 'tr-TR',
-    hi: 'hi-IN',
-  }
-
-  function speakWithBrowserSpeech (text, lang) {
-    if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) return false
-    const bcp47 = TTS_LANG_TO_BCP47[lang] || 'en-US'
-    const utter = new SpeechSynthesisUtterance(text)
-    utter.lang = bcp47
-    const voices = window.speechSynthesis.getVoices()
-    const prefix = bcp47.split('-')[0]
-    const local = voices.filter((voice) => voice.localService)
-    utter.voice =
-      local.find((voice) => voice.lang === bcp47) ||
-      voices.find((voice) => voice.lang === bcp47) ||
-      local.find((voice) => voice.lang.startsWith(prefix)) ||
-      voices.find((voice) => voice.lang.startsWith(prefix)) ||
-      null
-    utter.onend = stopTtsAudio
-    utter.onerror = stopTtsAudio
-    ttsUsingSpeech = true
-    window.speechSynthesis.cancel()
-    window.speechSynthesis.speak(utter)
-    listenBtn.textContent = 'Stop'
-    return true
-  }
-
-  function base64ToBlobUrl (base64, mimeType) {
-    const binary = atob(base64)
-    const bytes = new Uint8Array(binary.length)
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-    const blob = new Blob([bytes], { type: mimeType || 'audio/mpeg' })
-    return URL.createObjectURL(blob)
-  }
-
-  function stopTtsAudio () {
-    ttsRequestId++
-    if (ttsAudio) {
-      try { ttsAudio.pause() } catch { /* ignore */ }
-      ttsAudio = null
-    }
-    if (ttsUsingSpeech && window.speechSynthesis) {
-      ttsUsingSpeech = false
-      window.speechSynthesis.cancel()
-    }
-    if (ttsAudioUrl) {
-      URL.revokeObjectURL(ttsAudioUrl)
-      ttsAudioUrl = ''
-    }
-    ttsLoading = false
-    listenBtn.textContent = LISTEN_LABEL
-    listenBtn.disabled = false
   }
 
   function positionElement (el, rect) {
@@ -460,7 +353,7 @@
 
     tooltip.style.display = 'block'
     copyBtn.textContent = COPY_LABEL
-    stopTtsAudio()
+    ttsPlayer.stop()
     // Force reflow so offsetWidth is available
     tooltip.getBoundingClientRect()
     positionElement(tooltip, rect)
@@ -468,7 +361,7 @@
 
   function hideTooltip () {
     tooltip.style.display = 'none'
-    stopTtsAudio()
+    ttsPlayer.stop()
   }
 
   // ── Close button ───────────────────────────────────────────────────────────
@@ -496,44 +389,13 @@
 
   listenBtn.addEventListener('click', async (e) => {
     e.stopPropagation()
-    if (!currentTranslation || ttsLoading) {
-      if (ttsLoading) stopTtsAudio()
-      return
-    }
-    if (ttsAudio) {
-      stopTtsAudio()
-      return
-    }
 
     try {
       const settings = await getSettings()
       if (!settings.token) throw new Error('Missing API key')
-      ttsLoading = true
-      const requestId = ++ttsRequestId
-      listenBtn.textContent = 'Loading...'
       const lang = langSelect.value || settings.targetLang
-      const result = await fetchTtsAudio(currentTranslation, lang, settings.token)
-      if (requestId !== ttsRequestId) return
-      ttsAudioUrl = base64ToBlobUrl(result.audioBase64, result.mimeType)
-      ttsAudio = new Audio(ttsAudioUrl)
-      ttsAudio.onended = stopTtsAudio
-      ttsAudio.onerror = () => {
-        stopTtsAudio()
-        listenBtn.textContent = 'Failed'
-        setTimeout(() => { listenBtn.textContent = LISTEN_LABEL }, 1500)
-      }
-      ttsLoading = false
-      listenBtn.disabled = false
-      listenBtn.textContent = 'Stop'
-      await ttsAudio.play().catch((err) => {
-        stopTtsAudio()
-        if (speakWithBrowserSpeech(currentTranslation, lang)) return
-        throw err
-      })
+      await ttsPlayer.play(currentTranslation, lang, settings.token)
     } catch {
-      const lang = langSelect.value || 'en'
-      stopTtsAudio()
-      if (speakWithBrowserSpeech(currentTranslation, lang)) return
       listenBtn.textContent = 'Failed'
       setTimeout(() => { listenBtn.textContent = LISTEN_LABEL }, 1500)
     }
@@ -553,7 +415,7 @@
     if (!lastSelection) return
 
     const tooltipText = tooltip.querySelector('.tre-tooltip-text')
-    stopTtsAudio()
+    ttsPlayer.stop()
     tooltipText.textContent = 'Translating...'
 
     try {
@@ -583,7 +445,7 @@
     if (!lastSelection) return
 
     const tooltipText = tooltip.querySelector('.tre-tooltip-text')
-    stopTtsAudio()
+    ttsPlayer.stop()
     tooltipText.textContent = 'Translating...'
 
     try {

@@ -1,12 +1,10 @@
 import { type ReactNode, useEffect, useState } from 'react'
+import { CredentialSecretInputRow, CredentialStatusBadge, CredentialStatusMessage } from '../../components/ui/CredentialCard'
 import {
   AutoModeIcon,
-  CheckCircleIcon,
   ElevenLabsIcon,
   MicrosoftEdgeIcon,
   PremiumModeIcon,
-  SpinnerIcon,
-  TrashIcon,
 } from '../../components/ui/icons'
 import { TtsVoicePicker } from '../../components/ui/TtsVoicePicker'
 import { TOAST_DISMISS_DELAY_MS } from '../../constants/ui'
@@ -187,92 +185,42 @@ export function TtsSection() {
                 </button>
               </div>
             </div>
-            {elKey.exists ? (
-              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 flex-shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
-                {t.settings_key_saved}
-              </span>
-            ) : (
-              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 flex-shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
-                {t.settings_no_key}
-              </span>
-            )}
+            <CredentialStatusBadge
+              hasSecret={elKey.exists}
+              labels={{
+                saved: t.settings_key_saved,
+                empty: t.settings_no_key,
+                invalid: t.settings_key_invalid,
+              }}
+            />
           </div>
 
           {/* Input row */}
-          <div className="flex gap-2">
-            <div className="flex-1 relative">
-              <input
-                type="password"
-                value={showMasked ? (elKey.masked ?? '••••••••••••••••••••••••••••••••') : elInput}
-                readOnly={showMasked}
-                onChange={showMasked ? undefined : (e) => setElInput(e.target.value)}
-                onClick={showMasked ? () => setElInput('') : undefined}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !showMasked) handleElSave() }}
-                placeholder={elKey.exists ? t.settings_key_placeholder_new : t.settings_tts_el_key_placeholder}
-                className={[
-                  'w-full px-3 py-2 border rounded-lg text-sm font-mono',
-                  'focus:outline-none focus:ring-2 focus:ring-blue-500',
-                  'text-gray-800 dark:text-gray-200 placeholder-gray-400 transition-colors',
-                  showMasked
-                    ? 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 text-gray-400 cursor-pointer pr-9'
-                    : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600',
-                ].join(' ')}
-                autoComplete="off"
-                spellCheck={false}
-              />
-              {/* Delete icon inside input */}
-              {showMasked && elKey.exists && (
-                <button
-                  type="button"
-                  onClick={handleElDelete}
-                  disabled={elDeleting}
-                  title={t.settings_remove}
-                  className="absolute right-2 inset-y-0 flex items-center text-gray-300 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
-                >
-                  {elDeleting
-                    ? <SpinnerIcon className="w-4 h-4 animate-spin" />
-                    : <TrashIcon className="w-4 h-4" />
-                  }
-                </button>
-              )}
-            </div>
-
-            {/* Save button — only when typing */}
-            {!showMasked && (
-              <button
-                type="button"
-                onClick={handleElSave}
-                disabled={!elInput.trim() || elSaving}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800"
-              >
-                {elSaving ? (
-                  <>
-                    <SpinnerIcon className="w-4 h-4 animate-spin" />
-                    {t.settings_verifying}
-                  </>
-                ) : (
-                  <>
-                    <CheckCircleIcon className="w-4 h-4" />
-                    {t.settings_verify_save}
-                  </>
-                )}
-              </button>
-            )}
-          </div>
+          <CredentialSecretInputRow
+            inputValue={elInput}
+            maskedValue={elKey.masked}
+            showMasked={showMasked}
+            placeholder={elKey.exists ? t.settings_key_placeholder_new : t.settings_tts_el_key_placeholder}
+            hasSecret={elKey.exists}
+            isBusy={elSaving}
+            isDeleting={elDeleting}
+            labels={{
+              remove: t.settings_remove,
+              verifying: t.settings_verifying,
+              verified: t.settings_verified,
+              tryAgain: t.settings_try_again,
+              submit: t.settings_verify_save,
+            }}
+            onInputChange={(value) => {
+              setElInput(value)
+              if (elMsg) setElMsg(null)
+            }}
+            onSubmit={handleElSave}
+            onDelete={handleElDelete}
+          />
 
           {/* Result message */}
-          {elMsg && (
-            <div className={[
-              'px-3 py-2 rounded-lg text-xs font-medium',
-              elMsg.ok
-                ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300 border border-green-200 dark:border-green-800'
-                : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300 border border-red-200 dark:border-red-800',
-            ].join(' ')}>
-              {elMsg.text}
-            </div>
-          )}
+          {elMsg && <CredentialStatusMessage message={elMsg.text} tone={elMsg.ok ? 'success' : 'error'} />}
         </div>
 
       </div>
