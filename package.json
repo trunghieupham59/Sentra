@@ -51,7 +51,7 @@
     "zustand": "^5.0.1"
   },
   "devDependencies": {
-    "@electron/notarize": "^2.5.0",
+    "@electron/notarize": "^3.1.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -63,7 +63,7 @@
     "@vitest/ui": "^4.1.5",
     "autoprefixer": "^10.5.0",
     "concurrently": "^9.1.0",
-    "electron": "^41.2.0",
+    "electron": "^41.5.0",
     "electron-builder": "^26.8.1",
     "esbuild": "^0.28.0",
     "jsdom": "^29.1.1",
