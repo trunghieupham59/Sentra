@@ -1002,7 +1002,7 @@ function appendInstallOutput(current: string, chunk: Buffer | string) {
 
 function getReadableInstallMessage(chunk: Buffer | string) {
   const lines = chunk.toString().trim().split('\n').map((line) => line.trim()).filter(Boolean)
-  const line = lines.at(-1)
+  const line = lines[lines.length - 1]
   if (!line) return null
   if (/^#+\s*\d+(?:\.\d+)?%/.test(line)) return null
   if (line.includes('% Total') || line.includes('Dload') || line.includes('Upload')) return null
