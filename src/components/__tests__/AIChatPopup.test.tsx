@@ -20,6 +20,8 @@ function mockStreamingChat() {
 }
 
 beforeEach(() => {
+  window.localStorage.clear()
+  useAppStore.persist.clearStorage()
   act(() => {
     useAppStore.setState({
       selectedProvider: 'local',
@@ -29,10 +31,13 @@ beforeEach(() => {
       locale: 'en',
     })
   })
+  vi.mocked(window.api.chat).mockReset()
+  vi.mocked(window.api.chat).mockResolvedValue({ success: false })
   vi.mocked(window.api.chatStream).mockReset()
   vi.mocked(window.api.chatStream).mockResolvedValue({ success: false })
   vi.mocked(window.api.onChatStreamEvent).mockReset()
   vi.mocked(window.api.onChatStreamEvent).mockReturnValue(() => {})
+  ;(window.api as unknown as { webSearch?: typeof window.api.webSearch }).webSearch = undefined
   vi.mocked(window.api.quickChat.openInChat).mockClear()
   vi.mocked(window.api.quickChat.openSettings).mockClear()
   vi.mocked(window.api.keychain.hasKey).mockResolvedValue({ exists: false })
@@ -57,6 +62,47 @@ describe('AIChatPopup quick window', () => {
 
     await waitFor(() => expect(window.api.chatStream).toHaveBeenCalled())
     expect(await screen.findByText('Hello there')).toBeInTheDocument()
+  })
+
+  it('runs Smart Thinking web search steps inside the active answer card', async () => {
+    vi.mocked(window.api.chat).mockResolvedValueOnce({
+      success: true,
+      reply: JSON.stringify({
+        needs_web: true,
+        query: 'current Viezan release',
+        reason: 'The answer needs current release information.',
+        answer_focus: 'State the latest release from current sources.',
+        source_guidance: 'Prefer official release pages.',
+      }),
+    })
+    const webSearchMock = vi.fn().mockResolvedValue({
+      success: true,
+      results: [{
+        title: 'Viezan release notes',
+        url: 'https://example.com/viezan/releases',
+        content: 'Latest Viezan release information from the official release page.',
+        score: 0.99,
+      }],
+    })
+    ;(window.api as unknown as { webSearch: typeof webSearchMock }).webSearch = webSearchMock
+    mockStreamingChat()
+
+    render(<AIChatPopup />)
+
+    const input = screen.getByRole('textbox')
+    fireEvent.change(input, { target: { value: 'What is the current Viezan release?' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    expect(await screen.findByText('Web search current Viezan release')).toBeInTheDocument()
+    await waitFor(() => expect(webSearchMock).toHaveBeenCalledWith(expect.objectContaining({
+      query: 'current Viezan release',
+      maxResults: 8,
+    })))
+    expect(await screen.findAllByText('Viezan release notes')).toHaveLength(2)
+    expect(await screen.findByText('Hello there')).toBeInTheDocument()
+
+    const streamCall = vi.mocked(window.api.chatStream).mock.calls[0]?.[0]
+    expect(streamCall?.systemPrompt).toContain('WEB SEARCH RESULTS')
   })
 
   it('localizes provider content blocks instead of showing raw SDK errors', async () => {

@@ -15,7 +15,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { MAX_CHAT_INPUT_CHARS } from '../constants/providers'
-import { type ChatMessage, chatService } from '../services/chatService'
+import type { ChatMessage } from '../services/chatService'
+import { smartThinkingService } from '../services/smartThinkingService'
 import { useAppStore, useT } from '../store/useAppStore'
 import { localizeChatError, localizeChatException } from '../utils/chatErrors'
 import { shouldSendChatMessage } from '../utils/keyboardShortcuts'
@@ -31,6 +32,7 @@ import {
   PlusIcon,
   RefreshIcon,
   SendIcon,
+  SparklesIcon,
   SpinnerIcon,
   XIcon,
 } from './ui/icons'
@@ -54,6 +56,12 @@ function isPrimaryModifierShortcut(e: KeyboardEvent, key: string) {
 interface Turn {
   role: 'user' | 'assistant'
   text: string
+}
+
+interface SmartStep {
+  label: string
+  content: string
+  status: 'running' | 'complete' | 'error'
 }
 
 /** Small visual key cap used for keyboard hints. */
@@ -97,6 +105,7 @@ export function AIChatPopup() {
   // ── Visible state — current/active Q&A pair ─────────────────────────────
   const [activeQuestion, setActiveQuestion] = useState('')
   const [response, setResponse] = useState('')
+  const [smartStep, setSmartStep] = useState<SmartStep | null>(null)
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -152,6 +161,7 @@ export function AIChatPopup() {
   const hardReset = useCallback(() => {
     setActiveQuestion('')
     setResponse('')
+    setSmartStep(null)
     setHistory([])
     setInput('')
     setError(null)
@@ -267,39 +277,64 @@ export function AIChatPopup() {
     async (historySnapshot: Turn[], userText: string) => {
       setActiveQuestion(userText)
       setResponse('')
+      setSmartStep(null)
       setError(null)
       setIsSending(true)
 
       const payload = buildMessages(historySnapshot, userText)
 
       try {
-        let streamed = ''
-        const result = await chatService.stream(
-          {
-            provider: selectedProvider,
-            model,
-            systemPrompt: chatSystemPrompt || undefined,
-            messages: payload,
+        await smartThinkingService.run({
+          provider: selectedProvider,
+          model,
+          question: userText,
+          messages: payload,
+          systemPrompt: chatSystemPrompt || undefined,
+          uiText: {
+            webSearchStepLabelPrefix: t.chat_smart_thinking_step_label_prefix,
+            webSearchSummaryTitle: t.chat_smart_thinking_summary_title,
+            webSearchDefaultReason: t.chat_smart_thinking_default_reason,
+            webSearchSourcesTitle: t.chat_smart_thinking_sources_title,
+            webSearchNoSources: t.chat_smart_thinking_no_sources,
+            webSearchNoResults: t.chat_smart_thinking_no_results,
+            webSearchErrorFallback: t.chat_smart_thinking_search_error,
+            noResponseError: t.chat_smart_thinking_no_response,
+            unknownError: t.chat_smart_thinking_unknown_error,
           },
-          {
-            onToken: (token) => {
-              streamed += token
-              setResponse(streamed)
+          callbacks: {
+            onStepStart: (label) => {
+              setSmartStep({ label, content: '', status: 'running' })
+              return 'quick-chat-smart-step'
             },
-            onEnd: (reply) => {
-              if (reply) setResponse(reply)
+            onStepComplete: (_msgId, content) => {
+              setSmartStep((current) => ({
+                label: current?.label || t.chat_smart_thinking_searching,
+                content,
+                status: 'complete',
+              }))
             },
-            onError: (message, errorCode) => {
+            onStepError: (_msgId, stepError) => {
+              setSmartStep((current) => ({
+                label: current?.label || t.chat_smart_thinking_search_error,
+                content: stepError,
+                status: 'error',
+              }))
+            },
+            onAnswerStart: () => {
+              setResponse('')
+              return 'quick-chat-smart-answer'
+            },
+            onAnswerToken: (_msgId, content) => {
+              setResponse(content)
+            },
+            onAnswerComplete: (_msgId, content) => {
+              setResponse(content)
+            },
+            onAnswerError: (_msgId, message, errorCode) => {
               setError(localizeChatError(t, { error: message, errorCode }, t.chat_error_failed_response))
             },
           },
-        )
-
-        if (result.success) {
-          if (result.reply && !streamed) setResponse(result.reply)
-        } else {
-          setError(localizeChatError(t, result, t.chat_error_failed_response))
-        }
+        })
       } catch (err) {
         setError(localizeChatException(t, err, t.chat_error_unexpected))
       } finally {
@@ -373,6 +408,7 @@ export function AIChatPopup() {
     setHistory([])
     setActiveQuestion('')
     setResponse('')
+    setSmartStep(null)
     setInput('')
     setError(null)
     focusInput()
@@ -640,10 +676,12 @@ export function AIChatPopup() {
                   <ActiveQACard
                     question={activeQuestion}
                     response={response}
+                    smartStep={smartStep}
                     isThinking={showThinking}
                     error={error}
                     isSending={isSending}
                     isCopied={copiedKey === 'active'}
+                    smartThinkingLabel={t.chat_smart_thinking_badge}
                     thinkingLabel={t.chat_thinking}
                     copyLabel={t.chat_copy}
                     copiedLabel={t.chat_copied}
@@ -676,6 +714,13 @@ export function AIChatPopup() {
             <ProviderIcon provider={selectedProvider} size={14} />
             <span className="truncate text-[12px] font-medium tracking-tight text-gray-700">
               / {modelLabel}
+            </span>
+            <span
+              className="hidden items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] font-semibold text-blue-600 sm:inline-flex"
+              title={t.chat_smart_thinking_hint}
+            >
+              <SparklesIcon className="h-3 w-3" />
+              <span>{t.chat_smart_thinking_badge}</span>
             </span>
             {turnCount > 1 && (
               <span className="ml-1 hidden text-[11px] text-gray-400 sm:inline">
@@ -830,10 +875,12 @@ function QAEntry({
 function ActiveQACard({
   question,
   response,
+  smartStep,
   isThinking,
   error,
   isSending,
   isCopied,
+  smartThinkingLabel,
   thinkingLabel,
   copyLabel,
   copiedLabel,
@@ -843,10 +890,12 @@ function ActiveQACard({
 }: {
   question: string
   response: string
+  smartStep: SmartStep | null
   isThinking: boolean
   error: string | null
   isSending: boolean
   isCopied: boolean
+  smartThinkingLabel: string
   thinkingLabel: string
   copyLabel: string
   copiedLabel: string
@@ -874,6 +923,9 @@ function ActiveQACard({
           </div>
         ) : isThinking ? (
           <div className="space-y-3">
+            {smartStep && (
+              <SmartThinkingStep step={smartStep} badgeLabel={smartThinkingLabel} />
+            )}
             <ThinkingLabel label={thinkingLabel} />
             <div className="space-y-2.5 pt-1">
               <div className="h-2 w-3/4 animate-pulse rounded-full bg-gray-200/80" />
@@ -882,7 +934,12 @@ function ActiveQACard({
             </div>
           </div>
         ) : response ? (
-          <MarkdownText text={response} className="text-[15px] leading-7 text-gray-800" />
+          <div className="space-y-4">
+            {smartStep && (
+              <SmartThinkingStep step={smartStep} badgeLabel={smartThinkingLabel} />
+            )}
+            <MarkdownText text={response} className="text-[15px] leading-7 text-gray-800" />
+          </div>
         ) : null}
       </div>
 
@@ -895,6 +952,48 @@ function ActiveQACard({
           copiedLabel={copiedLabel}
           regenerateLabel={regenerateLabel}
           copyDisabled={!response.trim()}
+        />
+      )}
+    </div>
+  )
+}
+
+function SmartThinkingStep({
+  step,
+  badgeLabel,
+}: {
+  step: SmartStep
+  badgeLabel: string
+}) {
+  const isRunning = step.status === 'running'
+  const isError = step.status === 'error'
+
+  return (
+    <div
+      className={`rounded-lg border px-3 py-2.5 ${
+        isError
+          ? 'border-red-200 bg-red-50/80'
+          : 'border-blue-100 bg-blue-50/60'
+      }`}
+    >
+      <div className="flex min-w-0 items-center gap-2 text-[12px] font-semibold">
+        {isRunning ? (
+          <SpinnerIcon className="h-3.5 w-3.5 flex-shrink-0 animate-spin text-blue-600" />
+        ) : (
+          <SparklesIcon className={`h-3.5 w-3.5 flex-shrink-0 ${isError ? 'text-red-500' : 'text-blue-600'}`} />
+        )}
+        <span className={isError ? 'text-red-700' : 'text-blue-700'}>{badgeLabel}</span>
+        <span
+          className={`min-w-0 truncate font-medium ${isError ? 'text-red-600' : 'text-blue-600/80'}`}
+          title={step.label}
+        >
+          {step.label}
+        </span>
+      </div>
+      {step.content && (
+        <MarkdownText
+          text={step.content}
+          className={`mt-2 text-[12px] leading-5 ${isError ? 'text-red-700' : 'text-gray-600'}`}
         />
       )}
     </div>
