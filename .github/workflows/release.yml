@@ -17,7 +17,7 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
               with:
                   fetch-depth: 0
 
@@ -139,7 +139,7 @@ jobs:
 
             - name: Create GitHub Release
               id: create_release
-              uses: softprops/action-gh-release@v2
+              uses: softprops/action-gh-release@v3
               with:
                   name: "Viezan ${{ steps.notes.outputs.CURRENT_TAG }}"
                   body: ${{ steps.notes.outputs.RELEASE_BODY }}
@@ -157,10 +157,10 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Setup Node
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v6
               with:
                   node-version: 22
                   cache: npm
@@ -203,10 +203,10 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Setup Node
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v6
               with:
                   node-version: 22
                   cache: npm
@@ -255,10 +255,10 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Setup Node
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v6
               with:
                   node-version: 22
                   cache: npm
@@ -335,7 +335,7 @@ jobs:
             - name: Upload unsigned bundle as workflow artifact
               id: upload_unsigned
               if: steps.check_signpath.outputs.ENABLED == 'true'
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: unsigned-windows-bundle
                   path: unsigned-bundle.zip
@@ -345,7 +345,7 @@ jobs:
               id: sign
               if: steps.check_signpath.outputs.ENABLED == 'true'
               continue-on-error: true
-              uses: signpath/github-action-submit-signing-request@v1
+              uses: signpath/github-action-submit-signing-request@v2
               with:
                   api-token: "${{ secrets.SIGNPATH_API_TOKEN || '' }}"
                   organization-id: "${{ vars.SIGNPATH_ORGANIZATION_ID || '' }}"
@@ -412,10 +412,10 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Setup Node
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v6
               with:
                   node-version: 22
                   cache: npm
@@ -462,7 +462,7 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Install Google Chrome
               shell: bash
