@@ -8,12 +8,15 @@ export const updaterSection = {
     /** Trigger a check for updates. Status is pushed via onStatus(). */
     check: () =>
       ipcRenderer.invoke('updater:check') as Promise<{ success: boolean; error?: string }>,
-    /** Start downloading an available update. macOS downloads the DMG directly. */
+    /** Start downloading an available update. macOS downloads the DMG without opening Finder. */
     download: () =>
       ipcRenderer.invoke('updater:download') as Promise<{ success: boolean; error?: string; filePath?: string }>,
-    /** Quit/install, or reopen the downloaded macOS installer. */
+    /** Quit and install, or delegate to the platform updater. */
     install: () =>
       ipcRenderer.invoke('updater:install') as Promise<{ success: boolean; error?: string }>,
+    /** Manual fallback for macOS: open the downloaded DMG in Finder. */
+    openInstaller: () =>
+      ipcRenderer.invoke('updater:openInstaller') as Promise<{ success: boolean; error?: string }>,
     /** Get the current app version. */
     getVersion: () =>
       ipcRenderer.invoke('updater:getVersion') as Promise<{ version: string }>,

@@ -29,6 +29,7 @@ vi.mock('electron-updater', () => ({
 }))
 
 import {
+  buildMacInstallScript,
   buildMacGithubReleaseFromTag,
   isNewerVersion,
   parseLatestGithubTagFromUrl,
@@ -54,5 +55,14 @@ describe('updater helpers', () => {
       assetName: 'Viezan-2.0.3-arm64.dmg',
     })
     expect(buildMacGithubReleaseFromTag('invalid', 'arm64')).toBeNull()
+  })
+
+  it('builds a macOS installer helper that replaces the app after the current process exits', () => {
+    const script = buildMacInstallScript()
+
+    expect(script).toContain('hdiutil attach "$DMG_PATH"')
+    expect(script).toContain('kill -0 "$APP_PID"')
+    expect(script).toContain('ditto "$SOURCE_PATH" "$DEST_PATH"')
+    expect(script).toContain('open "$DEST_PATH"')
   })
 })

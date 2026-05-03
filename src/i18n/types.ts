@@ -495,7 +495,7 @@ export interface Translations {
   settings_update_downloading: string
   settings_update_downloaded: string
   settings_update_download: string
-  /** macOS only: label for downloading the unsigned DMG and opening it directly. */
+  /** macOS only: label for downloading the unsigned DMG in-app. */
   settings_update_download_installer: string
   /** Fallback label for opening the browser to download the DMG. */
   settings_update_download_browser: string

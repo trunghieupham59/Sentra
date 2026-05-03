@@ -1,6 +1,7 @@
 import { createWriteStream } from 'node:fs'
-import { mkdir, rm } from 'node:fs/promises'
+import { chmod, mkdir, rm, writeFile } from 'node:fs/promises'
 import { get } from 'node:https'
+import { spawn } from 'node:child_process'
 import path from 'node:path'
 import type { BrowserWindow, IpcMain } from 'electron'
 import { app, net, shell } from 'electron'
@@ -302,6 +303,75 @@ async function downloadFile(
   })
 }
 
+export function buildMacInstallScript(): string {
+  return `#!/bin/zsh
+set -euo pipefail
+
+DMG_PATH="$1"
+APP_PID="$2"
+APP_NAME="Viezan.app"
+DEST_PATH="/Applications/$APP_NAME"
+LOG_PATH="$HOME/Library/Logs/Viezan-updater.log"
+MOUNT_DIR="$(mktemp -d /tmp/viezan-update.XXXXXX)"
+
+mkdir -p "$(dirname "$LOG_PATH")"
+exec >>"$LOG_PATH" 2>&1
+
+cleanup() {
+  hdiutil detach "$MOUNT_DIR" -quiet || true
+  rm -rf "$MOUNT_DIR"
+}
+
+fail() {
+  local message="$1"
+  echo "[$(date)] $message"
+  osascript -e "display alert \\"Viezan update failed\\" message \\"$message. See ~/Library/Logs/Viezan-updater.log for details.\\"" || true
+  exit 1
+}
+
+trap cleanup EXIT
+
+echo "[$(date)] Installing Viezan update from $DMG_PATH"
+hdiutil attach "$DMG_PATH" -nobrowse -quiet -mountpoint "$MOUNT_DIR" || fail "Could not mount the downloaded DMG"
+
+SOURCE_PATH="$MOUNT_DIR/$APP_NAME"
+if [ ! -d "$SOURCE_PATH" ]; then
+  fail "The downloaded DMG does not contain $APP_NAME"
+fi
+
+for _ in {1..80}; do
+  if ! kill -0 "$APP_PID" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 0.25
+done
+
+if kill -0 "$APP_PID" >/dev/null 2>&1; then
+  fail "The running Viezan app did not quit"
+fi
+
+rm -rf "$DEST_PATH" || fail "Could not remove the old Viezan app"
+ditto "$SOURCE_PATH" "$DEST_PATH" || fail "Could not copy the new Viezan app"
+xattr -dr com.apple.quarantine "$DEST_PATH" || true
+open "$DEST_PATH" || fail "Could not reopen Viezan"
+
+echo "[$(date)] Viezan update installed"
+`
+}
+
+async function runMacInstallHelper(dmgPath: string): Promise<void> {
+  const scriptPath = path.join(app.getPath('temp'), `viezan-install-${Date.now()}.zsh`)
+  await writeFile(scriptPath, buildMacInstallScript(), { encoding: 'utf8', mode: 0o700 })
+  await chmod(scriptPath, 0o700)
+
+  const child = spawn('/bin/zsh', [scriptPath, dmgPath, String(process.pid)], {
+    detached: true,
+    stdio: 'ignore',
+  })
+  child.unref()
+  app.quit()
+}
+
 // ─── Types ─────────────────────────────────────────────────────────────────
 export type UpdaterStatus =
   | { type: 'idle' }
@@ -445,13 +515,7 @@ export function registerUpdaterHandlers(
         }
 
         downloadedMacInstallerPath = destination
-        push({ type: 'downloaded', version: release.version, installMode: 'open-installer' })
-
-        const openError = await shell.openPath(destination)
-        if (openError) {
-          push({ type: 'error', error: openError })
-          return { success: false, error: openError }
-        }
+        push({ type: 'downloaded', version: release.version, installMode: 'restart' })
         return { success: true, filePath: destination }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
@@ -473,12 +537,23 @@ export function registerUpdaterHandlers(
     if (isDev)          return { success: false, error: 'Not available in development mode' }
     if (useMacFallback) {
       if (!downloadedMacInstallerPath) return { success: false, error: 'No downloaded installer found' }
-      shell.openPath(downloadedMacInstallerPath).then((openError) => {
-        if (openError) push({ type: 'error', error: openError })
+      runMacInstallHelper(downloadedMacInstallerPath).catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err)
+        push({ type: 'error', error: msg })
       })
       return { success: true }
     }
     autoUpdater.quitAndInstall(false, true)
+    return { success: true }
+  })
+
+  ipc.handle('updater:openInstaller', async () => {
+    if (!downloadedMacInstallerPath) return { success: false, error: 'No downloaded installer found' }
+    const openError = await shell.openPath(downloadedMacInstallerPath)
+    if (openError) {
+      push({ type: 'error', error: openError })
+      return { success: false, error: openError }
+    }
     return { success: true }
   })
 

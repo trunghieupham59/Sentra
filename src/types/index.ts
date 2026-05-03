@@ -658,10 +658,12 @@ export interface WindowApi {
   /** Auto-updater — check and install updates from GitHub Releases */
   updater: {
     check: () => Promise<{ success: boolean; error?: string }>
-    /** In-app download. macOS downloads the unsigned DMG directly. */
+    /** In-app download. macOS downloads the unsigned DMG without opening Finder. */
     download: () => Promise<{ success: boolean; error?: string; filePath?: string }>
-    /** Quit/install, or reopen the downloaded macOS installer. */
+    /** Quit and install, or delegate to the platform updater. */
     install: () => Promise<{ success: boolean; error?: string }>
+    /** Manual fallback for macOS: open the downloaded DMG in Finder. */
+    openInstaller: () => Promise<{ success: boolean; error?: string }>
     getVersion: () => Promise<{ version: string }>
     /**
      * Open the download URL in the system browser.

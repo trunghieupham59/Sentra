@@ -114,6 +114,7 @@ if (typeof window !== 'undefined') {
         check: vi.fn().mockResolvedValue({ success: true }),
         download: vi.fn().mockResolvedValue({ success: true }),
         install: vi.fn().mockResolvedValue({ success: true }),
+        openInstaller: vi.fn().mockResolvedValue({ success: true }),
         getVersion: vi.fn().mockResolvedValue({ version: '1.0.0' }),
         onStatus: vi.fn().mockReturnValue(() => {}),
       },

@@ -38,7 +38,9 @@ export function UpdaterSection() {
 
   const handleDownloadUpdate = () => window.api?.updater?.download()
   const handleInstallUpdate  = () => window.api?.updater?.install()
+  const handleOpenInstaller  = () => window.api?.updater?.openInstaller?.()
   const installerMode = updaterStatus.type === 'downloaded' && updaterStatus.installMode === 'open-installer'
+  const showManualInstaller = updaterStatus.type === 'downloaded' && updaterStatus.installMode === 'restart'
 
   return (
     <section className="space-y-3">
@@ -81,9 +83,7 @@ export function UpdaterSection() {
                   onClick={handleDownloadUpdate}
                   className="flex-shrink-0 px-3 py-1.5 text-xs rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors cursor-pointer"
                 >
-                  {updaterStatus.downloadUrl
-                    ? t.settings_update_download_installer
-                    : t.settings_update_download}
+                  {updaterStatus.downloadUrl ? t.settings_update_download_installer : t.settings_update_download}
                 </button>
               </div>
             )}
@@ -121,13 +121,24 @@ export function UpdaterSection() {
                   <CheckCircleIcon className="w-4 h-4 flex-shrink-0" />
                   <span>{tpl(t.settings_update_downloaded, { version: updaterStatus.version ?? '' })}</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleInstallUpdate}
-                  className="flex-shrink-0 px-3 py-1.5 text-xs rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium transition-colors cursor-pointer"
-                >
-                  {installerMode ? t.settings_update_open_installer : t.settings_update_install}
-                </button>
+                <div className="flex flex-shrink-0 items-center gap-2">
+                  {showManualInstaller && (
+                    <button
+                      type="button"
+                      onClick={handleOpenInstaller}
+                      className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 font-medium transition-colors cursor-pointer"
+                    >
+                      {t.settings_update_open_installer}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleInstallUpdate}
+                    className="px-3 py-1.5 text-xs rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium transition-colors cursor-pointer"
+                  >
+                    {installerMode ? t.settings_update_open_installer : t.settings_update_install}
+                  </button>
+                </div>
               </div>
             )}
 
