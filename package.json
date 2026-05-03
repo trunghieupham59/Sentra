@@ -1,6 +1,6 @@
 {
-  "name": "Viezan",
-  "version": "2.0.3",
+  "name": "viezan",
+  "version": "2.0.4",
   "description": "Viezan - Local AI Translation - macOS & Windows",
   "main": "dist-electron/main.js",
   "scripts": {
