@@ -28,7 +28,7 @@ Tài liệu tổng quan về toàn bộ pipeline CI/CD và automation của Viez
 │  • codeql.yml          (mỗi tuần — security audit)                     │
 │  • stale.yml           (mỗi ngày — close stale issues/PRs)             │
 │  • dependabot.yml      (mỗi tuần — npm + actions update)               │
-│  • release.yml         (tag v*  — publish DMG/EXE/AppImage + CRX)      │
+│  • release.yml         (tag v*  — publish DMG/EXE/AppImage + ZIP)      │
 │  • pages.yml           (push docs/** — deploy GitHub Pages)            │
 └────────────────────────────────────────────────────────────────────────┘
 ```
@@ -44,7 +44,7 @@ Tài liệu tổng quan về toàn bộ pipeline CI/CD và automation của Viez
 | `workflows/labeler.yml`                    | Auto-gán nhãn theo path file + size PR                                      |
 | `workflows/stale.yml`                      | Đóng issues/PRs không hoạt động                                             |
 | `workflows/nightly.yml`                    | Build dev nightly cho cả 3 OS — không publish, upload artifact 14 ngày      |
-| `workflows/release.yml`                    | **(đã có)** Tag `v*` → build & publish DMG/EXE/AppImage + CRX               |
+| `workflows/release.yml`                    | **(đã có)** Tag `v*` → build & publish DMG/EXE/AppImage + extension ZIP     |
 | `workflows/pages.yml`                      | **(đã có)** Deploy `docs/` lên GitHub Pages                                 |
 | `labeler.yml`                              | Định nghĩa rule cho `actions/labeler`                                       |
 | `dependabot.yml`                           | Cập nhật npm + GitHub Actions hàng tuần (theo group)                        |
@@ -69,7 +69,6 @@ Tài liệu tổng quan về toàn bộ pipeline CI/CD và automation của Viez
 | `APPLE_ID`                       | `release.yml` — notarize macOS      | ✅ (bản notarized)       |
 | `APPLE_APP_SPECIFIC_PASSWORD`    | `release.yml` — notarize macOS      | ✅ (bản notarized)       |
 | `SIGNPATH_API_TOKEN`             | `release.yml` — sign Windows        | ⛔ (optional fallback)   |
-| `CHROME_EXTENSION_PEM_BASE64`    | `release.yml` — pack CRX            | ✅ (chỉ khi pack CRX)    |
 
 ### Variables
 
@@ -99,7 +98,7 @@ Ví dụ:
 ## 🚀 Quy trình release
 
 ```bash
-# App release (DMG / EXE / AppImage / latest.yml + CRX)
+# App release (DMG / EXE / AppImage / latest.yml + extension ZIP)
 git tag v2.1.0
 git push origin v2.1.0
 ```
