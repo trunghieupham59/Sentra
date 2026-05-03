@@ -42,11 +42,13 @@ function makeReq({
   method,
   url,
   token,
+  origin,
   body,
 }: {
   method: string
   url: string
   token?: string
+  origin?: string
   body?: unknown
 }) {
   const payload = body === undefined ? '' : JSON.stringify(body)
@@ -61,31 +63,36 @@ function makeReq({
     url,
     headers: {
       ...(token ? { 'x-viezan-token': token } : {}),
+      ...(origin ? { origin } : {}),
     },
   })
   return req
 }
 
-function makeRes(): Promise<{ statusCode: number; data: unknown }> & {
+function makeRes(): Promise<{ statusCode: number; headers: Record<string, string>; data: unknown }> & {
   res: {
-    writeHead: (statusCode: number) => void
+    writeHead: (statusCode: number, headers?: Record<string, string>) => void
     end: (chunk: string) => void
   }
 } {
   let statusCode = 0
-  let resolveResult!: (value: { statusCode: number; data: unknown }) => void
-  const promise = new Promise<{ statusCode: number; data: unknown }>((resolve) => {
+  let responseHeaders: Record<string, string> = {}
+  let resolveResult!: (value: { statusCode: number; headers: Record<string, string>; data: unknown }) => void
+  const promise = new Promise<{ statusCode: number; headers: Record<string, string>; data: unknown }>((resolve) => {
     resolveResult = resolve
-  }) as Promise<{ statusCode: number; data: unknown }> & {
+  }) as Promise<{ statusCode: number; headers: Record<string, string>; data: unknown }> & {
     res: {
-      writeHead: (statusCode: number) => void
+      writeHead: (statusCode: number, headers?: Record<string, string>) => void
       end: (chunk: string) => void
     }
   }
   promise.res = {
-    writeHead: (code: number) => { statusCode = code },
+    writeHead: (code: number, headers?: Record<string, string>) => {
+      statusCode = code
+      responseHeaders = headers ?? {}
+    },
     end: (chunk: string) => {
-      resolveResult({ statusCode, data: JSON.parse(chunk) })
+      resolveResult({ statusCode, headers: responseHeaders, data: JSON.parse(chunk) })
     },
   }
   return promise
@@ -95,6 +102,7 @@ async function request(params: {
   method: string
   url: string
   token?: string
+  origin?: string
   body?: unknown
 }) {
   const response = makeRes()
@@ -162,6 +170,44 @@ describe('localServer /api/tts', () => {
 
     expect(response.statusCode).toBe(401)
     expect(ttsMock.synthesizeTts).not.toHaveBeenCalled()
+  })
+
+  it('rejects browser requests from untrusted origins before auth handling', async () => {
+    const response = await request({
+      method: 'POST',
+      url: '/api/tts',
+      token: VALID_EXTENSION_API_KEY,
+      origin: 'https://evil.example',
+      body: { text: 'Hello', lang: 'en' },
+    })
+
+    expect(response.statusCode).toBe(403)
+    expect(response.headers['Access-Control-Allow-Origin']).toBeUndefined()
+    expect(ttsMock.synthesizeTts).not.toHaveBeenCalled()
+  })
+
+  it('allows Chrome Extension origins explicitly', async () => {
+    const origin = `chrome-extension://${'a'.repeat(32)}`
+    const response = await request({
+      method: 'OPTIONS',
+      url: '/api/tts',
+      origin,
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.headers['Access-Control-Allow-Origin']).toBe(origin)
+  })
+
+  it('allows legacy assistant preflights only with a valid CORS token', async () => {
+    const origin = 'https://docs.example.com'
+    const response = await request({
+      method: 'OPTIONS',
+      url: `/api/translate?corsToken=${VALID_EXTENSION_API_KEY}`,
+      origin,
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.headers['Access-Control-Allow-Origin']).toBe(origin)
   })
 
   it('calls shared TTS synthesis using the cached settings mode', async () => {

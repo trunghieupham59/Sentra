@@ -141,6 +141,7 @@
   const ttsPlayer = Bridge.createTtsController({
     getButton: () => listenBtn,
     listenLabel: LISTEN_LABEL,
+    fetchAudio: (text, lang, token) => requestBackground('VIEZAN_TTS', { text, lang, token }),
     onError: () => {
       listenBtn.textContent = 'Failed'
       setTimeout(() => { listenBtn.textContent = LISTEN_LABEL }, 1500)
@@ -217,6 +218,30 @@
     el.textContent = name
   }
 
+  function requestBackground (type, payload) {
+    return new Promise((resolve, reject) => {
+      if (!isContextValid()) {
+        reject(new Error('Extension context invalidated. Please reload the page.'))
+        return
+      }
+      try {
+        chrome.runtime.sendMessage({ type, ...payload }, (response) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message))
+            return
+          }
+          if (!response?.success) {
+            reject(new Error(response?.error || 'Viezan request failed'))
+            return
+          }
+          resolve(response)
+        })
+      } catch {
+        reject(new Error('Extension context invalidated. Please reload the page.'))
+      }
+    })
+  }
+
   /** Populate the provider/model badges and status in the controls row */
   async function updateAiInfo (token) {
     const providerEl  = tooltip.querySelector('.tre-ctrl-provider')
@@ -225,7 +250,7 @@
     const statusText  = tooltip.querySelector('.tre-status-text')
     if (!providerEl || !modelEl) return
     try {
-      const config = await Bridge.getAppConfig(token)
+      const config = await requestBackground('VIEZAN_GET_CONFIG', { token })
 
       // Update status to Active.
       if (statusDot)  { statusDot.className = 'tre-status-dot tre-status-active' }
@@ -256,12 +281,13 @@
   }
 
   async function translateText (text, settings) {
-    return Bridge.translateText({
+    const response = await requestBackground('VIEZAN_TRANSLATE', {
       text,
       token: settings.token,
       targetLang: settings.targetLang,
       translationStyle: settings.translationStyle || styleSelect.value || 'general',
     })
+    return response.translatedText
   }
 
   function positionElement (el, rect) {

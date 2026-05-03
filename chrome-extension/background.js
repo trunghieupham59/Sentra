@@ -134,13 +134,27 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     })
     return true // keep channel open for async response
   }
+
+  if (message.type === 'VIEZAN_GET_CONFIG') {
+    handleGetConfig(message).then(sendResponse).catch((err) => {
+      sendResponse({ success: false, error: err.message })
+    })
+    return true
+  }
+
+  if (message.type === 'VIEZAN_TTS') {
+    handleTts(message).then(sendResponse).catch((err) => {
+      sendResponse({ success: false, error: err.message })
+    })
+    return true
+  }
 })
 
 async function handleTranslate (message) {
-  const { text, token, targetLang, provider, model } = message
+  const { text, token, targetLang, translationStyle, provider, model } = message
 
   if (LOCAL_BRIDGE?.translateText) {
-    const translatedText = await LOCAL_BRIDGE.translateText({ text, token, targetLang, provider, model })
+    const translatedText = await LOCAL_BRIDGE.translateText({ text, token, targetLang, translationStyle, provider, model })
     return { success: true, translatedText }
   }
 
@@ -150,11 +164,48 @@ async function handleTranslate (message) {
       'Content-Type': 'application/json',
       'X-Viezan-Token': token,
     },
-    body: JSON.stringify({ text, targetLang, provider, model }),
+    body: JSON.stringify({ text, targetLang, translationStyle, provider, model }),
   })
 
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
   const data = await resp.json()
   if (!data.success) throw new Error(data.error || 'Translation failed')
   return { success: true, translatedText: data.translatedText }
+}
+
+async function handleGetConfig (message) {
+  const { token } = message
+  if (LOCAL_BRIDGE?.getAppConfig) {
+    const config = await LOCAL_BRIDGE.getAppConfig(token)
+    return { success: true, ...config }
+  }
+
+  const resp = await fetch(`http://127.0.0.1:${PORT}/api/config`, {
+    headers: { 'X-Viezan-Token': token },
+  })
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  const data = await resp.json()
+  if (!data.success) throw new Error(data.error || 'Could not fetch app config')
+  return { success: true, provider: data.provider, model: data.model }
+}
+
+async function handleTts (message) {
+  const { text, lang, token } = message
+  if (LOCAL_BRIDGE?.fetchTtsAudio) {
+    const audio = await LOCAL_BRIDGE.fetchTtsAudio(text, lang, token)
+    return { success: true, ...audio }
+  }
+
+  const resp = await fetch(`http://127.0.0.1:${PORT}/api/tts`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Viezan-Token': token,
+    },
+    body: JSON.stringify({ text, lang }),
+  })
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  const data = await resp.json()
+  if (!data.success) throw new Error(data.error || 'TTS failed')
+  return { success: true, ...data }
 }

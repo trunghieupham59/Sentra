@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { deepResearchService, type DeepResearchUiText } from '../deepResearchService'
+import { type DeepResearchUiText, deepResearchService } from '../deepResearchService'
 
 const TEST_UI_TEXT: DeepResearchUiText = {
   stepAnalyze: 'Analyze',

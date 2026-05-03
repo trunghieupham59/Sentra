@@ -192,9 +192,9 @@ Viezan/
 | --- | --- |
 | Electron 41 | Desktop shell, native capabilities and secure storage |
 | React 18 | Renderer UI |
-| TypeScript 5 | Type safety across renderer and Electron code |
+| TypeScript 6 | Type safety across renderer and Electron code |
 | Vite 8 | Renderer build pipeline |
-| Tailwind CSS 3 | Styling |
+| Tailwind CSS 4 | Styling |
 | Zustand 5 | Client state |
 | electron-builder 26 | Packaging and publishing |
 | Vitest 4 | Unit and integration tests |

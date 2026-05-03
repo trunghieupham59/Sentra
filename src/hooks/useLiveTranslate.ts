@@ -12,7 +12,6 @@
  * The page component owns only UI-copy state (`copiedRaw`, `copiedTx`,
  * `copiedSummary`) and pure render logic.
  */
-import { MicVAD } from '@ricky0123/vad-web'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getSupportedAudioMimeType } from '../constants/audio'
 import { LANG_NAMES_FOR_AI } from '../constants/langNames'
@@ -912,6 +911,7 @@ export function useLiveTranslate() {
           // Reuse existing stream — avoids a second getUserMedia permission prompt
           const existingStream = streamRef.current
           try {
+            const { MicVAD } = await import('@ricky0123/vad-web')
             const micVad = await MicVAD.new({
               baseAssetPath:    './vad/',
               onnxWASMBasePath: './vad/',

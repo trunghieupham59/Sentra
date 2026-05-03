@@ -13,8 +13,7 @@
   ],
 
   "host_permissions": [
-    "http://127.0.0.1:39875/*",
-    "<all_urls>"
+    "http://127.0.0.1:39875/*"
   ],
 
   "background": {

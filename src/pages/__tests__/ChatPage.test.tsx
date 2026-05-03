@@ -48,6 +48,14 @@ function mockStreamingChat() {
   }
 }
 
+function mockedEditChatImage() {
+  const editChatImage = window.api.editChatImage
+  if (typeof editChatImage !== 'function') {
+    throw new Error('editChatImage bridge is missing in test setup')
+  }
+  return vi.mocked(editChatImage)
+}
+
 // Reset store before each test
 beforeEach(() => {
   act(() => {
@@ -66,8 +74,8 @@ beforeEach(() => {
   })
   vi.mocked(window.api.chatStream).mockReset()
   vi.mocked(window.api.chatStream).mockResolvedValue({ success: false })
-  vi.mocked(window.api.editChatImage!).mockReset()
-  vi.mocked(window.api.editChatImage!).mockResolvedValue({ success: false })
+  mockedEditChatImage().mockReset()
+  mockedEditChatImage().mockResolvedValue({ success: false })
   vi.mocked(window.api.onChatStreamEvent).mockReset()
   vi.mocked(window.api.onChatStreamEvent).mockReturnValue(() => {})
 })
@@ -266,7 +274,7 @@ describe('ChatPage', () => {
     act(() => {
       useAppStore.setState({ keyStatus: { gemini: true, claude: false, openai: false, local: false } })
     })
-    vi.mocked(window.api.editChatImage!).mockResolvedValue({
+    mockedEditChatImage().mockResolvedValue({
       success: true,
       imageBase64: 'edited-image-base64',
       imageMimeType: 'image/png',
@@ -356,7 +364,7 @@ describe('ChatPage', () => {
         keyStatus: { gemini: true, claude: false, openai: false, local: false },
       })
     })
-    vi.mocked(window.api.editChatImage!).mockResolvedValue({
+    mockedEditChatImage().mockResolvedValue({
       success: false,
       error: 'Chat failed: This operation was aborted',
       errorCode: 'TIMEOUT',

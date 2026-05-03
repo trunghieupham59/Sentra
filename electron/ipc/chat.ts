@@ -3,8 +3,6 @@ import type { Content, Part } from '@google/generative-ai'
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import type { ChatCompletionContentPartImage, ChatCompletionContentPartText, ChatCompletionMessageParam } from 'openai/resources/chat/completions'
 import {
-  type ChatProviderId,
-  type ClaudeImageMimeType,
   CHAT_IMAGE_EDIT_DEFAULT_MIME_TYPE,
   CHAT_IMAGE_EDIT_EXTENSION_BY_MIME,
   CHAT_IMAGE_EDIT_FILE_BASENAME,
@@ -14,6 +12,8 @@ import {
   CHAT_IPC_CHANNELS,
   CHAT_MODEL_OUTPUT_TOKEN_RULES,
   CHAT_PROVIDER_IDS,
+  type ChatProviderId,
+  type ClaudeImageMimeType,
   CONFIGURED_CHAT_PROVIDERS,
   FALLBACK_MODEL_MAX_OUTPUT_TOKENS,
   GEMINI_IMAGE_MODEL_RETRY_ERROR_MARKERS,

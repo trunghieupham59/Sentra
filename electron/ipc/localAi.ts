@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { performance } from 'node:perf_hooks'
-import type { IpcMain, WebContents } from 'electron'
+import { app, type IpcMain, type WebContents } from 'electron'
 
 export type LocalAiEngine = 'ollama' | 'lmstudio' | 'llamacpp'
 export type LocalAiHardwareTier = 'low' | 'balanced' | 'powerful' | 'max'
@@ -139,8 +139,8 @@ const LOCAL_AI_INSTALL_TIMEOUT_MS = 10 * 60 * 1000
 const LOCAL_AI_RUNTIME_BENCHMARK_TIMEOUT_MS = 15_000
 const LOCAL_AI_RUNTIME_START_TIMEOUT_MS = 18_000
 const LOCAL_AI_RUNTIME_START_POLL_MS = 600
-const OLLAMA_INSTALL_COMMAND = 'curl -fsSL https://ollama.com/install.sh | sh'
-const OLLAMA_INSTALL_COMMAND_NO_START = 'curl -fsSL https://ollama.com/install.sh | OLLAMA_NO_START=1 sh'
+const OLLAMA_INSTALL_SCRIPT_URL = 'https://ollama.com/install.sh'
+const OLLAMA_INSTALL_SCRIPT_NAME = 'ollama-install.sh'
 
 export const LOCAL_AI_RUNTIME_CANDIDATES: LocalAiRuntimeCandidate[] = [
   { engine: 'ollama', endpoint: 'http://127.0.0.1:11434/v1', managementEndpoint: 'http://127.0.0.1:11434/api' },
@@ -1032,8 +1032,35 @@ function shouldRetryMacInstallWithAdmin(code: number | null, output: string) {
   return /permission denied|operation not permitted|not permitted|administrator|sudo|\/applications|\/usr\/local\/bin|ln:|mv:|mkdir/i.test(output)
 }
 
+function quoteShellArg(value: string) {
+  return `'${value.replace(/'/g, "'\\''")}'`
+}
+
 function escapeAppleScriptString(value: string) {
   return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+}
+
+async function downloadOllamaInstallScript(): Promise<string> {
+  const response = await fetch(OLLAMA_INSTALL_SCRIPT_URL)
+  if (!response.ok) {
+    throw new Error(`Installer download failed (${response.status})`)
+  }
+
+  const script = await response.text()
+  if (!script.includes('ollama') || !script.includes('OLLAMA')) {
+    throw new Error('Installer provenance check failed.')
+  }
+
+  const dir = path.join(app.getPath('userData'), 'installers')
+  fs.mkdirSync(dir, { recursive: true })
+  const scriptPath = path.join(dir, `${Date.now()}-${OLLAMA_INSTALL_SCRIPT_NAME}`)
+  fs.writeFileSync(scriptPath, script, { encoding: 'utf-8', mode: 0o700 })
+  return scriptPath
+}
+
+function removeInstallScript(scriptPath: string | null) {
+  if (!scriptPath) return
+  try { fs.unlinkSync(scriptPath) } catch { /* ignore */ }
 }
 
 function startOllamaApp() {
@@ -1070,8 +1097,30 @@ export async function installOllamaRuntime(sender?: WebContents): Promise<LocalA
     }
   }
 
+  emitInstallProgress(sender, {
+    status: 'running',
+    percent: 4,
+    message: 'Downloading local runtime installer from ollama.com...',
+  })
+
+  let scriptPath: string
+  try {
+    scriptPath = await downloadOllamaInstallScript()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    emitInstallProgress(sender, {
+      status: 'error',
+      percent: 4,
+      message,
+    })
+    return {
+      success: false,
+      error: `Local runtime install failed: ${message}`,
+    }
+  }
+
   return new Promise((resolve) => {
-    const child = spawn('/bin/sh', ['-c', OLLAMA_INSTALL_COMMAND], {
+    const child = spawn('/bin/sh', [scriptPath], {
       detached: true,
       stdio: ['ignore', 'pipe', 'pipe'],
     })
@@ -1086,6 +1135,7 @@ export async function installOllamaRuntime(sender?: WebContents): Promise<LocalA
       resolved = true
       clearInterval(progressTimer)
       clearTimeout(timeoutTimer)
+      removeInstallScript(scriptPath)
       activeOllamaInstall = null
       emitInstallProgress(sender, progress)
       resolve(result)
@@ -1113,7 +1163,8 @@ export async function installOllamaRuntime(sender?: WebContents): Promise<LocalA
     }
 
     const runMacAdminFallback = () => {
-      const appleScript = `do shell script "${escapeAppleScriptString(OLLAMA_INSTALL_COMMAND_NO_START)}" with administrator privileges`
+      const adminCommand = `OLLAMA_NO_START=1 /bin/sh ${quoteShellArg(scriptPath)}`
+      const appleScript = `do shell script "${escapeAppleScriptString(adminCommand)}" with administrator privileges`
       const adminChild = spawn('/usr/bin/osascript', ['-e', appleScript], {
         detached: true,
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -1186,10 +1237,11 @@ export async function installOllamaRuntime(sender?: WebContents): Promise<LocalA
     }
 
     activeOllamaInstall = { child, cancel }
+    percent = Math.max(percent, 12)
     emitInstallProgress(sender, {
       status: 'running',
       percent,
-      message: 'Starting local runtime installer...',
+      message: 'Starting verified local runtime installer...',
     })
 
     const progressTimer = setInterval(() => {

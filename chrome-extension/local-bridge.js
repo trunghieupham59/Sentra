@@ -182,6 +182,7 @@
     stopLabel = 'Stop',
     loadingLabel = 'Loading...',
     onError,
+    fetchAudio = fetchTtsAudio,
   }) {
     let audio = null
     let audioUrl = ''
@@ -240,7 +241,7 @@
         loading = true
         const id = ++requestId
         setButton(loadingLabel)
-        const result = await fetchTtsAudio(text, lang, token)
+        const result = await fetchAudio(text, lang, token)
         if (id !== requestId) return
         audioUrl = base64ToBlobUrl(result.audioBase64, result.mimeType)
         audio = new Audio(audioUrl)

@@ -5,6 +5,9 @@
  * Security model:
  *   • Server only listens on 127.0.0.1 (loopback — not reachable from outside)
  *   • Every request must carry the header  X-Viezan-Token: <api-key>
+ *   • Browser CORS is restricted to extension/local origins; legacy assistant
+ *     requests from arbitrary web origins must include a valid API key as a
+ *     preflight-visible `corsToken` query parameter.
  *   • API keys use the sk-vie-<64 lowercase hex chars> format, named, with configurable TTL
  *   • API key values are returned ONLY at creation or regeneration — never again
  *   • Multiple API keys can coexist (one per device/browser)
@@ -201,16 +204,55 @@ const LISTEN_RETRY_DELAY_MS = 500
 
 // ── HTTP server ───────────────────────────────────────────────────────────────
 
-function sendJSON (res: http.ServerResponse, statusCode: number, data: unknown): void {
-  res.writeHead(statusCode, {
+function getRequestUrl(req: http.IncomingMessage): URL {
+  return new URL(req.url ?? '/', `http://127.0.0.1:${LOCAL_SERVER_PORT}`)
+}
+
+function isTrustedBrowserOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin)
+    if (url.protocol === 'chrome-extension:') {
+      return /^[a-p]{32}$/.test(url.hostname)
+    }
+    if (url.protocol === 'http:' || url.protocol === 'https:') {
+      return url.hostname === '127.0.0.1' || url.hostname === 'localhost' || url.hostname === '[::1]' || url.hostname === '::1'
+    }
+  } catch {
+    return false
+  }
+  return false
+}
+
+function hasValidLegacyCorsToken(req: http.IncomingMessage): boolean {
+  const corsToken = getRequestUrl(req).searchParams.get('corsToken')
+  if (!corsToken) return false
+  purgeExpired()
+  const now = Date.now()
+  return activeTokens.some(t => tokenMatches(t.token, corsToken) && t.expiresAt > now)
+}
+
+function resolveCorsOrigin(req: http.IncomingMessage): string | null {
+  const origin = req.headers.origin
+  if (typeof origin !== 'string' || !origin) return null
+  if (isTrustedBrowserOrigin(origin)) return origin
+  return hasValidLegacyCorsToken(req) ? origin : null
+}
+
+function sendJSON (req: http.IncomingMessage, res: http.ServerResponse, statusCode: number, data: unknown): void {
+  const corsOrigin = resolveCorsOrigin(req)
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-Viezan-Token',
     // Required for Chrome Private Network Access (PNA) — allows extension pages
-    // (chrome-extension://) and local web pages to fetch from 127.0.0.1.
+    // and trusted local pages to fetch from 127.0.0.1.
     'Access-Control-Allow-Private-Network': 'true',
-  })
+  }
+  if (corsOrigin) {
+    headers['Access-Control-Allow-Origin'] = corsOrigin
+    headers.Vary = 'Origin'
+  }
+  res.writeHead(statusCode, headers)
   res.end(JSON.stringify(data))
 }
 
@@ -224,7 +266,12 @@ function readBody (req: http.IncomingMessage): Promise<string> {
 }
 
 export async function handleLocalServerRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
-  if (req.method === 'OPTIONS') { sendJSON(res, 200, {}); return }
+  if (req.headers.origin && !resolveCorsOrigin(req)) {
+    sendJSON(req, res, 403, { success: false, error: 'Origin not allowed' })
+    return
+  }
+
+  if (req.method === 'OPTIONS') { sendJSON(req, res, 200, {}); return }
 
   // Validate API key against all active, non-expired API keys
   const incomingToken = req.headers['x-viezan-token']
@@ -232,21 +279,21 @@ export async function handleLocalServerRequest(req: http.IncomingMessage, res: h
   purgeExpired()
   const valid = activeTokens.some(t => tokenMatches(t.token, incomingToken) && t.expiresAt > now)
   if (!valid) {
-    sendJSON(res, 401, { success: false, error: 'Unauthorized — API key expired or invalid' })
+    sendJSON(req, res, 401, { success: false, error: 'Unauthorized — API key expired or invalid' })
     return
   }
 
-  const url = req.url ?? ''
+  const { pathname: url } = getRequestUrl(req)
 
   if (req.method === 'GET' && url === '/api/status') {
-    sendJSON(res, 200, { success: true, version: app.getVersion(), appName: app.getName() })
+    sendJSON(req, res, 200, { success: true, version: app.getVersion(), appName: app.getName() })
     return
   }
 
   // Returns the app's currently active provider/model so the extension
   // mirrors the user's selection without needing its own provider settings.
   if (req.method === 'GET' && url === '/api/config') {
-    sendJSON(res, 200, {
+    sendJSON(req, res, 200, {
       success: true,
       provider: cachedConfig.provider,
       model: cachedConfig.model,
@@ -262,9 +309,9 @@ export async function handleLocalServerRequest(req: http.IncomingMessage, res: h
   if (req.method === 'POST' && url === '/api/translate') {
     try {
       const result = await lightweightTranslate(JSON.parse(await readBody(req)))
-      sendJSON(res, 200, result)
+      sendJSON(req, res, 200, result)
     } catch (e) {
-      sendJSON(res, 400, { success: false, error: String(e) })
+      sendJSON(req, res, 400, { success: false, error: String(e) })
     }
     return
   }
@@ -274,7 +321,7 @@ export async function handleLocalServerRequest(req: http.IncomingMessage, res: h
       const body = JSON.parse(await readBody(req))
       const text = typeof body?.text === 'string' ? body.text.trim() : ''
       if (!text) {
-        sendJSON(res, 400, { success: false, error: 'Missing text' })
+        sendJSON(req, res, 400, { success: false, error: 'Missing text' })
         return
       }
       const result = await synthesizeTts({
@@ -283,14 +330,14 @@ export async function handleLocalServerRequest(req: http.IncomingMessage, res: h
         mode: cachedConfig.ttsMode,
         voice: cachedConfig.ttsVoice,
       })
-      sendJSON(res, result.success ? 200 : 400, result)
+      sendJSON(req, res, result.success ? 200 : 400, result)
     } catch (e) {
-      sendJSON(res, 400, { success: false, error: String(e) })
+      sendJSON(req, res, 400, { success: false, error: String(e) })
     }
     return
   }
 
-  sendJSON(res, 404, { success: false, error: 'Not found' })
+  sendJSON(req, res, 404, { success: false, error: 'Not found' })
 }
 
 export function createHttpServer (): http.Server {
