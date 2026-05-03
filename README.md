@@ -51,12 +51,12 @@ Viezan is a desktop translation workspace for text, images, live audio, chat and
 
 View all versions on the [GitHub Releases page](https://github.com/trunghieupham59/Viezan/releases).
 
-## What's New in v2.0.2
+## What's New in v2.0.3
 
 | Area | Change |
 | --- | --- |
-| Updates | macOS unsigned builds now download the release DMG directly from Viezan instead of sending users to the browser. |
-| Installer UX | After download, Viezan opens the DMG and keeps an **Open Installer** action available in Settings. |
+| Translation | Adds separate standard transcription and phonetic modes for translation output. |
+| Settings | Exposes transcription-mode controls across Settings and the translate flow. |
 | Release | Keeps the GitHub Release workflow path for DMG, Windows installer, AppImage and extension ZIP artifacts. |
 
 ## Features
