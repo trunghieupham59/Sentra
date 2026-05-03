@@ -29,7 +29,6 @@ Tài liệu tổng quan về toàn bộ pipeline CI/CD và automation của Viez
 │  • stale.yml           (mỗi ngày — close stale issues/PRs)             │
 │  • dependabot.yml      (mỗi tuần — npm + actions update)               │
 │  • release.yml         (tag v*  — publish DMG/EXE/AppImage + CRX)      │
-│  • release-extension.yml (tag ext-v* — chỉ Chrome extension ZIP)       │
 │  • pages.yml           (push docs/** — deploy GitHub Pages)            │
 └────────────────────────────────────────────────────────────────────────┘
 ```
@@ -46,7 +45,6 @@ Tài liệu tổng quan về toàn bộ pipeline CI/CD và automation của Viez
 | `workflows/stale.yml`                      | Đóng issues/PRs không hoạt động                                             |
 | `workflows/nightly.yml`                    | Build dev nightly cho cả 3 OS — không publish, upload artifact 14 ngày      |
 | `workflows/release.yml`                    | **(đã có)** Tag `v*` → build & publish DMG/EXE/AppImage + CRX               |
-| `workflows/release-extension.yml`          | **(đã có)** Tag `ext-v*` → đóng gói Chrome extension ZIP                    |
 | `workflows/pages.yml`                      | **(đã có)** Deploy `docs/` lên GitHub Pages                                 |
 | `labeler.yml`                              | Định nghĩa rule cho `actions/labeler`                                       |
 | `dependabot.yml`                           | Cập nhật npm + GitHub Actions hàng tuần (theo group)                        |
@@ -101,17 +99,12 @@ Ví dụ:
 ## 🚀 Quy trình release
 
 ```bash
-# 1) App release (DMG / EXE / AppImage / latest.yml + CRX)
+# App release (DMG / EXE / AppImage / latest.yml + CRX)
 git tag v2.1.0
 git push origin v2.1.0
-
-# 2) Chỉ ship lại Chrome extension (không build app)
-git tag ext-v2.1.0
-git push origin ext-v2.1.0
 ```
 
-Trong cả hai trường hợp, `release.yml` / `release-extension.yml` sẽ tự build và
-upload artifact lên GitHub Releases tương ứng.
+`release.yml` sẽ tự build và upload artifact lên GitHub Release tương ứng.
 
 ## 🌙 Nightly build
 
