@@ -18,6 +18,34 @@
   }
 
   const Bridge = globalThis.ViezanLocalBridge
+  if (!Bridge?.createTtsController) return
+
+  function populateFallbackSelect (select, encodedOptions) {
+    if (!select) return
+    const previousValue = select.value
+    select.textContent = ''
+    for (const item of encodedOptions.split('|')) {
+      const [value, label] = item.split(':')
+      const option = document.createElement('option')
+      option.value = value
+      option.textContent = label
+      select.appendChild(option)
+    }
+    if (previousValue && [...select.options].some((option) => option.value === previousValue)) {
+      select.value = previousValue
+    }
+  }
+
+  const Options = {
+    populateTargetLanguageSelect:
+      globalThis.ViezanExtensionOptions?.populateTargetLanguageSelect ||
+      Bridge.populateTargetLanguageSelect ||
+      ((select) => populateFallbackSelect(select, 'en:English|vi:Vietnamese|ja:Japanese|zh:Chinese|zh-TW:Chinese (Traditional)|ko:Korean|fr:French|de:German|es:Spanish|pt:Portuguese|ru:Russian|ar:Arabic|th:Thai|id:Indonesian|it:Italian|nl:Dutch|tr:Turkish|hi:Hindi')),
+    populateTranslationStyleSelect:
+      globalThis.ViezanExtensionOptions?.populateTranslationStyleSelect ||
+      Bridge.populateTranslationStyleSelect ||
+      ((select) => populateFallbackSelect(select, 'general:General|formal:Formal|casual:Casual|business:Business|technical:Technical|natural:Natural')),
+  }
   const ICON_URL = chrome.runtime.getURL('icons/icon48.png')
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
   const COPY_LABEL = 'Copy'
@@ -108,8 +136,8 @@
   const langSelect = tooltip.querySelector('.tre-lang-select')
   const styleSelect = tooltip.querySelector('.tre-style-select')
   const closeBtn = tooltip.querySelector('.tre-close-btn')
-  globalThis.ViezanExtensionOptions.populateTargetLanguageSelect(langSelect)
-  globalThis.ViezanExtensionOptions.populateTranslationStyleSelect(styleSelect)
+  Options.populateTargetLanguageSelect(langSelect)
+  Options.populateTranslationStyleSelect(styleSelect)
   const ttsPlayer = Bridge.createTtsController({
     getButton: () => listenBtn,
     listenLabel: LISTEN_LABEL,

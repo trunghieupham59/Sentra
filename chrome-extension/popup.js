@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id)
 const Bridge = window.ViezanLocalBridge
-const ExtensionOptions = window.ViezanExtensionOptions
+const ExtensionOptions = window.ViezanExtensionOptions || Bridge
 
 ExtensionOptions.populateDocumentSelects()
 
