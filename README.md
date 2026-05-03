@@ -51,13 +51,13 @@ Viezan is a desktop translation workspace for text, images, live audio, chat and
 
 View all versions on the [GitHub Releases page](https://github.com/trunghieupham59/Viezan/releases).
 
-## What's New in v2.0.4
+## What's New in v2.0.5
 
 | Area | Change |
 | --- | --- |
-| Update | Adds a macOS updater fallback that detects the latest GitHub release even when the unauthenticated REST API is rate-limited. |
-| Install | Builds deterministic DMG download URLs from the latest release tag so users can test in-app update detection from v2.0.3 to v2.0.4. |
-| Reliability | Covers the updater version parsing and DMG URL generation helpers with unit tests. |
+| Update | Installs macOS updates from the app instead of leaving users to drag the DMG over the running app. |
+| Install | Adds a helper that quits Viezan, mounts the downloaded DMG, replaces `/Applications/Viezan.app`, clears quarantine and reopens Viezan. |
+| Fallback | Keeps a manual “Open Installer” path if automatic replacement fails on a local machine. |
 
 ## Features
 
