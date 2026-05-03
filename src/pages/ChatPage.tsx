@@ -56,7 +56,7 @@ function toIpcMessage(msg: ChatMessage) {
 
 function toIpcHistory(messages: ChatMessage[]) {
   return messages
-    .filter((m) => !m.isLoading && !m.error && !m.isResearchStep)
+    .filter((m) => !m.isLoading && !m.error && !m.isResearchStep && !m.isSmartThinkingStep)
     .map(toIpcMessage)
 }
 
@@ -472,6 +472,22 @@ export function ChatPage() {
     //   • The user attached an image (vision flow uses straight chatService.stream)
     //   • There is no text (image-only message)
     if (text && !attachedImage) {
+      // Single morphing placeholder bubble shared across all Smart Thinking phases:
+      //   1. Initial "Thinking…" — while AI classifier decides whether to web-search.
+      //   2. "Smart Thinking…" pill — shown only if the classifier triggered a web search.
+      //   3. Back to "Thinking…" — between search completion and the start of token streaming.
+      //   4. Streaming tokens — final answer fills the same bubble.
+      // Reusing one bubble (instead of swapping between a step bubble and an answer bubble)
+      // matches modern chat UIs and keeps the conversation flow visually stable.
+      const placeholderMsgId = `msg-${Date.now()}-a`
+      addChatMessage(sessionId, {
+        id: placeholderMsgId,
+        role: 'assistant',
+        content: [{ type: 'text', text: '' }],
+        timestamp: Date.now(),
+        isLoading: true,
+      })
+
       try {
         await smartThinkingService.run({
           provider: selectedProvider,
@@ -491,60 +507,63 @@ export function ChatPage() {
             unknownError: t.chat_smart_thinking_unknown_error,
           },
           callbacks: {
-            onStepStart: (label) => {
-              const msgId = `msg-${Date.now()}-st${Math.random().toString(36).slice(2, 6)}`
-              addChatMessage(sessionId, {
-                id: msgId,
-                role: 'assistant',
+            // Step starts → flip the placeholder to the "Smart Thinking…" pill.
+            // We deliberately ignore `label` and any step content/sources so the
+            // user only sees a lightweight indicator.
+            onStepStart: (_label) => {
+              updateChatMessage(sessionId, placeholderMsgId, {
                 content: [{ type: 'text', text: '' }],
-                timestamp: Date.now(),
                 isLoading: true,
-                isResearchStep: true,
-                researchStepLabel: label,
+                isSmartThinkingStep: true,
+                researchStepLabel: t.chat_smart_thinking_badge,
               })
-              return msgId
+              return placeholderMsgId
             },
-            onStepComplete: (msgId, content) => {
-              updateChatMessage(sessionId, msgId, {
-                content: [{ type: 'text', text: content }],
-                isLoading: false,
-                isResearchStep: true,
+            // Step done → clear the Smart Thinking pill and return the bubble
+            // to its plain "Thinking…" state until token streaming begins.
+            onStepComplete: (_msgId, _content) => {
+              updateChatMessage(sessionId, placeholderMsgId, {
+                content: [{ type: 'text', text: '' }],
+                isLoading: true,
+                isSmartThinkingStep: false,
+                researchStepLabel: undefined,
               })
             },
-            onStepError: (msgId, error) => {
-              updateChatMessage(sessionId, msgId, {
-                isLoading: false,
+            onStepError: (_msgId, error) => {
+              // Soft fallback: keep showing "Thinking…" so the model can still
+              // answer from internal knowledge. We log the error to the bubble
+              // only as a tooltip-friendly signal; the visible spinner stays.
+              updateChatMessage(sessionId, placeholderMsgId, {
+                content: [{ type: 'text', text: '' }],
+                isLoading: true,
+                isSmartThinkingStep: false,
+                researchStepLabel: undefined,
                 error: localizeChatException(t, error, t.chat_error_failed_response),
-                isResearchStep: true,
               })
             },
-            onAnswerStart: () => {
-              const msgId = `msg-${Date.now()}-a`
-              addChatMessage(sessionId, {
-                id: msgId,
-                role: 'assistant',
-                content: [{ type: 'text', text: '' }],
-                timestamp: Date.now(),
-                isLoading: true,
-              })
-              return msgId
-            },
-            onAnswerToken: (msgId, content) => {
-              updateChatMessage(sessionId, msgId, {
+            onAnswerStart: () => placeholderMsgId,
+            onAnswerToken: (_msgId, content) => {
+              updateChatMessage(sessionId, placeholderMsgId, {
                 content: [{ type: 'text', text: content }],
                 isLoading: true,
+                isSmartThinkingStep: false,
+                researchStepLabel: undefined,
                 error: undefined,
               })
             },
-            onAnswerComplete: (msgId, content) => {
-              updateChatMessage(sessionId, msgId, {
+            onAnswerComplete: (_msgId, content) => {
+              updateChatMessage(sessionId, placeholderMsgId, {
                 content: [{ type: 'text', text: content }],
                 isLoading: false,
+                isSmartThinkingStep: false,
+                researchStepLabel: undefined,
               })
             },
-            onAnswerError: (msgId, error, errorCode) => {
-              updateChatMessage(sessionId, msgId, {
+            onAnswerError: (_msgId, error, errorCode) => {
+              updateChatMessage(sessionId, placeholderMsgId, {
                 isLoading: false,
+                isSmartThinkingStep: false,
+                researchStepLabel: undefined,
                 error: localizeChatError(t, { error, errorCode }, t.chat_error_failed_response),
               })
             },

@@ -64,7 +64,11 @@ describe('AIChatPopup quick window', () => {
     expect(await screen.findByText('Hello there')).toBeInTheDocument()
   })
 
-  it('runs Smart Thinking web search steps inside the active answer card', async () => {
+  it('runs Smart Thinking web search but only surfaces a minimal indicator', async () => {
+    // The Smart Thinking flow still performs the routing call + web search +
+    // injects results into the final system prompt, but the UI must NOT
+    // expose the internal search query, sources list, or AI reasoning to
+    // the user — only a small "Smart Thinking" indicator should be visible.
     vi.mocked(window.api.chat).mockResolvedValueOnce({
       success: true,
       reply: JSON.stringify({
@@ -73,6 +77,7 @@ describe('AIChatPopup quick window', () => {
         reason: 'The answer needs current release information.',
         answer_focus: 'State the latest release from current sources.',
         source_guidance: 'Prefer official release pages.',
+        source_count: 1,
       }),
     })
     const webSearchMock = vi.fn().mockResolvedValue({
@@ -93,14 +98,24 @@ describe('AIChatPopup quick window', () => {
     fireEvent.change(input, { target: { value: 'What is the current Viezan release?' } })
     fireEvent.keyDown(input, { key: 'Enter' })
 
-    expect(await screen.findByText('Web search current Viezan release')).toBeInTheDocument()
+    // Web search must still run with the AI-generated query.
     await waitFor(() => expect(webSearchMock).toHaveBeenCalledWith(expect.objectContaining({
       query: 'current Viezan release',
-      maxResults: 8,
+      maxResults: 1,
     })))
-    expect(await screen.findAllByText('Viezan release notes')).toHaveLength(2)
+
+    // Final answer streams in normally.
     expect(await screen.findByText('Hello there')).toBeInTheDocument()
 
+    // The minimal "Smart Thinking" pill is shown — but the internal
+    // step UI must NOT surface the search query or the AI reasoning text.
+    // (Citations inside the final answer are part of the answer markdown
+    // and are rendered separately from the Smart Thinking step indicator.)
+    expect(screen.getAllByText('Smart Thinking').length).toBeGreaterThan(0)
+    expect(screen.queryByText(/Web search current Viezan release/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/AI decided web search is needed/)).not.toBeInTheDocument()
+
+    // Web evidence must still reach the model via the system prompt.
     const streamCall = vi.mocked(window.api.chatStream).mock.calls[0]?.[0]
     expect(streamCall?.systemPrompt).toContain('WEB SEARCH RESULTS')
   })

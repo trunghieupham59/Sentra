@@ -38,7 +38,37 @@ import {
 } from './ui/icons'
 
 const QUICK_TEXTAREA_MAX_HEIGHT_PX = 120
-const THINKING_DOT_INTERVAL_MS = 400
+
+/**
+ * Strip any trailing punctuation locales add to the loading copy
+ * ("Đang suy nghĩ…", "Thinking…", "考え中…") so the polished pill can render
+ * the label cleanly without doubled-up ellipses next to the bouncing dots.
+ */
+function stripTrailingEllipsis(label: string): string {
+  return label.replace(/[…．\.\s]+$/u, '')
+}
+
+/**
+ * Three little bouncing dots — purely CSS-driven via .thinking-dot.
+ * Each dot is staggered by 160 ms so they ripple smoothly. We keep them
+ * fixed-size and absolutely-positioned-in-flow with `inline-flex` so the
+ * surrounding label text doesn't reflow as the dots animate.
+ */
+function BouncingDots({ tone = 'blue' }: { tone?: 'blue' | 'gray' | 'white' } = {}) {
+  const colour =
+    tone === 'gray' ? 'bg-gray-400 dark:bg-gray-500'
+    : tone === 'white' ? 'bg-white/85'
+    : 'bg-blue-500 dark:bg-blue-400'
+  return (
+    <span className="inline-flex items-end gap-[3px] pb-[2px]" aria-hidden="true">
+      <span className={`thinking-dot h-[5px] w-[5px] rounded-full ${colour}`} style={{ animationDelay: '0ms' }} />
+      <span className={`thinking-dot h-[5px] w-[5px] rounded-full ${colour}`} style={{ animationDelay: '160ms' }} />
+      <span className={`thinking-dot h-[5px] w-[5px] rounded-full ${colour}`} style={{ animationDelay: '320ms' }} />
+    </span>
+  )
+}
+
+
 /** Conversation kept this long after dismissal; after that, full reset on next show. */
 const HISTORY_TTL_MS = 5 * 60 * 1000
 
@@ -73,23 +103,32 @@ function KeyCap({ children }: { children: React.ReactNode }) {
   )
 }
 
-/** Animated "Thinking..." label used while the model has not yet streamed any tokens. */
+/**
+ * Polished "Thinking…" pill — soft blue gradient, sparkle icon with a glow
+ * halo, label, and three bouncing dots. Used while the model is mulling the
+ * question over before any tokens arrive. The pill styling matches the Smart
+ * Thinking pill so phase transitions feel cohesive.
+ */
 function ThinkingLabel({ label }: { label: string }) {
-  const [dots, setDots] = useState(1)
-  useEffect(() => {
-    const id = window.setInterval(
-      () => setDots((d) => (d >= 3 ? 1 : d + 1)),
-      THINKING_DOT_INTERVAL_MS,
-    )
-    return () => window.clearInterval(id)
-  }, [])
+  const baseLabel = stripTrailingEllipsis(label)
   return (
-    <span className="inline-flex items-center gap-2 text-[13px] font-medium text-blue-600">
-      <SpinnerIcon className="h-3.5 w-3.5 animate-spin" />
-      <span>{`${label}${'.'.repeat(dots)}`}</span>
+    <span
+      className="inline-flex items-center gap-2 rounded-full border border-blue-100/80 bg-gradient-to-r from-blue-50 via-sky-50 to-blue-50
+                 px-3 py-1 text-[12.5px] font-semibold text-blue-700 shadow-sm shadow-blue-900/[0.04] select-none"
+      role="status"
+      aria-live="polite"
+    >
+      <span className="relative inline-flex h-3.5 w-3.5 items-center justify-center">
+        <span className="thinking-glow absolute inset-0 rounded-full bg-blue-400/30 blur-[3px]" aria-hidden />
+        <SparklesIcon className="relative h-3.5 w-3.5 text-blue-500" />
+      </span>
+      <span className="tracking-[0.01em]">{baseLabel}</span>
+      <BouncingDots tone="blue" />
     </span>
   )
 }
+
+
 
 export function AIChatPopup() {
   const {
@@ -302,25 +341,24 @@ export function AIChatPopup() {
             unknownError: t.chat_smart_thinking_unknown_error,
           },
           callbacks: {
+            // Smart Thinking lifecycle:
+            //   • running   → swap "Thinking…" for the Smart Thinking pill
+            //   • complete  → clear the pill so we fall back to plain "Thinking…"
+            //                  while we wait for the answer to start streaming
+            //   • error     → same as complete (the model will answer from
+            //                  internal knowledge); no detail surfaced in UI
             onStepStart: (label) => {
               setSmartStep({ label, content: '', status: 'running' })
               return 'quick-chat-smart-step'
             },
-            onStepComplete: (_msgId, content) => {
-              setSmartStep((current) => ({
-                label: current?.label || t.chat_smart_thinking_searching,
-                content,
-                status: 'complete',
-              }))
+            onStepComplete: () => {
+              setSmartStep(null)
             },
-            onStepError: (_msgId, stepError) => {
-              setSmartStep((current) => ({
-                label: current?.label || t.chat_smart_thinking_search_error,
-                content: stepError,
-                status: 'error',
-              }))
+            onStepError: () => {
+              setSmartStep(null)
             },
             onAnswerStart: () => {
+              setSmartStep(null)
               setResponse('')
               return 'quick-chat-smart-answer'
             },
@@ -923,10 +961,16 @@ function ActiveQACard({
           </div>
         ) : isThinking ? (
           <div className="space-y-3">
-            {smartStep && (
+            {/* Phase indicator:
+             *   • smart step running → "Smart Thinking…" pill (replaces normal Thinking label)
+             *   • otherwise          → plain "Thinking…" label (initial decide phase or
+             *                          the gap between step completion and answer streaming)
+             */}
+            {smartStep?.status === 'running' ? (
               <SmartThinkingStep step={smartStep} badgeLabel={smartThinkingLabel} />
+            ) : (
+              <ThinkingLabel label={thinkingLabel} />
             )}
-            <ThinkingLabel label={thinkingLabel} />
             <div className="space-y-2.5 pt-1">
               <div className="h-2 w-3/4 animate-pulse rounded-full bg-gray-200/80" />
               <div className="h-2 w-11/12 animate-pulse rounded-full bg-gray-200/80" />
@@ -934,12 +978,7 @@ function ActiveQACard({
             </div>
           </div>
         ) : response ? (
-          <div className="space-y-4">
-            {smartStep && (
-              <SmartThinkingStep step={smartStep} badgeLabel={smartThinkingLabel} />
-            )}
-            <MarkdownText text={response} className="text-[15px] leading-7 text-gray-800" />
-          </div>
+          <MarkdownText text={response} className="text-[15px] leading-7 text-gray-800" />
         ) : null}
       </div>
 
@@ -958,6 +997,13 @@ function ActiveQACard({
   )
 }
 
+/**
+ * Smart Thinking pill — the elevated cousin of ThinkingLabel. Same pill shape
+ * so the transition between "Thinking…" and "Smart Thinking…" is just a tone
+ * shift; this variant adds an indigo→sky gradient with a slow shimmer sweep
+ * to communicate that the AI escalated to web grounding. Error states fall
+ * back to a calm red treatment without losing the pill silhouette.
+ */
 function SmartThinkingStep({
   step,
   badgeLabel,
@@ -968,34 +1014,58 @@ function SmartThinkingStep({
   const isRunning = step.status === 'running'
   const isError = step.status === 'error'
 
+  // Tooltip carries the underlying detail for users who want it, but the
+  // visible UI never shows search queries / sources / reasoning inline.
+  const tooltip = isError ? (step.content || step.label || badgeLabel) : badgeLabel
+
+  if (isError) {
+    return (
+      <span
+        className="inline-flex items-center gap-2 rounded-full border border-red-200/80 bg-red-50
+                   px-3 py-1 text-[12.5px] font-semibold text-red-700 shadow-sm shadow-red-900/[0.04] select-none"
+        title={tooltip}
+        role="status"
+      >
+        <SparklesIcon className="h-3.5 w-3.5" />
+        <span>{badgeLabel}</span>
+      </span>
+    )
+  }
+
   return (
-    <div
-      className={`rounded-lg border px-3 py-2.5 ${
-        isError
-          ? 'border-red-200 bg-red-50/80'
-          : 'border-blue-100 bg-blue-50/60'
-      }`}
+    <span
+      className="relative inline-flex items-center gap-2 overflow-hidden rounded-full
+                 border border-indigo-200/70 bg-gradient-to-r from-indigo-50 via-sky-50 to-violet-50
+                 px-3 py-1 text-[12.5px] font-semibold text-indigo-700 shadow-sm shadow-indigo-900/[0.05] select-none"
+      title={tooltip}
+      role="status"
+      aria-live="polite"
     >
-      <div className="flex min-w-0 items-center gap-2 text-[12px] font-semibold">
-        {isRunning ? (
-          <SpinnerIcon className="h-3.5 w-3.5 flex-shrink-0 animate-spin text-blue-600" />
-        ) : (
-          <SparklesIcon className={`h-3.5 w-3.5 flex-shrink-0 ${isError ? 'text-red-500' : 'text-blue-600'}`} />
-        )}
-        <span className={isError ? 'text-red-700' : 'text-blue-700'}>{badgeLabel}</span>
+      {/* Subtle shimmer wash — animated only while the step is running. */}
+      {isRunning && (
         <span
-          className={`min-w-0 truncate font-medium ${isError ? 'text-red-600' : 'text-blue-600/80'}`}
-          title={step.label}
-        >
-          {step.label}
-        </span>
-      </div>
-      {step.content && (
-        <MarkdownText
-          text={step.content}
-          className={`mt-2 text-[12px] leading-5 ${isError ? 'text-red-700' : 'text-gray-600'}`}
+          className="thinking-shimmer pointer-events-none absolute inset-0 bg-gradient-to-r
+                     from-transparent via-white/55 to-transparent"
+          aria-hidden
         />
       )}
-    </div>
+      <span className="relative inline-flex h-3.5 w-3.5 items-center justify-center">
+        {isRunning && (
+          <span
+            className="thinking-glow absolute inset-0 rounded-full bg-indigo-400/35 blur-[3px]"
+            aria-hidden
+          />
+        )}
+        <SparklesIcon className="relative h-3.5 w-3.5 text-indigo-500" />
+      </span>
+      <span className="relative tracking-[0.01em]">{badgeLabel}</span>
+      {isRunning && (
+        <span className="relative">
+          <BouncingDots tone="blue" />
+        </span>
+      )}
+    </span>
   )
 }
+
+

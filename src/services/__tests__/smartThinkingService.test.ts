@@ -26,6 +26,9 @@ describe('smartThinkingService', () => {
       reason: 'The question asks for current information.',
       answer_focus: 'Identify the current people who hold the requested roles.',
       source_guidance: 'Prefer official or primary sources for current public roles.',
+      source_count: 2,
+      freshness_requirement: 'current-as-of-now',
+      reliability_requirement: 'official or primary current leadership source',
     })
     vi.mocked(window.api.chat)
       .mockResolvedValueOnce({ success: true, reply: classifierReply })
@@ -86,7 +89,7 @@ describe('smartThinkingService', () => {
     })
 
     expect(webSearchMock).toHaveBeenCalledWith(expect.objectContaining({
-      maxResults: 8,
+      maxResults: 2,
       query: 'current leadership roles example agency',
     }))
     expect(callbacks.onStepStart).toHaveBeenCalledWith('Search current leadership roles example agency')
@@ -95,8 +98,15 @@ describe('smartThinkingService', () => {
     const finalCall = vi.mocked(window.api.chat).mock.calls[1][0]
     const finalPrompt = finalCall.systemPrompt ?? ''
     expect(finalPrompt).toContain('Answer focus from the routing step: Identify the current people')
+    expect(finalPrompt).toContain('Freshness requirement: current-as-of-now')
+    expect(finalPrompt).toContain('Reliability requirement: official or primary current leadership source')
+    expect(finalPrompt).toContain('Search metadata')
+    expect(finalPrompt).toContain('Retrieved at:')
+    expect(finalPrompt).toContain('Search query: current leadership roles example agency')
     expect(finalPrompt).toContain('Do not invent or complete facts')
     expect(finalPrompt).toContain('Evaluate source credibility')
+    expect(finalPrompt).toContain('Cross-check whether the retrieved evidence is fresh enough')
+    expect(finalPrompt).toContain('When sources conflict')
     expect(finalPrompt).toContain('Answer the exact question')
     expect(callbacks.onAnswerComplete).toHaveBeenCalledWith(
       'answer-1',
@@ -115,6 +125,7 @@ describe('smartThinkingService', () => {
       reason: 'The question is a direct check and I must inspect the prior turn under the strict rule.',
       answer_focus: 'Verify whether the prior claim about the current Vietnamese party leader is still current.',
       source_guidance: 'Prefer official Vietnamese government or party sources.',
+      source_count: 1,
     })
     vi.mocked(window.api.chat)
       .mockResolvedValueOnce({ success: true, reply: classifierReply })
@@ -180,6 +191,7 @@ describe('smartThinkingService', () => {
     expect(classifierCall.bypassLengthCheck).toBe(true)
 
     expect(webSearchMock).toHaveBeenCalledWith(expect.objectContaining({
+      maxResults: 1,
       query: 'Tô Lâm Tổng Bí thư Việt Nam hiện nay',
     }))
     expect(callbacks.onStepComplete).toHaveBeenCalledWith(
@@ -199,6 +211,7 @@ describe('smartThinkingService', () => {
       reason: 'The user asks for source-backed wording.',
       answer_focus: 'Find the exact wording in retrieved source material.',
       source_guidance: 'Prefer primary source pages that contain the requested wording.',
+      source_count: 1,
     })
     vi.mocked(window.api.chat)
       .mockResolvedValueOnce({ success: true, reply: classifierReply })
@@ -248,6 +261,7 @@ describe('smartThinkingService', () => {
     })
 
     expect(webSearchMock).toHaveBeenCalledWith(expect.objectContaining({
+      maxResults: 1,
       query: 'example policy notice exact wording',
     }))
     expect(callbacks.onStepStart).toHaveBeenCalledWith('Search example policy notice exact wording')
@@ -266,6 +280,7 @@ describe('smartThinkingService', () => {
       reason: 'The answer can be reasoned from the current conversation.',
       answer_focus: 'Provide a practical decision framework.',
       source_guidance: '',
+      source_count: 0,
     })
     vi.mocked(window.api.chat)
       .mockResolvedValueOnce({ success: true, reply: classifierReply })
@@ -320,5 +335,138 @@ describe('smartThinkingService', () => {
     expect(finalPrompt).toContain("Occam's razor")
     expect(finalPrompt).toContain('feedback loops')
     expect(finalPrompt).toContain('Scale depth to the task')
+  })
+
+  it('guards real-time answers when Smart Thinking cannot retrieve usable web evidence', async () => {
+    const classifierReply = JSON.stringify({
+      needs_web: true,
+      query: 'current Viezan release',
+      reason: 'The answer needs live release verification.',
+      answer_focus: 'State the latest Viezan release only if current sources verify it.',
+      source_guidance: 'Prefer official release pages.',
+      source_count: 1,
+      freshness_requirement: 'current-as-of-now',
+      reliability_requirement: 'official release source',
+    })
+    vi.mocked(window.api.chat)
+      .mockResolvedValueOnce({ success: true, reply: classifierReply })
+      .mockResolvedValueOnce({ success: true, reply: 'I cannot verify the latest release from retrieved web results.' })
+
+    const webSearchMock = vi.fn().mockResolvedValue({
+      success: true,
+      results: [],
+    })
+    window.api.webSearch = webSearchMock
+
+    const callbacks = {
+      onStepStart: vi.fn(() => 'step-1'),
+      onStepComplete: vi.fn(),
+      onStepError: vi.fn(),
+      onAnswerStart: vi.fn(() => 'answer-1'),
+      onAnswerToken: vi.fn(),
+      onAnswerComplete: vi.fn(),
+      onAnswerError: vi.fn(),
+    }
+
+    await smartThinkingService.run({
+      provider: 'gemini',
+      model: 'gemini-2.0-flash',
+      question: 'What is the current Viezan release?',
+      messages: [{
+        role: 'user',
+        content: [{ type: 'text', text: 'What is the current Viezan release?' }],
+      }],
+      uiText: {
+        webSearchStepLabelPrefix: 'Search',
+        webSearchSummaryTitle: 'Summary',
+        webSearchDefaultReason: 'Search is needed.',
+        webSearchSourcesTitle: 'Sources',
+        webSearchNoSources: 'No sources',
+        webSearchNoResults: 'No matching web results.',
+        webSearchErrorFallback: 'Search failed',
+        noResponseError: 'No response',
+        unknownError: 'Unknown error',
+      },
+      callbacks,
+    })
+
+    expect(webSearchMock).toHaveBeenCalledWith(expect.objectContaining({
+      maxResults: 1,
+      query: 'current Viezan release',
+    }))
+    expect(callbacks.onStepComplete).toHaveBeenCalledWith('step-1', '_No matching web results._')
+
+    const finalCall = vi.mocked(window.api.chat).mock.calls[1][0]
+    const finalPrompt = finalCall.systemPrompt ?? ''
+    expect(finalPrompt).toContain('did not retrieve usable web results')
+    expect(finalPrompt).toContain('Search query attempted: current Viezan release')
+    expect(finalPrompt).toContain('Freshness requirement: current-as-of-now')
+    expect(finalPrompt).toContain('Reliability requirement: official release source')
+    expect(finalPrompt).toContain('Do not present time-sensitive')
+    expect(finalPrompt).toContain('Do not fabricate citations')
+  })
+
+  it('clamps excessive classifier source budgets for Smart Thinking search', async () => {
+    const classifierReply = JSON.stringify({
+      needs_web: true,
+      query: 'current disputed market claim',
+      reason: 'The answer needs external verification.',
+      answer_focus: 'Check the claim without doing broad research.',
+      source_guidance: 'Use a small set of credible sources.',
+      source_count: 9,
+    })
+    vi.mocked(window.api.chat)
+      .mockResolvedValueOnce({ success: true, reply: classifierReply })
+      .mockResolvedValueOnce({ success: true, reply: 'Final answer [1].' })
+
+    const webSearchMock = vi.fn().mockResolvedValue({
+      success: true,
+      results: Array.from({ length: 8 }, (_, i) => ({
+        title: `Source ${i + 1}`,
+        url: `https://example.com/${i + 1}`,
+        content: `Source ${i + 1} content`,
+        score: 1 - i * 0.1,
+      })),
+    })
+    window.api.webSearch = webSearchMock
+
+    const callbacks = {
+      onStepStart: vi.fn(() => 'step-1'),
+      onStepComplete: vi.fn(),
+      onStepError: vi.fn(),
+      onAnswerStart: vi.fn(() => 'answer-1'),
+      onAnswerToken: vi.fn(),
+      onAnswerComplete: vi.fn(),
+      onAnswerError: vi.fn(),
+    }
+
+    await smartThinkingService.run({
+      provider: 'gemini',
+      model: 'gemini-2.0-flash',
+      question: 'Check this current disputed market claim',
+      messages: [{
+        role: 'user',
+        content: [{ type: 'text', text: 'Check this current disputed market claim' }],
+      }],
+      uiText: {
+        webSearchStepLabelPrefix: 'Search',
+        webSearchSummaryTitle: 'Summary',
+        webSearchDefaultReason: 'Search is needed.',
+        webSearchSourcesTitle: 'Sources',
+        webSearchNoSources: 'No sources',
+        webSearchNoResults: 'No matching web results.',
+        webSearchErrorFallback: 'Search failed',
+        noResponseError: 'No response',
+        unknownError: 'Unknown error',
+      },
+      callbacks,
+    })
+
+    expect(webSearchMock).toHaveBeenCalledWith(expect.objectContaining({
+      maxResults: 4,
+      query: 'current disputed market claim',
+    }))
+    expect(callbacks.onAnswerComplete).toHaveBeenCalledWith('answer-1', expect.stringContaining('Source 4'))
+    expect(callbacks.onAnswerComplete).toHaveBeenCalledWith('answer-1', expect.not.stringContaining('Source 5'))
   })
 })

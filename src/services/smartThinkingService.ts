@@ -12,8 +12,9 @@
  *     problem, assumptions, uncertainty, and whether web evidence is required.
  *
  *   Step 2a — needs_web=true:
- *     Run ONE canonical web search (existing webSearch IPC, multi-provider
- *     fallback). The final answer is source-grounded and cites result indexes.
+ *     Run ONE canonical web search with an AI-planned result budget (existing
+ *     webSearch IPC, multi-provider fallback). The final answer is
+ *     source-grounded and cites result indexes.
  *
  *   Step 2b — needs_web=false:
  *     Answer from the conversation and model knowledge under the same Smart
@@ -21,7 +22,7 @@
  *
  * Compared to Deep Research:
  *   • 1–2 AI calls (vs 6–10+)
- *   • At most 1 web search (vs 4–8)
+ *   • At most 1 web search with a small dynamic source budget (vs 4–8 searches)
  *   • Streams the final answer
  *   • Best for everyday questions; Deep Research is opt-in for thorough reports.
  */
@@ -31,8 +32,13 @@ import { formatWebSearchResults, getCurrentLocaleDateTime, hasWebSearchApi } fro
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const MAX_SEARCH_RESULTS = 8
-const MAX_SEARCH_CONTEXT_CHARS = 8000
+const SEARCH_RESULT_BUDGET = {
+  min: 1,
+  fallback: 2,
+  max: 4,
+} as const
+const SEARCH_CONTEXT_BASE_CHARS = 1200
+const SEARCH_CONTEXT_CHARS_PER_RESULT = 900
 const MAX_CLASSIFIER_CONTEXT_MESSAGES = 8
 const MAX_CLASSIFIER_CONTEXT_CHARS = 4000
 
@@ -90,6 +96,9 @@ interface ClassifyResult {
   reason: string
   answerFocus: string
   sourceGuidance: string
+  sourceCount: number
+  freshnessRequirement: string
+  reliabilityRequirement: string
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -106,6 +115,34 @@ function composeSearchQuery(question: string, plannedQuery: string): string {
 
 function combineSystemPrompt(basePrompt: string, userSystemPrompt?: string): string {
   return userSystemPrompt ? `${userSystemPrompt}\n\n---\n\n${basePrompt}` : basePrompt
+}
+
+function normalizeClassifierText(value: unknown, maxChars = 300): string {
+  return typeof value === 'string' ? normalizeWhitespace(value).slice(0, maxChars) : ''
+}
+
+function normalizeSourceCount(value: unknown): number {
+  const parsed = typeof value === 'number'
+    ? value
+    : typeof value === 'string'
+      ? Number.parseInt(value, 10)
+      : SEARCH_RESULT_BUDGET.fallback
+
+  if (!Number.isFinite(parsed)) return SEARCH_RESULT_BUDGET.fallback
+  return Math.min(SEARCH_RESULT_BUDGET.max, Math.max(SEARCH_RESULT_BUDGET.min, Math.round(parsed)))
+}
+
+function parseNeedsWeb(value: unknown): boolean {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return value > 0
+  if (typeof value === 'string') {
+    return ['true', 'yes', '1'].includes(value.trim().toLowerCase())
+  }
+  return false
+}
+
+function getSearchContextCharBudget(sourceCount: number): number {
+  return SEARCH_CONTEXT_BASE_CHARS + normalizeSourceCount(sourceCount) * SEARCH_CONTEXT_CHARS_PER_RESULT
 }
 
 function messageText(message: IpcChatMessage): string {
@@ -210,24 +247,32 @@ function stripTrailingSourcesSection(text: string, localizedTitle: string): stri
   return text
 }
 
-async function runWebSearch(query: string, uiText: SmartThinkingUiText): Promise<{
+async function runWebSearch(query: string, uiText: SmartThinkingUiText, sourceCount: number): Promise<{
   context: string
   sourcesMarkdown: string
 }> {
   if (!hasWebSearchApi()) return { context: '', sourcesMarkdown: '' }
   try {
+    const maxResults = normalizeSourceCount(sourceCount)
     const result = await window.api.webSearch({
       query: query.slice(0, 200),
-      maxResults: MAX_SEARCH_RESULTS,
+      maxResults,
     })
     if (result.success && result.results?.length) {
+      const selectedResults = result.results.slice(0, maxResults)
       const context = formatWebSearchResults(
-        result.results,
+        selectedResults,
         result.answer,
         uiText.webSearchSummaryTitle,
-        MAX_SEARCH_CONTEXT_CHARS,
+        {
+          maxChars: getSearchContextCharBudget(maxResults),
+          retrievedAt: getCurrentLocaleDateTime(),
+          query,
+          provider: result.provider,
+          resultCount: selectedResults.length,
+        },
       )
-      const sourcesMarkdown = result.results
+      const sourcesMarkdown = selectedResults
         .map((r, i) => `${i + 1}. [${r.title || r.url}](${r.url})`)
         .join('\n')
       return { context, sourcesMarkdown }
@@ -251,6 +296,8 @@ Core operating contract:
   • Challenge weak assumptions instead of accepting them silently.
   • Consider multiple perspectives, including credible counterarguments.
   • Synthesize a coherent answer from the available evidence and the conversation context.
+  • Distinguish stable knowledge from current, real-time, or source-specific claims; do not present time-sensitive facts as verified without current evidence.
+  • Prefer accurate, source-qualified statements over confident guesses.
   • Apply useful mental models when they genuinely improve the answer: systems thinking, inversion, Pareto prioritization, Occam's razor, and probabilistic reasoning.
   • Create practical next steps, options, experiments, and feedback loops when the user is solving a problem or making a decision.
   • Scale depth to the task: be concise for simple requests and more structured for complex, ambiguous, or high-impact questions.
@@ -268,6 +315,9 @@ Think internally with this process:
   • Identify assumptions, uncertainty, and missing information.
   • Decide whether the answer depends on current, external, source-specific, or verifiable facts.
   • If web evidence is needed, produce one canonical, self-contained query that resolves follow-up references from recent context.
+  • Choose the smallest source_count that can answer confidently.
+  • State the freshness requirement: stable, current-as-of-now, latest, exact-source, or date-bounded.
+  • State the reliability requirement: official/primary source, direct source text, corroborated independent sources, or conversation-only.
 
 Return needs_web = TRUE when an accurate answer depends on external information that can change over time,
 recent or real-time facts, specific published facts, or verification against current sources.
@@ -288,10 +338,17 @@ Query rules when needs_web=true:
   • Prefer a concise canonical query over repeating the user's full sentence.
   • State what source quality is needed in source_guidance.
 
-Return ONLY valid JSON, no other text:
-{"needs_web": true/false, "query": "concise 1-line web search query in user's language", "reason": "very brief reason (max 1 sentence)", "answer_focus": "what the final answer must directly provide", "source_guidance": "what source quality is needed"}
+Source-count rules when needs_web=true:
+  • 1 = a direct fact, exact wording check, or likely-primary-source lookup is enough.
+  • 2 = a concrete claim needs light corroboration.
+  • 3 = current information may vary across official/provider/news pages.
+  • 4 = only for contested, comparative, or multi-perspective topics.
+  • If a broad investigation needs more than 4 sources, keep source_count at 4 and let the final answer suggest Deep Research.
 
-If needs_web=false, set query to an empty string.`
+Return ONLY valid JSON with this shape, no other text:
+{"needs_web": true, "query": "concise 1-line web search query in user's language", "reason": "very brief reason (max 1 sentence)", "answer_focus": "what the final answer must directly provide", "source_guidance": "what source quality is needed", "source_count": 2, "freshness_requirement": "current-as-of-now", "reliability_requirement": "official or primary source preferred; corroborate if sources conflict"}
+
+If needs_web=false, set query to an empty string, source_count to 0, freshness_requirement to "stable", and reliability_requirement to "conversation/internal knowledge sufficient".`
 
 const WEB_AUGMENTED_PROMPT_PREFIX = (
   date: string,
@@ -300,34 +357,73 @@ const WEB_AUGMENTED_PROMPT_PREFIX = (
     userSystemPrompt?: string
     answerFocus?: string
     sourceGuidance?: string
+    freshnessRequirement?: string
+    reliabilityRequirement?: string
     sourcesTitle: string
   },
 ) => {
   const userSystemPrompt = options.userSystemPrompt
   const answerFocus = options.answerFocus?.trim()
   const sourceGuidance = options.sourceGuidance?.trim()
+  const freshnessRequirement = options.freshnessRequirement?.trim()
+  const reliabilityRequirement = options.reliabilityRequirement?.trim()
   const sourcesTitle = options.sourcesTitle.trim()
 
   return combineSystemPrompt(`${SMART_THINKING_ANSWER_PROMPT(date)}
 
-I performed a web search for the user's latest message. Use these REAL-TIME results as the primary source — they are more recent than your training data:
+I performed a web search for the user's latest message. Use these REAL-TIME results as the primary source — they were retrieved during this run and are more recent than your training data:
 
 ━━━ WEB SEARCH RESULTS ━━━
 ${webContext}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-${answerFocus ? `Answer focus from the routing step: ${answerFocus}\n` : ''}${sourceGuidance ? `Source-quality guidance: ${sourceGuidance}\n` : ''}
+${answerFocus ? `Answer focus from the routing step: ${answerFocus}\n` : ''}${freshnessRequirement ? `Freshness requirement: ${freshnessRequirement}\n` : ''}${reliabilityRequirement ? `Reliability requirement: ${reliabilityRequirement}\n` : ''}${sourceGuidance ? `Source-quality guidance: ${sourceGuidance}\n` : ''}
 Instructions:
   • Answer the exact question the user asked. If they ask "who", give names/people; if they ask "what", give entities or facts; do not answer only a nearby topic.
   • Do not invent or complete facts, names, wording, dates, or quoted/source text that are absent from the WEB SEARCH RESULTS.
   • If the requested answer depends on exact wording or complete source text, use only text that appears in the WEB SEARCH RESULTS. If the retrieved results are snippets or incomplete, say what cannot be verified from the retrieved results.
-  • Evaluate source credibility from each result's URL, publisher, title, and content. Prefer primary or official sources when the topic needs them.
+  • Evaluate source credibility from each result's URL, publisher, title, content, retrieval metadata, and relevance score. Prefer primary or official sources when the topic needs them.
+  • Cross-check whether the retrieved evidence is fresh enough for the user's question. If a result lacks a visible date, status, version, or effective time when the question needs one, say that freshness is unclear.
+  • When sources conflict or only weak/secondary sources are available, surface the conflict or quality limitation instead of merging them into one confident claim.
   • For current public roles, leadership positions, laws, prices, releases, and other time-sensitive facts, include the effective "as of" date when useful.
   • Prioritize the web data over your training knowledge when they conflict.
   • Cite sources inline using [1], [2], etc. matching the numbered results above.
   • DO NOT add a "${sourcesTitle}" / "Sources" / "References" section at the end. Do NOT list raw URLs at the end. The UI will append a clean source list automatically.
   • Reply in the same language as the user's latest question.
   • If the search results don't actually answer the question, say so honestly and state what is missing.`, userSystemPrompt)
+}
+
+const MISSING_WEB_EVIDENCE_PROMPT_PREFIX = (
+  date: string,
+  options: {
+    userSystemPrompt?: string
+    query?: string
+    answerFocus?: string
+    sourceGuidance?: string
+    freshnessRequirement?: string
+    reliabilityRequirement?: string
+  },
+) => {
+  const userSystemPrompt = options.userSystemPrompt
+  const query = options.query?.trim()
+  const answerFocus = options.answerFocus?.trim()
+  const sourceGuidance = options.sourceGuidance?.trim()
+  const freshnessRequirement = options.freshnessRequirement?.trim()
+  const reliabilityRequirement = options.reliabilityRequirement?.trim()
+
+  return combineSystemPrompt(`${SMART_THINKING_ANSWER_PROMPT(date)}
+
+The routing stage determined that the user's latest message needs current or externally verifiable evidence, but this Smart Thinking run did not retrieve usable web results.
+
+Evidence status:
+  • Current time: ${date}
+${query ? `  • Search query attempted: ${query}\n` : ''}${answerFocus ? `  • Answer focus: ${answerFocus}\n` : ''}${freshnessRequirement ? `  • Freshness requirement: ${freshnessRequirement}\n` : ''}${reliabilityRequirement ? `  • Reliability requirement: ${reliabilityRequirement}\n` : ''}${sourceGuidance ? `  • Source-quality guidance: ${sourceGuidance}\n` : ''}
+Instructions:
+  • Do not present time-sensitive, current, source-specific, exact wording, price, release, law, leadership, schedule, or availability facts as verified.
+  • If stable background knowledge or conversation context helps, clearly separate it from the unverified current part.
+  • Tell the user what could not be verified in this run and what evidence would be needed for a reliable answer.
+  • Do not fabricate citations, source titles, URLs, dates, or confidence from memory.
+  • Reply in the same language as the user's latest question.`, userSystemPrompt)
 }
 
 // ─── Main pipeline ────────────────────────────────────────────────────────────
@@ -360,6 +456,9 @@ export const smartThinkingService = {
       reason: '',
       answerFocus: '',
       sourceGuidance: '',
+      sourceCount: SEARCH_RESULT_BUDGET.fallback,
+      freshnessRequirement: '',
+      reliabilityRequirement: '',
     }
 
     if (hasWebSearchApi()) {
@@ -390,11 +489,14 @@ export const smartThinkingService = {
             try {
               const p = JSON.parse(m[0])
               classify = {
-                needsWeb: Boolean(p.needs_web),
+                needsWeb: parseNeedsWeb(p.needs_web),
                 query: typeof p.query === 'string' ? p.query.trim() : '',
                 reason: typeof p.reason === 'string' ? p.reason.trim() : '',
                 answerFocus: typeof p.answer_focus === 'string' ? p.answer_focus.trim() : '',
                 sourceGuidance: typeof p.source_guidance === 'string' ? p.source_guidance.trim() : '',
+                sourceCount: normalizeSourceCount(p.source_count ?? p.source_budget ?? p.max_results),
+                freshnessRequirement: normalizeClassifierText(p.freshness_requirement ?? p.freshness),
+                reliabilityRequirement: normalizeClassifierText(p.reliability_requirement ?? p.reliability),
               }
             } catch {
               /* malformed JSON — keep defaults (no search) */
@@ -407,6 +509,7 @@ export const smartThinkingService = {
     }
     if (classify.needsWeb) {
       classify.query = composeSearchQuery(question, classify.query)
+      classify.sourceCount = normalizeSourceCount(classify.sourceCount)
     }
 
     // ── Step 2a: Web search (if AI asked for one) ───────────────────────────
@@ -418,7 +521,7 @@ export const smartThinkingService = {
       const stepMsgId = onStepStart(stepLabel)
 
       try {
-        const { context, sourcesMarkdown } = await runWebSearch(classify.query, uiText)
+        const { context, sourcesMarkdown } = await runWebSearch(classify.query, uiText, classify.sourceCount)
         webContext = context
         webSourcesMarkdown = sourcesMarkdown
 
@@ -445,8 +548,19 @@ export const smartThinkingService = {
           userSystemPrompt: systemPrompt,
           answerFocus: classify.answerFocus,
           sourceGuidance: classify.sourceGuidance,
+          freshnessRequirement: classify.freshnessRequirement,
+          reliabilityRequirement: classify.reliabilityRequirement,
           sourcesTitle: uiText.webSearchSourcesTitle,
         })
+      : classify.needsWeb
+        ? MISSING_WEB_EVIDENCE_PROMPT_PREFIX(date, {
+            userSystemPrompt: systemPrompt,
+            query: classify.query,
+            answerFocus: classify.answerFocus,
+            sourceGuidance: classify.sourceGuidance,
+            freshnessRequirement: classify.freshnessRequirement,
+            reliabilityRequirement: classify.reliabilityRequirement,
+          })
       : combineSystemPrompt(SMART_THINKING_ANSWER_PROMPT(date), systemPrompt)
 
     let streamed = ''

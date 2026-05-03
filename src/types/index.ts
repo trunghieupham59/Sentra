@@ -308,6 +308,12 @@ export interface ChatMessage {
   researchStepLabel?: string
   /** Deep Research mode — final synthesis bubble (highlighted, indigo) */
   isResearchFinal?: boolean
+  /**
+   * Smart Thinking — lightweight indicator bubble shown while AI decides
+   * whether to web-search. Renders as a minimal "Smart Thinking..." pill
+   * (no inner content, no sources list, no expand/collapse).
+   */
+  isSmartThinkingStep?: boolean
 }
 
 export interface ChatSession {
@@ -484,6 +490,7 @@ export interface WindowApi {
     results?: Array<{ title: string; url: string; content: string; score: number }>
     answer?: string
     error?: string
+    provider?: 'tavily' | 'brave' | 'jina'
   }>
   /**
    * Verify a web search API key by making a real minimal request.

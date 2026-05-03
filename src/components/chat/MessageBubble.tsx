@@ -3,30 +3,121 @@ import { useT } from '../../store/useAppStore'
 import type { ChatMessage, ChatMessageContent } from '../../types'
 import { AppLogoIcon } from '../AppLogo'
 import { MarkdownText } from '../MarkdownText'
-import { CopyIcon, DownloadIcon, RefreshIcon, SpinnerIcon, UserIcon, XIcon } from '../ui/icons'
+import { CopyIcon, DownloadIcon, RefreshIcon, SparklesIcon, SpinnerIcon, UserIcon, XIcon } from '../ui/icons'
 
-// HC-11: Named constant for loading dot animation stagger
-const DOT_ANIM_DELAY_STEP_S = 0.15   // s between each loading dot's bounce start
-const DOT_BOUNCE_INTERVAL_MS = 400   // ms interval for dots 1→2→3→1 cycle
+
 const MESSAGE_ACTION_BUTTON_CLASS = 'flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors duration-150 cursor-pointer dark:text-gray-500'
 const MESSAGE_COPY_BUTTON_CLASS = `${MESSAGE_ACTION_BUTTON_CLASS} hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300`
 const MESSAGE_DOWNLOAD_BUTTON_CLASS = `${MESSAGE_ACTION_BUTTON_CLASS} hover:bg-emerald-50 hover:text-emerald-500 dark:hover:bg-emerald-950 dark:hover:text-emerald-400`
 const MESSAGE_REGENERATE_BUTTON_CLASS = `${MESSAGE_ACTION_BUTTON_CLASS} hover:bg-blue-50 hover:text-blue-500 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-blue-950 dark:hover:text-blue-400`
 
-/** Animated "Thinking..." label — dots cycle 1 → 2 → 3 → 1 every 400 ms */
-function ThinkingLabel() {
-  const [dots, setDots] = useState(1)
-  useEffect(() => {
-    const t = setInterval(() => setDots((d) => (d >= 3 ? 1 : d + 1)), DOT_BOUNCE_INTERVAL_MS)
-    return () => clearInterval(t)
-  }, [])
-  const t = useT()
+/**
+ * Strip any trailing ellipsis/dot punctuation a locale baked into its loading
+ * copy. Both `chat_thinking_label` and `chat_smart_thinking_badge` are reused
+ * in places that don't animate dots, so locales sometimes ship them with "…"
+ * already appended ("Thinking…", "考え中…"). Without stripping, the polished
+ * pill ends up with awkward double ellipses next to the bouncing dots.
+ */
+function stripTrailingEllipsis(label: string): string {
+  return label.replace(/[…．\.\s]+$/u, '')
+}
+
+/**
+ * Three little bouncing dots — purely CSS-driven via .thinking-dot.
+ * Each dot is staggered by 160 ms so they ripple smoothly. Replaces the old
+ * cycling-string approach so the label width never reflows as the animation
+ * progresses.
+ */
+function BouncingDots({ size = 'md', tone = 'blue' }: {
+  size?: 'sm' | 'md'
+  tone?: 'blue' | 'gray'
+} = {}) {
+  const dotSize = size === 'sm' ? 'h-[4px] w-[4px]' : 'h-[5px] w-[5px]'
+  const colour = tone === 'gray'
+    ? 'bg-gray-400 dark:bg-gray-500'
+    : 'bg-blue-500 dark:bg-blue-400'
   return (
-    <span className="text-gray-400 dark:text-gray-500 italic select-none">
-      {`${t.chat_thinking_label}${'.'.repeat(dots)}`}
+    <span className="inline-flex items-end gap-[3px] pb-[2px]" aria-hidden="true">
+      <span className={`thinking-dot ${dotSize} rounded-full ${colour}`} style={{ animationDelay: '0ms' }} />
+      <span className={`thinking-dot ${dotSize} rounded-full ${colour}`} style={{ animationDelay: '160ms' }} />
+      <span className={`thinking-dot ${dotSize} rounded-full ${colour}`} style={{ animationDelay: '320ms' }} />
     </span>
   )
 }
+
+/**
+ * Polished "Thinking…" pill — soft blue gradient with a sparkle icon, label,
+ * and three bouncing dots. The `muted` variant is used inside the collapsed
+ * research-step header where the label has to sit on a neutral surface.
+ */
+function ThinkingLabel({ muted = false }: { muted?: boolean } = {}) {
+  const t = useT()
+  const baseLabel = stripTrailingEllipsis(t.chat_thinking_label)
+  if (muted) {
+    return (
+      <span className="inline-flex items-center gap-2 text-[12px] font-medium text-gray-500 dark:text-gray-400 select-none">
+        <BouncingDots size="sm" tone="gray" />
+        <span>{baseLabel}</span>
+      </span>
+    )
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-2 rounded-full border border-blue-100/80 bg-gradient-to-r from-blue-50 via-sky-50 to-blue-50
+                 px-3 py-1 text-[12.5px] font-semibold text-blue-700 shadow-sm shadow-blue-900/[0.04] select-none
+                 dark:border-blue-800/40 dark:from-blue-950/40 dark:via-sky-950/30 dark:to-blue-950/40 dark:text-blue-200
+                 dark:shadow-black/30"
+      role="status"
+      aria-live="polite"
+    >
+      <span className="relative inline-flex h-3.5 w-3.5 items-center justify-center">
+        <span className="thinking-glow absolute inset-0 rounded-full bg-blue-400/30 blur-[3px] dark:bg-blue-300/30" aria-hidden />
+        <SparklesIcon className="relative h-3.5 w-3.5 text-blue-500 dark:text-blue-300" />
+      </span>
+      <span className="tracking-[0.01em]">{baseLabel}</span>
+      <BouncingDots tone="blue" />
+    </span>
+  )
+}
+
+/**
+ * Polished Smart Thinking pill — same shape as ThinkingLabel but with an
+ * indigo→sky gradient and a slow shimmer wash to signal the AI is browsing
+ * the web on the user's behalf.
+ */
+function SmartThinkingLabel({ label }: { label: string }) {
+  const baseLabel = stripTrailingEllipsis(label)
+  return (
+    <span
+      className="relative inline-flex items-center gap-2 overflow-hidden rounded-full
+                 border border-indigo-200/70 bg-gradient-to-r from-indigo-50 via-sky-50 to-violet-50
+                 px-3 py-1 text-[12.5px] font-semibold text-indigo-700 shadow-sm shadow-indigo-900/[0.05] select-none
+                 dark:border-indigo-800/40 dark:from-indigo-950/40 dark:via-sky-950/30 dark:to-violet-950/40
+                 dark:text-indigo-200 dark:shadow-black/30"
+      title={label}
+      role="status"
+      aria-live="polite"
+    >
+      <span
+        className="thinking-shimmer pointer-events-none absolute inset-0 bg-gradient-to-r
+                   from-transparent via-white/55 to-transparent dark:via-white/10"
+        aria-hidden
+      />
+      <span className="relative inline-flex h-3.5 w-3.5 items-center justify-center">
+        <span className="thinking-glow absolute inset-0 rounded-full bg-indigo-400/35 blur-[3px] dark:bg-indigo-300/30" aria-hidden />
+        <SparklesIcon className="relative h-3.5 w-3.5 text-indigo-500 dark:text-indigo-300" />
+      </span>
+      <span className="relative tracking-[0.01em]">{baseLabel}</span>
+      <span className="relative">
+        <BouncingDots tone="blue" />
+      </span>
+    </span>
+  )
+}
+
+
+
+
 
 function getImageSource(content: ChatMessageContent): string | null {
   if (content.imagePreviewUrl) return content.imagePreviewUrl
@@ -99,8 +190,9 @@ export function MessageBubble({
                        transition-colors duration-150 cursor-pointer"
           >
             <span className="font-medium text-left">
-              {message.isLoading ? <ThinkingLabel /> : message.researchStepLabel}
+              {message.isLoading ? <ThinkingLabel muted /> : message.researchStepLabel}
             </span>
+
             {message.isLoading ? (
               <SpinnerIcon className="w-3 h-3 animate-spin text-gray-400 flex-shrink-0" />
             ) : (
@@ -230,20 +322,24 @@ export function MessageBubble({
           )
         })}
 
-        {/* Text / status */}
+        {/* Text / status — mirrors the Quick Chat popup phase indicator:
+         *   • Smart Thinking step running → blue pill "Smart Thinking…"
+         *   • otherwise                   → "Thinking…" label with spinner + cycling dots
+         * Both states have a blinking/animated indicator so the user clearly
+         * sees the AI is working. */}
         {message.isLoading && !textContent ? (
           <div className="px-1 py-2">
-            <div className="flex items-center gap-1.5">
-              {[0, 1, 2].map((i) => (
-                <span
-                  key={i}
-                  className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
-                  style={{ animationDelay: `${i * DOT_ANIM_DELAY_STEP_S}s` }}
-                />
-              ))}
-            </div>
+            {message.isSmartThinkingStep ? (
+              <SmartThinkingLabel
+                label={message.researchStepLabel ?? t.chat_smart_thinking_badge}
+              />
+            ) : (
+              <ThinkingLabel />
+            )}
           </div>
         ) : textContent ? (
+
+
           <div className={`break-words select-text cursor-text
                            ${isUser
                              ? 'rounded-lg rounded-br-sm bg-blue-500 px-4 py-3 text-white'
