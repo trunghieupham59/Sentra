@@ -51,15 +51,13 @@ Viezan is a desktop translation workspace for text, images, live audio, chat and
 
 View all versions on the [GitHub Releases page](https://github.com/trunghieupham59/Viezan/releases).
 
-## What's New in v2.0.0
+## What's New in v2.0.2
 
 | Area | Change |
 | --- | --- |
-| Quick Chat | Fixed macOS focus stealing and Dock reopen behavior for a smoother floating-chat workflow. |
-| AI Chat | Added configurable chat shortcuts with test coverage for shortcut handling. |
-| Browser Extension | Renamed the desktop connection token wording to connection API key across docs and setup copy. |
-| Local-first docs | Refreshed README and release guidance around local runtimes, BYOK providers and unsigned macOS builds. |
-| Release | Updated macOS GitHub Actions runners to supported `macos-15` / `macos-15-intel` labels. |
+| Updates | macOS unsigned builds now download the release DMG directly from Viezan instead of sending users to the browser. |
+| Installer UX | After download, Viezan opens the DMG and keeps an **Open Installer** action available in Settings. |
+| Release | Keeps the GitHub Release workflow path for DMG, Windows installer, AppImage and extension ZIP artifacts. |
 
 ## Features
 
