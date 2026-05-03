@@ -5,7 +5,8 @@ import { XIcon } from './ui/icons'
 const SettingsPage = lazy(() => import('../pages/SettingsPage').then(module => ({ default: module.SettingsPage })))
 
 export function SettingsModal() {
-  const { settingsOpen, closeSettings } = useAppStore()
+  const settingsOpen = useAppStore((state) => state.settingsOpen)
+  const closeSettings = useAppStore((state) => state.closeSettings)
   const t = useT()
 
   // Close on Escape key (window-level — works for all keyboard users)
@@ -23,7 +24,7 @@ export function SettingsModal() {
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: modal backdrop — Escape handled via window useEffect above
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/35"
       onClick={closeSettings}
     >
       <div
@@ -53,7 +54,7 @@ export function SettingsModal() {
         </div>
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 min-h-0">
           <Suspense fallback={<div className="h-full bg-transparent" aria-hidden="true" />}>
             <SettingsPage />
           </Suspense>

@@ -196,6 +196,12 @@
   .settings-shell {
     @apply h-full min-h-0 bg-transparent md:grid md:grid-cols-[240px_minmax(0,1fr)];
   }
+
+  .settings-scroll-viewport {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    will-change: scroll-position;
+  }
 }
 
 /* ── Scrollbar — completely hidden, scroll still works ── */
@@ -246,4 +252,3 @@
 .thinking-glow {
   animation: thinkingGlow 1.6s ease-in-out infinite;
 }
-

@@ -133,7 +133,9 @@ function BadgeWarning({ label }: { label: string }) {
 // ─── Section component ────────────────────────────────────────────────────────
 
 export function SttSection() {
-  const { keyStatus, sttProvider, setSttProvider } = useAppStore()
+  const keyStatus = useAppStore((state) => state.keyStatus)
+  const sttProvider = useAppStore((state) => state.sttProvider)
+  const setSttProvider = useAppStore((state) => state.setSttProvider)
   const t = useT()
   const hasOpenAIKey = keyStatus.openai
   const hasGeminiKey = keyStatus.gemini

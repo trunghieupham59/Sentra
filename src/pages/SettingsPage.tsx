@@ -1,4 +1,4 @@
-import { type ComponentType, useEffect, useMemo, useRef, useState } from 'react'
+import { type ElementType, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ChatBubbleIcon,
   GearIcon,
@@ -36,9 +36,19 @@ interface SettingsSection {
   id: SettingsSectionId
   label: string
   description: string
-  Icon: ComponentType<{ className?: string }>
-  Component: ComponentType
+  Icon: ElementType<{ className?: string }>
+  Component: ElementType
 }
+
+const MemoPreferencesSection = memo(PreferencesSection)
+const MemoApiKeysSection = memo(ApiKeysSection)
+const MemoSttSection = memo(SttSection)
+const MemoTtsSection = memo(TtsSection)
+const MemoChatPresetsSection = memo(ChatPresetsSection)
+const MemoHotkeySection = memo(HotkeySection)
+const MemoBrowserIntegrationSection = memo(BrowserIntegrationSection)
+const MemoUpdaterSection = memo(UpdaterSection)
+const MemoAboutSection = memo(AboutSection)
 
 export function SettingsPage() {
   const t = useT()
@@ -55,6 +65,13 @@ export function SettingsPage() {
     about: null,
   })
   const [activeSection, setActiveSection] = useState<SettingsSectionId>('preferences')
+  const activeSectionRef = useRef<SettingsSectionId>('preferences')
+
+  const updateActiveSection = useCallback((id: SettingsSectionId) => {
+    if (activeSectionRef.current === id) return
+    activeSectionRef.current = id
+    setActiveSection(id)
+  }, [])
 
   const sections = useMemo<SettingsSection[]>(() => ([
     {
@@ -62,63 +79,63 @@ export function SettingsPage() {
       label: t.settings_prefs,
       description: t.settings_translate_mode_desc,
       Icon: GearIcon,
-      Component: PreferencesSection,
+      Component: MemoPreferencesSection,
     },
     {
       id: 'api',
       label: t.settings_api_keys,
       description: t.settings_subtitle,
       Icon: KeyIcon,
-      Component: ApiKeysSection,
+      Component: MemoApiKeysSection,
     },
     {
       id: 'stt',
       label: t.settings_stt_section,
       description: t.settings_stt_provider_desc,
       Icon: MicrophoneIcon,
-      Component: SttSection,
+      Component: MemoSttSection,
     },
     {
       id: 'tts',
       label: t.settings_tts_section,
       description: t.settings_tts_priority_desc,
       Icon: SpeakerIcon,
-      Component: TtsSection,
+      Component: MemoTtsSection,
     },
     {
       id: 'chat',
       label: t.settings_chat_section,
       description: t.settings_chat_section_desc,
       Icon: ChatBubbleIcon,
-      Component: ChatPresetsSection,
+      Component: MemoChatPresetsSection,
     },
     {
       id: 'hotkeys',
       label: t.settings_hotkey_section,
       description: t.settings_hotkey_section_desc,
       Icon: UploadIcon,
-      Component: HotkeySection,
+      Component: MemoHotkeySection,
     },
     {
       id: 'browser',
       label: t.settings_extension_section,
       description: t.settings_extension_section_desc,
       Icon: MonitorIcon,
-      Component: BrowserIntegrationSection,
+      Component: MemoBrowserIntegrationSection,
     },
     {
       id: 'updates',
       label: t.settings_update_section,
       description: t.settings_update_section_desc,
       Icon: RefreshIcon,
-      Component: UpdaterSection,
+      Component: MemoUpdaterSection,
     },
     {
       id: 'about',
       label: t.settings_about,
       description: t.settings_about_footer,
       Icon: InfoCircleIcon,
-      Component: AboutSection,
+      Component: MemoAboutSection,
     },
   ]), [t])
 
@@ -132,7 +149,7 @@ export function SettingsPage() {
         .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
 
       const id = visible?.target.getAttribute('data-settings-section') as SettingsSectionId | null
-      if (id) setActiveSection(id)
+      if (id) updateActiveSection(id)
     }, {
       root,
       rootMargin: '-18% 0px -62% 0px',
@@ -145,10 +162,10 @@ export function SettingsPage() {
     })
 
     return () => observer.disconnect()
-  }, [sections])
+  }, [sections, updateActiveSection])
 
   const scrollToSection = (id: SettingsSectionId) => {
-    setActiveSection(id)
+    updateActiveSection(id)
     sectionRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
@@ -211,7 +228,7 @@ export function SettingsPage() {
           </nav>
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-auto">
+        <div ref={scrollRef} className="settings-scroll-viewport flex-1 min-h-0 overflow-auto">
           <div className="max-w-3xl mx-auto px-4 py-5 md:px-6 md:py-6 space-y-8">
             {sections.map(({ id, Component }) => (
               <div

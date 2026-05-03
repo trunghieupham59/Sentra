@@ -34,7 +34,10 @@ function ProviderLogoFrame({
 }
 
 export function TtsSection() {
-  const { ttsMode, ttsVoice, setTtsMode, setTtsVoice } = useAppStore()
+  const ttsMode = useAppStore((state) => state.ttsMode)
+  const ttsVoice = useAppStore((state) => state.ttsVoice)
+  const setTtsMode = useAppStore((state) => state.setTtsMode)
+  const setTtsVoice = useAppStore((state) => state.setTtsVoice)
   const t = useT()
 
   // ── ElevenLabs key state ────────────────────────────────────────────────────

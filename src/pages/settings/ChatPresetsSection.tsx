@@ -10,11 +10,16 @@ import { DEFAULT_CHAT_NEW_SESSION_SHORTCUT, formatShortcutLabel, keyEventToAccel
 import { tpl } from '../../utils/tpl'
 
 export function ChatPresetsSection() {
-  const {
-    systemPromptPresets, addSystemPromptPreset, updateSystemPromptPreset,
-    deleteSystemPromptPreset, setDefaultSystemPromptPreset, setChatSystemPrompt,
-    chatSendShortcut, chatNewSessionShortcut, setChatSendShortcut, setChatNewSessionShortcut,
-  } = useAppStore()
+  const systemPromptPresets = useAppStore((state) => state.systemPromptPresets)
+  const addSystemPromptPreset = useAppStore((state) => state.addSystemPromptPreset)
+  const updateSystemPromptPreset = useAppStore((state) => state.updateSystemPromptPreset)
+  const deleteSystemPromptPreset = useAppStore((state) => state.deleteSystemPromptPreset)
+  const setDefaultSystemPromptPreset = useAppStore((state) => state.setDefaultSystemPromptPreset)
+  const setChatSystemPrompt = useAppStore((state) => state.setChatSystemPrompt)
+  const chatSendShortcut = useAppStore((state) => state.chatSendShortcut)
+  const chatNewSessionShortcut = useAppStore((state) => state.chatNewSessionShortcut)
+  const setChatSendShortcut = useAppStore((state) => state.setChatSendShortcut)
+  const setChatNewSessionShortcut = useAppStore((state) => state.setChatNewSessionShortcut)
   const t = useT()
 
   const [isRecordingNewChatShortcut, setIsRecordingNewChatShortcut] = useState(false)

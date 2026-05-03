@@ -404,7 +404,10 @@ function LocalAiProviderCard({
 }
 
 export function ApiKeysSection() {
-  const { setKeyStatus, keyStatus, setDynamicModels, setSelectedModel } = useAppStore()
+  const setKeyStatus = useAppStore((state) => state.setKeyStatus)
+  const keyStatus = useAppStore((state) => state.keyStatus)
+  const setDynamicModels = useAppStore((state) => state.setDynamicModels)
+  const setSelectedModel = useAppStore((state) => state.setSelectedModel)
   const t = useT()
   const cloudProviders = PROVIDERS.filter((provider) => provider.requiresApiKey !== false)
 

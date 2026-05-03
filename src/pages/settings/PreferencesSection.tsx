@@ -6,12 +6,19 @@ import { useAppStore, useT } from '../../store/useAppStore'
 import { detectSystemLocale } from '../../utils/locale'
 
 export function PreferencesSection() {
-  const {
-    autoTranslate, setAutoTranslate, autoTranslateDelay, setAutoTranslateDelay,
-    phoneticMode, setPhoneticMode,
-    locale, localeAuto, setLocale, setLocaleAuto, setLocaleFromSystem,
-    fontSize, setFontSize,
-  } = useAppStore()
+  const autoTranslate = useAppStore((state) => state.autoTranslate)
+  const setAutoTranslate = useAppStore((state) => state.setAutoTranslate)
+  const autoTranslateDelay = useAppStore((state) => state.autoTranslateDelay)
+  const setAutoTranslateDelay = useAppStore((state) => state.setAutoTranslateDelay)
+  const phoneticMode = useAppStore((state) => state.phoneticMode)
+  const setPhoneticMode = useAppStore((state) => state.setPhoneticMode)
+  const locale = useAppStore((state) => state.locale)
+  const localeAuto = useAppStore((state) => state.localeAuto)
+  const setLocale = useAppStore((state) => state.setLocale)
+  const setLocaleAuto = useAppStore((state) => state.setLocaleAuto)
+  const setLocaleFromSystem = useAppStore((state) => state.setLocaleFromSystem)
+  const fontSize = useAppStore((state) => state.fontSize)
+  const setFontSize = useAppStore((state) => state.setFontSize)
   const t = useT()
 
   const handleToggleLocaleAuto = () => {

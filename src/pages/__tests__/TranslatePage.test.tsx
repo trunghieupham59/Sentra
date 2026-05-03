@@ -1,5 +1,5 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../store/useAppStore'
 import { TranslatePage } from '../TranslatePage'
 
@@ -12,6 +12,7 @@ function openAdvancedConfig() {
 
 // Reset store before each test
 beforeEach(() => {
+  vi.clearAllMocks()
   act(() => {
     useAppStore.setState({
       sourceText: '',
@@ -89,6 +90,40 @@ describe('TranslatePage', () => {
     openAdvancedConfig()
     // The phonetic dropdown should be present in the Advanced AI Config popup.
     expect(screen.getByDisplayValue(/Off|Tắt/i)).toBeInTheDocument()
+  })
+
+  it('generates phonetic text when phonetic mode is enabled after translation', async () => {
+    vi.mocked(window.api.translate).mockResolvedValueOnce({
+      success: true,
+      translatedText: '{東京|とうきょう}',
+    })
+
+    act(() => {
+      useAppStore.setState({
+        translatedText: '東京',
+        targetLang: 'ja',
+        phoneticMode: 'off',
+      })
+    })
+
+    render(<TranslatePage />)
+    openAdvancedConfig()
+
+    act(() => {
+      fireEvent.change(screen.getByDisplayValue(/Off|Tắt/i), { target: { value: 'standard' } })
+    })
+
+    await waitFor(() => {
+      expect(window.api.translate).toHaveBeenCalledWith(expect.objectContaining({
+        sourceText: '東京',
+        sourceLang: 'ja',
+        targetLang: 'ja',
+        showFurigana: true,
+        phoneticOnly: true,
+        phoneticMode: 'standard',
+      }))
+      expect(useAppStore.getState().phoneticText).toBe('{東京|とうきょう}')
+    })
   })
 
   // ── Required: source text input nhận giá trị ──────────────────────────────

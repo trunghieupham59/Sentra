@@ -112,6 +112,20 @@ describe('buildPrompt', () => {
     expect(prompt).not.toContain('Translate into')
   })
 
+  it('standard phonetic mode keeps original script with reading annotations', () => {
+    const prompt = buildPrompt('東京', 'ja', 'ja', true, 'general', true, 'standard')
+    expect(prompt).toContain('{kanji|reading}')
+    expect(prompt).toContain('Do NOT translate or change the text content')
+    expect(prompt).not.toContain('pure phonetic representation')
+  })
+
+  it('phonetic transcription mode replaces original script with pure pronunciation', () => {
+    const prompt = buildPrompt('東京', 'ja', 'ja', true, 'general', true, 'phonetic')
+    expect(prompt).toContain('pure phonetic representation')
+    expect(prompt).toContain('remove every kanji character entirely')
+    expect(prompt).toContain('Do NOT use {kanji|reading} brackets')
+  })
+
   it('phoneticOnly+furigana for Chinese: adds pinyin instruction', () => {
     const prompt = buildPrompt('北京', 'en', 'zh', true, 'general', true)
     expect(prompt).toContain('pinyin')

@@ -16,7 +16,9 @@ const KEY_MAP: Record<string, string> = {
 }
 
 export function HotkeySection() {
-  const { selectedProvider, selectedModels, targetLang } = useAppStore()
+  const selectedProvider = useAppStore((state) => state.selectedProvider)
+  const selectedModels = useAppStore((state) => state.selectedModels)
+  const targetLang = useAppStore((state) => state.targetLang)
   const t = useT()
 
   const [hotkeyEnabled, setHotkeyEnabled] = useState(false)

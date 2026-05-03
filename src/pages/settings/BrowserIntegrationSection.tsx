@@ -34,7 +34,7 @@ type ExtTokenInfo = { id: string; name: string; createdAt: number; expiresAt: nu
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function BrowserIntegrationSection() {
-  const { locale } = useAppStore()
+  const locale = useAppStore((state) => state.locale)
   const t = useT()
 
   // ── Extension token state ──────────────────────────────────────────────────
