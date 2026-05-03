@@ -8,6 +8,7 @@ type UpdaterStatusType = {
   type: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error-codesign' | 'error'
   version?: string
   percent?: number
+  installMode?: 'restart' | 'open-installer'
   error?: string
   /** Present on macOS (unsigned build): direct link to the DMG asset or release page. */
   downloadUrl?: string
@@ -35,20 +36,9 @@ export function UpdaterSection() {
     await window.api.updater.check()
   }
 
-  /**
-   * On macOS (unsigned build) the status payload includes a `downloadUrl`.
-   * In that case we open the browser so the user can manually download & install
-   * the DMG — Squirrel.Mac cannot silently update unsigned bundles.
-   * On Windows / Linux we use the normal in-app electron-updater flow.
-   */
-  const handleDownloadUpdate = () => {
-    if (updaterStatus.type === 'available' && updaterStatus.downloadUrl) {
-      window.api?.updater?.openDownload(updaterStatus.downloadUrl)
-    } else {
-      window.api?.updater?.download()
-    }
-  }
+  const handleDownloadUpdate = () => window.api?.updater?.download()
   const handleInstallUpdate  = () => window.api?.updater?.install()
+  const installerMode = updaterStatus.type === 'downloaded' && updaterStatus.installMode === 'open-installer'
 
   return (
     <section className="space-y-3">
@@ -92,7 +82,7 @@ export function UpdaterSection() {
                   className="flex-shrink-0 px-3 py-1.5 text-xs rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors cursor-pointer"
                 >
                   {updaterStatus.downloadUrl
-                    ? t.settings_update_download_browser
+                    ? t.settings_update_download_installer
                     : t.settings_update_download}
                 </button>
               </div>
@@ -136,7 +126,7 @@ export function UpdaterSection() {
                   onClick={handleInstallUpdate}
                   className="flex-shrink-0 px-3 py-1.5 text-xs rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium transition-colors cursor-pointer"
                 >
-                  {t.settings_update_install}
+                  {installerMode ? t.settings_update_open_installer : t.settings_update_install}
                 </button>
               </div>
             )}

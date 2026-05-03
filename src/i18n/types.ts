@@ -495,9 +495,12 @@ export interface Translations {
   settings_update_downloading: string
   settings_update_downloaded: string
   settings_update_download: string
-  /** macOS only: label for the button that opens the browser to download the DMG. */
+  /** macOS only: label for downloading the unsigned DMG and opening it directly. */
+  settings_update_download_installer: string
+  /** Fallback label for opening the browser to download the DMG. */
   settings_update_download_browser: string
   settings_update_install: string
+  settings_update_open_installer: string
   settings_update_error: string
   settings_update_error_codesign: string
 

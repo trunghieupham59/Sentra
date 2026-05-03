@@ -658,23 +658,24 @@ export interface WindowApi {
   /** Auto-updater — check and install updates from GitHub Releases */
   updater: {
     check: () => Promise<{ success: boolean; error?: string }>
-    /** In-app download — Windows / Linux only (uses electron-updater / NSIS). */
-    download: () => Promise<{ success: boolean; error?: string }>
-    /** Quit & install — Windows / Linux only. */
+    /** In-app download. macOS downloads the unsigned DMG directly. */
+    download: () => Promise<{ success: boolean; error?: string; filePath?: string }>
+    /** Quit/install, or reopen the downloaded macOS installer. */
     install: () => Promise<{ success: boolean; error?: string }>
     getVersion: () => Promise<{ version: string }>
     /**
      * Open the download URL in the system browser.
-     * Used on macOS (unsigned build) — falls back to GitHub Releases page.
+     * Fallback only — falls back to GitHub Releases page.
      */
     openDownload: (url?: string) => Promise<{ success: boolean }>
     onStatus: (cb: (status: {
-      type: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'
+      type: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error-codesign' | 'error'
       version?: string
       percent?: number
       bytesPerSecond?: number
       transferred?: number
       total?: number
+      installMode?: 'restart' | 'open-installer'
       error?: string
       /** macOS only: direct asset URL (DMG) or release page URL. */
       downloadUrl?: string

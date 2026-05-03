@@ -8,10 +8,10 @@ export const updaterSection = {
     /** Trigger a check for updates. Status is pushed via onStatus(). */
     check: () =>
       ipcRenderer.invoke('updater:check') as Promise<{ success: boolean; error?: string }>,
-    /** Start downloading an available update (Windows / Linux only). */
+    /** Start downloading an available update. macOS downloads the DMG directly. */
     download: () =>
-      ipcRenderer.invoke('updater:download') as Promise<{ success: boolean; error?: string }>,
-    /** Quit the app and install the downloaded update (Windows / Linux only). */
+      ipcRenderer.invoke('updater:download') as Promise<{ success: boolean; error?: string; filePath?: string }>,
+    /** Quit/install, or reopen the downloaded macOS installer. */
     install: () =>
       ipcRenderer.invoke('updater:install') as Promise<{ success: boolean; error?: string }>,
     /** Get the current app version. */
@@ -19,7 +19,7 @@ export const updaterSection = {
       ipcRenderer.invoke('updater:getVersion') as Promise<{ version: string }>,
     /**
      * Open the download URL in the system browser.
-     * Used on macOS (unsigned build) where Squirrel cannot install silently.
+     * Fallback only; macOS update downloads normally use updater.download().
      * Falls back to the GitHub Releases page if no URL is provided.
      */
     openDownload: (url?: string) =>
@@ -29,12 +29,13 @@ export const updaterSection = {
      * Returns a cleanup function — call it to unsubscribe.
      */
     onStatus: (cb: (status: {
-      type: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'
+      type: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error-codesign' | 'error'
       version?: string
       percent?: number
       bytesPerSecond?: number
       transferred?: number
       total?: number
+      installMode?: 'restart' | 'open-installer'
       error?: string
       downloadUrl?: string
     }) => void) => {

@@ -1,3 +1,7 @@
+import { createWriteStream } from 'node:fs'
+import { mkdir, rm } from 'node:fs/promises'
+import { get } from 'node:https'
+import path from 'node:path'
 import type { BrowserWindow, IpcMain } from 'electron'
 import { app, net, shell } from 'electron'
 import { autoUpdater } from 'electron-updater'
@@ -8,9 +12,10 @@ import { isAllowedExternalUrl } from './externalUrl'
 // electron-updater uses on macOS — requires a valid code signature and will
 // always error on unsigned bundles.  Instead of going through Squirrel, we
 // call the GitHub Releases API directly: check the latest tag, compare with
-// the running version, and open the browser for the user to download & install.
+// the running version, then download the DMG directly and open it for the user.
 const GITHUB_OWNER = 'trunghieupham59'
 const GITHUB_REPO  = 'Viezan'
+const MAX_DOWNLOAD_REDIRECTS = 5
 
 // ─── Error-detection patterns ──────────────────────────────────────────────
 // Patterns that indicate the update YAML / metadata file is simply absent on
@@ -62,6 +67,8 @@ interface GithubRelease {
   version: string
   /** Direct link to the best asset (DMG on macOS) or the release page. */
   downloadUrl: string
+  /** Release asset filename when a platform installer was found. */
+  assetName?: string
 }
 
 /**
@@ -99,6 +106,7 @@ async function fetchLatestGithubRelease(): Promise<GithubRelease | null> {
       data.assets.find(a => a.name.endsWith('.dmg') && a.name.includes(arch)) ??
       data.assets.find(a => a.name.endsWith('.dmg'))
     if (dmg) downloadUrl = dmg.browser_download_url
+    return { version, downloadUrl, assetName: dmg?.name }
   } else if (process.platform === 'win32') {
     const exe = data.assets.find(a => a.name.endsWith('.exe'))
     if (exe) downloadUrl = exe.browser_download_url
@@ -110,6 +118,90 @@ async function fetchLatestGithubRelease(): Promise<GithubRelease | null> {
   return { version, downloadUrl }
 }
 
+function sanitizeDownloadName(name: string, version: string): string {
+  const fallback = `Viezan-${version}-${process.arch}.dmg`
+  const clean = name.trim().replace(/[/\\?%*:|"<>]/g, '-')
+  return clean.endsWith('.dmg') ? clean : fallback
+}
+
+function isTrustedGithubAssetUrl(rawUrl: string): boolean {
+  try {
+    const url = new URL(rawUrl)
+    const pathname = url.pathname.toLowerCase()
+    return (
+      url.protocol === 'https:' &&
+      url.hostname.toLowerCase() === 'github.com' &&
+      pathname.startsWith(`/${GITHUB_OWNER.toLowerCase()}/${GITHUB_REPO.toLowerCase()}/releases/download/`) &&
+      pathname.endsWith('.dmg')
+    )
+  } catch {
+    return false
+  }
+}
+
+async function downloadFile(
+  url: string,
+  destination: string,
+  onProgress: (progress: {
+    percent: number
+    bytesPerSecond: number
+    transferred: number
+    total: number
+  }) => void,
+  redirectsLeft = MAX_DOWNLOAD_REDIRECTS,
+): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const startedAt = Date.now()
+    const request = get(url, {
+      headers: {
+        'User-Agent': `Viezan/${app.getVersion()}`,
+        Accept: 'application/octet-stream',
+      },
+    }, (response) => {
+      const status = response.statusCode ?? 0
+      const location = response.headers.location
+
+      if (status >= 300 && status < 400 && location) {
+        response.resume()
+        if (redirectsLeft <= 0) {
+          reject(new Error('Too many redirects while downloading update'))
+          return
+        }
+        const redirectedUrl = new URL(location, url).toString()
+        downloadFile(redirectedUrl, destination, onProgress, redirectsLeft - 1).then(resolve, reject)
+        return
+      }
+
+      if (status < 200 || status >= 300) {
+        response.resume()
+        reject(new Error(`Download failed with HTTP ${status}`))
+        return
+      }
+
+      const total = Number.parseInt(String(response.headers['content-length'] ?? '0'), 10) || 0
+      let transferred = 0
+      const file = createWriteStream(destination)
+
+      response.on('data', (chunk: Buffer) => {
+        transferred += chunk.length
+        const elapsedSeconds = Math.max((Date.now() - startedAt) / 1000, 0.001)
+        onProgress({
+          percent: total ? Math.min(100, Math.round((transferred / total) * 100)) : 0,
+          bytesPerSecond: Math.round(transferred / elapsedSeconds),
+          transferred,
+          total,
+        })
+      })
+
+      response.pipe(file)
+      file.on('finish', () => file.close(() => resolve()))
+      file.on('error', reject)
+    })
+
+    request.on('error', reject)
+  })
+}
+
 // ─── Types ─────────────────────────────────────────────────────────────────
 export type UpdaterStatus =
   | { type: 'idle' }
@@ -117,7 +209,7 @@ export type UpdaterStatus =
   | { type: 'available';     version: string; downloadUrl?: string }
   | { type: 'not-available'; version: string }
   | { type: 'downloading';   percent: number; bytesPerSecond: number; transferred: number; total: number }
-  | { type: 'downloaded';    version: string }
+  | { type: 'downloaded';    version: string; installMode?: 'restart' | 'open-installer' }
   | { type: 'error-codesign' }
   | { type: 'error';         error: string }
 
@@ -132,6 +224,8 @@ export function registerUpdaterHandlers(
   // Developer ID certificate (identity: null in package.json), we bypass
   // Squirrel entirely and use the GitHub Releases API directly.
   const useMacFallback = process.platform === 'darwin'
+  let latestMacRelease: GithubRelease | null = null
+  let downloadedMacInstallerPath: string | null = null
 
   autoUpdater.autoDownload         = false
   autoUpdater.autoInstallOnAppQuit = true
@@ -200,8 +294,10 @@ export function registerUpdaterHandlers(
           return { success: true }
         }
         if (isNewerVersion(release.version, app.getVersion())) {
+          latestMacRelease = release
           push({ type: 'available', version: release.version, downloadUrl: release.downloadUrl })
         } else {
+          latestMacRelease = null
           push({ type: 'not-available', version: app.getVersion() })
         }
         return { success: true }
@@ -224,7 +320,45 @@ export function registerUpdaterHandlers(
 
   ipc.handle('updater:download', async () => {
     if (isDev)          return { success: false, error: 'Not available in development mode' }
-    if (useMacFallback) return { success: false, error: 'Use updater:openDownload on macOS' }
+    if (useMacFallback) {
+      try {
+        const release = latestMacRelease ?? await fetchLatestGithubRelease()
+        if (!release || !isNewerVersion(release.version, app.getVersion())) {
+          push({ type: 'not-available', version: app.getVersion() })
+          return { success: false, error: 'No update available' }
+        }
+        if (!release.assetName || !isTrustedGithubAssetUrl(release.downloadUrl)) {
+          return { success: false, error: 'No trusted macOS DMG asset found' }
+        }
+
+        const filename = sanitizeDownloadName(release.assetName, release.version)
+        const downloadsDir = app.getPath('downloads')
+        await mkdir(downloadsDir, { recursive: true })
+        const destination = path.join(downloadsDir, filename)
+
+        push({ type: 'downloading', percent: 0, bytesPerSecond: 0, transferred: 0, total: 0 })
+        try {
+          await downloadFile(release.downloadUrl, destination, (progress) => push({ type: 'downloading', ...progress }))
+        } catch (err) {
+          await rm(destination, { force: true }).catch(() => undefined)
+          throw err
+        }
+
+        downloadedMacInstallerPath = destination
+        push({ type: 'downloaded', version: release.version, installMode: 'open-installer' })
+
+        const openError = await shell.openPath(destination)
+        if (openError) {
+          push({ type: 'error', error: openError })
+          return { success: false, error: openError }
+        }
+        return { success: true, filePath: destination }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        push({ type: 'error', error: msg })
+        return { success: false, error: msg }
+      }
+    }
     try {
       await autoUpdater.downloadUpdate()
       return { success: true }
@@ -237,7 +371,13 @@ export function registerUpdaterHandlers(
 
   ipc.handle('updater:install', () => {
     if (isDev)          return { success: false, error: 'Not available in development mode' }
-    if (useMacFallback) return { success: false, error: 'Use updater:openDownload on macOS' }
+    if (useMacFallback) {
+      if (!downloadedMacInstallerPath) return { success: false, error: 'No downloaded installer found' }
+      shell.openPath(downloadedMacInstallerPath).then((openError) => {
+        if (openError) push({ type: 'error', error: openError })
+      })
+      return { success: true }
+    }
     autoUpdater.quitAndInstall(false, true)
     return { success: true }
   })
