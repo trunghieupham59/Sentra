@@ -6,6 +6,33 @@
   box-sizing: border-box;
 }
 
+#Viezan-btn,
+#tre-result-tooltip {
+  --tre-surface: rgb(255 255 255);
+  --tre-surface-muted: rgb(248 250 252);
+  --tre-panel-source: rgb(251 253 255);
+  --tre-ink: rgb(17 24 39);
+  --tre-ink-soft: rgb(31 41 55);
+  --tre-control: rgb(51 65 85);
+  --tre-muted: rgb(100 116 139);
+  --tre-soft: rgb(148 163 184);
+  --tre-line: rgb(219 227 239);
+  --tre-line-strong: rgb(203 213 225);
+  --tre-accent: rgb(37 99 235);
+  --tre-accent-strong: rgb(29 78 216);
+  --tre-accent-soft: rgb(239 246 255);
+  --tre-accent-border: rgb(191 219 254);
+  --tre-success: rgb(4 120 87);
+  --tre-success-strong: rgb(6 95 70);
+  --tre-success-soft: rgb(236 253 245);
+  --tre-success-border: rgb(187 247 208);
+  --tre-warning: rgb(217 119 6);
+  --tre-danger: rgb(190 18 60);
+  --tre-purple: rgb(109 40 217);
+  --tre-purple-soft: rgb(245 243 255);
+  --tre-purple-border: rgb(221 214 254);
+}
+
 #Viezan-btn {
   position: fixed;
   z-index: 2147483647;
@@ -17,7 +44,7 @@
   padding: 0;
   border: 1px solid rgba(203, 213, 225, 0.88);
   border-radius: 999px;
-  background: #ffffff;
+  background: var(--tre-surface);
   box-shadow: 0 10px 26px rgba(15, 23, 42, 0.18), 0 2px 8px rgba(15, 23, 42, 0.10);
   cursor: pointer;
   pointer-events: auto;
@@ -33,7 +60,7 @@
 
 #Viezan-btn.tre-loading {
   border-color: rgba(37, 99, 235, 0.36);
-  background: #eff6ff;
+  background: var(--tre-accent-soft);
   pointer-events: none;
 }
 
@@ -41,7 +68,7 @@
   width: 18px;
   height: 18px;
   border: 2px solid rgba(37, 99, 235, 0.22);
-  border-top-color: #2563eb;
+  border-top-color: var(--tre-accent);
   border-radius: 999px;
   animation: tre-spin 0.75s linear infinite;
 }
@@ -65,8 +92,8 @@
   overflow: hidden;
   border: 1px solid rgba(203, 213, 225, 0.92);
   border-radius: 10px;
-  background: #ffffff;
-  color: #111827;
+  background: var(--tre-surface);
+  color: var(--tre-ink);
   box-shadow: 0 22px 54px rgba(15, 23, 42, 0.18), 0 4px 12px rgba(15, 23, 42, 0.08);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
   font-size: 13px;
@@ -80,8 +107,8 @@
   gap: 10px;
   min-height: 44px;
   padding: 9px 10px 9px 12px;
-  border-bottom: 1px solid #dbe3ef;
-  background: #ffffff;
+  border-bottom: 1px solid var(--tre-line);
+  background: var(--tre-surface);
 }
 
 #tre-result-tooltip .tre-tooltip-logo {
@@ -92,7 +119,7 @@
 }
 
 #tre-result-tooltip .tre-tooltip-label {
-  color: #111827;
+  color: var(--tre-ink);
   font-size: 12px;
   font-weight: 850;
   letter-spacing: 0;
@@ -105,10 +132,10 @@
   gap: 7px;
   min-height: 24px;
   padding: 3px 9px;
-  border: 1px solid #dbe3ef;
+  border: 1px solid var(--tre-line);
   border-radius: 999px;
-  background: #ffffff;
-  color: #334155;
+  background: var(--tre-surface);
+  color: var(--tre-control);
   font-size: 11px;
   font-weight: 750;
   white-space: nowrap;
@@ -123,18 +150,18 @@
 }
 
 #tre-result-tooltip .tre-status-loading {
-  background: #d97706;
+  background: var(--tre-warning);
   box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.14);
   animation: tre-pulse 1s ease-in-out infinite;
 }
 
 #tre-result-tooltip .tre-status-active {
-  background: #047857;
+  background: var(--tre-success);
   box-shadow: 0 0 0 3px rgba(4, 120, 87, 0.12);
 }
 
 #tre-result-tooltip .tre-status-error {
-  background: #be123c;
+  background: var(--tre-danger);
   box-shadow: 0 0 0 3px rgba(190, 18, 60, 0.12);
 }
 
@@ -162,7 +189,7 @@
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
-  color: #64748b;
+  color: var(--tre-muted);
   font-size: 17px;
   line-height: 1;
   cursor: pointer;
@@ -170,9 +197,9 @@
 }
 
 #tre-result-tooltip .tre-close-btn:hover {
-  border-color: #dbe3ef;
-  background: #f8fafc;
-  color: #111827;
+  border-color: var(--tre-line);
+  background: var(--tre-surface-muted);
+  color: var(--tre-ink);
 }
 
 #tre-result-tooltip .tre-controls-row {
@@ -181,8 +208,8 @@
   align-items: end;
   gap: 8px;
   padding: 9px 12px;
-  border-bottom: 1px solid #dbe3ef;
-  background: #f8fafc;
+  border-bottom: 1px solid var(--tre-line);
+  background: var(--tre-surface-muted);
 }
 
 #tre-result-tooltip .tre-model-stack {
@@ -200,10 +227,10 @@
   max-width: 166px;
   padding: 4px 10px;
   overflow: hidden;
-  border: 1px solid #dbe3ef;
+  border: 1px solid var(--tre-line);
   border-radius: 999px;
-  background: #ffffff;
-  color: #334155;
+  background: var(--tre-surface);
+  color: var(--tre-control);
   font-size: 11px;
   font-weight: 760;
   text-overflow: ellipsis;
@@ -211,7 +238,7 @@
 }
 
 #tre-result-tooltip .tre-ctrl-provider {
-  color: #1d4ed8;
+  color: var(--tre-accent-strong);
 }
 
 #tre-result-tooltip .tre-ctrl-model {
@@ -220,7 +247,7 @@
 }
 
 #tre-result-tooltip .tre-ctrl-loading {
-  color: #94a3b8;
+  color: var(--tre-soft);
 }
 
 #tre-result-tooltip .tre-select-field {
@@ -229,7 +256,7 @@
 }
 
 #tre-result-tooltip .tre-select-field label {
-  color: #64748b;
+  color: var(--tre-muted);
   font-size: 10px;
   font-weight: 850;
   letter-spacing: 0.06em;
@@ -243,13 +270,13 @@
   min-height: 30px;
   max-width: 138px;
   padding: 6px 30px 6px 10px;
-  border: 1px solid #dbe3ef;
+  border: 1px solid var(--tre-line);
   border-radius: 7px;
-  background-color: #ffffff;
+  background-color: var(--tre-surface);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.75 6 6.25l4.5-4.5' stroke='%23475569' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
-  color: #1f2937;
+  color: var(--tre-ink-soft);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
   font-size: 12px;
   font-weight: 700;
@@ -259,12 +286,12 @@
 
 #tre-result-tooltip .tre-lang-select:hover,
 #tre-result-tooltip .tre-style-select:hover {
-  border-color: #cbd5e1;
+  border-color: var(--tre-line-strong);
 }
 
 #tre-result-tooltip .tre-lang-select:focus,
 #tre-result-tooltip .tre-style-select:focus {
-  border-color: #2563eb;
+  border-color: var(--tre-accent);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
 }
 
@@ -283,16 +310,16 @@
 }
 
 #tre-result-tooltip .tre-source-panel {
-  background: #fbfdff;
+  background: var(--tre-panel-source);
 }
 
 #tre-result-tooltip .tre-result-panel {
-  background: #ffffff;
+  background: var(--tre-surface);
 }
 
 #tre-result-tooltip .tre-panel-label {
   padding: 10px 12px 4px;
-  color: #64748b;
+  color: var(--tre-muted);
   font-size: 10px;
   font-weight: 850;
   letter-spacing: 0.08em;
@@ -302,7 +329,7 @@
 #tre-result-tooltip .tre-panel-divider {
   width: 1px;
   margin: 12px 0;
-  background: #dbe3ef;
+  background: var(--tre-line);
 }
 
 #tre-result-tooltip .tre-source-text,
@@ -311,14 +338,14 @@
   min-height: 0;
   padding: 0 12px 12px;
   overflow-y: auto;
-  color: #1f2937;
+  color: var(--tre-ink-soft);
   font-size: 13px;
   line-height: 1.58;
   white-space: pre-wrap;
 }
 
 #tre-result-tooltip .tre-source-text {
-  color: #64748b;
+  color: var(--tre-muted);
 }
 
 #tre-result-tooltip .tre-tooltip-actions {
@@ -326,8 +353,8 @@
   gap: 8px;
   justify-content: flex-end;
   padding: 10px 12px;
-  border-top: 1px solid #dbe3ef;
-  background: #f8fafc;
+  border-top: 1px solid var(--tre-line);
+  background: var(--tre-surface-muted);
 }
 
 #tre-result-tooltip .tre-action-btn {
@@ -336,10 +363,10 @@
   justify-content: center;
   min-height: 32px;
   padding: 7px 12px;
-  border: 1px solid #dbe3ef;
+  border: 1px solid var(--tre-line);
   border-radius: 7px;
-  background: #ffffff;
-  color: #334155;
+  background: var(--tre-surface);
+  color: var(--tre-control);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
   font-size: 12px;
   font-weight: 760;
@@ -351,8 +378,8 @@
 }
 
 #tre-result-tooltip .tre-action-btn:hover {
-  border-color: #cbd5e1;
-  background: #ffffff;
+  border-color: var(--tre-line-strong);
+  background: var(--tre-surface);
 }
 
 #tre-result-tooltip .tre-action-btn:active {
@@ -360,21 +387,21 @@
 }
 
 #tre-result-tooltip .tre-copy-btn {
-  border-color: #bfdbfe;
-  background: #eff6ff;
-  color: #1d4ed8;
+  border-color: var(--tre-accent-border);
+  background: var(--tre-accent-soft);
+  color: var(--tre-accent-strong);
 }
 
 #tre-result-tooltip .tre-listen-btn {
-  border-color: #ddd6fe;
-  background: #f5f3ff;
-  color: #6d28d9;
+  border-color: var(--tre-purple-border);
+  background: var(--tre-purple-soft);
+  color: var(--tre-purple);
 }
 
 #tre-result-tooltip .tre-replace-btn {
-  border-color: #bbf7d0;
-  background: #ecfdf5;
-  color: #065f46;
+  border-color: var(--tre-success-border);
+  background: var(--tre-success-soft);
+  color: var(--tre-success-strong);
 }
 
 @media (max-width: 560px) {

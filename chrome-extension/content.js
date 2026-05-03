@@ -67,37 +67,11 @@
       </div>
       <div class="tre-select-field">
         <label>To</label>
-        <select class="tre-lang-select" title="Target language">
-          <option value="en">English</option>
-          <option value="vi">Vietnamese</option>
-          <option value="ja">Japanese</option>
-          <option value="zh">Chinese</option>
-          <option value="zh-TW">Chinese (Traditional)</option>
-          <option value="ko">Korean</option>
-          <option value="fr">French</option>
-          <option value="de">German</option>
-          <option value="es">Spanish</option>
-          <option value="pt">Portuguese</option>
-          <option value="ru">Russian</option>
-          <option value="ar">Arabic</option>
-          <option value="th">Thai</option>
-          <option value="id">Indonesian</option>
-          <option value="it">Italian</option>
-          <option value="nl">Dutch</option>
-          <option value="tr">Turkish</option>
-          <option value="hi">Hindi</option>
-        </select>
+        <select class="tre-lang-select" title="Target language"></select>
       </div>
       <div class="tre-select-field">
         <label>Style</label>
-        <select class="tre-style-select" title="Translation style">
-          <option value="general">General</option>
-          <option value="formal">Formal</option>
-          <option value="casual">Casual</option>
-          <option value="business">Business</option>
-          <option value="technical">Technical</option>
-          <option value="natural">Natural</option>
-        </select>
+        <select class="tre-style-select" title="Translation style"></select>
       </div>
     </div>
     <div class="tre-tooltip-body">
@@ -134,6 +108,8 @@
   const langSelect = tooltip.querySelector('.tre-lang-select')
   const styleSelect = tooltip.querySelector('.tre-style-select')
   const closeBtn = tooltip.querySelector('.tre-close-btn')
+  globalThis.ViezanExtensionOptions.populateTargetLanguageSelect(langSelect)
+  globalThis.ViezanExtensionOptions.populateTranslationStyleSelect(styleSelect)
   const ttsPlayer = Bridge.createTtsController({
     getButton: () => listenBtn,
     listenLabel: LISTEN_LABEL,

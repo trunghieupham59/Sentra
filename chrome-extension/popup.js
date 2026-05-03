@@ -1,5 +1,8 @@
 const $ = (id) => document.getElementById(id)
 const Bridge = window.ViezanLocalBridge
+const ExtensionOptions = window.ViezanExtensionOptions
+
+ExtensionOptions.populateDocumentSelects()
 
 const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
 const COPY_LABEL = 'Copy'

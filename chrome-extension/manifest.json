@@ -24,7 +24,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["model-display.js", "provider-meta.js", "local-bridge.js", "content.js"],
+      "js": ["model-display.js", "provider-meta.js", "local-bridge.js", "extension-options.js", "content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"
     }

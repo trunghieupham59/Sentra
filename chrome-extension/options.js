@@ -1,5 +1,10 @@
 const $ = (id) => document.getElementById(id)
 const Bridge = window.ViezanLocalBridge
+const ExtensionOptions = window.ViezanExtensionOptions
+
+ExtensionOptions.populateDocumentSelects(document, {
+  targetLabelOverrides: { zh: 'Chinese (Simplified)' },
+})
 
 // ── Show status ───────────────────────────────────────────────────────────────
 

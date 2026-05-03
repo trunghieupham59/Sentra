@@ -5,23 +5,38 @@
 }
 
 :root {
-  --vzn-bg: #f4f7fb;
-  --vzn-surface: #ffffff;
-  --vzn-surface-muted: #f8fafc;
-  --vzn-ink: #111827;
-  --vzn-muted: #64748b;
-  --vzn-soft: #94a3b8;
-  --vzn-line: #dbe3ef;
-  --vzn-line-strong: #cbd5e1;
-  --vzn-accent: #2563eb;
-  --vzn-accent-strong: #1d4ed8;
-  --vzn-accent-soft: #eff6ff;
-  --vzn-success: #047857;
-  --vzn-success-soft: #ecfdf5;
-  --vzn-warning: #b45309;
-  --vzn-warning-soft: #fffbeb;
-  --vzn-danger: #be123c;
-  --vzn-danger-soft: #fff1f2;
+  --vzn-bg: rgb(244 247 251);
+  --vzn-surface: rgb(255 255 255);
+  --vzn-surface-muted: rgb(248 250 252);
+  --vzn-panel-source: rgb(251 253 255);
+  --vzn-ink: rgb(17 24 39);
+  --vzn-ink-strong: rgb(15 23 42);
+  --vzn-ink-soft: rgb(31 41 55);
+  --vzn-control: rgb(51 65 85);
+  --vzn-muted: rgb(100 116 139);
+  --vzn-soft: rgb(148 163 184);
+  --vzn-line: rgb(219 227 239);
+  --vzn-line-strong: rgb(203 213 225);
+  --vzn-accent: rgb(37 99 235);
+  --vzn-accent-strong: rgb(29 78 216);
+  --vzn-accent-deep: rgb(30 58 138);
+  --vzn-accent-dark: rgb(30 64 175);
+  --vzn-accent-soft: rgb(239 246 255);
+  --vzn-accent-muted: rgb(219 234 254);
+  --vzn-accent-border: rgb(191 219 254);
+  --vzn-success: rgb(4 120 87);
+  --vzn-success-strong: rgb(6 95 70);
+  --vzn-success-soft: rgb(236 253 245);
+  --vzn-success-border: rgb(187 247 208);
+  --vzn-warning: rgb(180 83 9);
+  --vzn-warning-strong: rgb(217 119 6);
+  --vzn-warning-soft: rgb(255 251 235);
+  --vzn-danger: rgb(190 18 60);
+  --vzn-danger-soft: rgb(255 241 242);
+  --vzn-danger-border: rgb(254 205 211);
+  --vzn-purple: rgb(109 40 217);
+  --vzn-purple-soft: rgb(245 243 255);
+  --vzn-purple-border: rgb(221 214 254);
   --vzn-focus: 0 0 0 3px rgba(37, 99, 235, 0.16);
   --vzn-shadow: 0 18px 44px rgba(15, 23, 42, 0.10), 0 2px 8px rgba(15, 23, 42, 0.06);
 }
@@ -81,7 +96,7 @@ button {
   border: 1px solid var(--vzn-line);
   border-radius: 999px;
   background: var(--vzn-surface);
-  color: #334155;
+  color: var(--vzn-control);
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
@@ -101,7 +116,7 @@ button {
 }
 
 .status-dot.loading {
-  background: #d97706;
+  background: var(--vzn-warning-strong);
   box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.14);
   animation: vzn-pulse 1s ease-in-out infinite;
 }
@@ -128,7 +143,7 @@ button {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.75 6 6.25l4.5-4.5' stroke='%23475569' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
-  color: #1f2937;
+  color: var(--vzn-ink-soft);
   font-size: 12px;
   font-weight: 650;
   outline: none;
@@ -154,7 +169,7 @@ button {
   border-radius: 7px;
   border: 1px solid var(--vzn-line);
   background: var(--vzn-surface);
-  color: #334155;
+  color: var(--vzn-control);
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
@@ -182,7 +197,7 @@ button {
 .button-primary {
   border-color: var(--vzn-accent);
   background: var(--vzn-accent);
-  color: #ffffff;
+  color: var(--vzn-surface);
   box-shadow: 0 8px 18px rgba(37, 99, 235, 0.20);
 }
 
@@ -197,20 +212,20 @@ button {
 
 .button-soft {
   background: var(--vzn-accent-soft);
-  border-color: #bfdbfe;
+  border-color: var(--vzn-accent-border);
   color: var(--vzn-accent-strong);
 }
 
 .button-success {
   background: var(--vzn-success-soft);
-  border-color: #bbf7d0;
-  color: #065f46;
+  border-color: var(--vzn-success-border);
+  color: var(--vzn-success-strong);
 }
 
 .button-media {
-  background: #f5f3ff;
-  border-color: #ddd6fe;
-  color: #6d28d9;
+  background: var(--vzn-purple-soft);
+  border-color: var(--vzn-purple-border);
+  color: var(--vzn-purple);
 }
 
 .button-glyph {
@@ -237,21 +252,21 @@ button {
 .status.error {
   color: var(--vzn-danger);
   background: var(--vzn-danger-soft);
-  border: 1px solid #fecdd3;
+  border: 1px solid var(--vzn-danger-border);
 }
 
 .statusbar.success,
 .status.success {
   color: var(--vzn-success);
   background: var(--vzn-success-soft);
-  border: 1px solid #bbf7d0;
+  border: 1px solid var(--vzn-success-border);
 }
 
 .statusbar.loading,
 .status.info {
   color: var(--vzn-accent-strong);
   background: var(--vzn-accent-soft);
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--vzn-accent-border);
 }
 
 /* Popup */
@@ -387,11 +402,11 @@ button {
 }
 
 .panel-source {
-  background: #fbfdff;
+  background: var(--vzn-panel-source);
 }
 
 .panel-result {
-  background: #ffffff;
+  background: var(--vzn-surface);
 }
 
 .panel-label {
@@ -417,7 +432,7 @@ button {
   border: 0;
   outline: none;
   background: transparent;
-  color: #1f2937;
+  color: var(--vzn-ink-soft);
   font-size: 13px;
   line-height: 1.58;
 }
@@ -572,7 +587,7 @@ button {
 }
 
 .settings-card-title {
-  color: #1f2937;
+  color: var(--vzn-ink-soft);
   font-size: 13px;
   font-weight: 850;
   letter-spacing: 0.04em;
@@ -587,16 +602,16 @@ button {
 
 .info-box {
   padding: 14px 16px;
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--vzn-accent-border);
   border-radius: 8px;
   background: var(--vzn-accent-soft);
-  color: #1e3a8a;
+  color: var(--vzn-accent-deep);
   font-size: 13px;
   line-height: 1.62;
 }
 
 .info-box strong {
-  color: #0f172a;
+  color: var(--vzn-ink-strong);
   font-weight: 800;
 }
 
@@ -614,7 +629,7 @@ button {
   align-items: center;
   gap: 8px;
   margin-top: 10px;
-  color: #1d4ed8;
+  color: var(--vzn-accent-strong);
   font-size: 12px;
   font-weight: 650;
 }
@@ -622,8 +637,8 @@ button {
 .port-badge {
   padding: 3px 8px;
   border-radius: 6px;
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--vzn-accent-muted);
+  color: var(--vzn-accent-dark);
   font-family: "SF Mono", Menlo, Consolas, monospace;
   font-size: 11px;
   font-weight: 850;
@@ -640,7 +655,7 @@ button {
 }
 
 .field label {
-  color: #334155;
+  color: var(--vzn-control);
   font-size: 12px;
   font-weight: 800;
 }
@@ -710,7 +725,7 @@ button {
   display: inline-block;
   width: 14px;
   height: 14px;
-  border: 2px solid #bfdbfe;
+  border: 2px solid var(--vzn-accent-border);
   border-top-color: var(--vzn-accent);
   border-radius: 999px;
   animation: vzn-spin 0.72s linear infinite;
@@ -752,7 +767,7 @@ button {
   border: 1px solid var(--vzn-line);
   border-radius: 999px;
   background: var(--vzn-surface);
-  color: #334155;
+  color: var(--vzn-control);
   font-size: 12px;
   font-weight: 800;
 }
