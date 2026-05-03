@@ -14,7 +14,7 @@ import { isAllowedExternalUrl } from './externalUrl'
 // call the GitHub Releases API directly: check the latest tag, compare with
 // the running version, then download the DMG directly and open it for the user.
 const GITHUB_OWNER = 'trunghieupham59'
-const GITHUB_REPO  = 'Viezan'
+const GITHUB_REPO  = 'viezan'
 const MAX_DOWNLOAD_REDIRECTS = 5
 
 // ─── Error-detection patterns ──────────────────────────────────────────────
@@ -54,7 +54,7 @@ function matchesPatterns(err: unknown, patterns: readonly string[]): boolean {
  * Simple semver comparison.
  * Returns true if `remote` is strictly newer than `current`.
  */
-function isNewerVersion(remote: string, current: string): boolean {
+export function isNewerVersion(remote: string, current: string): boolean {
   const parse = (v: string) => v.replace(/^v/, '').split('.').map(Number)
   const [rMaj = 0, rMin = 0, rPat = 0] = parse(remote)
   const [cMaj = 0, cMin = 0, cPat = 0] = parse(current)
@@ -71,20 +71,94 @@ interface GithubRelease {
   assetName?: string
 }
 
+function githubLatestReleasePage(): string {
+  return `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`
+}
+
+function githubReleaseApiUrl(): string {
+  return `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`
+}
+
+function githubDownloadUrl(tagName: string, assetName: string): string {
+  return `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/${tagName}/${assetName}`
+}
+
+export function parseLatestGithubTagFromUrl(rawUrl: string): string | null {
+  try {
+    const url = new URL(rawUrl)
+    const expectedPrefix = `/${GITHUB_OWNER}/${GITHUB_REPO}/releases/tag/`.toLowerCase()
+    const pathname = url.pathname.toLowerCase()
+    if (url.hostname.toLowerCase() !== 'github.com' || !pathname.startsWith(expectedPrefix)) {
+      return null
+    }
+    const tag = decodeURIComponent(url.pathname.slice(expectedPrefix.length)).trim()
+    return tag || null
+  } catch {
+    return null
+  }
+}
+
+export function buildMacGithubReleaseFromTag(tagName: string, arch: NodeJS.Architecture = process.arch): GithubRelease | null {
+  const tag = tagName.trim()
+  const version = tag.replace(/^v/, '')
+  if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)) return null
+
+  const assetName = `Viezan-${version}-${arch}.dmg`
+  return {
+    version,
+    downloadUrl: githubDownloadUrl(tag.startsWith('v') ? tag : `v${tag}`, assetName),
+    assetName,
+  }
+}
+
+function pickGithubReleaseAsset(
+  assets: Array<{ name: string; browser_download_url: string }>,
+  version: string,
+): GithubRelease {
+  let downloadUrl = githubLatestReleasePage()
+
+  if (process.platform === 'darwin') {
+    const arch = process.arch // 'arm64' | 'x64'
+    // Prefer arch-specific DMG, then any DMG, then the release page.
+    const dmg =
+      assets.find(a => a.name.endsWith('.dmg') && a.name.includes(arch)) ??
+      assets.find(a => a.name.endsWith('.dmg'))
+    if (dmg) downloadUrl = dmg.browser_download_url
+    return { version, downloadUrl, assetName: dmg?.name }
+  } else if (process.platform === 'win32') {
+    const exe = assets.find(a => a.name.endsWith('.exe'))
+    if (exe) downloadUrl = exe.browser_download_url
+  } else {
+    const appImg = assets.find(a => a.name.endsWith('.AppImage'))
+    if (appImg) downloadUrl = appImg.browser_download_url
+  }
+
+  return { version, downloadUrl }
+}
+
+type GithubFetchInit = {
+  method?: 'GET' | 'HEAD'
+  redirect?: 'follow' | 'manual' | 'error'
+  headers?: Record<string, string>
+}
+
+async function githubFetch(url: string, init: GithubFetchInit = {}) {
+  return net.fetch(url, {
+    ...init,
+    headers: {
+      'User-Agent': `Viezan/${app.getVersion()}`,
+      Accept: 'application/vnd.github.v3+json',
+      ...init.headers,
+    },
+  })
+}
+
 /**
  * Fetch the latest release from GitHub Releases API.
  * Picks the most appropriate asset for the running platform/arch.
  */
-async function fetchLatestGithubRelease(): Promise<GithubRelease | null> {
-  const apiUrl     = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`
-  const releasePage = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`
-
-  const response = await net.fetch(apiUrl, {
-    headers: {
-      'User-Agent': `Viezan/${app.getVersion()}`,
-      Accept: 'application/vnd.github.v3+json',
-    },
-  })
+async function fetchLatestGithubReleaseFromApi(): Promise<GithubRelease | null> {
+  const response = await githubFetch(githubReleaseApiUrl())
 
   if (!response.ok) return null
 
@@ -95,27 +169,53 @@ async function fetchLatestGithubRelease(): Promise<GithubRelease | null> {
   }
 
   const version = data.tag_name.replace(/^v/, '')
+  return pickGithubReleaseAsset(data.assets, version)
+}
 
-  // Pick the best download asset for the current platform + arch
-  let downloadUrl = data.html_url ?? releasePage
+async function hasDownloadAsset(url: string): Promise<boolean> {
+  try {
+    const response = await githubFetch(url, {
+      method: 'HEAD',
+      redirect: 'follow',
+      headers: { Accept: 'application/octet-stream' },
+    })
+    return response.ok
+  } catch {
+    return false
+  }
+}
 
-  if (process.platform === 'darwin') {
-    const arch = process.arch // 'arm64' | 'x64'
-    // Prefer arch-specific DMG, then any DMG, then the release page
-    const dmg =
-      data.assets.find(a => a.name.endsWith('.dmg') && a.name.includes(arch)) ??
-      data.assets.find(a => a.name.endsWith('.dmg'))
-    if (dmg) downloadUrl = dmg.browser_download_url
-    return { version, downloadUrl, assetName: dmg?.name }
-  } else if (process.platform === 'win32') {
-    const exe = data.assets.find(a => a.name.endsWith('.exe'))
-    if (exe) downloadUrl = exe.browser_download_url
-  } else {
-    const appImg = data.assets.find(a => a.name.endsWith('.AppImage'))
-    if (appImg) downloadUrl = appImg.browser_download_url
+async function fetchLatestGithubReleaseFromRedirect(): Promise<GithubRelease | null> {
+  const response = await githubFetch(githubLatestReleasePage(), {
+    redirect: 'follow',
+    headers: { Accept: 'text/html,application/xhtml+xml' },
+  })
+
+  if (!response.ok) {
+    throw new Error(`GitHub latest release lookup failed with HTTP ${response.status}`)
   }
 
-  return { version, downloadUrl }
+  const tagName = parseLatestGithubTagFromUrl(response.url)
+  if (!tagName) return null
+
+  const release = buildMacGithubReleaseFromTag(tagName)
+  if (!release) return null
+
+  if (!(await hasDownloadAsset(release.downloadUrl))) {
+    throw new Error(`No macOS DMG asset found for ${tagName}`)
+  }
+
+  return release
+}
+
+async function fetchLatestGithubRelease(): Promise<GithubRelease | null> {
+  const release = await fetchLatestGithubReleaseFromApi().catch(() => null)
+  if (release?.assetName || process.platform !== 'darwin') return release
+
+  // The REST API is unauthenticated in the installed app and can hit GitHub's
+  // low public rate limit. The public /releases/latest redirect is enough to
+  // discover the latest tag, then our deterministic artifact name gives the DMG.
+  return fetchLatestGithubReleaseFromRedirect()
 }
 
 function sanitizeDownloadName(name: string, version: string): string {
