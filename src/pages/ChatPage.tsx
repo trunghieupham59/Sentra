@@ -9,8 +9,11 @@ import {
   GearIcon,
   ImageIcon,
   LightbulbIcon,
-  PlusIcon, SendIcon,
-  SpinnerIcon, StopSquareIcon, TrashIcon, XIcon,
+  PlusIcon,
+  SendIcon,
+  StopSquareIcon,
+  TrashIcon,
+  XIcon,
 } from '../components/ui/icons'
 import { VoiceRecorder } from '../components/VoiceRecorder'
 import { MAX_CHAT_IMAGE_DIMENSION } from '../constants/image'

@@ -15,9 +15,11 @@ permissions:
     security-events: write
     actions: read
 
+# Trên branch mặc định / lịch chạy định kỳ KHÔNG hủy run đang chạy để tránh
+# mất kết quả SARIF của code scanning. Chỉ hủy với PR / branch khác.
 concurrency:
-    group: codeql-${{ github.ref }}
-    cancel-in-progress: true
+    group: codeql-${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
     analyze:
@@ -27,20 +29,38 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                language: [javascript-typescript]
+                include:
+                    - language: javascript-typescript
+                      build-mode: none
 
         steps:
             - name: Checkout
               uses: actions/checkout@v6
+              with:
+                  # Không cần extractor JS/TS quét submodule (viezanagent) – submodule
+                  # có repo + workflow CodeQL riêng.
+                  submodules: false
 
             - name: Initialize CodeQL
               uses: github/codeql-action/init@v4
               with:
                   languages: ${{ matrix.language }}
+                  build-mode: ${{ matrix.build-mode }}
                   queries: security-and-quality
-
-            - name: Autobuild
-              uses: github/codeql-action/autobuild@v4
+                  config: |
+                      paths-ignore:
+                        - "**/node_modules/**"
+                        - "**/dist/**"
+                        - "**/build/**"
+                        - "**/coverage/**"
+                        - "**/*.min.js"
+                        - "**/*.bundle.js"
+                        - "**/*.bundle.min.js"
+                        - "docs/**"
+                        - "public/vad/**"
+                        - "build/**"
+                        - "viezanagent/**"
+                        - "chrome-extension/icons/**"
 
             - name: Perform CodeQL Analysis
               uses: github/codeql-action/analyze@v4

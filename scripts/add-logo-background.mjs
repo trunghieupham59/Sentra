@@ -34,7 +34,15 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  closeSync,
+  constants as fsConstants,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  unlinkSync,
+  writeSync,
+} from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -48,14 +56,55 @@ mkdirSync(SOURCE_DIR, { recursive: true })
  * Pick the artwork source. If we already saved a transparent original under
  * build/source/<name>, reuse it. Otherwise treat the current file as the
  * original and snapshot it so subsequent runs are idempotent.
+ *
+ * Uses `O_CREAT | O_EXCL | O_WRONLY` to atomically create the snapshot file
+ * if (and only if) it doesn't already exist. This avoids a TOCTOU race where
+ * the file could be created or replaced between an `existsSync` check and
+ * the subsequent write (CodeQL js/file-system-race).
  */
 function ensureSource(rel) {
   const live = join(ROOT, rel)
   const snap = join(SOURCE_DIR, rel.replace(/[\\/]/g, '__'))
-  if (!existsSync(snap)) {
-    if (!existsSync(live)) throw new Error(`Missing source file: ${rel}`)
-    writeFileSync(snap, readFileSync(live))
+
+  let fd
+  try {
+    fd = openSync(
+      snap,
+      fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL,
+      0o600,
+    )
+  } catch (err) {
+    if (err && err.code === 'EEXIST') {
+      // Snapshot already exists – nothing to do.
+      return snap
+    }
+    throw err
   }
+
+  // We exclusively created the snapshot file; populate it from the live file.
+  // If reading the live file fails we remove the empty snapshot we just made
+  // so the next run can retry cleanly.
+  try {
+    let data
+    try {
+      data = readFileSync(live)
+    } catch (readErr) {
+      if (readErr && readErr.code === 'ENOENT') {
+        throw new Error(`Missing source file: ${rel}`)
+      }
+      throw readErr
+    }
+    writeSync(fd, data)
+  } catch (err) {
+    closeSync(fd)
+    try {
+      unlinkSync(snap)
+    } catch {
+      // Ignore cleanup failure – propagate the original error.
+    }
+    throw err
+  }
+  closeSync(fd)
   return snap
 }
 
