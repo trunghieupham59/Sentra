@@ -51,13 +51,13 @@ Viezan is a desktop translation workspace for text, images, live audio, chat and
 
 View all versions on the [GitHub Releases page](https://github.com/trunghieupham59/Viezan/releases).
 
-## What's New in v2.0.5
+## What's New in v2.1.0
 
 | Area | Change |
 | --- | --- |
-| Update | Installs macOS updates from the app instead of leaving users to drag the DMG over the running app. |
-| Install | Adds a helper that quits Viezan, mounts the downloaded DMG, replaces `/Applications/Viezan.app`, clears quarantine and reopens Viezan. |
-| Fallback | Keeps a manual “Open Installer” path if automatic replacement fails on a local machine. |
+| Dictionary | Adds selected-text dictionary lookup with a fast preview and enriched detail view. |
+| Browser Integration | Improves extension popup recovery after service worker reloads. |
+| UI | Tightens popup, tooltip and selection lookup layout so loading and overflow states stay readable. |
 
 ## Features
 
