@@ -11,6 +11,7 @@ const TranslatePage = lazy(() => import('./pages/TranslatePage').then(module => 
 const LiveTranslatePage = lazy(() => import('./pages/LiveTranslatePage').then(module => ({ default: module.LiveTranslatePage })))
 const ChatPage = lazy(() => import('./pages/ChatPage').then(module => ({ default: module.ChatPage })))
 const HistoryPage = lazy(() => import('./pages/HistoryPage').then(module => ({ default: module.HistoryPage })))
+const DictionaryPage = lazy(() => import('./pages/DictionaryPage').then(module => ({ default: module.DictionaryPage })))
 
 const FONT_SIZE_MAP = {
   small:  '13px',
@@ -164,6 +165,8 @@ function App() {
               <LiveTranslatePage />
             ) : activePage === 'chat' ? (
               <ChatPage />
+            ) : activePage === 'dictionary' ? (
+              <DictionaryPage />
             ) : (
               <HistoryPage />
             )}

@@ -1,0 +1,610 @@
+import { useEffect, useRef, useState } from 'react'
+import type { Translations } from '../../i18n'
+import { dictionaryService } from '../../services/dictionaryService'
+import type { DictionaryEntry, DictionaryResult, DictionaryTranslation } from '../../types'
+import { CheckIcon, CopyIcon, ReuseIcon, SearchIcon, SpinnerIcon, StarIcon, XIcon } from '../ui/icons'
+import { DictionaryEmptyState } from './DictionaryEmptyState'
+
+interface DictionaryResultPanelProps {
+  entry: DictionaryEntry | null
+  copied: boolean
+  onCopy: () => void
+  onFavorite: () => void
+  onReuse: () => void
+  t: Translations
+}
+
+function normalizeTranslationItem(item: DictionaryTranslation | string): DictionaryTranslation {
+  if (typeof item === 'string') return { text: item, pronunciation: '' }
+  return item
+}
+
+function formatPronunciation(value: string): string {
+  return value ? `/${value.replace(/^\/|\/$/g, '')}/` : ''
+}
+
+function getTranslationKey(item: DictionaryTranslation): string {
+  return [
+    item.text,
+    item.pronunciation,
+    item.partOfSpeech ?? '',
+    item.meaning ?? '',
+    item.usage ?? '',
+    item.nuance ?? '',
+    item.example ?? '',
+    ...(item.examples ?? []),
+    ...(item.collocations ?? []),
+    ...(item.notes ?? []),
+  ].join('\u001f')
+}
+
+function uniqueText(items: Array<string | undefined>): string[] {
+  return [...new Set(items.map((item) => item?.trim()).filter((item): item is string => Boolean(item)))]
+}
+
+function cleanSelectionText(value: string): string {
+  return value.trim().replace(/\s+/g, ' ').slice(0, 80)
+}
+
+/**
+ * Renders the AI dictionary entry — headword + pronunciation +
+ * part-of-speech chips, then a compact body of titled sections.
+ *
+ * Visual rhythm intentionally aligns with the rest of the app:
+ * `surface-panel` + `section-label` + `toolbar-icon-button`.
+ */
+export function DictionaryResultPanel({
+  entry,
+  copied,
+  onCopy,
+  onFavorite,
+  onReuse,
+  t,
+}: DictionaryResultPanelProps) {
+  const resultBodyRef = useRef<HTMLDivElement>(null)
+  const [selectedTranslation, setSelectedTranslation] = useState<{
+    entryId: string
+    key: string
+  } | null>(null)
+  const [selectionAction, setSelectionAction] = useState<{
+    text: string
+    x: number
+    y: number
+  } | null>(null)
+  const [selectionLookup, setSelectionLookup] = useState<{
+    term: string
+    loading: boolean
+    result: DictionaryResult | null
+    error: string | null
+  } | null>(null)
+
+  useEffect(() => {
+    const handleResultSelection = () => {
+      window.setTimeout(() => {
+        const selection = window.getSelection()
+        const text = cleanSelectionText(selection?.toString() ?? '')
+        const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null
+        const container = range?.commonAncestorContainer
+        const selectionNode = container?.nodeType === Node.TEXT_NODE ? container.parentElement : container
+        const isInsideResult = Boolean(selectionNode && resultBodyRef.current?.contains(selectionNode))
+
+        if (!text || !range || !isInsideResult) {
+          setSelectionAction(null)
+          return
+        }
+
+        const rect = typeof range.getBoundingClientRect === 'function'
+          ? range.getBoundingClientRect()
+          : { left: 24, top: 24, width: 0, height: 0 }
+        setSelectionAction({
+          text,
+          x: Math.min(Math.max(rect.left + rect.width / 2, 24), window.innerWidth - 56),
+          y: Math.min(Math.max(rect.top - 42, 24), window.innerHeight - 56),
+        })
+      })
+    }
+
+    document.addEventListener('mouseup', handleResultSelection)
+    document.addEventListener('keyup', handleResultSelection)
+    return () => {
+      document.removeEventListener('mouseup', handleResultSelection)
+      document.removeEventListener('keyup', handleResultSelection)
+    }
+  }, [])
+
+  if (!entry) {
+    return <DictionaryEmptyState t={t} />
+  }
+
+  const result: DictionaryResult = entry.result
+  const translations = result.translations.map(normalizeTranslationItem)
+  const selectedTranslationKey = selectedTranslation?.entryId === entry.id ? selectedTranslation.key : null
+  const activeTranslation =
+    selectedTranslationKey === null
+      ? null
+      : translations.find((item) => getTranslationKey(item) === selectedTranslationKey) ?? null
+
+  const closeSelectionLookup = () => setSelectionLookup(null)
+
+  const runSelectionLookup = async () => {
+    if (!selectionAction) return
+    const lookupTerm = selectionAction.text
+    setSelectionAction(null)
+    window.getSelection()?.removeAllRanges()
+    setSelectionLookup({ term: lookupTerm, loading: true, result: null, error: null })
+
+    const lookup = await dictionaryService.lookup({
+      term: lookupTerm,
+      context: `Selected inside dictionary entry "${entry.term}". Entry meaning: ${result.meaning}`,
+      sourceLang: entry.targetLang,
+      targetLang: entry.targetLang,
+      provider: entry.provider,
+      model: entry.model,
+    })
+
+    if (!lookup.success || !lookup.result) {
+      setSelectionLookup({
+        term: lookupTerm,
+        loading: false,
+        result: null,
+        error: lookup.error ?? t.dictionary_error_failed,
+      })
+      return
+    }
+
+    setSelectionLookup({ term: lookupTerm, loading: false, result: lookup.result, error: null })
+  }
+
+  return (
+    <>
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <div className="flex-shrink-0 border-b border-gray-200/90 px-5 pt-4 pb-3 dark:border-neutral-800">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h2 className="text-2xl font-semibold leading-tight text-gray-950 select-text dark:text-gray-50">
+                {result.headword}
+              </h2>
+              {result.pronunciation && (
+                <span className="font-mono text-sm text-gray-500 select-text dark:text-gray-400">
+                  {formatPronunciation(result.pronunciation)}
+                </span>
+              )}
+              {result.partOfSpeech.map((item) => (
+                <span
+                  key={item}
+                  className="inline-flex items-center rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-blue-700 dark:bg-blue-950/45 dark:text-blue-300"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={onFavorite}
+              title={entry.favorite ? t.dictionary_unfavorite : t.dictionary_favorite}
+              className={`toolbar-icon-button ${
+                entry.favorite ? 'toolbar-icon-button-active text-amber-500 dark:text-amber-300' : ''
+              }`}
+            >
+              <StarIcon className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={onCopy}
+              title={copied ? t.dictionary_copied : t.dictionary_copy}
+              className={`toolbar-icon-button ${copied ? 'toolbar-icon-button-active' : ''}`}
+            >
+              {copied ? <CheckIcon className="h-4 w-4" /> : <CopyIcon className="h-4 w-4" />}
+            </button>
+            <button
+              type="button"
+              onClick={onReuse}
+              title={t.dictionary_reuse_translate}
+              className="toolbar-icon-button"
+            >
+              <ReuseIcon className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Body ───────────────────────────────────────────────────────── */}
+      <div
+        ref={resultBodyRef}
+        className="flex-1 space-y-5 overflow-auto px-5 py-4"
+      >
+        {/* Meaning — primary highlight, large readable type */}
+        <section>
+          <h3 className="section-label mb-1.5">{t.dictionary_meaning}</h3>
+          <p className="border-l-2 border-blue-500 pl-3 text-[15px] leading-7 text-gray-800 select-text dark:border-blue-400 dark:text-gray-100">
+            {result.meaning}
+          </p>
+        </section>
+
+        {/* Translations — chip cluster */}
+        {translations.length > 0 && (
+          <section>
+            <h3 className="section-label mb-2">{t.dictionary_translations}</h3>
+            <div className="flex flex-wrap gap-1.5">
+              {translations.map((item) => {
+                const translationKey = getTranslationKey(item)
+                const isSelected = selectedTranslationKey === translationKey
+                const pronunciation = formatPronunciation(item.pronunciation)
+                return (
+                  <button
+                    key={translationKey}
+                    type="button"
+                    aria-pressed={isSelected}
+                    aria-label={`${t.dictionary_translation_detail}: ${item.text} ${pronunciation}`}
+                    onClick={() => setSelectedTranslation(isSelected ? null : { entryId: entry.id, key: translationKey })}
+                    className={`inline-flex flex-col rounded-md border px-2.5 py-1.5 text-left shadow-sm shadow-gray-900/5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-neutral-950 ${
+                      isSelected
+                        ? 'border-blue-300 bg-blue-50 text-blue-900 dark:border-blue-700 dark:bg-blue-950/35 dark:text-blue-100'
+                        : 'border-gray-200 bg-white hover:border-blue-200 hover:bg-blue-50/60 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-blue-800 dark:hover:bg-blue-950/20'
+                    }`}
+                  >
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-100">{item.text}</span>
+                    {pronunciation && (
+                      <span className="mt-0.5 font-mono text-[11px] leading-none text-gray-400 dark:text-gray-500">
+                        {pronunciation}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+
+            {activeTranslation && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/25 px-6 py-8 backdrop-blur-[1px]">
+                <button
+                  type="button"
+                  aria-label={t.dictionary_translation_close}
+                  data-testid="dictionary-translation-backdrop"
+                  onClick={() => setSelectedTranslation(null)}
+                  className="absolute inset-0 cursor-default"
+                />
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label={t.dictionary_translation_detail}
+                  className="relative z-10 max-h-[82vh] w-full max-w-2xl overflow-hidden rounded-xl border border-blue-100 bg-white shadow-2xl shadow-blue-950/20 dark:border-blue-900/60 dark:bg-neutral-950 dark:shadow-black/45"
+                >
+                  <div className="flex items-start justify-between gap-4 border-b border-gray-200/90 px-5 py-4 dark:border-neutral-800">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                        <h4 className="text-xl font-semibold text-gray-950 select-text dark:text-gray-50">
+                          {activeTranslation.text}
+                        </h4>
+                        <span className="font-mono text-sm text-gray-500 select-text dark:text-gray-400">
+                          {formatPronunciation(activeTranslation.pronunciation)}
+                        </span>
+                        {activeTranslation.partOfSpeech && (
+                          <span className="inline-flex items-center rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-700 dark:bg-blue-950/45 dark:text-blue-300">
+                            {activeTranslation.partOfSpeech}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                        {t.dictionary_translation_detail}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      title={t.dictionary_translation_close}
+                      aria-label={t.dictionary_translation_close}
+                      onClick={() => setSelectedTranslation(null)}
+                      className="toolbar-icon-button h-8 w-8 flex-shrink-0"
+                    >
+                      <XIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <div className="max-h-[calc(82vh-84px)] space-y-4 overflow-auto px-5 py-4 text-sm leading-6 text-gray-700 dark:text-gray-300">
+                    <section>
+                      <h5 className="section-label mb-1.5">{t.dictionary_meaning}</h5>
+                      <p className="border-l-2 border-blue-500 pl-3 text-[15px] leading-7 text-gray-800 select-text dark:border-blue-400 dark:text-gray-100">
+                        {activeTranslation.meaning || result.meaning}
+                      </p>
+                    </section>
+
+                    {(activeTranslation.usage || activeTranslation.nuance || result.notes[0]) && (
+                      <section>
+                        <h5 className="section-label mb-1.5">{t.dictionary_translation_usage}</h5>
+                        <p className="select-text">
+                          {activeTranslation.usage || activeTranslation.nuance || result.notes[0]}
+                        </p>
+                      </section>
+                    )}
+
+                    {activeTranslation.usage && activeTranslation.nuance && (
+                      <section>
+                        <h5 className="section-label mb-1.5">{t.dictionary_translation_nuance}</h5>
+                        <p className="select-text">{activeTranslation.nuance}</p>
+                      </section>
+                    )}
+
+                    {uniqueText([
+                      ...(activeTranslation.examples ?? []),
+                      activeTranslation.example,
+                      ...((activeTranslation.examples?.length || activeTranslation.example) ? [] : result.examples.slice(0, 3)),
+                    ]).length > 0 && (
+                      <section>
+                        <h5 className="section-label mb-2">{t.dictionary_translation_example}</h5>
+                        <ol className="space-y-1.5">
+                          {uniqueText([
+                            ...(activeTranslation.examples ?? []),
+                            activeTranslation.example,
+                            ...((activeTranslation.examples?.length || activeTranslation.example) ? [] : result.examples.slice(0, 3)),
+                          ]).map((item, idx) => (
+                            <li key={`translation-example-${item}`} className="flex items-start gap-2.5 select-text">
+                              <span
+                                aria-hidden
+                                className="mt-1 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-[10px] font-semibold tabular-nums text-blue-600 dark:bg-blue-950/40 dark:text-blue-300"
+                              >
+                                {idx + 1}
+                              </span>
+                              <span className="min-w-0 flex-1">{item}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      </section>
+                    )}
+
+                    {activeTranslation.collocations && activeTranslation.collocations.length > 0 && (
+                      <section>
+                        <h5 className="section-label mb-2">{t.dictionary_translation_collocations}</h5>
+                        <div className="flex flex-wrap gap-1.5">
+                          {activeTranslation.collocations.map((item) => (
+                            <span
+                              key={`translation-collocation-${item}`}
+                              className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700 select-text dark:border-neutral-800 dark:bg-neutral-900 dark:text-gray-300"
+                            >
+                              {item}
+                            </span>
+                          ))}
+                        </div>
+                      </section>
+                    )}
+
+                    {uniqueText([
+                      ...(activeTranslation.notes ?? []),
+                      ...((activeTranslation.notes?.length ?? 0) > 0 ? [] : result.notes),
+                    ]).length > 0 && (
+                      <section>
+                        <h5 className="section-label mb-2">{t.dictionary_notes}</h5>
+                        <ul className="space-y-1.5">
+                          {uniqueText([
+                            ...(activeTranslation.notes ?? []),
+                            ...((activeTranslation.notes?.length ?? 0) > 0 ? [] : result.notes),
+                          ]).map((item) => (
+                            <li key={`translation-note-${item}`} className="flex items-start gap-2.5 select-text">
+                              <span
+                                aria-hidden
+                                className="mt-2 inline-block h-1 w-1 flex-shrink-0 rounded-full bg-amber-500 dark:bg-amber-400"
+                              />
+                              <span className="min-w-0 flex-1">{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Examples — clean numbered list */}
+        {result.examples.length > 0 && (
+          <section>
+            <h3 className="section-label mb-2">{t.dictionary_examples}</h3>
+            <ol className="space-y-1.5">
+              {result.examples.map((item, idx) => (
+                <li
+                  key={`ex-${item}`}
+                  className="flex items-start gap-2.5 text-sm leading-6 text-gray-700 select-text dark:text-gray-300"
+                >
+                  <span
+                    aria-hidden
+                    className="mt-1 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-[10px] font-semibold tabular-nums text-blue-600 dark:bg-blue-950/40 dark:text-blue-300"
+                  >
+                    {idx + 1}
+                  </span>
+                  <span className="min-w-0 flex-1">{item}</span>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+
+        {/* Notes */}
+        {result.notes.length > 0 && (
+          <section>
+            <h3 className="section-label mb-2">{t.dictionary_notes}</h3>
+            <ul className="space-y-1.5">
+              {result.notes.map((item) => (
+                <li
+                  key={`note-${item}`}
+                  className="flex items-start gap-2.5 text-sm leading-6 text-gray-700 select-text dark:text-gray-300"
+                >
+                  <span
+                    aria-hidden
+                    className="mt-2 inline-block h-1 w-1 flex-shrink-0 rounded-full bg-amber-500 dark:bg-amber-400"
+                  />
+                  <span className="min-w-0 flex-1">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
+
+      {selectionAction && (
+        <button
+          type="button"
+          title={t.dictionary_selection_lookup}
+          aria-label={`${t.dictionary_selection_lookup}: ${selectionAction.text}`}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => {
+            void runSelectionLookup()
+          }}
+          className="fixed z-50 inline-flex h-9 w-9 items-center justify-center rounded-full border border-blue-200 bg-white text-blue-600 shadow-lg shadow-blue-950/15 transition hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-blue-800 dark:bg-neutral-950 dark:text-blue-300 dark:hover:bg-blue-950/40"
+          style={{ left: selectionAction.x, top: selectionAction.y }}
+        >
+          <SearchIcon className="h-4 w-4" />
+        </button>
+      )}
+
+      {selectionLookup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/25 px-6 py-8 backdrop-blur-[1px]">
+          <button
+            type="button"
+            aria-label={t.dictionary_translation_close}
+            data-testid="dictionary-selection-backdrop"
+            onClick={closeSelectionLookup}
+            className="absolute inset-0 cursor-default"
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={t.dictionary_selection_lookup}
+            className="relative z-10 max-h-[82vh] w-full max-w-2xl overflow-hidden rounded-xl border border-blue-100 bg-white shadow-2xl shadow-blue-950/20 dark:border-blue-900/60 dark:bg-neutral-950 dark:shadow-black/45"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-gray-200/90 px-5 py-4 dark:border-neutral-800">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <h4 className="text-xl font-semibold text-gray-950 select-text dark:text-gray-50">
+                    {selectionLookup.result?.headword ?? selectionLookup.term}
+                  </h4>
+                  {selectionLookup.result?.pronunciation && (
+                    <span className="font-mono text-sm text-gray-500 select-text dark:text-gray-400">
+                      {formatPronunciation(selectionLookup.result.pronunciation)}
+                    </span>
+                  )}
+                  {selectionLookup.result?.partOfSpeech.map((item) => (
+                    <span
+                      key={`selection-pos-${item}`}
+                      className="inline-flex items-center rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-700 dark:bg-blue-950/45 dark:text-blue-300"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                  {selectionLookup.loading ? t.dictionary_selection_lookup_loading : t.dictionary_selection_lookup}
+                </p>
+              </div>
+              <button
+                type="button"
+                title={t.dictionary_translation_close}
+                aria-label={t.dictionary_translation_close}
+                onClick={closeSelectionLookup}
+                className="toolbar-icon-button h-8 w-8 flex-shrink-0"
+              >
+                <XIcon className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="max-h-[calc(82vh-84px)] space-y-4 overflow-auto px-5 py-4 text-sm leading-6 text-gray-700 dark:text-gray-300">
+              {selectionLookup.loading && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                    <SpinnerIcon className="h-4 w-4 animate-spin text-blue-500 dark:text-blue-300" />
+                    <span>{t.dictionary_selection_lookup_loading}</span>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-2.5 w-11/12 animate-pulse rounded-full bg-gray-200/80 dark:bg-neutral-800" />
+                    <div className="h-2.5 w-3/4 animate-pulse rounded-full bg-gray-200/80 dark:bg-neutral-800" />
+                    <div className="h-2.5 w-5/6 animate-pulse rounded-full bg-gray-200/80 dark:bg-neutral-800" />
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <div className="h-8 w-20 animate-pulse rounded-md bg-blue-50 dark:bg-blue-950/35" />
+                    <div className="h-8 w-24 animate-pulse rounded-md bg-blue-50 dark:bg-blue-950/35" />
+                    <div className="h-8 w-16 animate-pulse rounded-md bg-blue-50 dark:bg-blue-950/35" />
+                  </div>
+                </div>
+              )}
+
+              {selectionLookup.error && (
+                <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-300">
+                  {selectionLookup.error}
+                </p>
+              )}
+
+              {selectionLookup.result && (
+                <>
+                  <section>
+                    <h5 className="section-label mb-1.5">{t.dictionary_meaning}</h5>
+                    <p className="border-l-2 border-blue-500 pl-3 text-[15px] leading-7 text-gray-800 select-text dark:border-blue-400 dark:text-gray-100">
+                      {selectionLookup.result.meaning}
+                    </p>
+                  </section>
+
+                  {selectionLookup.result.translations.length > 0 && (
+                    <section>
+                      <h5 className="section-label mb-2">{t.dictionary_translations}</h5>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectionLookup.result.translations.map((item) => (
+                          <span
+                            key={`selection-translation-${item.text}-${item.pronunciation}`}
+                            className="inline-flex flex-col rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-left shadow-sm shadow-gray-900/5 select-text dark:border-neutral-800 dark:bg-neutral-900"
+                          >
+                            <span className="text-sm font-medium text-gray-800 dark:text-gray-100">{item.text}</span>
+                            <span className="mt-0.5 font-mono text-[11px] leading-none text-gray-400 dark:text-gray-500">
+                              {formatPronunciation(item.pronunciation)}
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
+                  {selectionLookup.result.examples.length > 0 && (
+                    <section>
+                      <h5 className="section-label mb-2">{t.dictionary_examples}</h5>
+                      <ol className="space-y-1.5">
+                        {selectionLookup.result.examples.map((item, idx) => (
+                          <li key={`selection-example-${item}`} className="flex items-start gap-2.5 select-text">
+                            <span
+                              aria-hidden
+                              className="mt-1 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-[10px] font-semibold tabular-nums text-blue-600 dark:bg-blue-950/40 dark:text-blue-300"
+                            >
+                              {idx + 1}
+                            </span>
+                            <span className="min-w-0 flex-1">{item}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </section>
+                  )}
+
+                  {selectionLookup.result.notes.length > 0 && (
+                    <section>
+                      <h5 className="section-label mb-2">{t.dictionary_notes}</h5>
+                      <ul className="space-y-1.5">
+                        {selectionLookup.result.notes.map((item) => (
+                          <li key={`selection-note-${item}`} className="flex items-start gap-2.5 select-text">
+                            <span
+                              aria-hidden
+                              className="mt-2 inline-block h-1 w-1 flex-shrink-0 rounded-full bg-amber-500 dark:bg-amber-400"
+                            />
+                            <span className="min-w-0 flex-1">{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}

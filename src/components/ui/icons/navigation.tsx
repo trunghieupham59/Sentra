@@ -22,6 +22,15 @@ export function ChevronRightIcon({ className = 'w-3 h-3' }: IconProps) {
   )
 }
 
+/** Chevron-left icon — used on collapse / back-style controls. */
+export function ChevronLeftIcon({ className = 'w-3 h-3' }: IconProps) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+    </svg>
+  )
+}
+
 /** Settings gear icon — used on settings/configuration buttons. */
 export function GearIcon({ className = 'w-3.5 h-3.5' }: IconProps) {
   return (

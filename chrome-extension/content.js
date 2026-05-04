@@ -381,7 +381,7 @@
     // Right panel: translation result
     tooltip.querySelector('.tre-tooltip-text').textContent = text.replace(/\n{2,}/g, '\n')
 
-    tooltip.style.display = 'block'
+    tooltip.style.display = 'flex'
     copyBtn.textContent = COPY_LABEL
     ttsPlayer.stop()
     // Force reflow so offsetWidth is available

@@ -119,6 +119,15 @@ export function PremiumModeIcon({ className = 'w-5 h-5' }: IconProps) {
   )
 }
 
+/** Star icon — used for favorites. */
+export function StarIcon({ className = 'w-4 h-4' }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3.75l2.55 5.17 5.7.83-4.13 4.02.98 5.68L12 16.77l-5.1 2.68.98-5.68-4.13-4.02 5.7-.83L12 3.75z" />
+    </svg>
+  )
+}
+
 /** Check-circle / success icon — used on update-downloaded and success states. */
 export function CheckCircleIcon({ className = 'w-4 h-4' }: IconProps) {
   return (

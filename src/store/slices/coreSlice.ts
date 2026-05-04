@@ -11,7 +11,7 @@
 import type { StateCreator } from 'zustand'
 import { DEFAULT_SETTINGS } from '../../constants/providers'
 import { TRANSLATIONS, type Translations } from '../../i18n'
-import type { Provider } from '../../types'
+import type { AppPage, Provider } from '../../types'
 
 export interface CoreSlice {
   // Translation state
@@ -28,7 +28,7 @@ export interface CoreSlice {
   selectedModels: Record<Provider, string>
 
   // Active page
-  activePage: 'translate' | 'history' | 'chat' | 'live'
+  activePage: AppPage
 
   // Settings modal
   settingsOpen: boolean
@@ -50,7 +50,7 @@ export interface CoreSlice {
   setTranslateError: (err: string | null) => void
   setSelectedProvider: (provider: Provider) => void
   setSelectedModel: (provider: Provider, model: string) => void
-  setActivePage: (page: CoreSlice['activePage']) => void
+  setActivePage: (page: AppPage) => void
   openSettings: () => void
   closeSettings: () => void
   clearTranslation: () => void

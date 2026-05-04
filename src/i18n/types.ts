@@ -7,6 +7,11 @@ export interface Translations {
   nav_settings: string
   nav_new_chat: string
   nav_chat: string
+  nav_dictionary: string
+  /** Tooltip / aria-label on the sidebar collapse button */
+  nav_collapse_sidebar: string
+  /** Tooltip / aria-label on the sidebar expand button */
+  nav_expand_sidebar: string
 
   // Translate page
   translate_placeholder: string
@@ -79,6 +84,52 @@ export interface Translations {
   markdown_chart_line: string
   markdown_chart_pie: string
   markdown_chart_total: string
+
+  // Dictionary page
+  dictionary_title: string
+  dictionary_subtitle: string
+  dictionary_term_label: string
+  dictionary_term_placeholder: string
+  dictionary_context_label: string
+  dictionary_context_placeholder: string
+  dictionary_source_lang: string
+  dictionary_target_lang: string
+  dictionary_lookup: string
+  dictionary_lookup_loading: string
+  dictionary_empty_title: string
+  dictionary_empty_desc: string
+  dictionary_result_title: string
+  dictionary_pronunciation: string
+  dictionary_part_of_speech: string
+  dictionary_meaning: string
+  dictionary_translations: string
+  dictionary_translation_detail: string
+  dictionary_translation_usage: string
+  dictionary_translation_nuance: string
+  dictionary_translation_example: string
+  dictionary_translation_collocations: string
+  dictionary_translation_close: string
+  dictionary_selection_lookup: string
+  dictionary_selection_lookup_loading: string
+  dictionary_examples: string
+  dictionary_notes: string
+  dictionary_favorite: string
+  dictionary_unfavorite: string
+  dictionary_recent: string
+  dictionary_favorites: string
+  dictionary_no_recent: string
+  dictionary_no_favorites: string
+  dictionary_delete: string
+  dictionary_clear_history: string
+  dictionary_reuse_translate: string
+  dictionary_copy: string
+  dictionary_copied: string
+  dictionary_error_retry: string
+  dictionary_error_required: string
+  dictionary_error_too_long: string
+  dictionary_error_context_too_long: string
+  dictionary_error_failed: string
+  dictionary_error_invalid_response: string
 
   // Language selector
   lang_auto: string

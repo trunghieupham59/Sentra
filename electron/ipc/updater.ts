@@ -1,7 +1,7 @@
+import { spawn } from 'node:child_process'
 import { createWriteStream } from 'node:fs'
 import { chmod, mkdir, rm, writeFile } from 'node:fs/promises'
 import { get } from 'node:https'
-import { spawn } from 'node:child_process'
 import path from 'node:path'
 import type { BrowserWindow, IpcMain } from 'electron'
 import { app, net, shell } from 'electron'

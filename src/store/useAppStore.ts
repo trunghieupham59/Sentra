@@ -7,17 +7,19 @@
  *   - settingsSlice  — locale, UI preferences, provider key status, dynamic models
  *   - historySlice   — translation history + live sessions
  *   - chatSlice      — chat sessions + system prompt presets
+ *   - dictionarySlice — dictionary lookup history + favorites
  */
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { TRANSLATIONS, type Translations } from '../i18n'
 import { type ChatSlice, createChatSlice } from './slices/chatSlice'
 import { type CoreSlice, createCoreSlice } from './slices/coreSlice'
+import { createDictionarySlice, type DictionarySlice } from './slices/dictionarySlice'
 import { createHistorySlice, type HistorySlice } from './slices/historySlice'
 import { createSettingsSlice, type SettingsSlice } from './slices/settingsSlice'
 
 /** Full app state = core + all feature slices */
-type AppState = CoreSlice & SettingsSlice & HistorySlice & ChatSlice
+type AppState = CoreSlice & SettingsSlice & HistorySlice & ChatSlice & DictionarySlice
 
 /** Zustand persist storage key — change this value to force-reset all persisted state */
 const STORE_PERSIST_KEY = 'translate-app-settings'
@@ -83,6 +85,7 @@ export const useAppStore = create<AppState>()(
       ...createSettingsSlice(set, get, store),
       ...createHistorySlice(set, get, store),
       ...createChatSlice(set, get, store),
+      ...createDictionarySlice(set, get, store),
     }),
     {
       name: STORE_PERSIST_KEY,
@@ -102,6 +105,7 @@ export const useAppStore = create<AppState>()(
         sttProvider: state.sttProvider,
         chatSendShortcut: state.chatSendShortcut,
         chatNewSessionShortcut: state.chatNewSessionShortcut,
+        sidebarCollapsed: state.sidebarCollapsed,
         locale: state.locale,
         localeAuto: state.localeAuto,
         history: state.history,
@@ -110,6 +114,7 @@ export const useAppStore = create<AppState>()(
         chatSystemPrompt: state.chatSystemPrompt,
         systemPromptPresets: state.systemPromptPresets,
         langUsage: state.langUsage,
+        dictionaryEntries: state.dictionaryEntries,
       }),
     }
   )

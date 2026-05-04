@@ -1,0 +1,249 @@
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { dictionaryService } from '../../services/dictionaryService'
+import { useAppStore } from '../../store/useAppStore'
+import { DictionaryPage } from '../DictionaryPage'
+
+vi.mock('../../services/dictionaryService', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../services/dictionaryService')>()
+  return {
+    ...actual,
+    dictionaryService: {
+      lookup: vi.fn(),
+    },
+  }
+})
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  Object.assign(navigator, {
+    clipboard: {
+      writeText: vi.fn().mockResolvedValue(undefined),
+    },
+  })
+  act(() => {
+    useAppStore.setState({
+      dictionaryEntries: [],
+      activePage: 'dictionary',
+      sourceLang: 'auto',
+      targetLang: 'vi',
+      selectedProvider: 'local',
+      selectedModels: { local: 'local-auto', gemini: 'gemini-2.5-flash', claude: 'claude-sonnet-4-20250514', openai: 'gpt-5-mini' },
+      keyStatus: { local: true, gemini: false, claude: false, openai: false },
+    })
+  })
+})
+
+describe('DictionaryPage', () => {
+  it('renders the dictionary empty state', () => {
+    render(<DictionaryPage />)
+
+    expect(screen.getByRole('heading', { name: /Dictionary|Từ điển|辞書/i })).toBeInTheDocument()
+    expect(screen.getByText(/No entry selected|Chưa chọn mục nào|選択されていません/i)).toBeInTheDocument()
+  })
+
+  it('runs lookup and saves a result entry', async () => {
+    vi.mocked(dictionaryService.lookup).mockResolvedValueOnce({
+      success: true,
+      result: {
+        headword: '工夫',
+        pronunciation: 'くふう',
+        partOfSpeech: ['noun'],
+        meaning: 'Cải tiến cách làm.',
+        translations: [{
+          text: 'cải tiến',
+          pronunciation: 'cải tiến',
+          partOfSpeech: 'noun',
+          meaning: 'Cách làm tốt hơn.',
+          usage: 'Dùng khi nói về việc cải thiện cách làm hoặc giải pháp thực tế.',
+          nuance: 'Nhấn mạnh cải thiện thực tế trong công việc.',
+          examples: ['工夫する -> cải tiến cách làm'],
+          collocations: ['cải tiến quy trình'],
+          notes: ['Trang trọng vừa phải.'],
+        }],
+        examples: ['工夫する -> cải tiến'],
+        notes: ['Dùng trong công việc.'],
+      },
+    })
+
+    render(<DictionaryPage />)
+    fireEvent.change(screen.getByPlaceholderText(/Enter a word|Nhập từ|単語/i), { target: { value: '工夫' } })
+    fireEvent.click(screen.getByRole('button', { name: /Look up|Tra cứu|検索/i }))
+
+    await waitFor(() => expect(dictionaryService.lookup).toHaveBeenCalledWith(expect.objectContaining({
+      term: '工夫',
+      provider: 'local',
+      model: 'local-auto',
+    })))
+    await waitFor(() => expect(screen.getAllByText('Cải tiến cách làm.').length).toBeGreaterThan(0))
+    expect(useAppStore.getState().dictionaryEntries).toHaveLength(1)
+  })
+
+  it('opens a translation detail pop-up from a translation chip', async () => {
+    vi.mocked(dictionaryService.lookup).mockResolvedValueOnce({
+      success: true,
+      result: {
+        headword: '工夫',
+        pronunciation: 'くふう',
+        partOfSpeech: ['noun'],
+        meaning: 'Cải tiến cách làm.',
+        translations: [{
+          text: 'cải tiến',
+          pronunciation: 'cải tiến',
+          partOfSpeech: 'noun',
+          meaning: 'Cách làm tốt hơn.',
+          usage: 'Dùng khi nói về việc cải thiện cách làm hoặc giải pháp thực tế.',
+          nuance: 'Nhấn mạnh cải thiện thực tế trong công việc.',
+          examples: ['工夫する -> cải tiến cách làm'],
+          collocations: ['cải tiến quy trình'],
+          notes: ['Trang trọng vừa phải.'],
+        }],
+        examples: ['工夫する -> cải tiến'],
+        notes: ['Dùng trong công việc.'],
+      },
+    })
+
+    render(<DictionaryPage />)
+    fireEvent.change(screen.getByPlaceholderText(/Enter a word|Nhập từ|単語/i), { target: { value: '工夫' } })
+    fireEvent.click(screen.getByRole('button', { name: /Look up|Tra cứu|検索/i }))
+
+    await waitFor(() => expect(screen.getAllByText('Cải tiến cách làm.').length).toBeGreaterThan(0))
+    fireEvent.click(screen.getByRole('button', { name: /Translation detail.*cải tiến|Chi tiết bản dịch.*cải tiến|訳語の詳細.*cải tiến/i }))
+
+    const dialog = screen.getByRole('dialog', { name: /Translation detail|Chi tiết bản dịch|訳語の詳細/i })
+    expect(dialog).toBeInTheDocument()
+    expect(screen.getByText('Dùng khi nói về việc cải thiện cách làm hoặc giải pháp thực tế.')).toBeInTheDocument()
+    expect(screen.getByText('Nhấn mạnh cải thiện thực tế trong công việc.')).toBeInTheDocument()
+    expect(screen.getByText('cải tiến quy trình')).toBeInTheDocument()
+
+    fireEvent.click(dialog)
+    expect(screen.getByRole('dialog', { name: /Translation detail|Chi tiết bản dịch|訳語の詳細/i })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('dictionary-translation-backdrop'))
+    expect(screen.queryByRole('dialog', { name: /Translation detail|Chi tiết bản dịch|訳語の詳細/i })).not.toBeInTheDocument()
+  })
+
+  it('shows a lookup action for selected result text and opens a detail pop-up', async () => {
+    vi.mocked(dictionaryService.lookup)
+      .mockResolvedValueOnce({
+        success: true,
+        result: {
+          headword: '工夫',
+          pronunciation: 'くふう',
+          partOfSpeech: ['noun'],
+          meaning: 'Cải tiến cách làm.',
+          translations: [{
+            text: 'cải tiến',
+            pronunciation: 'cải tiến',
+            partOfSpeech: 'noun',
+            meaning: 'Cách làm tốt hơn.',
+            usage: 'Dùng khi nói về việc cải thiện cách làm hoặc giải pháp thực tế.',
+            nuance: 'Nhấn mạnh cải thiện thực tế trong công việc.',
+            examples: ['工夫する -> cải tiến cách làm'],
+            collocations: ['cải tiến quy trình'],
+            notes: ['Trang trọng vừa phải.'],
+          }],
+          examples: ['工夫する -> cải tiến'],
+          notes: ['Dùng trong công việc.'],
+        },
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        result: {
+          headword: 'Cải tiến',
+          pronunciation: 'cải tiến',
+          partOfSpeech: ['verb'],
+          meaning: 'Làm cho cách làm hoặc sản phẩm tốt hơn.',
+          translations: [{ text: 'improve', pronunciation: 'ɪmˈpruːv' }],
+          examples: ['cải tiến quy trình -> improve the process'],
+          notes: ['Dùng khi nói về thay đổi theo hướng tốt hơn.'],
+        },
+      })
+
+    render(<DictionaryPage />)
+    fireEvent.change(screen.getByPlaceholderText(/Enter a word|Nhập từ|単語/i), { target: { value: '工夫' } })
+    fireEvent.click(screen.getByRole('button', { name: /Look up|Tra cứu|検索/i }))
+
+    await waitFor(() => expect(screen.getAllByText('Cải tiến cách làm.').length).toBeGreaterThan(0))
+
+    const meaning = screen.getAllByText('Cải tiến cách làm.')[0]
+    const textNode = meaning.firstChild as Text
+    const range = document.createRange()
+    range.setStart(textNode, 0)
+    range.setEnd(textNode, 8)
+    Object.assign(range, {
+      getBoundingClientRect: () => ({ left: 120, top: 120, width: 44, height: 18 }),
+    })
+    const selection = window.getSelection()
+    selection?.removeAllRanges()
+    selection?.addRange(range)
+    fireEvent.mouseUp(meaning)
+
+    const lookupButton = await screen.findByRole('button', { name: /Look up selection.*Cải tiến|Tra phần đã chọn.*Cải tiến|選択部分を検索.*Cải tiến/i })
+    fireEvent.click(lookupButton)
+
+    await waitFor(() => expect(dictionaryService.lookup).toHaveBeenLastCalledWith(expect.objectContaining({
+      term: 'Cải tiến',
+      sourceLang: 'vi',
+      targetLang: 'vi',
+      provider: 'local',
+      model: 'local-auto',
+    })))
+    expect(await screen.findByRole('dialog', { name: /Look up selection|Tra phần đã chọn|選択部分を検索/i })).toBeInTheDocument()
+    expect(screen.getByText('Làm cho cách làm hoặc sản phẩm tốt hơn.')).toBeInTheDocument()
+  })
+
+  it('favorites an entry and reuses it in AI Translate', async () => {
+    act(() => {
+      useAppStore.getState().addDictionaryEntry({
+        id: 'entry-1',
+        term: '工夫',
+        normalizedTerm: '工夫',
+        sourceLang: 'ja',
+        targetLang: 'vi',
+        provider: 'local',
+        model: 'local-auto',
+        createdAt: Date.now(),
+        favorite: false,
+        result: {
+          headword: '工夫',
+          pronunciation: 'くふう',
+          partOfSpeech: ['noun'],
+          meaning: 'Cải tiến cách làm.',
+          translations: [{
+            text: 'cải tiến',
+            pronunciation: 'cải tiến',
+            partOfSpeech: 'noun',
+            meaning: 'Cách làm tốt hơn.',
+            usage: 'Dùng khi nói về việc cải thiện cách làm hoặc giải pháp thực tế.',
+            nuance: 'Nhấn mạnh cải thiện thực tế trong công việc.',
+            examples: ['工夫する -> cải tiến cách làm'],
+            collocations: ['cải tiến quy trình'],
+            notes: ['Trang trọng vừa phải.'],
+          }],
+          examples: [],
+          notes: [],
+        },
+      })
+    })
+
+    render(<DictionaryPage />)
+    fireEvent.click(screen.getByTitle(/Favorite|Đánh dấu|お気に入り/i))
+    expect(useAppStore.getState().dictionaryEntries[0].favorite).toBe(true)
+
+    fireEvent.click(screen.getByTitle(/Use in AI Translate|Dùng trong AI Dịch|AI翻訳/i))
+    expect(useAppStore.getState()).toMatchObject({
+      activePage: 'translate',
+      sourceText: '工夫',
+      sourceLang: 'ja',
+      targetLang: 'vi',
+    })
+  })
+
+  it('shows a localized validation error for empty terms', () => {
+    render(<DictionaryPage />)
+    fireEvent.click(screen.getByRole('button', { name: /Look up|Tra cứu|検索/i }))
+
+    expect(screen.getByText(/Enter a term|Nhập từ|語句を入力/i)).toBeInTheDocument()
+  })
+})

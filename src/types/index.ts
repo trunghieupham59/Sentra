@@ -34,6 +34,8 @@ export type TtsMode = 'free' | 'auto' | 'premium'
  */
 export type SttProvider = 'auto' | 'whisper' | 'google' | 'groq' | 'webSpeech'
 
+export type AppPage = 'translate' | 'history' | 'chat' | 'live' | 'dictionary'
+
 /**
  * Which STT backend actually produced a transcription result.
  * Groq is only used internally as a 3rd fallback in 'auto' mode — not user-selectable.
@@ -357,6 +359,61 @@ export interface QuickChatSeedPayload {
   response?: string
   provider: string
   model: string
+}
+
+// ─── Dictionary types ────────────────────────────────────────────────────────
+
+export interface DictionaryLookupParams {
+  term: string
+  context?: string
+  sourceLang: string
+  targetLang: string
+  provider: Provider
+  model: string
+}
+
+export interface DictionaryResult {
+  headword: string
+  pronunciation: string
+  partOfSpeech: string[]
+  meaning: string
+  translations: DictionaryTranslation[]
+  examples: string[]
+  notes: string[]
+}
+
+export interface DictionaryTranslation {
+  text: string
+  pronunciation: string
+  partOfSpeech?: string
+  meaning?: string
+  usage?: string
+  nuance?: string
+  example?: string
+  examples?: string[]
+  collocations?: string[]
+  notes?: string[]
+}
+
+export interface DictionaryEntry {
+  id: string
+  term: string
+  normalizedTerm: string
+  context?: string
+  sourceLang: string
+  targetLang: string
+  provider: Provider
+  model: string
+  createdAt: number
+  favorite: boolean
+  result: DictionaryResult
+}
+
+export interface DictionaryLookupResult {
+  success: boolean
+  result?: DictionaryResult
+  error?: string
+  errorCode?: 'INVALID_INPUT' | 'INVALID_RESPONSE' | 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'NETWORK' | string
 }
 
 // ─── Live Session History ─────────────────────────────────────────────────────

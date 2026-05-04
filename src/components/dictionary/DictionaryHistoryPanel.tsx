@@ -1,0 +1,260 @@
+import { useState } from 'react'
+import type { Translations } from '../../i18n'
+import type { DictionaryEntry } from '../../types'
+import { BookIcon, SearchIcon, StarIcon, TrashIcon, XIcon } from '../ui/icons'
+
+type DictionaryListTab = 'recent' | 'favorites'
+
+interface DictionaryHistoryPanelProps {
+  entries: DictionaryEntry[]
+  selectedEntryId: string | null
+  activeTab: DictionaryListTab
+  onTabChange: (tab: DictionaryListTab) => void
+  onSelect: (id: string) => void
+  onToggleFavorite: (id: string) => void
+  onDeleteSelected: () => void
+  onClearHistory: () => void
+  t: Translations
+}
+
+/**
+ * Format a timestamp as a relative time string in Vietnamese-friendly
+ * shorthand (e.g. "vừa xong", "5p", "2g", "3n").  Stays locale-neutral by
+ * using single-character suffixes.
+ */
+function formatRelativeTime(ts: number): string {
+  const diff = Date.now() - ts
+  const sec = Math.floor(diff / 1000)
+  if (sec < 30) return '·'
+  if (sec < 60) return `${sec}s`
+  const min = Math.floor(sec / 60)
+  if (min < 60) return `${min}m`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `${hr}h`
+  const day = Math.floor(hr / 24)
+  if (day < 7) return `${day}d`
+  const wk = Math.floor(day / 7)
+  if (wk < 4) return `${wk}w`
+  const mo = Math.floor(day / 30)
+  return `${mo}mo`
+}
+
+export function DictionaryHistoryPanel({
+  entries,
+  selectedEntryId,
+  activeTab,
+  onTabChange,
+  onSelect,
+  onToggleFavorite,
+  onDeleteSelected,
+  onClearHistory,
+  t,
+}: DictionaryHistoryPanelProps) {
+  const [filter, setFilter] = useState('')
+
+  const recentCount = entries.length
+  const favoriteCount = entries.filter((entry) => entry.favorite).length
+
+  const baseEntries = activeTab === 'favorites'
+    ? entries.filter((entry) => entry.favorite)
+    : entries
+
+  const lowerFilter = filter.trim().toLowerCase()
+  const visibleEntries = lowerFilter
+    ? baseEntries.filter((entry) =>
+        entry.result.headword.toLowerCase().includes(lowerFilter) ||
+        entry.result.meaning.toLowerCase().includes(lowerFilter) ||
+        entry.term.toLowerCase().includes(lowerFilter),
+      )
+    : baseEntries
+
+  const selectedEntry = entries.find((entry) => entry.id === selectedEntryId) ?? null
+
+  const tabs: Array<{ id: DictionaryListTab; label: string; count: number }> = [
+    { id: 'recent', label: t.dictionary_recent, count: recentCount },
+    { id: 'favorites', label: t.dictionary_favorites, count: favoriteCount },
+  ]
+
+  return (
+    <div className="surface-panel min-h-0 h-full">
+      {/* ── Tabs + filter (mirrors HistoryPage) ─────────────────────────── */}
+      <div className="flex-shrink-0 space-y-2 border-b border-gray-200/90 p-3 dark:border-neutral-800">
+        <div className="segmented-control">
+          {tabs.map(({ id, label, count }) => {
+            const isActive = activeTab === id
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => onTabChange(id)}
+                className={[
+                  'flex-1 min-w-0 flex items-center justify-center gap-2 h-8 rounded-md px-2',
+                  'text-xs font-semibold transition-all duration-150 cursor-pointer',
+                  isActive
+                    ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-50 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200',
+                ].join(' ')}
+              >
+                <span className="truncate">{label}</span>
+                <span
+                  className={[
+                    'min-w-[18px] px-1 rounded-full text-[10px] font-semibold leading-tight tabular-nums',
+                    isActive
+                      ? 'bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-300'
+                      : 'bg-gray-200 text-gray-500 dark:bg-gray-800 dark:text-gray-500',
+                  ].join(' ')}
+                >
+                  {count}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Filter input — only shown when there is enough data */}
+        {recentCount > 4 && (
+          <div className="relative">
+            <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-300 dark:text-gray-600" />
+            <input
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder={t.history_search_placeholder}
+              className="h-7 w-full rounded-md border border-gray-200 bg-gray-50/60 pl-7 pr-7 text-xs text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-500/15 dark:border-neutral-800 dark:bg-neutral-950/45 dark:text-gray-200 dark:placeholder:text-gray-600 dark:focus:bg-neutral-900"
+            />
+            {filter && (
+              <button
+                type="button"
+                onClick={() => setFilter('')}
+                title={t.history_search_clear}
+                className="absolute right-1 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-neutral-800 dark:hover:text-gray-200"
+              >
+                <XIcon className="h-2.5 w-2.5" />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── List ────────────────────────────────────────────────────────── */}
+      <div className="flex-1 overflow-auto">
+        {visibleEntries.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center gap-2 px-4 py-10 text-center text-xs text-gray-400 dark:text-gray-500">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-300 dark:bg-neutral-800 dark:text-gray-600">
+              <BookIcon className="h-4 w-4" />
+            </div>
+            <span>
+              {filter
+                ? '—'
+                : activeTab === 'favorites'
+                  ? t.dictionary_no_favorites
+                  : t.dictionary_no_recent}
+            </span>
+          </div>
+        ) : (
+          <ul className="divide-y divide-gray-100 dark:divide-neutral-800/70">
+            {visibleEntries.map((entry) => {
+              const isSelected = selectedEntry?.id === entry.id
+              return (
+                <li key={entry.id}>
+                  <div
+                    className={[
+                      'group relative flex cursor-pointer items-start gap-2.5 px-3 py-2.5 transition-colors',
+                      isSelected
+                        ? 'bg-blue-50 dark:bg-blue-950/35'
+                        : 'hover:bg-gray-50 dark:hover:bg-neutral-950/40',
+                    ].join(' ')}
+                  >
+                    {/* Active indicator bar */}
+                    <span
+                      aria-hidden
+                      className={[
+                        'absolute left-0 top-2 bottom-2 w-0.5 rounded-r',
+                        isSelected ? 'bg-blue-500' : 'bg-transparent',
+                      ].join(' ')}
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => onSelect(entry.id)}
+                      className="min-w-0 flex-1 text-left"
+                    >
+                      <div className="flex items-baseline gap-2">
+                        <span
+                          className={[
+                            'truncate text-sm font-semibold',
+                            isSelected
+                              ? 'text-blue-950 dark:text-blue-100'
+                              : 'text-gray-900 dark:text-gray-100',
+                          ].join(' ')}
+                        >
+                          {entry.result.headword}
+                        </span>
+                        {entry.result.pronunciation && (
+                          <span className="truncate font-mono text-[11px] text-gray-400 dark:text-gray-500">
+                            /{entry.result.pronunciation.replace(/^\/|\/$/g, '')}/
+                          </span>
+                        )}
+                        <span className="ml-auto flex-shrink-0 text-[10px] tabular-nums text-gray-400 dark:text-gray-600">
+                          {formatRelativeTime(entry.createdAt)}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                        {entry.result.meaning}
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onToggleFavorite(entry.id)
+                      }}
+                      aria-label={entry.favorite ? t.dictionary_unfavorite : t.dictionary_favorite}
+                      className={[
+                        'flex h-6 w-6 flex-shrink-0 items-center justify-center rounded transition-all',
+                        entry.favorite
+                          ? 'text-amber-500 dark:text-amber-300 opacity-100'
+                          : 'text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 hover:text-amber-500 dark:hover:text-amber-300',
+                      ].join(' ')}
+                    >
+                      <StarIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
+
+      {/* ── Footer ──────────────────────────────────────────────────────── */}
+      {entries.length > 0 && (
+        <div className="surface-footer">
+          <button
+            type="button"
+            onClick={onClearHistory}
+            disabled={!entries.some((entry) => !entry.favorite)}
+            className="btn-ghost px-2 text-xs"
+            title={t.dictionary_clear_history}
+          >
+            <TrashIcon className="h-3.5 w-3.5" />
+            <span>{t.dictionary_clear_history}</span>
+          </button>
+          {selectedEntry && (
+            <button
+              type="button"
+              onClick={onDeleteSelected}
+              className="btn-ghost px-2 text-xs text-red-500 hover:text-red-600 dark:text-red-400"
+              title={t.dictionary_delete}
+            >
+              <TrashIcon className="h-3.5 w-3.5" />
+              <span>{t.dictionary_delete}</span>
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export type { DictionaryListTab }

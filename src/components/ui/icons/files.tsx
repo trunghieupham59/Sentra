@@ -1,5 +1,5 @@
 /**
- * File & document icons — document, clipboard / copy-message.
+ * File & document icons — document, clipboard / copy-message, book.
  */
 import type { IconProps } from './types'
 
@@ -19,6 +19,17 @@ export function ClipboardIcon({ className = 'w-3.5 h-3.5' }: IconProps) {
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round"
         d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+    </svg>
+  )
+}
+
+/** Book icon — used for dictionary/glossary navigation. */
+export function BookIcon({ className = 'w-4 h-4' }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4.5A2.5 2.5 0 016.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 6h8M8 10h6" />
     </svg>
   )
 }

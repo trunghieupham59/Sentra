@@ -274,21 +274,28 @@ button {
 .popup-page {
   width: 520px;
   min-width: 520px;
-  min-height: 260px;
+  max-height: 600px;
   overflow: hidden;
   background: var(--vzn-bg);
   font-size: 13px;
 }
 
 .popup-shell {
+  display: flex;
+  height: min(600px, 100vh);
+  min-height: 420px;
+  max-height: 600px;
   width: 520px;
+  flex-direction: column;
   background: var(--vzn-surface);
+  overflow: hidden;
 }
 
 .popup-header {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: 0 0 auto;
   padding: 10px 12px;
   background: var(--vzn-surface);
   border-bottom: 1px solid var(--vzn-line);
@@ -331,6 +338,7 @@ button {
   grid-template-columns: minmax(0, 1fr) 124px 116px;
   align-items: center;
   gap: 8px;
+  flex: 0 0 auto;
   padding: 9px 12px;
   background: var(--vzn-surface-muted);
   border-bottom: 1px solid var(--vzn-line);
@@ -389,8 +397,9 @@ button {
 .popup-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
-  min-height: 190px;
-  max-height: 280px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
   background: var(--vzn-surface);
 }
 
@@ -438,6 +447,7 @@ button {
 }
 
 .source-textarea {
+  overflow-y: auto;
   resize: none;
 }
 
@@ -459,6 +469,9 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
   padding: 10px 12px;
   border-top: 1px solid var(--vzn-line);
   background: var(--vzn-surface-muted);
@@ -476,6 +489,7 @@ button {
 }
 
 .popup-page .statusbar {
+  flex: 0 0 auto;
   margin: 0;
   padding: 8px 14px;
   border-width: 1px 0 0;
