@@ -19,6 +19,7 @@ import type {
   DictionaryTranslation,
 } from '../types'
 import { createClientId } from '../utils/id'
+import { combineUsageCosts, estimateUsageCost } from '../utils/usageCost'
 
 function createDictionaryEntryId(): string {
   return createClientId('dict')
@@ -89,6 +90,7 @@ export function DictionaryPage() {
     setTranslatedText,
     setPhoneticText,
     setActivePage,
+    recordUsageCost,
   } = useAppStore()
 
   const [term, setTerm] = useState('')
@@ -234,6 +236,15 @@ export function DictionaryPage() {
         cleanTerm,
         cleanContext,
       })
+      const previewCost = cachedEntry?.cost ?? estimateUsageCost({
+        feature: 'dictionary',
+        provider: selectedProvider,
+        model,
+        inputText: `${cleanTerm}\n${cleanContext}`,
+        outputText: formatDictionaryEntry(previewEntry),
+      })
+      if (!cachedEntry) recordUsageCost(previewCost)
+      previewEntry.cost = previewCost
 
       addDictionaryEntry(previewEntry)
       setSelectedEntryId(previewEntry.id)
@@ -242,15 +253,25 @@ export function DictionaryPage() {
 
       const detailed = await dictionaryService.lookupDetails(lookupParams, preview.result)
       if (requestId !== lookupRequestRef.current || !detailed.success || !detailed.result) return
-
-      addDictionaryEntry(createLookupEntry({
+      const detailedEntry = createLookupEntry({
         id: entryId,
         favorite,
         result: detailed.result,
         normalizedTerm,
         cleanTerm,
         cleanContext,
-      }))
+      })
+      const detailedCost = estimateUsageCost({
+        feature: 'dictionary',
+        provider: selectedProvider,
+        model,
+        inputText: `${cleanTerm}\n${cleanContext}\n${formatDictionaryEntry(previewEntry)}`,
+        outputText: formatDictionaryEntry(detailedEntry),
+      })
+      recordUsageCost(detailedCost)
+      detailedEntry.cost = combineUsageCosts([previewCost, detailedCost], 'dictionary')
+
+      addDictionaryEntry(detailedEntry)
     } finally {
       if (requestId === lookupRequestRef.current) {
         setIsLoading(false)

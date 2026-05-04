@@ -54,10 +54,31 @@ interface ChatStreamCallbacks {
   onToken?: (token: string) => void
   onEnd?: (reply: string) => void
   onError?: (error: string, errorCode?: string) => void
+  /**
+   * AbortSignal for user-initiated cancellation. When the signal aborts mid
+   * stream, chatService forwards a cancel IPC to the main process so the
+   * provider request is closed and no further tokens are streamed.
+   */
+  signal?: AbortSignal
 }
 
 function createChatStreamRequestId() {
   return createClientId('chat-stream')
+}
+
+/**
+ * Sentinel error codes recognised across the chat pipeline. Renderers can use
+ * these to suppress visible error UI on user-initiated cancellation.
+ */
+export const CHAT_STREAM_CANCELLED_ERROR_CODE = 'CANCELLED'
+
+/** Cancel an in-flight chat stream by `requestId`. Safe to call multiple times. */
+export function cancelChatStream(requestId: string): void {
+  try {
+    window.api.chatStreamCancel?.({ requestId })
+  } catch {
+    /* ignore — backend will GC orphaned streams when finished */
+  }
 }
 
 export const chatService = {
@@ -97,9 +118,21 @@ export const chatService = {
       if (event.type === 'error' && event.error) callbacks.onError?.(event.error, event.errorCode)
     })
 
+    // When the caller aborts mid stream, fire-and-forget the cancel IPC so the
+    // backend AbortController halts the underlying provider request.
+    const onAbort = () => cancelChatStream(requestId)
+    if (callbacks.signal) {
+      if (callbacks.signal.aborted) {
+        cancelChatStream(requestId)
+      } else {
+        callbacks.signal.addEventListener('abort', onAbort, { once: true })
+      }
+    }
+
     try {
       return await window.api.chatStream({ ...params, requestId })
     } finally {
+      callbacks.signal?.removeEventListener('abort', onAbort)
       cleanup()
     }
   },

@@ -147,6 +147,40 @@ export interface Translations {
   settings_security_windows: string
   settings_api_keys: string
   settings_configured: string
+  settings_cost_currency: string
+  settings_cost_total: string
+  // Cost tracking — overview / dashboard
+  settings_cost_section_title: string
+  settings_cost_section_desc: string
+  settings_cost_overview_total: string
+  settings_cost_overview_total_desc: string
+  settings_cost_overview_requests: string
+  settings_cost_overview_tokens: string
+  settings_cost_overview_avg: string
+  settings_cost_overview_no_data: string
+  settings_cost_overview_no_data_desc: string
+  settings_cost_overview_estimated: string
+  settings_cost_reset_all: string
+  settings_cost_reset_all_confirm: string
+  settings_cost_reset_provider: string
+  settings_cost_reset_provider_confirm: string
+  settings_cost_feature_chat: string
+  settings_cost_feature_translate: string
+  settings_cost_feature_live: string
+  settings_cost_feature_dictionary: string
+  settings_cost_input_tokens: string
+  settings_cost_output_tokens: string
+  settings_cost_total_tokens: string
+  settings_cost_avg_per_request: string
+  settings_cost_last_used: string
+  settings_cost_last_used_just_now: string
+  settings_cost_last_used_minutes: string
+  settings_cost_last_used_hours: string
+  settings_cost_last_used_days: string
+  settings_cost_per_provider: string
+  settings_cost_breakdown_by_feature: string
+  settings_cost_no_activity: string
+  settings_cost_first_request_hint: string
   settings_local_ai_title: string
   settings_local_ai_running: string
   settings_local_ai_not_running: string
@@ -457,6 +491,8 @@ export interface Translations {
   // Chat page
   chat_placeholder: string
   chat_send: string
+  /** Tooltip / aria label on the in-progress Stop button shown while AI is generating. */
+  chat_stop: string
   chat_clear: string
   chat_new_session: string
   chat_thinking: string

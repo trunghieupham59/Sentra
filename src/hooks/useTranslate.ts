@@ -23,6 +23,7 @@ import type { ImageTextRegion, PhoneticMode } from '../types'
 import { renderTranslatedRegions } from '../utils/canvas'
 import { createClientId } from '../utils/id'
 import { extractImageFromClipboard, resizeImageFile } from '../utils/imageUtils'
+import { estimateUsageCost } from '../utils/usageCost'
 import { useTTS } from './useTTS'
 import { useVoiceInput } from './useVoiceInput'
 
@@ -96,6 +97,7 @@ export function useTranslate() {
     ttsMode, ttsVoice,
     setSourceText, setTranslatedText, setPhoneticText, setTargetLang,
     setIsTranslating, setTranslateError, setActivePage, setPhoneticMode, setTranslationStyle, setAutoTranslate, addHistory, upsertHistory,
+    recordUsageCost,
     swapLanguages,
   } = useAppStore()
   const t = useT()
@@ -277,6 +279,14 @@ export function useTranslate() {
     const timestamp = Date.now()
     const model = selectedModels[selectedProvider]
     const contextKey = buildHistoryContextKey(selectedProvider, model, sourceLang, targetLang, translationStyle)
+    const cost = estimateUsageCost({
+      feature: 'translate',
+      provider: selectedProvider,
+      model,
+      inputText: sourceText,
+      outputText: plainText,
+    })
+    recordUsageCost(cost)
     const baseItem = {
       timestamp,
       provider: selectedProvider,
@@ -286,6 +296,7 @@ export function useTranslate() {
       translationStyle,
       sourceText,
       translatedText: plainText,
+      cost,
     }
 
     if (trigger === 'auto') {
@@ -301,7 +312,7 @@ export function useTranslate() {
 
     addHistory({ ...baseItem, id: createHistoryId(timestamp) })
     autoHistoryDraftRef.current = null
-  }, [addHistory, upsertHistory, selectedProvider, selectedModels, sourceLang, targetLang, translationStyle, sourceText])
+  }, [addHistory, upsertHistory, recordUsageCost, selectedProvider, selectedModels, sourceLang, targetLang, translationStyle, sourceText])
 
   const generatePhoneticText = useCallback((
     text: string,

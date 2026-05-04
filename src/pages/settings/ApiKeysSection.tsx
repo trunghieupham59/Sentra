@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ApiKeyInput } from '../../components/ApiKeyInput'
 import { DeepResearchApiSection } from '../../components/chat/DeepResearchApiSection'
+import { CostOverviewCard } from '../../components/cost/CostOverviewCard'
 import { ProviderIcon } from '../../components/ProviderIcon'
 import { DownloadIcon, RefreshIcon, SpinnerIcon, TrashIcon } from '../../components/ui/icons'
 import { PROVIDERS } from '../../constants/providers'
@@ -408,6 +409,11 @@ export function ApiKeysSection() {
   const keyStatus = useAppStore((state) => state.keyStatus)
   const setDynamicModels = useAppStore((state) => state.setDynamicModels)
   const setSelectedModel = useAppStore((state) => state.setSelectedModel)
+  const costCurrency = useAppStore((state) => state.costCurrency)
+  const setCostCurrency = useAppStore((state) => state.setCostCurrency)
+  const apiKeyUsageTotals = useAppStore((state) => state.apiKeyUsageTotals)
+  const resetProviderUsageCost = useAppStore((state) => state.resetProviderUsageCost)
+  const resetAllUsageCost = useAppStore((state) => state.resetAllUsageCost)
   const t = useT()
   const cloudProviders = PROVIDERS.filter((provider) => provider.requiresApiKey !== false)
 
@@ -621,6 +627,7 @@ export function ApiKeysSection() {
     }))
     setKeyStatus(providerId as Provider, true)
     setDynamicModels(providerId as Provider, [])
+    resetProviderUsageCost(providerId as Provider)
   }
 
   const handleDeleteKey = async (providerId: string) => {
@@ -632,6 +639,7 @@ export function ApiKeysSection() {
     }))
     setKeyStatus(providerId as Provider, false)
     setDynamicModels(providerId as Provider, [])
+    resetProviderUsageCost(providerId as Provider)
   }
 
   const configuredCount = PROVIDERS.filter((p) =>
@@ -640,6 +648,17 @@ export function ApiKeysSection() {
 
   return (
     <div className="space-y-8">
+      {/* Cost tracking dashboard — surfaces aggregate spend, tokens, and feature breakdown.
+          Replaces the bare currency dropdown that used to live in the API Keys header. */}
+      <section className="space-y-3">
+        <CostOverviewCard
+          totals={apiKeyUsageTotals}
+          currency={costCurrency}
+          onCurrencyChange={setCostCurrency}
+          onResetAll={resetAllUsageCost}
+        />
+      </section>
+
       {/* AI Provider API Keys */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
@@ -681,8 +700,12 @@ export function ApiKeysSection() {
               provider={provider}
               hasKey={keyData[provider.id]?.exists ?? false}
               maskedKey={keyData[provider.id]?.masked ?? null}
+              usageTotal={apiKeyUsageTotals[provider.id]}
+              usageCurrency={costCurrency}
+              usageLabel={t.settings_cost_total}
               onSave={(key) => handleSaveKey(provider.id, key)}
               onDelete={() => handleDeleteKey(provider.id)}
+              onResetUsage={() => resetProviderUsageCost(provider.id as Provider)}
             />
           )
         ))}

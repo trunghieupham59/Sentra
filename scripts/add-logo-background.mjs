@@ -18,8 +18,15 @@
  *                                 Linux fallback icon — squircle still works
  *                                 on Linux desktops, white square would also
  *                                 be fine but squircle is friendlier).
- *   - public/icon.png           : 512×512 solid white square (favicon source).
- *   - public/logo.png           : 512×512 solid white square (in-app logo).
+ *
+ * Note: `public/logo.png` and `public/icon.png` are intentionally NOT touched
+ * by this script. They are rendered *inside* the app (Sidebar, Settings,
+ * empty-state placeholders) where the surrounding background changes with the
+ * app theme — a baked-in white background would create an obvious white box
+ * around the logo on light-gray / dark surfaces. They stay fully transparent.
+ * The favicon (`<link rel="icon" href="/logo.png">`) also benefits from
+ * transparency on dark browser tabs.
+
  *
  * Idempotent: each run starts from the artwork stored in build/source/ if it
  * exists, otherwise it falls back to the current PNG (so re-running won't
@@ -204,14 +211,8 @@ for (const size of icoSizes) {
 magick(...icoLayers, join(ROOT, 'build/icon.ico'))
 console.log('✓ build/icon.ico (multi-size white square)')
 
-// ─── 7. public/icon.png – 512 white square (favicon) ──────────────────────
-const pubIconSrc = ensureSource('public/icon.png')
-composeOnWhiteSquare(pubIconSrc, join(ROOT, 'public/icon.png'), 512)
-console.log('✓ public/icon.png (512 white square)')
+// public/logo.png and public/icon.png are intentionally left transparent —
+// see the file header for the rationale.
 
-// ─── 8. public/logo.png – 512 white square (in-app logo) ──────────────────
-const pubLogoSrc = ensureSource('public/logo.png')
-composeOnWhiteSquare(pubLogoSrc, join(ROOT, 'public/logo.png'), 512)
-console.log('✓ public/logo.png (512 white square)')
-
-console.log('\nAll release logos now have a white background.')
+console.log('\nRelease icons (build/) now have a white background.')
+console.log('In-app logos (public/) were left transparent on purpose.')

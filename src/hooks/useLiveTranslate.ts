@@ -17,9 +17,10 @@ import { getSupportedAudioMimeType } from '../constants/audio'
 import { LANG_NAMES_FOR_AI } from '../constants/langNames'
 import { MIN_AUDIO_BLOB_BYTES } from '../constants/ui'
 import { useAppStore, useT } from '../store/useAppStore'
-import type { Provider, SttBackend, SubtitleSettings } from '../types'
+import type { Provider, SttBackend, SubtitleSettings, UsageCost } from '../types'
 import { createClientId } from '../utils/id'
 import { isHallucination, jaccardSimilarity } from '../utils/live-translate'
+import { combineUsageCosts, estimateUsageCost } from '../utils/usageCost'
 import { float32ToWav } from '../utils/wav-encoder'
 import {
   DEFAULT_SPEAKER_DIARIZATION_POLICY,
@@ -123,6 +124,7 @@ export function useLiveTranslate() {
     addLiveSession, updateLiveSession,
     viewingLiveSessionId, liveSessions, setViewingLiveSession,
     setSelectedProvider, setSelectedModel, setTargetLang,
+    recordUsageCost,
   } = useAppStore()
 
   // 'mic'    = microphone only (getUserMedia)
@@ -200,6 +202,7 @@ export function useLiveTranslate() {
   const fullRawForSummaryRef = useRef('')
   const fullTxForSummaryRef  = useRef('')
   const lastChunkTextRef     = useRef('')
+  const liveCostRef          = useRef<UsageCost | undefined>(undefined)
 
   const streamRef      = useRef<MediaStream | null>(null)
   const recorderRef    = useRef<MediaRecorder | null>(null)
@@ -214,6 +217,11 @@ export function useLiveTranslate() {
    * when a live session is stopped while translation/STT calls are in-flight.
    */
   const mountedRef = useRef(true)
+
+  const addLiveUsageCost = useCallback((cost: UsageCost) => {
+    recordUsageCost(cost)
+    liveCostRef.current = combineUsageCosts([liveCostRef.current, cost], 'live')
+  }, [recordUsageCost])
 
   const audioCtxRef        = useRef<AudioContext | null>(null)
   const analyserRef        = useRef<AnalyserNode | null>(null)
@@ -592,6 +600,13 @@ export function useLiveTranslate() {
           if (!mountedRef.current) return
           if (txResult.success && txResult.translatedText) {
             const newTx = txResult.translatedText.trim()
+            addLiveUsageCost(estimateUsageCost({
+              feature: 'live',
+              provider: selectedProvider,
+              model: selectedModels[selectedProvider],
+              inputText: capturedSourceText,
+              outputText: newTx,
+            }))
             setTranslation(prev => prev ? `${prev} ${newTx}` : newTx)
               setLatestSubtitle(newTx)
             fullTxForSummaryRef.current = fullTxForSummaryRef.current
@@ -609,7 +624,7 @@ export function useLiveTranslate() {
         }
       })(segId, sourceText)
     }
-  }, [t])
+  }, [addLiveUsageCost, t])
 
   // ── Recorder cycling with VAD ─────────────────────────────────────────────────
   const startChunk = useCallback(() => {
@@ -785,6 +800,7 @@ export function useLiveTranslate() {
     fullRawForSummaryRef.current = ''
     fullTxForSummaryRef.current  = ''
     lastChunkTextRef.current     = ''
+    liveCostRef.current          = undefined
 
     setMicError(null)
     setVadMode('energy')
@@ -1040,6 +1056,7 @@ export function useLiveTranslate() {
           rawTranscript: raw,
           translation: fullTxForSummaryRef.current.trim(),
           wordCount: wc,
+          cost: liveCostRef.current,
           segments: segmentsRef.current,
           speakerNameMap: Object.keys(speakerNameMapRef.current).length > 0
             ? speakerNameMapRef.current
@@ -1056,6 +1073,7 @@ export function useLiveTranslate() {
     fullRawForSummaryRef.current = ''
     fullTxForSummaryRef.current  = ''
     lastChunkTextRef.current     = ''
+    liveCostRef.current          = undefined
     setRawTranscript('')
     setTranslation('')
     setSummary(null)
@@ -1107,6 +1125,7 @@ export function useLiveTranslate() {
           rawTranscript: raw,
           translation: fullTxForSummaryRef.current.trim(),
           wordCount: wc,
+          cost: liveCostRef.current,
           segments: segmentsRef.current,
           speakerNameMap: Object.keys(speakerNameMapRef.current).length > 0
             ? speakerNameMapRef.current

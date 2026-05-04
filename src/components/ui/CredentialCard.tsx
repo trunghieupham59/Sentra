@@ -212,6 +212,7 @@ interface CredentialCardProps {
   isError?: boolean
   isDeleting?: boolean
   statusMessage?: { text: string; tone: CredentialMessageTone }
+  meta?: ReactNode
   onOpenDocs: () => void
   onInputChange: (value: string) => void
   onSubmit: () => void
@@ -233,6 +234,7 @@ export function CredentialCard({
   isError = false,
   isDeleting = false,
   statusMessage,
+  meta,
   onOpenDocs,
   onInputChange,
   onSubmit,
@@ -257,6 +259,7 @@ export function CredentialCard({
             >
               {docsLabel}
             </button>
+            {meta && <div className="mt-1">{meta}</div>}
           </div>
         </div>
         <CredentialStatusBadge

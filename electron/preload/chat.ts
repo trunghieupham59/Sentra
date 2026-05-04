@@ -71,6 +71,10 @@ export const chatSection = {
   chatStream: (params: ChatParams & { requestId: string }) =>
     ipcRenderer.invoke('chat:stream', params),
 
+  // Cancel an in-flight chat stream so the user can interrupt long answers.
+  chatStreamCancel: (params: { requestId: string }) =>
+    ipcRenderer.invoke('chat:stream:cancel', params),
+
   onChatStreamEvent: (requestId: string, cb: (event: ChatStreamEvent) => void) => {
     const handler = (_: unknown, event: ChatStreamEvent) => {
       if (event?.requestId === requestId) cb(event)

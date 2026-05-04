@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { useT } from '../../store/useAppStore'
+import { useAppStore, useT } from '../../store/useAppStore'
 import type { ChatMessage, ChatMessageContent } from '../../types'
 import { AppLogoIcon } from '../AppLogo'
 import { MarkdownText } from '../MarkdownText'
 import { CopyIcon, DownloadIcon, RefreshIcon, SparklesIcon, SpinnerIcon, UserIcon, XIcon } from '../ui/icons'
+import { UsageCostBadge } from '../ui/UsageCostBadge'
 
 
 const MESSAGE_ACTION_BUTTON_CLASS = 'flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors duration-150 cursor-pointer dark:text-gray-500'
@@ -153,6 +154,7 @@ export function MessageBubble({
   regenerateLabel,
 }: MessageBubbleProps) {
   const t = useT()
+  const costCurrency = useAppStore((state) => state.costCurrency)
   const isUser = message.role === 'user'
   const textContent = message.content.find((c) => c.type === 'text')?.text ?? ''
   const imageContents = message.content.filter((c) => c.type === 'image')
@@ -367,6 +369,9 @@ export function MessageBubble({
           <span className="text-[10px] text-gray-400 dark:text-gray-600">
             {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
+          {!isUser && message.cost && (
+            <UsageCostBadge cost={message.cost} currency={costCurrency} />
+          )}
 
           {/* Copy button */}
           {textContent && !message.isLoading && (

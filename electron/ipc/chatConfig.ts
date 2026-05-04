@@ -9,6 +9,7 @@ export const CHAT_IPC_CHANNELS = {
   imageEdit: 'chat:image-edit',
   stream: 'chat:stream',
   streamEvent: 'chat:stream:event',
+  streamCancel: 'chat:stream:cancel',
 } as const
 
 export const CHAT_PROVIDER_IDS = {

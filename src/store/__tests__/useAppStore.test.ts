@@ -16,6 +16,8 @@ beforeEach(() => {
       translatedText: '',
       phoneticText: '',
       translateError: null,
+      costCurrency: 'USD',
+      apiKeyUsageTotals: {},
     })
   })
 })
@@ -215,6 +217,52 @@ describe('Chat Sessions', () => {
     })
     const session = useAppStore.getState().chatSessions.find(s => s.id === sessionId)
     expect(session?.messages).toHaveLength(0)
+  })
+})
+
+// ─── Usage Cost ───────────────────────────────────────────────────────────────
+describe('Usage Cost', () => {
+  const usageCost = {
+    id: 'cost-1',
+    feature: 'chat' as const,
+    provider: 'openai' as const,
+    model: 'gpt-5-mini',
+    amountUsd: 0.02,
+    inputTokens: 100,
+    outputTokens: 50,
+    totalTokens: 150,
+    estimated: true,
+    createdAt: 123,
+  }
+
+  it('records API-key usage totals per provider', () => {
+    act(() => {
+      useAppStore.getState().recordUsageCost(usageCost)
+      useAppStore.getState().recordUsageCost({ ...usageCost, id: 'cost-2', amountUsd: 0.03 })
+    })
+
+    expect(useAppStore.getState().apiKeyUsageTotals.openai).toMatchObject({
+      amountUsd: 0.05,
+      inputTokens: 200,
+      outputTokens: 100,
+      totalTokens: 300,
+      requestCount: 2,
+      updatedAt: 123,
+    })
+  })
+
+  it('resets one provider usage total', () => {
+    act(() => {
+      useAppStore.getState().recordUsageCost(usageCost)
+      useAppStore.getState().resetProviderUsageCost('openai')
+    })
+
+    expect(useAppStore.getState().apiKeyUsageTotals.openai).toBeUndefined()
+  })
+
+  it('sets display currency', () => {
+    act(() => useAppStore.getState().setCostCurrency('JPY'))
+    expect(useAppStore.getState().costCurrency).toBe('JPY')
   })
 })
 

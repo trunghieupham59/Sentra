@@ -88,6 +88,11 @@ export interface SmartThinkingParams {
   systemPrompt?: string
   uiText: SmartThinkingUiText
   callbacks: SmartThinkingCallbacks
+  /**
+   * AbortSignal for user-initiated cancellation. When aborted, the final
+   * streaming answer is cancelled and orchestration short-circuits.
+   */
+  signal?: AbortSignal
 }
 
 interface ClassifyResult {
@@ -437,6 +442,7 @@ export const smartThinkingService = {
     systemPrompt,
     uiText,
     callbacks,
+    signal,
   }: SmartThinkingParams): Promise<void> {
     const date = getCurrentLocaleDateTime()
     const {
@@ -461,7 +467,7 @@ export const smartThinkingService = {
       reliabilityRequirement: '',
     }
 
-    if (hasWebSearchApi()) {
+    if (hasWebSearchApi() && !signal?.aborted) {
       try {
         const classifierContext = formatClassifierContext(messages, question)
         const result = await chatService.send({
@@ -580,8 +586,17 @@ export const smartThinkingService = {
             streamed += token
             onAnswerToken(answerMsgId, streamed)
           },
+          signal,
         },
       )
+
+      // User-initiated cancellation — keep any partial tokens that were
+      // already emitted, finalise the bubble in a non-error state. We do
+      // NOT call onAnswerError so the message bubble doesn't show a red banner.
+      if (result.errorCode === 'CANCELLED' || signal?.aborted) {
+        onAnswerComplete(answerMsgId, streamed)
+        return
+      }
 
       if (result.success && result.reply) {
         let final = result.reply
@@ -596,6 +611,10 @@ export const smartThinkingService = {
         onAnswerError(answerMsgId, result.error || uiText.noResponseError, result.errorCode)
       }
     } catch (err) {
+      if (signal?.aborted) {
+        onAnswerComplete(answerMsgId, streamed)
+        return
+      }
       onAnswerError(answerMsgId, err instanceof Error ? err.message : uiText.unknownError)
     }
   },

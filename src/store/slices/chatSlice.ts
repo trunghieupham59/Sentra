@@ -4,7 +4,7 @@
  * Manages all chat-related state in isolation so it can be reasoned about,
  * tested, and evolved independently of translation or settings state.
  */
-import type { ChatMessage, ChatSession, Provider, SystemPromptPreset } from '../../types'
+import type { ChatMessage, ChatSession, Provider, SystemPromptPreset, UsageCost } from '../../types'
 import { createClientId } from '../../utils/id'
 import type { SliceSet } from './sliceTypes'
 
@@ -28,6 +28,7 @@ export interface ChatSlice {
   setActiveChatSession: (id: string | null) => void
   addChatMessage: (sessionId: string, message: ChatMessage) => void
   updateChatMessage: (sessionId: string, messageId: string, updates: Partial<ChatMessage>) => void
+  addChatSessionCost: (sessionId: string, cost: UsageCost) => void
   clearChatSession: (sessionId: string) => void
   setChatSystemPrompt: (prompt: string) => void
   addSystemPromptPreset: (preset: Omit<SystemPromptPreset, 'id'>) => string
@@ -108,10 +109,31 @@ export const createChatSlice = (set: SliceSet): ChatSlice => ({
       ),
     })),
 
+  addChatSessionCost: (sessionId, cost) =>
+    set((state: ChatSlice) => ({
+      chatSessions: state.chatSessions.map((s) => {
+        if (s.id !== sessionId) return s
+        const current = s.cost
+        const nextCost: UsageCost = current
+          ? {
+              ...cost,
+              id: current.id,
+              amountUsd: current.amountUsd + cost.amountUsd,
+              inputTokens: current.inputTokens + cost.inputTokens,
+              outputTokens: current.outputTokens + cost.outputTokens,
+              totalTokens: current.totalTokens + cost.totalTokens,
+              estimated: current.estimated || cost.estimated,
+              createdAt: cost.createdAt,
+            }
+          : cost
+        return { ...s, cost: nextCost, updatedAt: Date.now() }
+      }),
+    })),
+
   clearChatSession: (sessionId) =>
     set((state: ChatSlice) => ({
       chatSessions: state.chatSessions.map((s) =>
-        s.id === sessionId ? { ...s, messages: [], updatedAt: Date.now() } : s
+        s.id === sessionId ? { ...s, messages: [], cost: undefined, updatedAt: Date.now() } : s
       ),
     })),
 

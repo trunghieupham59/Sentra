@@ -116,6 +116,12 @@ export interface DeepResearchParams {
   images?: DeepResearchImageAttachment[]
   uiText: DeepResearchUiText
   callbacks: DeepResearchCallbacks
+  /**
+   * AbortSignal for user-initiated cancellation. The orchestration polls the
+   * signal between phases / aspects so the multi-step pipeline can short-
+   * circuit cleanly when the user clicks Stop.
+   */
+  signal?: AbortSignal
 }
 
 export interface DeepResearchImageAttachment {
@@ -302,11 +308,23 @@ const DEFAULT_ASPECTS = [
 // ─── Main pipeline ────────────────────────────────────────────────────────────
 
 export const deepResearchService = {
-  async run({ provider, model, question, images = [], uiText, callbacks }: DeepResearchParams): Promise<void> {
+  async run({ provider, model, question, images = [], uiText, callbacks, signal }: DeepResearchParams): Promise<void> {
     const date = getCurrentLocaleDateTime()
     const webAvailable = hasWebSearchApi()
     const { onStepStart, onStepComplete, onStepError } = callbacks
     const hasImages = images.length > 0
+
+    /**
+     * Sentinel error message for Deep Research user cancellation. The
+     * orchestration polls `signal.aborted` between phases and throws this
+     * to halt the pipeline early. The renderer treats the message as a
+     * non-error completion.
+     */
+    const CANCELLED = 'deep-research-cancelled'
+    /** Throws the cancellation sentinel when the user aborted. */
+    const throwIfCancelled = () => {
+      if (signal?.aborted) throw new Error(CANCELLED)
+    }
 
     // Accumulated knowledge base (all findings from all phases)
     const knowledgeBase: Array<{ label: string; content: string }> = []
@@ -361,6 +379,7 @@ export const deepResearchService = {
 
     // ── Phase 2: First-pass research (Breadth) ────────────────────────────
     for (const aspect of aspects) {
+      throwIfCancelled()
       const msgId = onStepStart(tpl(uiText.stepRound1, { aspect }))
       try {
         const webCtx = await webSearch(
@@ -388,6 +407,7 @@ export const deepResearchService = {
 
     // ── Phase 3: Gap Analysis Loop ────────────────────────────────────────
     for (let iteration = 1; iteration <= MAX_GAP_ITERATIONS; iteration++) {
+      throwIfCancelled()
       const allFindings = knowledgeBase
         .map((k, i) => `### ${i + 1}. ${k.label}\n${k.content}`)
         .join('\n\n---\n\n')

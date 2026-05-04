@@ -74,6 +74,35 @@ type ChatStreamEventPayload =
 
 type ChatStreamTokenHandler = (token: string) => void
 
+// ── Stream cancellation ───────────────────────────────────────────────────────
+// Module-scoped registry mapping each in-flight stream `requestId` to its
+// AbortController. The renderer can cancel a stream by invoking the
+// CHAT_IPC_CHANNELS.streamCancel channel with the same `requestId`.
+const activeStreamControllers = new Map<string, AbortController>()
+
+/**
+ * Sentinel error message used by provider stream functions to signal that the
+ * user (renderer) explicitly aborted the stream. The IPC stream handler
+ * recognises this string and emits a typed `CANCELLED` error code so the
+ * renderer can suppress it from showing as a real error.
+ */
+const CHAT_STREAM_CANCELLED_MESSAGE = 'chat-stream-cancelled'
+
+function isAbortError(error: unknown): boolean {
+  if (!error) return false
+  if (error instanceof Error) {
+    if (error.name === 'AbortError') return true
+    const msg = error.message || ''
+    if (msg === CHAT_STREAM_CANCELLED_MESSAGE) return true
+    if (msg.toLowerCase().includes('aborted')) return true
+    if (msg.toLowerCase().includes('cancelled') || msg.toLowerCase().includes('canceled')) return true
+  }
+  const anyError = error as { name?: string; code?: string }
+  if (anyError.name === 'AbortError') return true
+  if (anyError.code === 'ABORT_ERR' || anyError.code === 'ECONNRESET') return true
+  return false
+}
+
 function isConfiguredChatProvider(provider: string): provider is ChatProviderId {
   return CONFIGURED_CHAT_PROVIDERS.includes(provider as ChatProviderId)
 }
@@ -250,7 +279,9 @@ async function streamChatWithGemini(
   systemPrompt: string | undefined,
   maxOutputTokens: number,
   onToken: ChatStreamTokenHandler,
+  signal?: AbortSignal,
 ): Promise<string> {
+  if (signal?.aborted) throw new Error(CHAT_STREAM_CANCELLED_MESSAGE)
   const { GoogleGenerativeAI } = await import('@google/generative-ai')
   const genAI = new GoogleGenerativeAI(apiKey)
   const genModel = genAI.getGenerativeModel({
@@ -265,6 +296,9 @@ async function streamChatWithGemini(
   let lastFinishReason: string | undefined
 
   for await (const chunk of result.stream) {
+    // Honour user cancellation between chunks. The Gemini SDK does not accept
+    // an AbortSignal directly, so we poll the flag at chunk boundaries.
+    if (signal?.aborted) throw new Error(CHAT_STREAM_CANCELLED_MESSAGE)
     // Capture finishReason from each chunk; Gemini sets it (e.g. RECITATION, SAFETY)
     // even when the chunk yields no text, so the SDK's chunk.text() may throw.
     const candidateFinishReason = chunk.candidates?.[0]?.finishReason
@@ -365,25 +399,49 @@ async function streamChatWithClaude(
   systemPrompt: string | undefined,
   maxOutputTokens: number,
   onToken: ChatStreamTokenHandler,
+  signal?: AbortSignal,
 ): Promise<string> {
+  if (signal?.aborted) throw new Error(CHAT_STREAM_CANCELLED_MESSAGE)
   const Anthropic = (await import('@anthropic-ai/sdk')).default
   const client = new Anthropic({ apiKey })
   let fullText = ''
-  const stream = client.messages.stream({
-    model,
-    max_tokens: maxOutputTokens,
-    system: buildEnforcedSystemPrompt(systemPrompt || ''),
-    messages: formatClaudeMessages(messages),
-  })
+  const stream = client.messages.stream(
+    {
+      model,
+      max_tokens: maxOutputTokens,
+      system: buildEnforcedSystemPrompt(systemPrompt || ''),
+      messages: formatClaudeMessages(messages),
+    },
+    // Anthropic SDK accepts a request-options object whose `signal` field
+    // wires through to the underlying fetch — aborting here closes the SSE
+    // connection cleanly.
+    signal ? { signal } : undefined,
+  )
 
-  for await (const event of stream) {
-    if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-      const token = event.delta.text
-      if (token) {
-        fullText += token
-        onToken(token)
+  // Defensive: also poll the signal between events in case the SDK does not
+  // surface the abort fast enough.
+  const onAbort = () => {
+    try {
+      stream.controller?.abort?.()
+    } catch {
+      /* ignore — we still throw below */
+    }
+  }
+  signal?.addEventListener('abort', onAbort, { once: true })
+
+  try {
+    for await (const event of stream) {
+      if (signal?.aborted) throw new Error(CHAT_STREAM_CANCELLED_MESSAGE)
+      if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+        const token = event.delta.text
+        if (token) {
+          fullText += token
+          onToken(token)
+        }
       }
     }
+  } finally {
+    signal?.removeEventListener('abort', onAbort)
   }
 
   const text = fullText.trim()
@@ -604,7 +662,9 @@ async function streamChatWithOpenAI(
   systemPrompt: string | undefined,
   maxOutputTokens: number,
   onToken: ChatStreamTokenHandler,
+  signal?: AbortSignal,
 ): Promise<string> {
+  if (signal?.aborted) throw new Error(CHAT_STREAM_CANCELLED_MESSAGE)
   const OpenAI = (await import('openai')).default
   const client = new OpenAI({ apiKey })
   const formattedMessages = formatOpenAIChatMessages(messages, systemPrompt)
@@ -612,14 +672,19 @@ async function streamChatWithOpenAI(
 
   const tryChat = async (m: string) => {
     let fullText = ''
-    const stream = await client.chat.completions.create({
-      model: m,
-      messages: formattedMessages,
-      stream: true,
-      max_completion_tokens: maxOutputTokens,
-    })
+    // OpenAI SDK accepts a request-options bag whose `signal` propagates to fetch.
+    const stream = await client.chat.completions.create(
+      {
+        model: m,
+        messages: formattedMessages,
+        stream: true,
+        max_completion_tokens: maxOutputTokens,
+      },
+      signal ? { signal } : undefined,
+    )
 
     for await (const chunk of stream) {
+      if (signal?.aborted) throw new Error(CHAT_STREAM_CANCELLED_MESSAGE)
       const token = chunk.choices[0]?.delta?.content ?? ''
       if (token) {
         emittedToken = true
@@ -636,6 +701,10 @@ async function streamChatWithOpenAI(
   try {
     return await tryChat(model)
   } catch (err: unknown) {
+    // Bubble user cancellation as-is — never fall back to a different model.
+    if (signal?.aborted || isAbortError(err)) {
+      throw new Error(CHAT_STREAM_CANCELLED_MESSAGE)
+    }
     if (!emittedToken && isOpenAIChatEndpointError(err)) {
       const bestModel = await fetchBestOpenAIChatModel(apiKey)
       if (bestModel !== model) return await tryChat(bestModel)
@@ -651,19 +720,25 @@ async function streamChatWithLocal(
   systemPrompt: string | undefined,
   maxOutputTokens: number,
   onToken: ChatStreamTokenHandler,
+  signal?: AbortSignal,
 ): Promise<string> {
+  if (signal?.aborted) throw new Error(CHAT_STREAM_CANCELLED_MESSAGE)
   const OpenAI = (await import('openai')).default
   const local = await resolveLocalAiRequestModel(model)
   const client = new OpenAI({ apiKey: LOCAL_AI_PLACEHOLDER_KEY, baseURL: local.baseURL })
   let fullText = ''
-  const stream = await client.chat.completions.create({
-    model: local.model,
-    messages: formatOpenAIChatMessages(messages, systemPrompt),
-    stream: true,
-    max_tokens: maxOutputTokens,
-  })
+  const stream = await client.chat.completions.create(
+    {
+      model: local.model,
+      messages: formatOpenAIChatMessages(messages, systemPrompt),
+      stream: true,
+      max_tokens: maxOutputTokens,
+    },
+    signal ? { signal } : undefined,
+  )
 
   for await (const chunk of stream) {
+    if (signal?.aborted) throw new Error(CHAT_STREAM_CANCELLED_MESSAGE)
     const token = chunk.choices[0]?.delta?.content ?? ''
     if (token) {
       fullText += token
@@ -854,6 +929,7 @@ type ChatStreamFn = (
   systemPrompt: string | undefined,
   maxOutputTokens: number,
   onToken: ChatStreamTokenHandler,
+  signal?: AbortSignal,
 ) => Promise<string>
 
 type ChatImageEditFn = (
@@ -1004,6 +1080,13 @@ export function registerChatHandlers(ipcMain: IpcMain) {
     }
     const maxOutputTokens = await resolveChatOutputTokens(provider, model, apiKey, params.maxOutputTokens)
 
+    // Register an AbortController for this stream so the renderer can cancel
+    // the request via CHAT_IPC_CHANNELS.streamCancel. We pass `controller.signal`
+    // into the provider so token streaming halts as soon as the user clicks
+    // Stop. The entry is removed in `finally` to keep the registry tidy.
+    const controller = new AbortController()
+    activeStreamControllers.set(requestId, controller)
+
     try {
       const chatFn = CHAT_STREAM_PROVIDERS[provider]
       if (!chatFn) {
@@ -1014,15 +1097,48 @@ export function registerChatHandlers(ipcMain: IpcMain) {
 
       const reply = await chatFn(apiKey, model, messages, systemPrompt, maxOutputTokens, (token) => {
         emit({ type: 'token', token })
-      })
+      }, controller.signal)
 
       emit({ type: 'end', reply })
       return { success: true, reply }
     } catch (error: unknown) {
+      // User-initiated cancellation: emit a typed `CANCELLED` error code so
+      // the renderer can suppress the visible error bubble and any partial
+      // tokens that were already streamed remain visible.
+      if (controller.signal.aborted || isAbortError(error)) {
+        emit({ type: 'error', error: CHAT_STREAM_CANCELLED_MESSAGE, errorCode: 'CANCELLED' })
+        return { success: false, error: CHAT_STREAM_CANCELLED_MESSAGE, errorCode: 'CANCELLED' }
+      }
       console.error(CHAT_LOG_MESSAGES.streamProviderError(provider), error)
       const response = toChatFailure(error)
       emit({ type: 'error', error: response.error, errorCode: response.errorCode })
       return response
+    } finally {
+      // Only delete if it's still our controller (a late cancel may have
+      // already removed it — that's fine, deletion is idempotent).
+      if (activeStreamControllers.get(requestId) === controller) {
+        activeStreamControllers.delete(requestId)
+      }
     }
+  })
+
+  // Cancel an in-flight stream — the renderer invokes this when the user
+  // clicks the Stop button. We aborted the AbortController here; the stream
+  // handler above translates the resulting rejection into a `CANCELLED`
+  // event and returns a typed failure response.
+  ipcMain.handle(CHAT_IPC_CHANNELS.streamCancel, async (_event, rawParams: unknown) => {
+    if (!isRecord(rawParams) || !isNonEmptyString(rawParams.requestId)) {
+      return { success: false, error: 'INVALID_INPUT' }
+    }
+    const requestId = rawParams.requestId
+    const controller = activeStreamControllers.get(requestId)
+    if (!controller) return { success: false, error: 'NOT_FOUND' }
+    try {
+      controller.abort()
+    } catch {
+      /* abort cannot throw in normal cases — swallow defensively */
+    }
+    activeStreamControllers.delete(requestId)
+    return { success: true }
   })
 }

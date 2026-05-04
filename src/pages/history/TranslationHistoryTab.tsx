@@ -3,6 +3,7 @@ import { HistoryBulkHeader } from '../../components/ui/HistoryBulkHeader'
 import { HistoryDeleteButton } from '../../components/ui/HistoryDeleteButton'
 import { HistoryEmptyState } from '../../components/ui/HistoryEmptyState'
 import { ClockIcon, ReuseIcon } from '../../components/ui/icons'
+import { UsageCostBadge } from '../../components/ui/UsageCostBadge'
 import { useAppStore, useT } from '../../store/useAppStore'
 import type { HistoryItem } from '../../types'
 import { tpl } from '../../utils/tpl'
@@ -15,7 +16,7 @@ interface TranslationHistoryTabProps {
 }
 
 export function TranslationHistoryTab({ query }: TranslationHistoryTabProps) {
-  const { history, deleteHistoryItem, setActivePage, setSourceText, setTranslatedText, setSourceLang, setTargetLang } = useAppStore()
+  const { history, deleteHistoryItem, setActivePage, setSourceText, setTranslatedText, setSourceLang, setTargetLang, costCurrency } = useAppStore()
   const t = useT()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const normalizedQuery = normalizeHistoryQuery(query)
@@ -100,6 +101,7 @@ export function TranslationHistoryTab({ query }: TranslationHistoryTabProps) {
                       <span className="text-[10px] text-gray-400 dark:text-gray-600">
                         {langLabel(item.sourceLang)} → {langLabel(item.targetLang)}
                       </span>
+                      <UsageCostBadge cost={item.cost} currency={costCurrency} />
                       <span className="text-[10px] text-gray-300 dark:text-gray-700 ml-auto">
                         {formatTime(item.timestamp, t)}
                       </span>

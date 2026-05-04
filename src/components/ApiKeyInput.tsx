@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { VERIFY_STATUS_RESET_DELAY_MS } from '../constants/ui'
 import { useT } from '../store/useAppStore'
-import type { ProviderConfig } from '../types'
+import type { ProviderConfig, UsageCurrency, UsageTotal } from '../types'
 import { tpl } from '../utils/tpl'
+import { ProviderCostStats } from './cost/ProviderCostStats'
 import { ProviderIcon } from './ProviderIcon'
 import { CredentialCard, type CredentialMessageTone } from './ui/CredentialCard'
 
@@ -12,11 +13,27 @@ interface ApiKeyInputProps {
   onDelete: () => Promise<void>
   hasKey: boolean
   maskedKey: string | null
+  /** Aggregate usage stats for this provider (total spend, tokens, requests). */
+  usageTotal?: UsageTotal
+  usageCurrency: UsageCurrency
+  usageLabel: string
+  /** Reset cost statistics for this provider only. */
+  onResetUsage: () => void
 }
 
 type VerifyStatus = 'idle' | 'verifying' | 'valid' | 'rate_limited' | 'invalid' | 'network_error'
 
-export function ApiKeyInput({ provider, onSave, onDelete, hasKey, maskedKey }: ApiKeyInputProps) {
+export function ApiKeyInput({
+  provider,
+  onSave,
+  onDelete,
+  hasKey,
+  maskedKey,
+  usageTotal,
+  usageCurrency,
+  usageLabel,
+  onResetUsage,
+}: ApiKeyInputProps) {
   const t = useT()
   const [inputValue, setInputValue] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
@@ -78,6 +95,12 @@ export function ApiKeyInput({ provider, onSave, onDelete, hasKey, maskedKey }: A
     try { await onDelete() } finally { setIsDeleting(false) }
   }
 
+  const handleResetUsage = () => {
+    if (!usageTotal || usageTotal.requestCount === 0) return
+    if (!window.confirm(tpl(t.settings_cost_reset_provider_confirm, { name: provider.name }))) return
+    onResetUsage()
+  }
+
   return (
     <CredentialCard
       icon={<ProviderIcon provider={provider.id} size={22} />}
@@ -96,6 +119,16 @@ export function ApiKeyInput({ provider, onSave, onDelete, hasKey, maskedKey }: A
       inputValue={inputValue}
       maskedValue={maskedKey}
       placeholder={hasKey ? t.settings_key_placeholder_new : tpl(t.settings_key_placeholder_paste, { name: provider.name })}
+      meta={(
+        <ProviderCostStats
+          total={usageTotal}
+          currency={usageCurrency}
+          costLabel={usageLabel}
+          t={t}
+          onReset={handleResetUsage}
+          resetTitle={tpl(t.settings_cost_reset_provider_confirm, { name: provider.name })}
+        />
+      )}
       hasSecret={hasKey}
       isBusy={isVerifying}
       isSuccess={isSuccess}

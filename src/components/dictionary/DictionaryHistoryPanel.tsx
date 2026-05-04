@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import type { Translations } from '../../i18n'
+import { useAppStore } from '../../store/useAppStore'
 import type { DictionaryEntry } from '../../types'
 import { BookIcon, SearchIcon, StarIcon, TrashIcon, XIcon } from '../ui/icons'
+import { UsageCostBadge } from '../ui/UsageCostBadge'
 
 type DictionaryListTab = 'recent' | 'favorites'
 
@@ -51,6 +53,7 @@ export function DictionaryHistoryPanel({
   t,
 }: DictionaryHistoryPanelProps) {
   const [filter, setFilter] = useState('')
+  const costCurrency = useAppStore((state) => state.costCurrency)
 
   const recentCount = entries.length
   const favoriteCount = entries.filter((entry) => entry.favorite).length
@@ -197,6 +200,9 @@ export function DictionaryHistoryPanel({
                         <span className="ml-auto flex-shrink-0 text-[10px] tabular-nums text-gray-400 dark:text-gray-600">
                           {formatRelativeTime(entry.createdAt)}
                         </span>
+                      </div>
+                      <div className="mt-1">
+                        <UsageCostBadge cost={entry.cost} currency={costCurrency} />
                       </div>
                       <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-gray-500 dark:text-gray-400">
                         {entry.result.meaning}

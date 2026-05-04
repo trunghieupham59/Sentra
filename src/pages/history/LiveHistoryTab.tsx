@@ -4,6 +4,7 @@ import { HistoryBulkHeader } from '../../components/ui/HistoryBulkHeader'
 import { HistoryDeleteButton } from '../../components/ui/HistoryDeleteButton'
 import { HistoryEmptyState } from '../../components/ui/HistoryEmptyState'
 import { MicrophoneIcon } from '../../components/ui/icons'
+import { UsageCostBadge } from '../../components/ui/UsageCostBadge'
 import { useAppStore, useT } from '../../store/useAppStore'
 import { tpl } from '../../utils/tpl'
 import { HistorySelectableRow } from './HistorySelectableRow'
@@ -18,7 +19,7 @@ interface LiveHistoryTabProps {
 }
 
 export function LiveHistoryTab({ query }: LiveHistoryTabProps) {
-  const { liveSessions, deleteLiveSession, setActivePage, setViewingLiveSession } = useAppStore()
+  const { liveSessions, deleteLiveSession, setActivePage, setViewingLiveSession, costCurrency } = useAppStore()
   const t = useT()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const normalizedQuery = normalizeHistoryQuery(query)
@@ -114,6 +115,7 @@ export function LiveHistoryTab({ query }: LiveHistoryTabProps) {
                       <span className="text-[10px] text-purple-400 dark:text-purple-600">
                         {session.wordCount.toLocaleString()} {t.history_live_words}
                       </span>
+                      <UsageCostBadge cost={session.cost} currency={costCurrency} />
                       <span className="text-[10px] text-gray-300 dark:text-gray-700 ml-auto">
                         {formatTime(session.createdAt, t)}
                       </span>

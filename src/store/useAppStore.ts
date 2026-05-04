@@ -17,9 +17,10 @@ import { type CoreSlice, createCoreSlice } from './slices/coreSlice'
 import { createDictionarySlice, type DictionarySlice } from './slices/dictionarySlice'
 import { createHistorySlice, type HistorySlice } from './slices/historySlice'
 import { createSettingsSlice, type SettingsSlice } from './slices/settingsSlice'
+import { createUsageSlice, type UsageSlice } from './slices/usageSlice'
 
 /** Full app state = core + all feature slices */
-type AppState = CoreSlice & SettingsSlice & HistorySlice & ChatSlice & DictionarySlice
+type AppState = CoreSlice & SettingsSlice & HistorySlice & ChatSlice & DictionarySlice & UsageSlice
 
 /** Zustand persist storage key — change this value to force-reset all persisted state */
 const STORE_PERSIST_KEY = 'translate-app-settings'
@@ -86,6 +87,7 @@ export const useAppStore = create<AppState>()(
       ...createHistorySlice(set),
       ...createChatSlice(set),
       ...createDictionarySlice(set),
+      ...createUsageSlice(set),
     }),
     {
       name: STORE_PERSIST_KEY,
@@ -115,6 +117,8 @@ export const useAppStore = create<AppState>()(
         systemPromptPresets: state.systemPromptPresets,
         langUsage: state.langUsage,
         dictionaryEntries: state.dictionaryEntries,
+        costCurrency: state.costCurrency,
+        apiKeyUsageTotals: state.apiKeyUsageTotals,
       }),
     }
   )

@@ -3,6 +3,7 @@ import { HistoryBulkHeader } from '../../components/ui/HistoryBulkHeader'
 import { HistoryDeleteButton } from '../../components/ui/HistoryDeleteButton'
 import { HistoryEmptyState } from '../../components/ui/HistoryEmptyState'
 import { ChatBubbleIcon } from '../../components/ui/icons'
+import { UsageCostBadge } from '../../components/ui/UsageCostBadge'
 import { useAppStore, useT } from '../../store/useAppStore'
 import type { ChatSession } from '../../types'
 import { tpl } from '../../utils/tpl'
@@ -21,7 +22,7 @@ function chatSessionText(session: ChatSession): string {
 }
 
 export function ChatHistoryTab({ query }: ChatHistoryTabProps) {
-  const { chatSessions, deleteChatSession, setActiveChatSession, setActivePage } = useAppStore()
+  const { chatSessions, deleteChatSession, setActiveChatSession, setActivePage, costCurrency } = useAppStore()
   const t = useT()
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
@@ -105,6 +106,7 @@ export function ChatHistoryTab({ query }: ChatHistoryTabProps) {
                         <span className="text-[10px] text-gray-400 dark:text-gray-600">
                           {msgCount} {t.history_chat_messages}
                         </span>
+                        <UsageCostBadge cost={session.cost} currency={costCurrency} />
                         <span className="text-[10px] text-gray-300 dark:text-gray-700 ml-auto">
                           {formatTime(session.updatedAt, t)}
                         </span>

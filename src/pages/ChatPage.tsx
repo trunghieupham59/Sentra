@@ -10,7 +10,7 @@ import {
   ImageIcon,
   LightbulbIcon,
   PlusIcon, SendIcon,
-  SpinnerIcon, TrashIcon, XIcon,
+  SpinnerIcon, StopSquareIcon, TrashIcon, XIcon,
 } from '../components/ui/icons'
 import { VoiceRecorder } from '../components/VoiceRecorder'
 import { MAX_CHAT_IMAGE_DIMENSION } from '../constants/image'
@@ -25,6 +25,7 @@ import { localizeChatError, localizeChatException } from '../utils/chatErrors'
 import { createClientId } from '../utils/id'
 import { extractImageFromClipboard, resizeImageFile } from '../utils/imageUtils'
 import { eventMatchesShortcut, formatShortcutLabel, shouldSendChatMessage } from '../utils/keyboardShortcuts'
+import { estimateUsageCost } from '../utils/usageCost'
 
 /** Max height (px) của textarea input — giới hạn scroll khi text dài */
 const CHAT_TEXTAREA_MAX_HEIGHT_PX = 160
@@ -59,6 +60,14 @@ function toIpcHistory(messages: ChatMessage[]) {
   return messages
     .filter((m) => !m.isLoading && !m.error && !m.isResearchStep && !m.isSmartThinkingStep)
     .map(toIpcMessage)
+}
+
+function flattenChatCostInput(messages: ReturnType<typeof toIpcHistory>, systemPrompt?: string): string {
+  const messageText = messages
+    .flatMap((message) => message.content.map((content) => content.text ?? (content.type === 'image' ? '[image]' : '')))
+    .filter(Boolean)
+    .join('\n')
+  return [systemPrompt, messageText].filter(Boolean).join('\n')
 }
 
 const IMAGE_EDIT_INTENT_PATTERN = new RegExp([
@@ -148,12 +157,20 @@ export function ChatPage() {
     chatSendShortcut, chatNewSessionShortcut,
     chatSessions, activeChatSessionId, chatSystemPrompt, systemPromptPresets,
     createChatSession, setActiveChatSession, addChatMessage, updateChatMessage,
-    clearChatSession, setChatSystemPrompt, addSystemPromptPreset, openSettings,
+    addChatSessionCost, clearChatSession, setChatSystemPrompt, addSystemPromptPreset, openSettings,
+    recordUsageCost,
   } = useAppStore()
   const t = useT()
 
   const [inputText, setInputText] = useState('')
   const [isSending, setIsSending] = useState(false)
+  /**
+   * AbortController for the in-flight chat request. Held in a ref (not state)
+   * because handlers shouldn't re-render when it's swapped, and because
+   * `handleStop` needs the latest controller without going through React's
+   * batched state queue. Reset to `null` once the request settles.
+   */
+  const abortControllerRef = useRef<AbortController | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [attachedImage, setAttachedImage] = useState<{
     base64: string; mimeType: string; previewUrl: string; fileName: string
@@ -190,6 +207,19 @@ export function ChatPage() {
 
   // Active session
   const activeSession = chatSessions.find((s) => s.id === activeChatSessionId) ?? null
+
+  const recordChatCost = useCallback((sessionId: string, messageId: string, inputText: string, reply: string) => {
+    const cost = estimateUsageCost({
+      feature: 'chat',
+      provider: selectedProvider,
+      model: selectedModels[selectedProvider],
+      inputText,
+      outputText: reply,
+    })
+    recordUsageCost(cost)
+    addChatSessionCost(sessionId, cost)
+    updateChatMessage(sessionId, messageId, { cost })
+  }, [addChatSessionCost, recordUsageCost, selectedProvider, selectedModels, updateChatMessage])
 
   // Auto-scroll to bottom on new messages
   const msgCount = activeSession?.messages.length ?? 0
@@ -280,6 +310,8 @@ export function ChatPage() {
 
     if (historyMessages.length === 0) return
 
+    const controller = new AbortController()
+    abortControllerRef.current = controller
     setIsSending(true)
 
     // Reset assistant message to loading
@@ -308,14 +340,27 @@ export function ChatPage() {
               error: undefined,
             })
           },
+          signal: controller.signal,
         },
       )
 
-      if (result.success && result.reply) {
+      // User cancelled mid-stream — keep partial tokens, no error banner.
+      if (result.errorCode === 'CANCELLED' || controller.signal.aborted) {
+        updateChatMessage(activeChatSessionId, assistantMsgId, {
+          content: [{ type: 'text', text: streamedText }],
+          isLoading: false,
+        })
+      } else if (result.success && result.reply) {
         updateChatMessage(activeChatSessionId, assistantMsgId, {
           content: [{ type: 'text', text: result.reply }],
           isLoading: false,
         })
+        recordChatCost(
+          activeChatSessionId,
+          assistantMsgId,
+          flattenChatCostInput(historyMessages.map(toIpcMessage), chatSystemPrompt || undefined),
+          result.reply,
+        )
       } else {
         updateChatMessage(activeChatSessionId, assistantMsgId, {
           isLoading: false,
@@ -323,11 +368,21 @@ export function ChatPage() {
         })
       }
     } catch (err) {
-      updateChatMessage(activeChatSessionId, assistantMsgId, {
-        isLoading: false,
-        error: localizeChatException(t, err, t.chat_error_unexpected),
-      })
+      if (controller.signal.aborted) {
+        // Cancellation thrown as exception — finalise without error banner.
+        updateChatMessage(activeChatSessionId, assistantMsgId, {
+          isLoading: false,
+        })
+      } else {
+        updateChatMessage(activeChatSessionId, assistantMsgId, {
+          isLoading: false,
+          error: localizeChatException(t, err, t.chat_error_unexpected),
+        })
+      }
     } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null
+      }
       setIsSending(false)
     }
   }, [
@@ -337,6 +392,7 @@ export function ChatPage() {
     selectedProvider,
     selectedModels,
     chatSystemPrompt,
+    recordChatCost,
     t,
   ])
 
@@ -374,10 +430,13 @@ export function ChatPage() {
       addChatMessage(sessionId, userMsg)
       setInputText('')
       setAttachedImage(null)
+      const drController = new AbortController()
+      abortControllerRef.current = drController
       setIsSending(true)
 
       try {
         await deepResearchService.run({
+          signal: drController.signal,
           provider: selectedProvider,
           model: selectedModels[selectedProvider],
           question: text || 'Research the attached image in depth.',
@@ -439,6 +498,9 @@ export function ChatPage() {
                 isResearchFinal: isFinal,
                 ...(isFinal ? { researchStepLabel: undefined } : {}),
               })
+              if (isFinal) {
+                recordChatCost(sessionId, msgId, text || 'Research the attached image in depth.', content)
+              }
             },
             onStepError: (msgId, error) => {
               updateChatMessage(sessionId, msgId, {
@@ -450,8 +512,12 @@ export function ChatPage() {
           },
         })
       } catch {
-        // Catastrophic error — individual step errors handled by onStepError
+        // Catastrophic error — individual step errors handled by onStepError.
+        // Cancellation throws too, but is just used to halt the pipeline.
       } finally {
+        if (abortControllerRef.current === drController) {
+          abortControllerRef.current = null
+        }
         setIsSending(false)
       }
       return
@@ -460,6 +526,8 @@ export function ChatPage() {
     addChatMessage(sessionId, userMsg)
     setInputText('')
     setAttachedImage(null)
+    const sendController = new AbortController()
+    abortControllerRef.current = sendController
     setIsSending(true)
 
     // Build IPC-format conversation history (includes the user message just added).
@@ -491,6 +559,7 @@ export function ChatPage() {
 
       try {
         await smartThinkingService.run({
+          signal: sendController.signal,
           provider: selectedProvider,
           model: selectedModels[selectedProvider],
           question: text,
@@ -559,6 +628,12 @@ export function ChatPage() {
                 isSmartThinkingStep: false,
                 researchStepLabel: undefined,
               })
+              recordChatCost(
+                sessionId,
+                placeholderMsgId,
+                flattenChatCostInput(ipcHistory, chatSystemPrompt || undefined),
+                content,
+              )
             },
             onAnswerError: (_msgId, error, errorCode) => {
               updateChatMessage(sessionId, placeholderMsgId, {
@@ -573,6 +648,9 @@ export function ChatPage() {
       } catch {
         // Per-step errors are handled by callbacks; ignore catastrophic ones.
       } finally {
+        if (abortControllerRef.current === sendController) {
+          abortControllerRef.current = null
+        }
         setIsSending(false)
       }
       return
@@ -612,6 +690,7 @@ export function ChatPage() {
         })
 
         if (result.success && result.imageBase64 && result.imageMimeType) {
+          const outputLabel = t.chat_image_edit_done
           updateChatMessage(sessionId, assistantMsgId, {
             content: [
               {
@@ -621,10 +700,11 @@ export function ChatPage() {
                 imagePreviewUrl: buildImageDataUrl(result.imageBase64, result.imageMimeType),
                 imageFileName: `edited-image-${Date.now()}.${imageExtensionFromMime(result.imageMimeType)}`,
               },
-              { type: 'text', text: t.chat_image_edit_done },
+              { type: 'text', text: outputLabel },
             ],
             isLoading: false,
           })
+          recordChatCost(sessionId, assistantMsgId, text, outputLabel)
         } else {
           updateChatMessage(sessionId, assistantMsgId, {
             isLoading: false,
@@ -674,14 +754,27 @@ export function ChatPage() {
               error: undefined,
             })
           },
+          signal: sendController.signal,
         },
       )
 
-      if (result.success && result.reply) {
+      // User cancelled mid-stream — keep partial tokens, no error banner.
+      if (result.errorCode === 'CANCELLED' || sendController.signal.aborted) {
+        updateChatMessage(sessionId, assistantMsgId, {
+          content: [{ type: 'text', text: streamedText }],
+          isLoading: false,
+        })
+      } else if (result.success && result.reply) {
         updateChatMessage(sessionId, assistantMsgId, {
           content: [{ type: 'text', text: result.reply }],
           isLoading: false,
         })
+        recordChatCost(
+          sessionId,
+          assistantMsgId,
+          flattenChatCostInput(ipcHistory, chatSystemPrompt || undefined),
+          result.reply,
+        )
       } else {
         updateChatMessage(sessionId, assistantMsgId, {
           isLoading: false,
@@ -689,11 +782,20 @@ export function ChatPage() {
         })
       }
     } catch (err) {
-      updateChatMessage(sessionId, assistantMsgId, {
-        isLoading: false,
-        error: localizeChatException(t, err, t.chat_error_failed_response),
-      })
+      if (sendController.signal.aborted) {
+        updateChatMessage(sessionId, assistantMsgId, {
+          isLoading: false,
+        })
+      } else {
+        updateChatMessage(sessionId, assistantMsgId, {
+          isLoading: false,
+          error: localizeChatException(t, err, t.chat_error_failed_response),
+        })
+      }
     } finally {
+      if (abortControllerRef.current === sendController) {
+        abortControllerRef.current = null
+      }
       setIsSending(false)
     }
   }, [
@@ -708,6 +810,7 @@ export function ChatPage() {
     selectedProvider,
     selectedModels,
     chatSystemPrompt,
+    recordChatCost,
     t,
   ])
 
@@ -776,6 +879,18 @@ export function ChatPage() {
   const handleClear = () => {
     if (activeChatSessionId) clearChatSession(activeChatSessionId)
   }
+
+  /**
+   * Stop the in-flight chat request.
+   *
+   * Calls `controller.abort()` on the active AbortController; that signal is
+   * forwarded down through chatService → preload → main process, which closes
+   * the provider stream and emits a `CANCELLED` event so the UI keeps any
+   * tokens already streamed without showing an error banner.
+   */
+  const handleStop = useCallback(() => {
+    abortControllerRef.current?.abort()
+  }, [])
 
   const messages = activeSession?.messages ?? []
 
@@ -909,20 +1024,45 @@ export function ChatPage() {
           />
         </div>
 
-        <button
-          type="button"
-          onClick={handleSend}
-          disabled={(!inputText.trim() && !attachedImage) || isSending || !hasKey}
-          title={t.chat_send}
-          className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full
-                      transition-all duration-200 cursor-pointer
-                      disabled:opacity-40 disabled:cursor-not-allowed
-                      ${isSending
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-blue-500 hover:bg-blue-600 text-white shadow-sm'}`}
-        >
-          {isSending ? <SpinnerIcon className="w-4 h-4 animate-spin" /> : <SendIcon />}
-        </button>
+        {/*
+         * Send / Stop morphing button.
+         *
+         * While `isSending` is true the primary action is to stop the
+         * in-flight request — the button switches to a red Stop button so
+         * the user can interrupt long answers (mirrors ChatGPT / Claude UX).
+         * The Stop button is only ENABLED when an AbortController is
+         * actually attached to abortControllerRef; otherwise the request is
+         * not interruptible (e.g. image-edit IPC) and the button stays
+         * disabled to avoid a confusing no-op click.
+         */}
+        {isSending ? (
+          <button
+            type="button"
+            onClick={handleStop}
+            disabled={!abortControllerRef.current}
+            title={t.chat_stop}
+            aria-label={t.chat_stop}
+            className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full
+                       bg-red-500 hover:bg-red-600 text-white shadow-sm
+                       transition-all duration-200 cursor-pointer
+                       disabled:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <StopSquareIcon className="w-3.5 h-3.5" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={(!inputText.trim() && !attachedImage) || !hasKey}
+            title={t.chat_send}
+            className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full
+                       bg-blue-500 hover:bg-blue-600 text-white shadow-sm
+                       transition-all duration-200 cursor-pointer
+                       disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <SendIcon />
+          </button>
+        )}
       </div>
     </div>
   )

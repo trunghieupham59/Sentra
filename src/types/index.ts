@@ -22,6 +22,39 @@ export type TtsVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
  */
 export type TtsMode = 'free' | 'auto' | 'premium'
 
+export type UsageCurrency = 'USD' | 'VND' | 'JPY' | 'EUR' | 'GBP'
+export type UsageFeature = 'chat' | 'translate' | 'live' | 'dictionary'
+
+export interface UsageCost {
+  id: string
+  feature: UsageFeature
+  provider: Provider
+  model: string
+  amountUsd: number
+  inputTokens: number
+  outputTokens: number
+  totalTokens: number
+  estimated: boolean
+  createdAt: number
+}
+
+export interface UsageTotal {
+  amountUsd: number
+  inputTokens: number
+  outputTokens: number
+  totalTokens: number
+  requestCount: number
+  updatedAt: number
+  /** Per-feature breakdown (chat/translate/live/dictionary). Optional for back-compat. */
+  byFeature?: Partial<Record<UsageFeature, UsageFeatureTotal>>
+}
+
+export interface UsageFeatureTotal {
+  amountUsd: number
+  requestCount: number
+  totalTokens: number
+}
+
 /**
  * STT provider user-facing preference (stored in settings):
  *  - 'auto'      — smart routing: Whisper → Gemini STT → Groq (free) → surface error
@@ -318,6 +351,8 @@ export interface ChatMessage {
    * (no inner content, no sources list, no expand/collapse).
    */
   isSmartThinkingStep?: boolean
+  /** Estimated provider API cost for this assistant response. */
+  cost?: UsageCost
 }
 
 export interface ChatSession {
@@ -328,6 +363,8 @@ export interface ChatSession {
   messages: ChatMessage[]
   createdAt: number
   updatedAt: number
+  /** Estimated total provider API cost for this chat thread. */
+  cost?: UsageCost
 }
 
 export interface ChatResult {
@@ -409,6 +446,8 @@ export interface DictionaryEntry {
   createdAt: number
   favorite: boolean
   result: DictionaryResult
+  /** Estimated provider API cost for this lookup. */
+  cost?: UsageCost
 }
 
 export interface DictionaryLookupResult {
@@ -437,6 +476,8 @@ export interface LiveSession {
   /** Key decisions extracted from the meeting by AI */
   decisions?: string
   wordCount: number
+  /** Estimated provider API cost for this interpretation session. */
+  cost?: UsageCost
   /** Timestamped segments for SRT/TXT export and history playback */
   segments?: Array<{
     id: string
@@ -461,6 +502,8 @@ export interface HistoryItem {
   translationStyle?: TranslationStyle
   sourceText: string
   translatedText: string
+  /** Estimated provider API cost for this translation run. */
+  cost?: UsageCost
 }
 
 // ─── Subtitle appearance settings ────────────────────────────────────────────
@@ -603,6 +646,15 @@ export interface WindowApi {
     /** Optional larger output budget for long-form synthesis calls */
     maxOutputTokens?: number | 'model-max'
   }) => Promise<ChatResult>
+  /**
+   * Cancel an in-flight chat stream by `requestId`. The renderer calls this
+   * when the user clicks the Stop button in chat input. The main-process
+   * handler aborts the underlying provider request, so token streaming halts
+   * almost immediately. Resolves with `{ success: true }` when the cancel
+   * signal was delivered, or `{ success: false, error }` when the requestId
+   * was not found (e.g. stream already finished).
+   */
+  chatStreamCancel?: (params: { requestId: string }) => Promise<{ success: boolean; error?: string }>
   onChatStreamEvent: (requestId: string, cb: (event: ChatStreamEvent) => void) => () => void
   checkScreenPermission: () => Promise<string>
   openExternal: (url: string) => Promise<void>
