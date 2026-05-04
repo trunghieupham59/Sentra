@@ -252,3 +252,44 @@
 .thinking-glow {
   animation: thinkingGlow 1.6s ease-in-out infinite;
 }
+
+/* ── Skeleton shimmer — smooth gradient sweep for loading placeholders ─ */
+@keyframes skeletonShimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    rgba(15, 23, 42, 0.05) 0%,
+    rgba(15, 23, 42, 0.10) 40%,
+    rgba(15, 23, 42, 0.14) 50%,
+    rgba(15, 23, 42, 0.10) 60%,
+    rgba(15, 23, 42, 0.05) 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  background-color: rgba(15, 23, 42, 0.06);
+  animation: skeletonShimmer 1.6s ease-in-out infinite;
+}
+.dark .skeleton-shimmer,
+html.dark .skeleton-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.08) 40%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.08) 60%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* ── Content fade-in when skeleton swaps to real data ─────────────────── */
+@keyframes skeletonFadeIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.skeleton-fade-in {
+  animation: skeletonFadeIn 0.24s ease-out both;
+}

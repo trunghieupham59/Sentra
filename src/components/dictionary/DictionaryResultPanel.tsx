@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Translations } from '../../i18n'
 import { dictionaryService } from '../../services/dictionaryService'
 import type { DictionaryEntry, DictionaryResult, DictionaryTranslation } from '../../types'
-import { CheckIcon, CopyIcon, ReuseIcon, SearchIcon, SpinnerIcon, StarIcon, XIcon } from '../ui/icons'
+import { CheckIcon, CopyIcon, ReuseIcon, SearchIcon, StarIcon, XIcon } from '../ui/icons'
 import { DictionaryEmptyState } from './DictionaryEmptyState'
 
 interface DictionaryResultPanelProps {
@@ -495,8 +495,17 @@ export function DictionaryResultPanel({
                     </span>
                   ))}
                 </div>
-                <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                  {selectionLookup.loading ? t.dictionary_selection_lookup_loading : t.dictionary_selection_lookup}
+                <p className="mt-1 flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
+                  {selectionLookup.loading && (
+                    <span
+                      aria-hidden
+                      className="inline-flex h-2 w-2 flex-shrink-0 rounded-full bg-blue-500/80 dark:bg-blue-400/80"
+                      style={{ animation: 'thinkingDot 1.2s ease-in-out infinite both' }}
+                    />
+                  )}
+                  <span>
+                    {selectionLookup.loading ? t.dictionary_selection_lookup_loading : t.dictionary_selection_lookup}
+                  </span>
                 </p>
               </div>
               <button
@@ -510,34 +519,38 @@ export function DictionaryResultPanel({
               </button>
             </div>
 
-            <div className="max-h-[calc(82vh-84px)] space-y-4 overflow-auto px-5 py-4 text-sm leading-6 text-gray-700 dark:text-gray-300">
+            <div className="max-h-[calc(82vh-84px)] space-y-5 overflow-auto px-5 py-4 text-sm leading-6 text-gray-700 dark:text-gray-300">
               {selectionLookup.loading && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                    <SpinnerIcon className="h-4 w-4 animate-spin text-blue-500 dark:text-blue-300" />
-                    <span>{t.dictionary_selection_lookup_loading}</span>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="h-2.5 w-11/12 animate-pulse rounded-full bg-gray-200/80 dark:bg-neutral-800" />
-                    <div className="h-2.5 w-3/4 animate-pulse rounded-full bg-gray-200/80 dark:bg-neutral-800" />
-                    <div className="h-2.5 w-5/6 animate-pulse rounded-full bg-gray-200/80 dark:bg-neutral-800" />
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    <div className="h-8 w-20 animate-pulse rounded-md bg-blue-50 dark:bg-blue-950/35" />
-                    <div className="h-8 w-24 animate-pulse rounded-md bg-blue-50 dark:bg-blue-950/35" />
-                    <div className="h-8 w-16 animate-pulse rounded-md bg-blue-50 dark:bg-blue-950/35" />
-                  </div>
+                <div aria-busy="true" aria-live="polite" className="space-y-5">
+                  {/* Meaning skeleton — mirrors the real "border-l + paragraph" block */}
+                  <section>
+                    <div className="mb-2 h-3 w-16 rounded-full skeleton-shimmer" />
+                    <div className="space-y-2 border-l-2 border-blue-500/40 pl-3 dark:border-blue-400/40">
+                      <div className="h-3 w-11/12 rounded-full skeleton-shimmer" />
+                      <div className="h-3 w-3/4 rounded-full skeleton-shimmer" />
+                    </div>
+                  </section>
+
+                  {/* Translations skeleton — chip cluster matching real chips */}
+                  <section>
+                    <div className="mb-2 h-3 w-20 rounded-full skeleton-shimmer" />
+                    <div className="flex flex-wrap gap-1.5">
+                      <div className="h-9 w-20 rounded-md skeleton-shimmer" />
+                      <div className="h-9 w-24 rounded-md skeleton-shimmer" />
+                      <div className="h-9 w-16 rounded-md skeleton-shimmer" />
+                    </div>
+                  </section>
                 </div>
               )}
 
               {selectionLookup.error && (
-                <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-300">
+                <p className="skeleton-fade-in rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-300">
                   {selectionLookup.error}
                 </p>
               )}
 
               {selectionLookup.result && (
-                <>
+                <div className="skeleton-fade-in space-y-5">
                   <section>
                     <h5 className="section-label mb-1.5">{t.dictionary_meaning}</h5>
                     <p className="border-l-2 border-blue-500 pl-3 text-[15px] leading-7 text-gray-800 select-text dark:border-blue-400 dark:text-gray-100">
@@ -599,7 +612,7 @@ export function DictionaryResultPanel({
                       </ul>
                     </section>
                   )}
-                </>
+                </div>
               )}
             </div>
           </div>
