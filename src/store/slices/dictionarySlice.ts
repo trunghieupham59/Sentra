@@ -1,8 +1,8 @@
 /**
  * dictionarySlice — persisted dictionary lookup history and favorites.
  */
-import type { StateCreator } from 'zustand'
 import type { DictionaryEntry } from '../../types'
+import type { SliceSet } from './sliceTypes'
 
 const MAX_NON_FAVORITE_DICTIONARY_HISTORY = 100
 
@@ -31,8 +31,7 @@ export interface DictionarySlice {
   clearDictionaryHistory: () => void
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: StateCreator full-state generic omitted to avoid circular deps.
-export const createDictionarySlice: StateCreator<any, [], [], DictionarySlice> = (set) => ({
+export const createDictionarySlice = (set: SliceSet): DictionarySlice => ({
   dictionaryEntries: [],
 
   addDictionaryEntry: (entry) =>

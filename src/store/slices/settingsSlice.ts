@@ -5,11 +5,11 @@
  * translation style, TTS voice, API key status cache, and dynamically
  * fetched model lists — all independently versioned from chat/history state.
  */
-import type { StateCreator } from 'zustand'
 import { DEFAULT_SETTINGS, PROVIDERS } from '../../constants/providers'
 import type { AppLocale } from '../../i18n'
 import type { ChatSendShortcut, FetchedModel, PhoneticMode, Provider, SttProvider, TranslationStyle, TtsMode, TtsVoice } from '../../types'
 import { DEFAULT_CHAT_NEW_SESSION_SHORTCUT, DEFAULT_CHAT_SEND_SHORTCUT } from '../../utils/keyboardShortcuts'
+import type { SliceSet } from './sliceTypes'
 
 export interface SettingsSlice {
   // Locale
@@ -85,8 +85,7 @@ export interface SettingsSlice {
   setHasBraveKey: (v: boolean) => void
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: StateCreator full-state generic omitted to avoid circular deps — full AppState is assembled in useAppStore.ts
-export const createSettingsSlice: StateCreator<any, [], [], SettingsSlice> = (set) => ({
+export const createSettingsSlice = (set: SliceSet): SettingsSlice => ({
   locale: 'en' as AppLocale,
   localeAuto: true,
   autoTranslate: DEFAULT_SETTINGS.autoTranslate,

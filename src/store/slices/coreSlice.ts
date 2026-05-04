@@ -8,10 +8,10 @@
  * Contains: sourceText, translatedText, lang pair, provider/model selection,
  * active page, and the convenience `t` computed translations getter.
  */
-import type { StateCreator } from 'zustand'
 import { DEFAULT_SETTINGS } from '../../constants/providers'
 import { TRANSLATIONS, type Translations } from '../../i18n'
 import type { AppPage, Provider } from '../../types'
+import type { SliceGet, SliceSet } from './sliceTypes'
 
 export interface CoreSlice {
   // Translation state
@@ -59,8 +59,7 @@ export interface CoreSlice {
   t: Translations
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: StateCreator full-state generic omitted to avoid circular deps — full AppState is assembled in useAppStore.ts
-export const createCoreSlice: StateCreator<any, [], [], CoreSlice> = (set, get) => ({
+export const createCoreSlice = (set: SliceSet, get: SliceGet): CoreSlice => ({
   // ── Initial state ───────────────────────────────────────────────────────────
   sourceText: '',
   translatedText: '',

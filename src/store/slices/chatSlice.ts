@@ -4,9 +4,9 @@
  * Manages all chat-related state in isolation so it can be reasoned about,
  * tested, and evolved independently of translation or settings state.
  */
-import type { StateCreator } from 'zustand'
 import type { ChatMessage, ChatSession, Provider, SystemPromptPreset } from '../../types'
 import { createClientId } from '../../utils/id'
+import type { SliceSet } from './sliceTypes'
 
 /**
  * Maximum number of chat sessions to keep in memory and persisted storage.
@@ -36,8 +36,7 @@ export interface ChatSlice {
   setDefaultSystemPromptPreset: (id: string | null) => void
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: StateCreator full-state generic omitted to avoid circular deps — full AppState is assembled in useAppStore.ts
-export const createChatSlice: StateCreator<any, [], [], ChatSlice> = (set) => ({
+export const createChatSlice = (set: SliceSet): ChatSlice => ({
   chatSessions: [],
   activeChatSessionId: null,
   chatSystemPrompt: '',

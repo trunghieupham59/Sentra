@@ -97,6 +97,11 @@ export async function lightweightTranslate({
     }
     return { success: false, error: `Unknown provider: ${provider}` }
   } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : String(e) }
+    // Log full error (including stack) on the server only. Do not propagate
+    // stack-trace or low-level SDK error details back to the caller — they
+    // can travel through the local HTTP server to browser extension/web
+    // pages and may leak implementation details (CWE-209/497).
+    console.error('[lightweightTranslate] Translation failed:', e)
+    return { success: false, error: 'Translation failed' }
   }
 }

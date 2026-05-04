@@ -4,8 +4,8 @@
  * Manages persisted history of text translations and live-translate sessions
  * independently of chat state and user settings.
  */
-import type { StateCreator } from 'zustand'
 import type { HistoryItem, LiveSession } from '../../types'
+import type { SliceSet } from './sliceTypes'
 
 /** Maximum number of translation history entries to keep. */
 const MAX_HISTORY = 100
@@ -34,8 +34,7 @@ export interface HistorySlice {
   setViewingLiveSession: (id: string | null) => void
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: StateCreator full-state generic omitted to avoid circular deps — full AppState is assembled in useAppStore.ts
-export const createHistorySlice: StateCreator<any, [], [], HistorySlice> = (set) => ({
+export const createHistorySlice = (set: SliceSet): HistorySlice => ({
   history: [],
   liveSessions: [],
   viewingLiveSessionId: null,
