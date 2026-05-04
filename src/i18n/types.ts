@@ -98,6 +98,8 @@ export interface Translations {
   dictionary_lookup_loading: string
   dictionary_empty_title: string
   dictionary_empty_desc: string
+  dictionary_empty_hints: string[]
+  dictionary_no_matches: string
   dictionary_result_title: string
   dictionary_pronunciation: string
   dictionary_part_of_speech: string

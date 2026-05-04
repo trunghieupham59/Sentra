@@ -144,7 +144,7 @@ export function DictionaryHistoryPanel({
             </div>
             <span>
               {filter
-                ? '—'
+                ? t.dictionary_no_matches
                 : activeTab === 'favorites'
                   ? t.dictionary_no_favorites
                   : t.dictionary_no_recent}

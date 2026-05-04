@@ -73,6 +73,8 @@ const vi: Translations = {
   dictionary_lookup_loading: 'Đang tra…',
   dictionary_empty_title: 'Chưa chọn mục nào',
   dictionary_empty_desc: 'Tra một từ để xem nghĩa, bản dịch, ví dụ và ghi chú.',
+  dictionary_empty_hints: ['sắc thái', '工夫', 'kintsugi'],
+  dictionary_no_matches: 'Không có mục phù hợp',
   dictionary_result_title: 'Mục từ',
   dictionary_pronunciation: 'Phiên âm',
   dictionary_part_of_speech: 'Từ loại',

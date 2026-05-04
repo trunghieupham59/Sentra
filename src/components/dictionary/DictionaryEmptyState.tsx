@@ -1,11 +1,11 @@
 import type { Translations } from '../../i18n'
-import { BookIcon, SparklesIcon } from '../ui/icons'
+import { BookIcon, LightbulbIcon, SparklesIcon, TranslateIcon } from '../ui/icons'
 
 interface DictionaryEmptyStateProps {
   t: Translations
 }
 
-const HINT_ICONS = ['📘', '🌏', '💡'] as const
+const HINT_ICONS = [BookIcon, TranslateIcon, LightbulbIcon] as const
 
 /**
  * Empty state shown in the result panel before any lookup has been
@@ -14,14 +14,6 @@ const HINT_ICONS = ['📘', '🌏', '💡'] as const
  * heading, a muted body copy.  Hint chips help orient new users.
  */
 export function DictionaryEmptyState({ t }: DictionaryEmptyStateProps) {
-  // Hints are intentionally hard-coded English samples to demonstrate the
-  // bilingual nature of the dictionary; not user-facing copy that needs i18n.
-  const hints = [
-    'serendipity',
-    '工夫',
-    'kintsugi',
-  ]
-
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-10 text-center">
       <div className="relative">
@@ -43,15 +35,18 @@ export function DictionaryEmptyState({ t }: DictionaryEmptyStateProps) {
       </div>
 
       <div className="flex flex-wrap items-center justify-center gap-1.5">
-        {hints.map((hint, idx) => (
-          <span
-            key={hint}
-            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-500 shadow-sm shadow-gray-900/5 dark:border-neutral-700 dark:bg-neutral-900 dark:text-gray-400"
-          >
-            <span aria-hidden>{HINT_ICONS[idx]}</span>
-            <span className="font-mono">{hint}</span>
-          </span>
-        ))}
+        {t.dictionary_empty_hints.map((hint, idx) => {
+          const HintIcon = HINT_ICONS[idx % HINT_ICONS.length]
+          return (
+            <span
+              key={hint}
+              className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-500 shadow-sm shadow-gray-900/5 dark:border-neutral-700 dark:bg-neutral-900 dark:text-gray-400"
+            >
+              <HintIcon className="h-3 w-3" />
+              <span className="font-mono">{hint}</span>
+            </span>
+          )
+        })}
       </div>
     </div>
   )

@@ -47,7 +47,7 @@ function cleanStringArray(value: unknown): string[] {
 function cleanTranslationArray(value: unknown): DictionaryTranslation[] {
   if (!Array.isArray(value)) return []
   return value
-    .map((item) => {
+    .map((item): DictionaryTranslation | null => {
       if (!item || typeof item !== 'object') return null
       const record = item as Record<string, unknown>
       const text = cleanString(record.text, 220)

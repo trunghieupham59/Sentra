@@ -73,6 +73,8 @@ const en: Translations = {
   dictionary_lookup_loading: 'Looking up…',
   dictionary_empty_title: 'No entry selected',
   dictionary_empty_desc: 'Look up a term to see meaning, translations, examples, and notes.',
+  dictionary_empty_hints: ['serendipity', '工夫', 'kintsugi'],
+  dictionary_no_matches: 'No matching entries',
   dictionary_result_title: 'Entry',
   dictionary_pronunciation: 'Pronunciation',
   dictionary_part_of_speech: 'Part of speech',
