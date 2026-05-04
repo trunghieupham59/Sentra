@@ -29,8 +29,8 @@ vi.mock('electron-updater', () => ({
 }))
 
 import {
-  buildMacInstallScript,
   buildMacGithubReleaseFromTag,
+  buildMacInstallScript,
   isNewerVersion,
   parseLatestGithubTagFromUrl,
 } from '../updater'

@@ -19,7 +19,7 @@ const MESSAGE_REGENERATE_BUTTON_CLASS = `${MESSAGE_ACTION_BUTTON_CLASS} hover:bg
  * pill ends up with awkward double ellipses next to the bouncing dots.
  */
 function stripTrailingEllipsis(label: string): string {
-  return label.replace(/[…．\.\s]+$/u, '')
+  return label.replace(/[…．.\s]+$/u, '')
 }
 
 /**

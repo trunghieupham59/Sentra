@@ -45,7 +45,7 @@ const QUICK_TEXTAREA_MAX_HEIGHT_PX = 120
  * the label cleanly without doubled-up ellipses next to the bouncing dots.
  */
 function stripTrailingEllipsis(label: string): string {
-  return label.replace(/[…．\.\s]+$/u, '')
+  return label.replace(/[…．.\s]+$/u, '')
 }
 
 /**

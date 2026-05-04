@@ -63,20 +63,24 @@ export function Sidebar() {
 
       {/* App icon + collapse toggle */}
       <div className={`mb-1 flex h-11 items-center ${collapsed ? 'justify-center px-0' : 'justify-between pl-2 pr-1'} gap-2`}>
-        <div className={`flex items-center gap-3 min-w-0 ${collapsed ? 'cursor-pointer' : ''}`}
-             onClick={collapsed ? toggleSidebar : undefined}
-             onKeyDown={collapsed ? (e) => { if (e.key === 'Enter' || e.key === ' ') toggleSidebar() } : undefined}
-             role={collapsed ? 'button' : undefined}
-             tabIndex={collapsed ? 0 : undefined}
-             aria-label={collapsed ? t.nav_expand_sidebar : undefined}
-             title={collapsed ? t.nav_expand_sidebar : undefined}>
-          <AppLogoIcon size={34} />
-          {!collapsed && (
+        {collapsed ? (
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            aria-label={t.nav_expand_sidebar}
+            title={t.nav_expand_sidebar}
+            className="flex items-center gap-3 min-w-0 cursor-pointer bg-transparent border-0 p-0"
+          >
+            <AppLogoIcon size={34} />
+          </button>
+        ) : (
+          <div className="flex items-center gap-3 min-w-0">
+            <AppLogoIcon size={34} />
             <div className="min-w-0">
               <div className="truncate text-sm font-bold text-gray-950 dark:text-gray-50">Viezan</div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
         {!collapsed && (
           <button
             type="button"
