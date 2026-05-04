@@ -11,3 +11,8 @@ release
 *.log
 .DS_Store
 Thumbs.db
+
+# Snapshot of original transparent icon artwork (used by
+# scripts/add-logo-background.mjs to make the background pass idempotent).
+build/source/
+

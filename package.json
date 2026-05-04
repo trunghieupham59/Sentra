@@ -27,7 +27,7 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "generate-icons": "node scripts/generate-icons.mjs"
+    "generate-icons": "node scripts/add-logo-background.mjs"
   },
   "keywords": [
     "translation",
