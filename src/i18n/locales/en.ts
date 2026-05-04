@@ -166,6 +166,7 @@ const en: Translations = {
   settings_local_ai_waiting_runtime: 'Waiting for runtime',
   settings_local_ai_cancel_install: 'Cancel',
   settings_local_ai_install_cancelled: 'Local runtime install cancelled.',
+  settings_local_ai_manual_install_opened: 'Opened the runtime download page. Install it, then return to Viezan and refresh Local AI.',
   settings_local_ai_ollama_installed: 'Local runtime installed. Checking runtime...',
   settings_local_ai_checking_runtime: 'Checking local runtime...',
   settings_local_ai_restart_title: 'Restart Viezan required',

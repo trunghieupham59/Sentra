@@ -22,6 +22,7 @@ import { smartThinkingService } from '../services/smartThinkingService'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { ChatMessage, ChatMessageContent } from '../types'
 import { localizeChatError, localizeChatException } from '../utils/chatErrors'
+import { createClientId } from '../utils/id'
 import { extractImageFromClipboard, resizeImageFile } from '../utils/imageUtils'
 import { eventMatchesShortcut, formatShortcutLabel, shouldSendChatMessage } from '../utils/keyboardShortcuts'
 
@@ -418,7 +419,7 @@ export function ChatPage() {
           },
           callbacks: {
             onStepStart: (label) => {
-              const msgId = `msg-${Date.now()}-dr${Math.random().toString(36).slice(2, 6)}`
+              const msgId = createClientId('msg-dr')
               addChatMessage(sessionId, {
                 id: msgId,
                 role: 'assistant',

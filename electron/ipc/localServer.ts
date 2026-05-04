@@ -256,6 +256,11 @@ function sendJSON (req: http.IncomingMessage, res: http.ServerResponse, statusCo
   res.end(JSON.stringify(data))
 }
 
+function getPublicRequestErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof SyntaxError) return 'Invalid JSON payload'
+  return fallback
+}
+
 function readBody (req: http.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     let body = ''
@@ -311,7 +316,7 @@ export async function handleLocalServerRequest(req: http.IncomingMessage, res: h
       const result = await lightweightTranslate(JSON.parse(await readBody(req)))
       sendJSON(req, res, 200, result)
     } catch (e) {
-      sendJSON(req, res, 400, { success: false, error: String(e) })
+      sendJSON(req, res, 400, { success: false, error: getPublicRequestErrorMessage(e, 'Translation request failed') })
     }
     return
   }
@@ -332,7 +337,7 @@ export async function handleLocalServerRequest(req: http.IncomingMessage, res: h
       })
       sendJSON(req, res, result.success ? 200 : 400, result)
     } catch (e) {
-      sendJSON(req, res, 400, { success: false, error: String(e) })
+      sendJSON(req, res, 400, { success: false, error: getPublicRequestErrorMessage(e, 'TTS request failed') })
     }
     return
   }

@@ -80,12 +80,12 @@ function createDebouncedStorage(delay = 500) {
 
 export const useAppStore = create<AppState>()(
   persist(
-    (set, get, store) => ({
-      ...createCoreSlice(set, get, store),
-      ...createSettingsSlice(set, get, store),
-      ...createHistorySlice(set, get, store),
-      ...createChatSlice(set, get, store),
-      ...createDictionarySlice(set, get, store),
+    (set, get) => ({
+      ...createCoreSlice(set, get),
+      ...createSettingsSlice(set),
+      ...createHistorySlice(set),
+      ...createChatSlice(set),
+      ...createDictionarySlice(set),
     }),
     {
       name: STORE_PERSIST_KEY,

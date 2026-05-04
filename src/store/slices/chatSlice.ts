@@ -6,6 +6,7 @@
  */
 import type { StateCreator } from 'zustand'
 import type { ChatMessage, ChatSession, Provider, SystemPromptPreset } from '../../types'
+import { createClientId } from '../../utils/id'
 
 /**
  * Maximum number of chat sessions to keep in memory and persisted storage.
@@ -43,7 +44,7 @@ export const createChatSlice: StateCreator<any, [], [], ChatSlice> = (set) => ({
   systemPromptPresets: [],
 
   createChatSession: (provider, model) => {
-    const id = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const id = createClientId('chat')
     const session: ChatSession = {
       id,
       title: 'New Chat',
@@ -118,7 +119,7 @@ export const createChatSlice: StateCreator<any, [], [], ChatSlice> = (set) => ({
   setChatSystemPrompt: (prompt) => set({ chatSystemPrompt: prompt }),
 
   addSystemPromptPreset: (preset) => {
-    const id = `preset-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+    const id = createClientId('preset')
     const newPreset: SystemPromptPreset = { ...preset, id }
     set((state: ChatSlice) => {
       const presets = preset.isDefault

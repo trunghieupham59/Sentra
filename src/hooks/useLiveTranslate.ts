@@ -18,6 +18,7 @@ import { LANG_NAMES_FOR_AI } from '../constants/langNames'
 import { MIN_AUDIO_BLOB_BYTES } from '../constants/ui'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { Provider, SttBackend, SubtitleSettings } from '../types'
+import { createClientId } from '../utils/id'
 import { isHallucination, jaccardSimilarity } from '../utils/live-translate'
 import { float32ToWav } from '../utils/wav-encoder'
 import {
@@ -520,7 +521,7 @@ export function useLiveTranslate() {
       // Add segment immediately so it shows in the left panel while translating.
       // Translation runs in the background — the queue is NOT blocked so the next
       // audio chunk can be STT'd immediately without waiting for translation.
-      const segId = `seg-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`
+      const segId = createClientId('seg')
       setSegments(prev => [...prev, {
         id: segId,
         rawText: sentenceText,
@@ -565,7 +566,6 @@ export function useLiveTranslate() {
           }
 
           let txResult: { success: boolean; translatedText?: string }
-          let _usedStreaming = false
 
           if (showSubtitlesRef.current) {
             try {
@@ -578,7 +578,6 @@ export function useLiveTranslate() {
                 translationStyle: 'general',
                 segId: capturedSegId,
               })
-              _usedStreaming = txResult.success
             } catch {
               txResult = { success: false }
             }
@@ -810,7 +809,7 @@ export function useLiveTranslate() {
     lastSpeakerChangeTimeRef.current = INITIAL_SPEAKER_DIARIZATION_STATE.lastSpeakerChangeTime
     speakerTurnHistoryRef.current    = [...INITIAL_SPEAKER_DIARIZATION_STATE.turnHistory]
     const now = Date.now()
-    sessionIdRef.current    = `live-${now}-${Math.random().toString(36).slice(2, 8)}`
+    sessionIdRef.current    = createClientId('live', now)
     sessionStartRef.current = now
     setSessionStartTime(now)
 

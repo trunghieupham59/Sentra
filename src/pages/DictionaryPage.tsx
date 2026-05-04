@@ -18,9 +18,10 @@ import type {
   DictionaryResult,
   DictionaryTranslation,
 } from '../types'
+import { createClientId } from '../utils/id'
 
 function createDictionaryEntryId(): string {
-  return `dict-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  return createClientId('dict')
 }
 
 function formatDictionaryEntry(entry: DictionaryEntry): string {

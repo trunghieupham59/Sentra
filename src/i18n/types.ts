@@ -175,6 +175,7 @@ export interface Translations {
   settings_local_ai_waiting_runtime: string
   settings_local_ai_cancel_install: string
   settings_local_ai_install_cancelled: string
+  settings_local_ai_manual_install_opened: string
   settings_local_ai_ollama_installed: string
   settings_local_ai_checking_runtime: string
   settings_local_ai_restart_title: string

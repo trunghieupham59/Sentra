@@ -108,6 +108,14 @@ function normalizeTtsMode(mode?: TtsMode): TtsMode {
   return mode === 'auto' || mode === 'premium' ? mode : 'free'
 }
 
+function getSafeErrorCode(error: unknown): string {
+  if (error && typeof error === 'object' && 'code' in error) {
+    const code = String((error as { code?: unknown }).code)
+    return /^[A-Z0-9_-]{1,40}$/i.test(code) ? code : 'UNKNOWN'
+  }
+  return 'UNKNOWN'
+}
+
 // ── Provider ranking ──────────────────────────────────────────────────────────
 
 /**
@@ -478,7 +486,12 @@ async function ttsWithElevenLabs(
 export async function synthesizeTts(params: TtsParams): Promise<TtsResult> {
   const { text, voice = 'nova', lang } = params
   const mode = normalizeTtsMode(params.mode)
-  console.log('[tts] Request: text length =', text.length, '| mode =', mode, '| voice =', voice, '| lang =', lang)
+  console.log('[tts] Request:', {
+    textLength: text.length,
+    mode,
+    hasVoice: Boolean(voice),
+    hasLang: Boolean(lang),
+  })
 
   const openaiKey     = getStoredApiKey('openai')
   const geminiKey     = getStoredApiKey('gemini')
@@ -522,7 +535,7 @@ export async function synthesizeTts(params: TtsParams): Promise<TtsResult> {
       // biome-ignore lint/suspicious/noExplicitAny: error code from thrown object
       const code = (err as any)?.code
 
-      console.warn(`[tts] ${candidate.provider} TTS failed:`, msg)
+      console.warn(`[tts] ${candidate.provider} TTS failed:`, { code: getSafeErrorCode(err) })
 
       // Hard failures — surface immediately without trying next provider
       if (

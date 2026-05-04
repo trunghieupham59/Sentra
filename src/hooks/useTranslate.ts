@@ -21,6 +21,7 @@ import { translationService } from '../services/translationService'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { ImageTextRegion, PhoneticMode } from '../types'
 import { renderTranslatedRegions } from '../utils/canvas'
+import { createClientId } from '../utils/id'
 import { extractImageFromClipboard, resizeImageFile } from '../utils/imageUtils'
 import { useTTS } from './useTTS'
 import { useVoiceInput } from './useVoiceInput'
@@ -44,7 +45,7 @@ interface AutoHistoryDraft {
 }
 
 function createHistoryId(timestamp = Date.now()) {
-  return `${timestamp}-${Math.random().toString(36).slice(2, 8)}`
+  return createClientId('history', timestamp)
 }
 
 function getCommonPrefixLength(a: string, b: string) {

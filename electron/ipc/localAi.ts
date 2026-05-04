@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { performance } from 'node:perf_hooks'
-import { app, type IpcMain, type WebContents } from 'electron'
+import { type IpcMain, shell, type WebContents } from 'electron'
 
 export type LocalAiEngine = 'ollama' | 'lmstudio' | 'llamacpp'
 export type LocalAiHardwareTier = 'low' | 'balanced' | 'powerful' | 'max'
@@ -72,8 +72,10 @@ export interface LocalAiModelDownloadProgress {
 export interface LocalAiInstallResult {
   success: boolean
   error?: string
+  message?: string
   output?: string
   cancelled?: boolean
+  manual?: boolean
 }
 
 export interface LocalAiInstallProgress {
@@ -135,12 +137,10 @@ export const LOCAL_AI_PLACEHOLDER_KEY = 'local-ai'
 
 const LOCAL_AI_PROBE_TIMEOUT_MS = 1200
 const LOCAL_AI_CACHE_TTL_MS = 5000
-const LOCAL_AI_INSTALL_TIMEOUT_MS = 10 * 60 * 1000
 const LOCAL_AI_RUNTIME_BENCHMARK_TIMEOUT_MS = 15_000
 const LOCAL_AI_RUNTIME_START_TIMEOUT_MS = 18_000
 const LOCAL_AI_RUNTIME_START_POLL_MS = 600
-const OLLAMA_INSTALL_SCRIPT_URL = 'https://ollama.com/install.sh'
-const OLLAMA_INSTALL_SCRIPT_NAME = 'ollama-install.sh'
+const OLLAMA_DOWNLOAD_URL = 'https://ollama.com/download'
 
 export const LOCAL_AI_RUNTIME_CANDIDATES: LocalAiRuntimeCandidate[] = [
   { engine: 'ollama', endpoint: 'http://127.0.0.1:11434/v1', managementEndpoint: 'http://127.0.0.1:11434/api' },
@@ -149,10 +149,6 @@ export const LOCAL_AI_RUNTIME_CANDIDATES: LocalAiRuntimeCandidate[] = [
 ]
 
 let discoveryCache: { expiresAt: number; result: LocalAiDiscoveryResult } | null = null
-let activeOllamaInstall: {
-  child: ChildProcess
-  cancel: () => void
-} | null = null
 let activeOllamaStart: Promise<LocalAiDiscoveryResult> | null = null
 let managedOllamaProcess: ChildProcess | null = null
 
@@ -996,335 +992,35 @@ function emitInstallProgress(sender: WebContents | undefined, progress: LocalAiI
   sender.send('local-ai:installProgress', progress)
 }
 
-function appendInstallOutput(current: string, chunk: Buffer | string) {
-  return `${current}${chunk.toString()}`.slice(-4000)
-}
-
-function getReadableInstallMessage(chunk: Buffer | string) {
-  const lines = chunk.toString().trim().split('\n').map((line) => line.trim()).filter(Boolean)
-  const line = lines[lines.length - 1]
-  if (!line) return null
-  if (/^#+\s*\d+(?:\.\d+)?%/.test(line)) return null
-  if (line.includes('% Total') || line.includes('Dload') || line.includes('Upload')) return null
-  if (/^\d+\s+\d+\s+\d+/.test(line)) return null
-  return line
-}
-
-function getReadableInstallOutput(output: string) {
-  const lines = output
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .filter((line) => !/^#+\s*\d+(?:\.\d+)?%/.test(line))
-    .filter((line) => !line.includes('% Total') && !line.includes('Dload') && !line.includes('Upload'))
-    .filter((line) => !/^\d+\s+\d+\s+\d+/.test(line))
-  return lines.slice(-4).join(' ')
-}
-
-function getInstallFailureMessage(code: number | null, output: string) {
-  const readableOutput = getReadableInstallOutput(output)
-  if (readableOutput) return `Local runtime install failed: ${readableOutput}`
-  return `Local runtime install failed with exit code ${code ?? 'unknown'}.`
-}
-
-function shouldRetryMacInstallWithAdmin(code: number | null, output: string) {
-  if (process.platform !== 'darwin' || code === 0) return false
-  return /permission denied|operation not permitted|not permitted|administrator|sudo|\/applications|\/usr\/local\/bin|ln:|mv:|mkdir/i.test(output)
-}
-
-function quoteShellArg(value: string) {
-  return `'${value.replace(/'/g, "'\\''")}'`
-}
-
-function escapeAppleScriptString(value: string) {
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
-}
-
-async function downloadOllamaInstallScript(): Promise<string> {
-  const response = await fetch(OLLAMA_INSTALL_SCRIPT_URL)
-  if (!response.ok) {
-    throw new Error(`Installer download failed (${response.status})`)
-  }
-
-  const script = await response.text()
-  if (!script.includes('ollama') || !script.includes('OLLAMA')) {
-    throw new Error('Installer provenance check failed.')
-  }
-
-  const dir = path.join(app.getPath('userData'), 'installers')
-  fs.mkdirSync(dir, { recursive: true })
-  const scriptPath = path.join(dir, `${Date.now()}-${OLLAMA_INSTALL_SCRIPT_NAME}`)
-  fs.writeFileSync(scriptPath, script, { encoding: 'utf-8', mode: 0o700 })
-  return scriptPath
-}
-
-function removeInstallScript(scriptPath: string | null) {
-  if (!scriptPath) return
-  try { fs.unlinkSync(scriptPath) } catch { /* ignore */ }
-}
-
-function startOllamaApp() {
-  if (process.platform !== 'darwin') return
-  try {
-    const child = spawn('/usr/bin/open', ['-a', 'Ollama', '--args', 'hidden'], {
-      detached: true,
-      stdio: 'ignore',
-    })
-    child.unref()
-  } catch {
-    // Starting the app is best-effort; discovery can still happen after user opens it.
-  }
-}
-
-function stopOllamaInstallProcess() {
-  const active = activeOllamaInstall
-  if (!active) return false
-  active.cancel()
-  return true
-}
-
 export async function installOllamaRuntime(sender?: WebContents): Promise<LocalAiInstallResult> {
-  if (process.platform === 'win32') {
-    return {
-      success: false,
-      error: 'Direct local runtime install is currently supported on macOS and Linux. Use a runtime installer manually on Windows.',
-    }
-  }
-  if (activeOllamaInstall) {
-    return {
-      success: false,
-      error: 'Local runtime install is already running.',
-    }
-  }
-
   emitInstallProgress(sender, {
     status: 'running',
-    percent: 4,
-    message: 'Downloading local runtime installer from ollama.com...',
+    percent: 30,
+    message: 'Opening local runtime download page...',
   })
 
-  let scriptPath: string
   try {
-    scriptPath = await downloadOllamaInstallScript()
+    await shell.openExternal(OLLAMA_DOWNLOAD_URL)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     emitInstallProgress(sender, {
       status: 'error',
-      percent: 4,
-      message,
+      percent: 30,
+      message: 'Could not open the local runtime download page.',
     })
     return {
       success: false,
-      error: `Local runtime install failed: ${message}`,
+      error: `Could not open the local runtime download page: ${message}`,
     }
   }
 
-  return new Promise((resolve) => {
-    const child = spawn('/bin/sh', [scriptPath], {
-      detached: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
-    let output = ''
-    let percent = 8
-    let cancelled = false
-    let timedOut = false
-    let resolved = false
-
-    const finish = (result: LocalAiInstallResult, progress: LocalAiInstallProgress) => {
-      if (resolved) return
-      resolved = true
-      clearInterval(progressTimer)
-      clearTimeout(timeoutTimer)
-      removeInstallScript(scriptPath)
-      activeOllamaInstall = null
-      emitInstallProgress(sender, progress)
-      resolve(result)
-    }
-
-    const cancel = () => {
-      cancelled = true
-      if (child.pid) {
-        try {
-          process.kill(-child.pid, 'SIGTERM')
-        } catch {
-          child.kill('SIGTERM')
-        }
-      }
-    }
-
-    const terminateChild = (target: ChildProcess) => {
-      if (target.pid) {
-        try {
-          process.kill(-target.pid, 'SIGTERM')
-        } catch {
-          target.kill('SIGTERM')
-        }
-      }
-    }
-
-    const runMacAdminFallback = () => {
-      const adminCommand = `OLLAMA_NO_START=1 /bin/sh ${quoteShellArg(scriptPath)}`
-      const appleScript = `do shell script "${escapeAppleScriptString(adminCommand)}" with administrator privileges`
-      const adminChild = spawn('/usr/bin/osascript', ['-e', appleScript], {
-        detached: true,
-        stdio: ['ignore', 'pipe', 'pipe'],
-      })
-      activeOllamaInstall = {
-        child: adminChild,
-        cancel: () => {
-          cancelled = true
-          terminateChild(adminChild)
-        },
-      }
-      percent = Math.max(percent, 72)
-      emitInstallProgress(sender, {
-        status: 'running',
-        percent,
-        message: 'Requesting administrator permission to finish runtime setup...',
-      })
-
-      adminChild.stdout?.on('data', (chunk: Buffer) => {
-        output = appendInstallOutput(output, chunk)
-        const message = getReadableInstallMessage(chunk)
-        if (!message) return
-        emitInstallProgress(sender, { status: 'running', percent, message })
-      })
-
-      adminChild.stderr?.on('data', (chunk: Buffer) => {
-        output = appendInstallOutput(output, chunk)
-        const message = getReadableInstallMessage(chunk)
-        if (!message) return
-        emitInstallProgress(sender, { status: 'running', percent, message })
-      })
-
-      adminChild.on('error', (error) => {
-        finish(
-          { success: false, error: `Local runtime install failed: ${error.message}`, output },
-          { status: 'error', percent, message: error.message }
-        )
-      })
-
-      adminChild.on('close', (adminCode) => {
-        if (cancelled) {
-          finish(
-            { success: false, cancelled: true, error: 'Local runtime install was cancelled.', output },
-            { status: 'cancelled', percent, message: 'Local runtime install cancelled.' }
-          )
-          return
-        }
-        if (timedOut) {
-          finish(
-            { success: false, error: 'Local runtime install timed out.', output },
-            { status: 'error', percent, message: 'Local runtime install timed out.' }
-          )
-          return
-        }
-        if (adminCode !== 0) {
-          const message = getInstallFailureMessage(adminCode, output)
-          finish(
-            { success: false, error: message, output },
-            { status: 'error', percent, message }
-          )
-          return
-        }
-        discoveryCache = null
-        startOllamaApp()
-        finish(
-          { success: true, output },
-          { status: 'success', percent: 100, message: 'Local runtime installed.' }
-        )
-      })
-    }
-
-    activeOllamaInstall = { child, cancel }
-    percent = Math.max(percent, 12)
-    emitInstallProgress(sender, {
-      status: 'running',
-      percent,
-      message: 'Starting verified local runtime installer...',
-    })
-
-    const progressTimer = setInterval(() => {
-      percent = Math.min(percent + 5, 92)
-      emitInstallProgress(sender, {
-        status: 'running',
-        percent,
-        message: percent < 45
-          ? 'Downloading runtime installer...'
-          : percent < 80
-            ? 'Installing local runtime...'
-            : 'Finalizing local runtime setup...',
-      })
-    }, 1200)
-
-    const timeoutTimer = setTimeout(() => {
-      timedOut = true
-      cancel()
-    }, LOCAL_AI_INSTALL_TIMEOUT_MS)
-
-    child.stdout.on('data', (chunk: Buffer) => {
-      output = appendInstallOutput(output, chunk)
-      const message = getReadableInstallMessage(chunk)
-      if (!message) return
-      emitInstallProgress(sender, {
-        status: 'running',
-        percent,
-        message,
-      })
-    })
-
-    child.stderr.on('data', (chunk: Buffer) => {
-      output = appendInstallOutput(output, chunk)
-      const message = getReadableInstallMessage(chunk)
-      if (!message) return
-      emitInstallProgress(sender, {
-        status: 'running',
-        percent,
-        message,
-      })
-    })
-
-    child.on('error', (error) => {
-      finish(
-        { success: false, error: `Local runtime install failed: ${error.message}`, output },
-        { status: 'error', percent, message: error.message }
-      )
-    })
-
-    child.on('close', (code) => {
-      if (cancelled) {
-        finish(
-          { success: false, cancelled: true, error: 'Local runtime install was cancelled.', output },
-          { status: 'cancelled', percent, message: 'Local runtime install cancelled.' }
-        )
-        return
-      }
-      if (timedOut) {
-        finish(
-          { success: false, error: 'Local runtime install timed out.', output },
-          { status: 'error', percent, message: 'Local runtime install timed out.' }
-        )
-        return
-      }
-      if (code !== 0) {
-        if (shouldRetryMacInstallWithAdmin(code, output)) {
-          runMacAdminFallback()
-          return
-        }
-        const message = getInstallFailureMessage(code, output)
-        finish(
-          { success: false, error: message, output },
-          { status: 'error', percent, message }
-        )
-        return
-      }
-      discoveryCache = null
-      finish(
-        { success: true, output },
-        { status: 'success', percent: 100, message: 'Local runtime installed.' }
-      )
-    })
+  const message = 'Opened the local runtime download page. Install it there, then return to Viezan and refresh Local AI.'
+  emitInstallProgress(sender, {
+    status: 'success',
+    percent: 100,
+    message,
   })
+  return { success: true, manual: true, message }
 }
 
 export function registerLocalAiHandlers(ipcMain: IpcMain) {
@@ -1334,5 +1030,5 @@ export function registerLocalAiHandlers(ipcMain: IpcMain) {
   ipcMain.handle('local-ai:downloadModel', async (event, modelId: string) => downloadLocalAiModel(modelId, event.sender))
   ipcMain.handle('local-ai:uninstallModel', async (_event, modelId: string) => uninstallLocalAiModel(modelId))
   ipcMain.handle('local-ai:installOllama', async (event) => installOllamaRuntime(event.sender))
-  ipcMain.handle('local-ai:cancelInstallOllama', async () => ({ success: stopOllamaInstallProcess() }))
+  ipcMain.handle('local-ai:cancelInstallOllama', async () => ({ success: false }))
 }

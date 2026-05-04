@@ -166,6 +166,7 @@ const ja: Translations = {
   settings_local_ai_waiting_runtime: 'ランタイム待機中',
   settings_local_ai_cancel_install: 'キャンセル',
   settings_local_ai_install_cancelled: 'ローカルランタイムのインストールをキャンセルしました。',
+  settings_local_ai_manual_install_opened: 'ランタイムのダウンロードページを開きました。インストール後、Viezanに戻ってLocal AIを更新してください。',
   settings_local_ai_ollama_installed: 'ローカルランタイムをインストールしました。確認中...',
   settings_local_ai_checking_runtime: 'ローカルランタイムを確認中...',
   settings_local_ai_restart_title: 'Viezanの再起動が必要です',

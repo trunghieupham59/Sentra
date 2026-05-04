@@ -536,6 +536,10 @@ export function ApiKeysSection() {
         setInstallError(result.cancelled ? t.settings_local_ai_install_cancelled : result.error ?? t.settings_local_ai_install_failed)
         return
       }
+      if (result.manual) {
+        setInstallSuccess(t.settings_local_ai_manual_install_opened)
+        return
+      }
       setInstallSuccess(t.settings_local_ai_checking_runtime)
       const discovery = await refreshLocalAi()
       if (!discovery?.available) {

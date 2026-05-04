@@ -14,6 +14,7 @@
 // main-process version in electron/ipc/chat.ts, but the IPC layer ignores unknown fields,
 // so using the richer type here is safe.
 import type { ChatImageEditResult, ChatMessageContent, ChatResult, ChatStreamEvent } from '../types'
+import { createClientId } from '../utils/id'
 
 // Re-export for any consumers that import ChatMessageContent from chatService
 export type { ChatMessageContent }
@@ -56,7 +57,7 @@ interface ChatStreamCallbacks {
 }
 
 function createChatStreamRequestId() {
-  return `chat-stream-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  return createClientId('chat-stream')
 }
 
 export const chatService = {

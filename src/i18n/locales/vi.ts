@@ -166,6 +166,7 @@ const vi: Translations = {
   settings_local_ai_waiting_runtime: 'Chờ runtime',
   settings_local_ai_cancel_install: 'Hủy',
   settings_local_ai_install_cancelled: 'Đã hủy cài runtime local.',
+  settings_local_ai_manual_install_opened: 'Đã mở trang tải runtime. Hãy cài runtime, sau đó quay lại Viezan và làm mới Local AI.',
   settings_local_ai_ollama_installed: 'Đã cài runtime local. Đang kiểm tra runtime...',
   settings_local_ai_checking_runtime: 'Đang kiểm tra runtime local...',
   settings_local_ai_restart_title: 'Cần mở lại Viezan',

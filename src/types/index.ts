@@ -188,8 +188,10 @@ export interface LocalAiModelDownloadProgress {
 export interface LocalAiInstallResult {
   success: boolean
   error?: string
+  message?: string
   output?: string
   cancelled?: boolean
+  manual?: boolean
 }
 
 export interface LocalAiInstallProgress {
