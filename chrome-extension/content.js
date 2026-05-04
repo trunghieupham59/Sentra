@@ -154,6 +154,16 @@
   copyBtn.title = COPY_TITLE
   replaceBtn.title = REPLACE_TITLE
 
+  // Keep the page/editor selection alive while the user interacts with Viezan UI.
+  // Rich markdown editors often collapse their internal cursor when a toolbar
+  // button receives focus; replacement then lands at the editor's fallback caret.
+  for (const el of [btn, copyBtn, replaceBtn, listenBtn]) {
+    el.addEventListener('mousedown', (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+    }, true)
+  }
+
   // ── State ─────────────────────────────────────────────────────────────────
 
   let lastSelection = ''
@@ -170,9 +180,16 @@
     try { return !!chrome.runtime?.id } catch { return false }
   }
 
+  function retireInvalidContextUi () {
+    try { hideButton() } catch { /* ignore */ }
+    try { hideTooltip() } catch { /* ignore */ }
+    try { btn.remove() } catch { /* ignore */ }
+    try { tooltip.remove() } catch { /* ignore */ }
+  }
+
   function getSettings () {
     return new Promise((resolve, reject) => {
-      if (!isContextValid()) { reject(new Error('Extension context invalidated. Please reload the page.')); return }
+      if (!isContextValid()) { reject(new Error('Extension context invalidated.')); return }
       try {
         chrome.storage.local.get(['treToken', 'treTargetLang', 'treTranslationStyle'], (data) => {
           resolve({
@@ -182,7 +199,7 @@
           })
         })
       } catch {
-        reject(new Error('Extension context invalidated. Please reload the page.'))
+        reject(new Error('Extension context invalidated.'))
       }
     })
   }
@@ -221,7 +238,7 @@
   function requestBackground (type, payload) {
     return new Promise((resolve, reject) => {
       if (!isContextValid()) {
-        reject(new Error('Extension context invalidated. Please reload the page.'))
+        reject(new Error('Extension context invalidated.'))
         return
       }
       try {
@@ -237,7 +254,7 @@
           resolve(response)
         })
       } catch {
-        reject(new Error('Extension context invalidated. Please reload the page.'))
+        reject(new Error('Extension context invalidated.'))
       }
     })
   }
@@ -394,6 +411,118 @@
     ttsPlayer.stop()
   }
 
+  function getElementFromNode (node) {
+    if (!node) return null
+    return node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement
+  }
+
+  function normalizeSelectionText (text) {
+    return String(text || '').replace(/\s+/g, ' ').trim()
+  }
+
+  function getEditableForRange (range) {
+    try {
+      let el = getElementFromNode(range.commonAncestorContainer)
+      const explicitRoot = el?.closest('[contenteditable]')
+      if (explicitRoot) return explicitRoot
+
+      let inheritedRoot = null
+      while (el) {
+        if (el.isContentEditable) inheritedRoot = el
+        el = el.parentElement
+      }
+      return inheritedRoot
+    } catch {
+      return null
+    }
+  }
+
+  function focusElementWithoutScroll (el) {
+    if (!el) return
+    try {
+      el.focus({ preventScroll: true })
+    } catch {
+      try { el.focus() } catch { /* ignore */ }
+    }
+  }
+
+  function restoreDomSelection (range, editableEl) {
+    if (!range) return false
+
+    focusElementWithoutScroll(editableEl)
+    const sel = window.getSelection()
+    if (!sel) return false
+
+    try {
+      sel.removeAllRanges()
+      sel.addRange(range.cloneRange())
+    } catch {
+      return false
+    }
+
+    return normalizeSelectionText(sel.toString()) === normalizeSelectionText(lastSelection)
+  }
+
+  function dispatchEditableInput (editableEl, inputType = 'insertText') {
+    if (!editableEl) return
+
+    try {
+      const event = typeof InputEvent === 'function'
+        ? new InputEvent('input', {
+          bubbles: true,
+          cancelable: false,
+          composed: true,
+          inputType,
+          data: currentTranslation,
+        })
+        : new Event('input', { bubbles: true })
+      editableEl.dispatchEvent(event)
+      editableEl.dispatchEvent(new Event('change', { bubbles: true }))
+    } catch {
+      try { editableEl.dispatchEvent(new Event('input', { bubbles: true })) } catch { /* ignore */ }
+      try { editableEl.dispatchEvent(new Event('change', { bubbles: true })) } catch { /* ignore */ }
+    }
+  }
+
+  function replaceRangeWithPlainText (range, text, editableEl) {
+    if (!range || !editableEl) return false
+
+    try {
+      const workingRange = range.cloneRange()
+      workingRange.deleteContents()
+
+      const fragment = document.createDocumentFragment()
+      const lines = String(text).split('\n')
+      let lastNode = null
+      lines.forEach((line, index) => {
+        if (index > 0) {
+          const br = document.createElement('br')
+          fragment.appendChild(br)
+          lastNode = br
+        }
+        const textNode = document.createTextNode(line)
+        fragment.appendChild(textNode)
+        lastNode = textNode
+      })
+
+      workingRange.insertNode(fragment)
+
+      if (lastNode) {
+        const sel = window.getSelection()
+        const caretRange = document.createRange()
+        caretRange.setStartAfter(lastNode)
+        caretRange.collapse(true)
+        sel?.removeAllRanges()
+        sel?.addRange(caretRange)
+      }
+
+      dispatchEditableInput(editableEl)
+      return true
+    } catch {
+      return false
+    }
+  }
+
   // ── Close button ───────────────────────────────────────────────────────────
 
   closeBtn.addEventListener('click', (e) => {
@@ -494,6 +623,7 @@
   // ── Replace button ─────────────────────────────────────────────────────────
 
   replaceBtn.addEventListener('click', async (e) => {
+    e.preventDefault()
     e.stopPropagation()
     if (!currentTranslation) { hideTooltip(); return }
 
@@ -522,66 +652,28 @@
 
     // ── Case 2: contenteditable / DOM selection ────────────────────────────
     if (savedRange) {
-      // Find the contenteditable element that owns the range
-      let editableEl = null
-      try {
-        const node = savedRange.commonAncestorContainer
-        const el   = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement
-        editableEl = el?.closest('[contenteditable]')
-      } catch { /* ignore */ }
-
-      // ── Strategy 1: sync copy → focus → restore selection → sync paste ────
-      // KEY INSIGHT: navigator.clipboard.writeText() is async — awaiting it loses
-      // the user gesture context, causing execCommand('paste') to be blocked.
-      // Solution: use a hidden textarea + execCommand('copy') (synchronous!) to
-      // write to clipboard, then immediately execCommand('paste') in the same
-      // user gesture microtask. This fires a TRUSTED paste event that block-based
-      // editors (Tiptap, ProseMirror, Notion…) handle via their own paste handlers.
+      const range = savedRange.cloneRange()
+      const editableEl = getEditableForRange(range)
       let handled = false
-      try {
-        // 1a. Copy translation to clipboard synchronously (no async/await needed)
-        const tmp = document.createElement('textarea')
-        tmp.value = currentTranslation
-        tmp.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0'
-        document.body.appendChild(tmp)
-        tmp.focus()
-        tmp.select()
-        document.execCommand('copy')
-        document.body.removeChild(tmp)
 
-        // 1b. Focus the editor and restore the original multi-block selection
-        if (editableEl) editableEl.focus()
-        const sel = window.getSelection()
-        if (sel) {
-          sel.removeAllRanges()
-          sel.addRange(savedRange)
-        }
+      // Restore the exact DOM range captured before the tooltip/button stole focus.
+      // Clipboard paste is intentionally avoided here: several markdown editors keep
+      // their own internal caret and paste at the end of the document when focus was
+      // moved through an intermediate textarea.
+      if (editableEl && restoreDomSelection(range, editableEl)) {
+        handled = replaceRangeWithPlainText(range, currentTranslation, editableEl)
+      }
 
-        // 1c. Paste — fires a trusted paste event read by the editor's paste handler
-        handled = document.execCommand('paste')
-      } catch { /* ignore */ }
-
-      // ── Strategy 2: Synthetic ClipboardEvent (for editors listening to paste) ─
-      if (!handled) {
+      if (!handled && !editableEl && restoreDomSelection(range, editableEl)) {
         try {
-          if (editableEl) editableEl.focus()
-          const sel = window.getSelection()
-          if (sel) { sel.removeAllRanges(); sel.addRange(savedRange) }
-          const dt = new DataTransfer()
-          dt.setData('text/plain', currentTranslation)
-          const pasteEvt = new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: dt })
-          const target = editableEl || document.activeElement || document.body
-          target.dispatchEvent(pasteEvt)
-          handled = pasteEvt.defaultPrevented
+          handled = document.execCommand('insertText', false, currentTranslation)
         } catch { /* ignore */ }
       }
 
-      // ── Strategy 3: execCommand('insertText') — simple contenteditable ────
       if (!handled) {
-        if (editableEl) editableEl.focus()
-        const sel = window.getSelection()
-        if (sel) { sel.removeAllRanges(); sel.addRange(savedRange) }
-        document.execCommand('insertText', false, currentTranslation)
+        replaceBtn.textContent = 'Failed'
+        setTimeout(() => { replaceBtn.textContent = REPLACE_LABEL }, 1500)
+        return
       }
     }
 
@@ -774,8 +866,8 @@
     } catch (err) {
       hideButton()
       const errMsg = err.message || 'Unknown error'
-      if (errMsg.includes('context invalidated') || errMsg.includes('reload the page')) {
-        alert('Viezan Extension: Extension was updated. Please reload this page (F5) to use it again.')
+      if (errMsg.includes('context invalidated')) {
+        retireInvalidContextUi()
       } else if (errMsg.includes('401') || errMsg.includes('Unauthorized')) {
         alert('Viezan Extension: API key is invalid. Please update it in the Options page.')
       } else if (errMsg.includes('fetch') || errMsg.includes('Failed to fetch')) {

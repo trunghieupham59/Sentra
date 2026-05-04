@@ -11,6 +11,12 @@ try { importScripts('local-bridge.js') } catch { /* ignore */ }
 
 const LOCAL_BRIDGE = globalThis.ViezanLocalBridge
 const PORT = LOCAL_BRIDGE?.PORT ?? 39875
+const ensuringTabs = new Set()
+
+// Service-worker startup/reload path. Existing pages do not reload when an
+// unpacked extension is reloaded, so proactively refresh content scripts in all
+// injectable tabs as soon as this worker becomes active.
+ensureContentScriptsInOpenTabs()
 
 // ── Context menu ──────────────────────────────────────────────────────────────
 
@@ -22,14 +28,12 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   // Note: chrome.tabs.query({}) without url filter works WITHOUT the "tabs" permission.
   // chrome.scripting.executeScript will silently fail on non-injectable tabs (PDF, chrome://, etc.)
   if (details.reason === 'install' || details.reason === 'update') {
-    try {
-      const tabs = await chrome.tabs.query({})
-      for (const tab of tabs) {
-        if (!tab.id) continue
-        injectContentScript(tab.id)   // fire-and-forget, errors are caught inside
-      }
-    } catch { /* ignore */ }
+    await ensureContentScriptsInOpenTabs()
   }
+})
+
+chrome.runtime.onStartup.addListener(() => {
+  ensureContentScriptsInOpenTabs()
 })
 
 // ── Auto re-inject when user activates a tab ──────────────────────────────────
@@ -75,15 +79,29 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
  * try/catch would miss that case and incorrectly treat a dead script as alive.
  */
 async function ensureContentScript (tabId) {
+  if (ensuringTabs.has(tabId)) return
+  ensuringTabs.add(tabId)
   try {
     const resp = await chrome.tabs.sendMessage(tabId, { type: 'VIEZAN_PING' })
-    if (resp?.alive) return   // confirmed alive — nothing to do
+    if (resp?.alive) return   // confirmed alive - nothing to do
     // Resolved but with falsy/undefined → context may be dead or no handler
-    injectContentScript(tabId)
+    await injectContentScript(tabId)
   } catch {
     // sendMessage threw (no listener, or extension context error) → re-inject
-    injectContentScript(tabId)
+    await injectContentScript(tabId)
+  } finally {
+    ensuringTabs.delete(tabId)
   }
+}
+
+async function ensureContentScriptsInOpenTabs () {
+  try {
+    const tabs = await chrome.tabs.query({})
+    for (const tab of tabs) {
+      if (!tab.id) continue
+      ensureContentScript(tab.id)
+    }
+  } catch { /* ignore */ }
 }
 
 /**
