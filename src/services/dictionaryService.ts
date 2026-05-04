@@ -24,6 +24,12 @@ Each translation item must include both the translated text and its pronunciatio
 Each translation item must include practical detail fields for a pop-up: partOfSpeech, meaning, usage, nuance, examples, collocations, and notes.
 For each translation item, explain how to use that translated word in real contexts, not only a one-line synonym.`
 
+const DICTIONARY_PREVIEW_SYSTEM_PROMPT = `You are a fast multilingual dictionary for Viezan.
+Return ONLY valid JSON. No markdown fences, no comments, no extra text.
+Optimize for the first useful result: headword, pronunciation, short meaning, and 2-3 translations.
+The pronunciation field is mandatory and must never be empty.
+Each translation item must include text and pronunciation. Keep optional detail fields brief or omit them.`
+
 const ARRAY_FIELD_LIMIT = 6
 const STRING_FIELD_LIMIT = 700
 
@@ -157,40 +163,173 @@ Return exactly this JSON shape:
 }`
 }
 
+function buildDictionaryPreviewPrompt(params: DictionaryLookupParams): string {
+  const contextLine = params.context?.trim()
+    ? `Context: ${params.context.trim()}`
+    : 'Context:'
+
+  return `Create the fastest useful dictionary preview.
+
+Term: ${params.term.trim()}
+Source language: ${params.sourceLang}
+Target language: ${params.targetLang}
+${contextLine}
+
+Return exactly this compact JSON shape:
+{
+  "headword": "canonical term",
+  "pronunciation": "required non-empty reading for the headword/source term",
+  "partOfSpeech": ["noun"],
+  "meaning": "one short definition in the target language",
+  "translations": [
+    { "text": "best translation 1", "pronunciation": "required reading for translation 1" },
+    { "text": "best translation 2", "pronunciation": "required reading for translation 2" }
+  ],
+  "examples": ["one short source example -> target example"],
+  "notes": ["one short usage note when helpful"]
+}`
+}
+
+function buildDictionaryDetailsPrompt(params: DictionaryLookupParams, preview: DictionaryResult): string {
+  const contextLine = params.context?.trim()
+    ? `Context: ${params.context.trim()}`
+    : 'Context:'
+
+  return `Expand this dictionary preview into a complete entry.
+
+Term: ${params.term.trim()}
+Source language: ${params.sourceLang}
+Target language: ${params.targetLang}
+${contextLine}
+
+Current preview:
+${JSON.stringify(preview)}
+
+Return exactly this JSON shape. Preserve the same headword and core meaning unless they are clearly wrong:
+{
+  "headword": "canonical term",
+  "pronunciation": "required non-empty reading for the headword/source term",
+  "partOfSpeech": ["noun"],
+  "meaning": "short definition in the target language",
+  "translations": [
+    {
+      "text": "best translation 1",
+      "pronunciation": "required reading for translation 1",
+      "partOfSpeech": "noun",
+      "meaning": "detailed meaning of this translated word in the target language, 1-2 sentences",
+      "usage": "how to use this word naturally, including common grammar or context",
+      "nuance": "when to choose this translation instead of the others",
+      "examples": ["natural example using this translation -> explanation"],
+      "collocations": ["common phrase or collocation"],
+      "notes": ["register, domain, or caution"]
+    },
+    {
+      "text": "best translation 2",
+      "pronunciation": "required reading for translation 2",
+      "partOfSpeech": "verb",
+      "meaning": "detailed meaning of this translated word in the target language, 1-2 sentences",
+      "usage": "how to use this word naturally, including common grammar or context",
+      "nuance": "usage, register, domain, or contrast",
+      "examples": ["natural example using this translation -> explanation"],
+      "collocations": ["common phrase or collocation"],
+      "notes": ["register, domain, or caution"]
+    }
+  ],
+  "examples": ["source example -> target example"],
+  "notes": ["usage, nuance, register, or domain note"]
+}`
+}
+
+function validateDictionaryLookupParams(params: DictionaryLookupParams): DictionaryLookupResult | null {
+  const term = params.term.trim()
+  const context = params.context?.trim() ?? ''
+
+  if (!term) return { success: false, error: 'Term is required', errorCode: 'INVALID_INPUT' }
+  if (term.length > MAX_DICTIONARY_TERM_CHARS) {
+    return { success: false, error: 'Term is too long', errorCode: 'INVALID_INPUT' }
+  }
+  if (context.length > MAX_DICTIONARY_CONTEXT_CHARS) {
+    return { success: false, error: 'Context is too long', errorCode: 'INVALID_INPUT' }
+  }
+
+  return null
+}
+
+async function sendDictionaryRequest({
+  params,
+  systemPrompt,
+  userPrompt,
+  maxOutputTokens,
+}: {
+  params: DictionaryLookupParams
+  systemPrompt: string
+  userPrompt: string
+  maxOutputTokens: number
+}): Promise<DictionaryLookupResult> {
+  const invalid = validateDictionaryLookupParams(params)
+  if (invalid) return invalid
+
+  const response = await chatService.send({
+    provider: params.provider,
+    model: params.model,
+    systemPrompt,
+    maxOutputTokens,
+    messages: [
+      {
+        role: 'user',
+        content: [{ type: 'text', text: userPrompt }],
+      },
+    ],
+  })
+
+  if (!response.success || !response.reply) {
+    return {
+      success: false,
+      error: response.error ?? 'Dictionary lookup failed',
+      errorCode: response.errorCode,
+    }
+  }
+
+  return parseDictionaryResponse(response.reply)
+}
+
 export const dictionaryService = {
   async lookup(params: DictionaryLookupParams): Promise<DictionaryLookupResult> {
     const term = params.term.trim()
     const context = params.context?.trim() ?? ''
 
-    if (!term) return { success: false, error: 'Term is required', errorCode: 'INVALID_INPUT' }
-    if (term.length > MAX_DICTIONARY_TERM_CHARS) {
-      return { success: false, error: 'Term is too long', errorCode: 'INVALID_INPUT' }
-    }
-    if (context.length > MAX_DICTIONARY_CONTEXT_CHARS) {
-      return { success: false, error: 'Context is too long', errorCode: 'INVALID_INPUT' }
-    }
-
-    const response = await chatService.send({
-      provider: params.provider,
-      model: params.model,
+    return sendDictionaryRequest({
+      params: { ...params, term, context },
       systemPrompt: DICTIONARY_SYSTEM_PROMPT,
+      userPrompt: buildDictionaryPrompt({ ...params, term, context }),
       maxOutputTokens: 1800,
-      messages: [
-        {
-          role: 'user',
-          content: [{ type: 'text', text: buildDictionaryPrompt({ ...params, term, context }) }],
-        },
-      ],
     })
+  },
 
-    if (!response.success || !response.reply) {
-      return {
-        success: false,
-        error: response.error ?? 'Dictionary lookup failed',
-        errorCode: response.errorCode,
-      }
-    }
+  async lookupPreview(params: DictionaryLookupParams): Promise<DictionaryLookupResult> {
+    const term = params.term.trim()
+    const context = params.context?.trim() ?? ''
 
-    return parseDictionaryResponse(response.reply)
+    return sendDictionaryRequest({
+      params: { ...params, term, context },
+      systemPrompt: DICTIONARY_PREVIEW_SYSTEM_PROMPT,
+      userPrompt: buildDictionaryPreviewPrompt({ ...params, term, context }),
+      maxOutputTokens: 650,
+    })
+  },
+
+  async lookupDetails(
+    params: DictionaryLookupParams,
+    preview: DictionaryResult,
+  ): Promise<DictionaryLookupResult> {
+    const term = params.term.trim()
+    const context = params.context?.trim() ?? ''
+
+    return sendDictionaryRequest({
+      params: { ...params, term, context },
+      systemPrompt: DICTIONARY_SYSTEM_PROMPT,
+      userPrompt: buildDictionaryDetailsPrompt({ ...params, term, context }, preview),
+      maxOutputTokens: 1600,
+    })
   },
 }

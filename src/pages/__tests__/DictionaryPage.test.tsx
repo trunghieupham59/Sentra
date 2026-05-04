@@ -10,6 +10,8 @@ vi.mock('../../services/dictionaryService', async (importOriginal) => {
     ...actual,
     dictionaryService: {
       lookup: vi.fn(),
+      lookupPreview: vi.fn(),
+      lookupDetails: vi.fn(),
     },
   }
 })
@@ -20,6 +22,11 @@ beforeEach(() => {
     clipboard: {
       writeText: vi.fn().mockResolvedValue(undefined),
     },
+  })
+  vi.mocked(dictionaryService.lookupDetails).mockResolvedValue({
+    success: false,
+    error: 'No enrichment',
+    errorCode: 'INVALID_RESPONSE',
   })
   act(() => {
     useAppStore.setState({
@@ -43,7 +50,7 @@ describe('DictionaryPage', () => {
   })
 
   it('runs lookup and saves a result entry', async () => {
-    vi.mocked(dictionaryService.lookup).mockResolvedValueOnce({
+    vi.mocked(dictionaryService.lookupPreview).mockResolvedValueOnce({
       success: true,
       result: {
         headword: '工夫',
@@ -70,17 +77,21 @@ describe('DictionaryPage', () => {
     fireEvent.change(screen.getByPlaceholderText(/Enter a word|Nhập từ|単語/i), { target: { value: '工夫' } })
     fireEvent.click(screen.getByRole('button', { name: /Look up|Tra cứu|検索/i }))
 
-    await waitFor(() => expect(dictionaryService.lookup).toHaveBeenCalledWith(expect.objectContaining({
+    await waitFor(() => expect(dictionaryService.lookupPreview).toHaveBeenCalledWith(expect.objectContaining({
       term: '工夫',
       provider: 'local',
       model: 'local-auto',
     })))
     await waitFor(() => expect(screen.getAllByText('Cải tiến cách làm.').length).toBeGreaterThan(0))
+    expect(dictionaryService.lookupDetails).toHaveBeenCalledWith(
+      expect.objectContaining({ term: '工夫' }),
+      expect.objectContaining({ headword: '工夫' }),
+    )
     expect(useAppStore.getState().dictionaryEntries).toHaveLength(1)
   })
 
   it('opens a translation detail pop-up from a translation chip', async () => {
-    vi.mocked(dictionaryService.lookup).mockResolvedValueOnce({
+    vi.mocked(dictionaryService.lookupPreview).mockResolvedValueOnce({
       success: true,
       result: {
         headword: '工夫',
@@ -124,7 +135,7 @@ describe('DictionaryPage', () => {
   })
 
   it('shows a lookup action for selected result text and opens a detail pop-up', async () => {
-    vi.mocked(dictionaryService.lookup)
+    vi.mocked(dictionaryService.lookupPreview)
       .mockResolvedValueOnce({
         success: true,
         result: {
@@ -147,6 +158,7 @@ describe('DictionaryPage', () => {
           notes: ['Dùng trong công việc.'],
         },
       })
+    vi.mocked(dictionaryService.lookup)
       .mockResolvedValueOnce({
         success: true,
         result: {
@@ -191,6 +203,95 @@ describe('DictionaryPage', () => {
     })))
     expect(await screen.findByRole('dialog', { name: /Look up selection|Tra phần đã chọn|選択部分を検索/i })).toBeInTheDocument()
     expect(screen.getByText('Làm cho cách làm hoặc sản phẩm tốt hơn.')).toBeInTheDocument()
+  })
+
+  it('renders a preview result before detail enrichment completes', async () => {
+    let resolveDetails: (value: Awaited<ReturnType<typeof dictionaryService.lookupDetails>>) => void = () => {}
+    vi.mocked(dictionaryService.lookupPreview).mockResolvedValueOnce({
+      success: true,
+      result: {
+        headword: 'extension',
+        pronunciation: 'ɪkˈstenʃən',
+        partOfSpeech: ['noun'],
+        meaning: 'Bản xem nhanh.',
+        translations: [{ text: 'phần mở rộng', pronunciation: 'phần mở rộng' }],
+        examples: ['browser extension -> phần mở rộng trình duyệt'],
+        notes: [],
+      },
+    })
+    vi.mocked(dictionaryService.lookupDetails).mockReturnValueOnce(new Promise((resolve) => {
+      resolveDetails = resolve
+    }))
+
+    render(<DictionaryPage />)
+    fireEvent.change(screen.getByPlaceholderText(/Enter a word|Nhập từ|単語/i), {
+      target: { value: 'extension' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Look up|Tra cứu|検索/i }))
+
+    expect((await screen.findAllByText('Bản xem nhanh.')).length).toBeGreaterThan(0)
+    expect(useAppStore.getState().dictionaryEntries[0].result.meaning).toBe('Bản xem nhanh.')
+
+    await act(async () => {
+      resolveDetails({
+        success: true,
+        result: {
+          headword: 'extension',
+          pronunciation: 'ɪkˈstenʃən',
+          partOfSpeech: ['noun'],
+          meaning: 'Bản đầy đủ.',
+          translations: [{
+            text: 'phần mở rộng',
+            pronunciation: 'phần mở rộng',
+            meaning: 'Một thành phần bổ sung.',
+            usage: 'Dùng cho browser extension hoặc file extension tùy ngữ cảnh.',
+          }],
+          examples: ['Chrome extension -> phần mở rộng Chrome'],
+          notes: ['Phân biệt với deadline extension.'],
+        },
+      })
+    })
+
+    expect((await screen.findAllByText('Bản đầy đủ.')).length).toBeGreaterThan(0)
+    expect(useAppStore.getState().dictionaryEntries).toHaveLength(1)
+  })
+
+  it('uses a cached detailed entry without issuing another lookup request', async () => {
+    act(() => {
+      useAppStore.getState().addDictionaryEntry({
+        id: 'cached-entry',
+        term: '工夫',
+        normalizedTerm: '工夫',
+        sourceLang: 'auto',
+        targetLang: 'vi',
+        provider: 'local',
+        model: 'local-auto',
+        createdAt: Date.now(),
+        favorite: false,
+        result: {
+          headword: '工夫',
+          pronunciation: 'くふう',
+          partOfSpeech: ['noun'],
+          meaning: 'Kết quả cache.',
+          translations: [{
+            text: 'cải tiến',
+            pronunciation: 'cải tiến',
+            meaning: 'Cách làm tốt hơn.',
+            usage: 'Dùng khi nói về cải thiện cách làm.',
+          }],
+          examples: [],
+          notes: [],
+        },
+      })
+    })
+
+    render(<DictionaryPage />)
+    fireEvent.change(screen.getByPlaceholderText(/Enter a word|Nhập từ|単語/i), { target: { value: '工夫' } })
+    fireEvent.click(screen.getByRole('button', { name: /Look up|Tra cứu|検索/i }))
+
+    expect(screen.getAllByText('Kết quả cache.').length).toBeGreaterThan(0)
+    expect(dictionaryService.lookupPreview).not.toHaveBeenCalled()
+    expect(dictionaryService.lookupDetails).not.toHaveBeenCalled()
   })
 
   it('favorites an entry and reuses it in AI Translate', async () => {

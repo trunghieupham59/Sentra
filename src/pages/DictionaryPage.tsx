@@ -11,7 +11,13 @@ import {
   normalizeDictionaryTerm,
 } from '../services/dictionaryService'
 import { useAppStore, useT } from '../store/useAppStore'
-import type { DictionaryEntry, DictionaryTranslation } from '../types'
+import type {
+  DictionaryEntry,
+  DictionaryLookupParams,
+  DictionaryLookupResult,
+  DictionaryResult,
+  DictionaryTranslation,
+} from '../types'
 
 function createDictionaryEntryId(): string {
   return `dict-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -33,6 +39,35 @@ function formatDictionaryEntry(entry: DictionaryEntry): string {
     ...entry.result.notes,
   ]
   return lines.filter(Boolean).join('\n')
+}
+
+function sameDictionaryLookup(
+  entry: DictionaryEntry,
+  normalizedTerm: string,
+  sourceLang: string,
+  targetLang: string,
+  context: string,
+): boolean {
+  return (
+    entry.normalizedTerm === normalizedTerm &&
+    entry.sourceLang === sourceLang &&
+    entry.targetLang === targetLang &&
+    (entry.context?.trim() ?? '') === context
+  )
+}
+
+function hasDictionaryDetails(entry: DictionaryEntry): boolean {
+  return entry.result.translations.some((item) => {
+    if (typeof item === 'string') return false
+    return Boolean(
+      item.meaning ||
+        item.usage ||
+        item.nuance ||
+        item.examples?.length ||
+        item.collocations?.length ||
+        item.notes?.length,
+    )
+  })
 }
 
 export function DictionaryPage() {
@@ -64,6 +99,7 @@ export function DictionaryPage() {
   )
   const [activeListTab, setActiveListTab] = useState<DictionaryListTab>('recent')
   const [copied, setCopied] = useState(false)
+  const lookupRequestRef = useRef(0)
 
   /** Controls visibility of the AI config popup — mirrors TranslatePage. */
   const [showAIConfig, setShowAIConfig] = useState(false)
@@ -80,6 +116,21 @@ export function DictionaryPage() {
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [showAIConfig])
 
+  useEffect(() => {
+    const cleanTerm = term.trim()
+    if (!cleanTerm) return
+    const matchedEntry = dictionaryEntries.find((entry) =>
+      sameDictionaryLookup(
+        entry,
+        normalizeDictionaryTerm(cleanTerm),
+        sourceLang,
+        targetLang,
+        context.trim(),
+      ),
+    )
+    if (matchedEntry) setSelectedEntryId(matchedEntry.id)
+  }, [context, dictionaryEntries, sourceLang, targetLang, term])
+
   const selectedEntry =
     dictionaryEntries.find((entry) => entry.id === selectedEntryId) ?? dictionaryEntries[0] ?? null
   const model = selectedModels[selectedProvider] ?? ''
@@ -89,6 +140,34 @@ export function DictionaryPage() {
     if (code === 'NO_API_KEY') return t.translate_error_no_key
     return fallback || t.dictionary_error_failed
   }
+
+  const createLookupEntry = ({
+    id,
+    favorite,
+    result,
+    normalizedTerm,
+    cleanTerm,
+    cleanContext,
+  }: {
+    id: string
+    favorite: boolean
+    result: DictionaryResult
+    normalizedTerm: string
+    cleanTerm: string
+    cleanContext: string
+  }): DictionaryEntry => ({
+    id,
+    term: cleanTerm,
+    normalizedTerm,
+    context: cleanContext || undefined,
+    sourceLang,
+    targetLang,
+    provider: selectedProvider,
+    model,
+    createdAt: Date.now(),
+    favorite,
+    result,
+  })
 
   const runLookup = async () => {
     const cleanTerm = term.trim()
@@ -106,48 +185,75 @@ export function DictionaryPage() {
       return
     }
 
-    setIsLoading(true)
+    const requestId = lookupRequestRef.current + 1
+    lookupRequestRef.current = requestId
+    const normalizedTerm = normalizeDictionaryTerm(cleanTerm)
+    const cachedEntry = dictionaryEntries.find((entry) =>
+      sameDictionaryLookup(entry, normalizedTerm, sourceLang, targetLang, cleanContext),
+    )
+
     setError(null)
+    if (cachedEntry) {
+      setSelectedEntryId(cachedEntry.id)
+      setActiveListTab('recent')
+      if (hasDictionaryDetails(cachedEntry)) {
+        setIsLoading(false)
+        return
+      }
+    }
+
+    setIsLoading(true)
     try {
-      const result = await dictionaryService.lookup({
+      const lookupParams: DictionaryLookupParams = {
         term: cleanTerm,
         context: cleanContext,
         sourceLang,
         targetLang,
         provider: selectedProvider,
         model,
-      })
-      if (!result.success || !result.result) {
-        setError(localizeError(result.errorCode, result.error))
+      }
+      const preview: DictionaryLookupResult = cachedEntry
+        ? { success: true as const, result: cachedEntry.result }
+        : await dictionaryService.lookupPreview(lookupParams)
+
+      if (requestId !== lookupRequestRef.current) return
+
+      if (!preview.success || !preview.result) {
+        setError(localizeError(preview.errorCode, preview.error))
         return
       }
 
-      const normalizedTerm = normalizeDictionaryTerm(cleanTerm)
-      const existing = dictionaryEntries.find(
-        (entry) =>
-          entry.normalizedTerm === normalizedTerm &&
-          entry.sourceLang === sourceLang &&
-          entry.targetLang === targetLang &&
-          (entry.context?.trim() ?? '') === cleanContext,
-      )
-      const entry: DictionaryEntry = {
-        id: existing?.id ?? createDictionaryEntryId(),
-        term: cleanTerm,
+      const entryId = cachedEntry?.id ?? createDictionaryEntryId()
+      const favorite = cachedEntry?.favorite ?? false
+      const previewEntry = createLookupEntry({
+        id: entryId,
+        favorite,
+        result: preview.result,
         normalizedTerm,
-        context: cleanContext || undefined,
-        sourceLang,
-        targetLang,
-        provider: selectedProvider,
-        model,
-        createdAt: Date.now(),
-        favorite: existing?.favorite ?? false,
-        result: result.result,
-      }
-      addDictionaryEntry(entry)
-      setSelectedEntryId(entry.id)
+        cleanTerm,
+        cleanContext,
+      })
+
+      addDictionaryEntry(previewEntry)
+      setSelectedEntryId(previewEntry.id)
       setActiveListTab('recent')
-    } finally {
       setIsLoading(false)
+
+      const detailed = await dictionaryService.lookupDetails(lookupParams, preview.result)
+      if (requestId !== lookupRequestRef.current || !detailed.success || !detailed.result) return
+
+      addDictionaryEntry(createLookupEntry({
+        id: entryId,
+        favorite,
+        result: detailed.result,
+        normalizedTerm,
+        cleanTerm,
+        cleanContext,
+      }))
+    } finally {
+      if (requestId === lookupRequestRef.current) {
+        setIsLoading(false)
+      }
     }
   }
 

@@ -180,4 +180,83 @@ describe('dictionaryService', () => {
       ],
     }))
   })
+
+  it('builds a compact preview request for fast first paint', async () => {
+    vi.mocked(chatService.send).mockResolvedValueOnce({
+      success: true,
+      reply: JSON.stringify({
+        headword: '工夫',
+        pronunciation: 'くふう',
+        partOfSpeech: ['noun'],
+        meaning: 'Cải tiến cách làm.',
+        translations: [{ text: 'cải tiến', pronunciation: 'cải tiến' }],
+        examples: ['工夫する -> cải tiến'],
+        notes: [],
+      }),
+    })
+
+    const result = await dictionaryService.lookupPreview(lookupParams)
+
+    expect(result.success).toBe(true)
+    expect(chatService.send).toHaveBeenCalledWith(expect.objectContaining({
+      provider: 'local',
+      model: 'local-auto',
+      maxOutputTokens: 650,
+      systemPrompt: expect.stringContaining('fast multilingual dictionary'),
+      messages: [
+        expect.objectContaining({
+          role: 'user',
+          content: [expect.objectContaining({
+            type: 'text',
+            text: expect.stringContaining('compact JSON shape'),
+          })],
+        }),
+      ],
+    }))
+  })
+
+  it('builds a detail enrichment request from an existing preview', async () => {
+    const preview = {
+      headword: '工夫',
+      pronunciation: 'くふう',
+      partOfSpeech: ['noun'],
+      meaning: 'Cải tiến cách làm.',
+      translations: [{ text: 'cải tiến', pronunciation: 'cải tiến' }],
+      examples: ['工夫する -> cải tiến'],
+      notes: [],
+    }
+    vi.mocked(chatService.send).mockResolvedValueOnce({
+      success: true,
+      reply: JSON.stringify({
+        ...preview,
+        translations: [{
+          text: 'cải tiến',
+          pronunciation: 'cải tiến',
+          partOfSpeech: 'noun',
+          meaning: 'Cách làm tốt hơn.',
+          usage: 'Dùng khi nói về cải thiện cách làm.',
+          nuance: 'Nhấn mạnh giải pháp thực tế.',
+          examples: ['工夫する -> cải tiến cách làm'],
+          collocations: ['cải tiến quy trình'],
+          notes: ['Tự nhiên trong công việc.'],
+        }],
+        notes: ['Hay dùng trong bối cảnh công việc.'],
+      }),
+    })
+
+    const result = await dictionaryService.lookupDetails(lookupParams, preview)
+
+    expect(result.success).toBe(true)
+    expect(chatService.send).toHaveBeenCalledWith(expect.objectContaining({
+      maxOutputTokens: 1600,
+      systemPrompt: expect.stringContaining('precise multilingual dictionary'),
+      messages: [
+        expect.objectContaining({
+          content: [expect.objectContaining({
+            text: expect.stringContaining('Current preview:'),
+          })],
+        }),
+      ],
+    }))
+  })
 })
