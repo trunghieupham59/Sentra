@@ -87,8 +87,7 @@
   z-index: 2147483647;
   display: none;
   flex-direction: column;
-  width: max-content;
-  min-width: 500px;
+  width: 620px;
   max-width: min(680px, calc(100vw - 16px));
   max-height: calc(100vh - 16px);
   overflow: hidden;
@@ -303,9 +302,10 @@
 #tre-result-tooltip .tre-tooltip-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
-  flex: 1 1 auto;
-  min-height: 84px;
-  max-height: min(340px, calc(100vh - 168px));
+  grid-template-rows: minmax(0, auto);
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: min(360px, calc(100vh - 200px));
   overflow: hidden;
 }
 
@@ -341,14 +341,17 @@
 
 #tre-result-tooltip .tre-source-text,
 #tre-result-tooltip .tre-tooltip-text {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
-  padding: 0 12px 18px;
+  padding: 0 12px 14px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   color: var(--tre-ink-soft);
   font-size: 13px;
   line-height: 1.58;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 #tre-result-tooltip .tre-source-text {
@@ -357,6 +360,7 @@
 
 #tre-result-tooltip .tre-tooltip-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
   position: relative;
@@ -414,14 +418,20 @@
   color: var(--tre-success-strong);
 }
 
-@media (max-width: 560px) {
+@media (max-width: 640px) {
   #tre-result-tooltip {
-    min-width: calc(100vw - 16px);
+    width: calc(100vw - 16px);
+    min-width: 0;
   }
 
-  #tre-result-tooltip .tre-controls-row,
+  #tre-result-tooltip .tre-controls-row {
+    grid-template-columns: 1fr;
+  }
+
   #tre-result-tooltip .tre-tooltip-body {
     grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, auto) 1px minmax(0, auto);
+    max-height: min(420px, calc(100vh - 200px));
   }
 
   #tre-result-tooltip .tre-panel-divider {
@@ -430,7 +440,6 @@
     margin: 0 12px;
   }
 
-  #tre-result-tooltip .tre-tooltip-actions,
   #tre-result-tooltip .tre-model-stack {
     flex-wrap: wrap;
   }

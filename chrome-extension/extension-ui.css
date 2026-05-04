@@ -274,7 +274,7 @@ button {
 .popup-page {
   width: 520px;
   min-width: 520px;
-  max-height: 600px;
+  margin: 0;
   overflow: hidden;
   background: var(--vzn-bg);
   font-size: 13px;
@@ -282,10 +282,9 @@ button {
 
 .popup-shell {
   display: flex;
-  height: min(600px, 100vh);
-  min-height: 420px;
-  max-height: 600px;
   width: 520px;
+  min-height: 300px;
+  max-height: 600px;
   flex-direction: column;
   background: var(--vzn-surface);
   overflow: hidden;
@@ -397,7 +396,8 @@ button {
 .popup-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
-  flex: 1 1 auto;
+  grid-template-rows: minmax(140px, auto);
+  flex: 0 1 auto;
   min-height: 0;
   overflow: hidden;
   background: var(--vzn-surface);
@@ -435,8 +435,9 @@ button {
 
 .source-textarea,
 .result-text {
-  flex: 1;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: 140px;
+  max-height: min(440px, calc(100vh - 200px));
   padding: 0 12px 14px;
   border: 0;
   outline: none;
@@ -444,6 +445,8 @@ button {
   color: var(--vzn-ink-soft);
   font-size: 13px;
   line-height: 1.58;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .source-textarea {
@@ -467,6 +470,7 @@ button {
 
 .popup-footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   position: relative;
@@ -482,6 +486,7 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .footer-right {
@@ -498,12 +503,18 @@ button {
 }
 
 .not-connected {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 520px;
+  min-height: 300px;
   padding: 26px;
   background: var(--vzn-surface);
 }
 
 .not-connected-card {
   display: grid;
+  width: 100%;
   gap: 14px;
   justify-items: center;
   padding: 24px 18px;

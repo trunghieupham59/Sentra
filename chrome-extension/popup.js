@@ -146,8 +146,8 @@ async function init () {
   const settings = await getSettings()
   const hasToken = !!settings.token
 
-  $('not-connected-state').style.display = hasToken ? 'none' : 'block'
-  $('connected-state').style.display     = hasToken ? 'block' : 'none'
+  $('not-connected-state').style.display = hasToken ? 'none' : 'flex'
+  $('connected-state').style.display     = hasToken ? 'flex' : 'none'
 
   if (hasToken) {
     // Load provider/model info (non-blocking)
