@@ -16,6 +16,7 @@ import { exec } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { app, type BrowserWindow, clipboard, globalShortcut } from 'electron'
+import { hideHotkeyIndicator, showHotkeyIndicator } from './hotkeyIndicator'
 import { EXT_DEFAULT_GEMINI_MODEL } from './ipcConstants'
 import { lightweightTranslate } from './lightweightTranslate'
 
@@ -181,8 +182,12 @@ function registerHotkey(
 
   try {
     const ok = globalShortcut.register(settings.hotkey, async () => {
-      if (isTranslating) return
+      if (isTranslating) {
+        showHotkeyIndicator('busy', undefined, 1_200)
+        return
+      }
       isTranslating = true
+      showHotkeyIndicator('copying')
 
       const backupClipboard = clipboard.readText()
 
@@ -191,12 +196,14 @@ function registerHotkey(
         const selectedText = clipboard.readText()
 
         if (!selectedText || selectedText.trim() === '' || selectedText === backupClipboard) {
+          showHotkeyIndicator('warning', undefined, 1_500)
           isTranslating = false
           return
         }
 
         // Notify renderer: translation starting
         getMainWindow()?.webContents.send('hotkey:translating', { text: selectedText })
+        showHotkeyIndicator('translating')
 
         const result = await lightweightTranslate({
           text: selectedText,
@@ -216,12 +223,15 @@ function registerHotkey(
           original: selectedText,
           translated,
         })
+        showHotkeyIndicator('done')
+        hideHotkeyIndicator()
 
         // Restore clipboard after a short delay so paste completes first
         setTimeout(() => clipboard.writeText(backupClipboard), CLIPBOARD_RESTORE_WAIT_MS)
       } catch (err) {
         clipboard.writeText(backupClipboard)
         console.error('[GlobalHotkey] Translation error:', err)
+        showHotkeyIndicator('error', err instanceof Error ? err.message : undefined, 2_200)
         getMainWindow()?.webContents.send('hotkey:error', {
           error: err instanceof Error ? err.message : String(err),
         })
