@@ -37,6 +37,7 @@ import { execFileSync } from 'node:child_process'
 import {
   closeSync,
   constants as fsConstants,
+  existsSync,
   mkdirSync,
   openSync,
   readFileSync,
@@ -159,13 +160,14 @@ function buildSquircleBackground(size, outPath) {
  * Composite source artwork on top of a generated background.
  */
 function composeOnBackground(sourcePath, backgroundPath, outPath, options = {}) {
-  const { artworkScale = 0.78 } = options
+  const { artworkScale = 0.78, canvasSize } = options
+  const artworkSize = canvasSize ? Math.round(canvasSize * artworkScale) : null
   // Resize source to fit inside the safe area, then center-composite.
   const tempArt = `${outPath}.art.png`
   magick(
     sourcePath,
     '-resize',
-    `${Math.round(artworkScale * 100)}%`,
+    artworkSize ? `${artworkSize}x${artworkSize}` : `${Math.round(artworkScale * 100)}%`,
     ...RGB_FLAGS,
     tempArt,
   )
@@ -188,7 +190,7 @@ function composeOnBackground(sourcePath, backgroundPath, outPath, options = {}) 
 function composeOnWhiteSquare(sourcePath, outPath, size, artworkScale = 0.86) {
   const bg = `${outPath}.bg.png`
   magick('-size', `${size}x${size}`, 'xc:white', ...RGB_FLAGS, bg)
-  composeOnBackground(sourcePath, bg, outPath, { artworkScale })
+  composeOnBackground(sourcePath, bg, outPath, { artworkScale, canvasSize: size })
   execFileSync('rm', ['-f', bg])
 }
 
@@ -198,7 +200,7 @@ function composeOnWhiteSquare(sourcePath, outPath, size, artworkScale = 0.86) {
 function composeOnSquircle(sourcePath, outPath, size, artworkScale = 0.78) {
   const bg = `${outPath}.bg.png`
   buildSquircleBackground(size, bg)
-  composeOnBackground(sourcePath, bg, outPath, { artworkScale })
+  composeOnBackground(sourcePath, bg, outPath, { artworkScale, canvasSize: size })
   execFileSync('rm', ['-f', bg])
 }
 
@@ -235,19 +237,13 @@ for (const [name, size] of iconsetSizes) {
 }
 console.log('✓ build/icon.iconset/* regenerated')
 
-// ─── 4. build/icon.icns – rebuild from iconset ────────────────────────────
-execFileSync('iconutil', ['-c', 'icns', iconsetDir, '-o', join(ROOT, 'build/icon.icns')], {
-  stdio: 'inherit',
-})
-console.log('✓ build/icon.icns')
-
-// ─── 5. build/icon-win.png – 256 white square ─────────────────────────────
+// ─── 4. build/icon-win.png – 256 white square ─────────────────────────────
 const winSrc = ensureSource('build/icon-win.png')
 const winOut = join(ROOT, 'build/icon-win.png')
 composeOnWhiteSquare(winSrc, winOut, 256)
 console.log('✓ build/icon-win.png (256 white square)')
 
-// ─── 6. build/icon.ico – multi-size, all white square ─────────────────────
+// ─── 5. build/icon.ico – multi-size, all white square ─────────────────────
 const icoSizes = [16, 24, 32, 48, 64, 128, 256]
 const icoTmpDir = join(SOURCE_DIR, 'ico-tmp')
 mkdirSync(icoTmpDir, { recursive: true })
@@ -259,6 +255,20 @@ for (const size of icoSizes) {
 }
 magick(...icoLayers, join(ROOT, 'build/icon.ico'))
 console.log('✓ build/icon.ico (multi-size white square)')
+
+// ─── 6. build/icon.icns – rebuild from iconset ────────────────────────────
+const icnsOut = join(ROOT, 'build/icon.icns')
+try {
+  execFileSync('iconutil', ['-c', 'icns', iconsetDir, '-o', icnsOut], {
+    stdio: 'inherit',
+  })
+  console.log('✓ build/icon.icns')
+} catch (err) {
+  if (!existsSync(icnsOut)) {
+    throw err
+  }
+  console.warn('! iconutil failed; keeping existing build/icon.icns')
+}
 
 // public/logo.png and public/icon.png are intentionally left transparent —
 // see the file header for the rationale.
