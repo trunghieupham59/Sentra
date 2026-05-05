@@ -100,6 +100,30 @@ describe('TranslatePage', () => {
     vi.useRealTimers()
   })
 
+  it('clears a pasted image when the source delete button is clicked', async () => {
+    const file = new File(['image'], 'clear.png', { type: 'image/png' })
+    vi.mocked(extractImageFromClipboard).mockReturnValue(file)
+
+    render(<TranslatePage />)
+
+    act(() => {
+      fireEvent.paste(screen.getByLabelText(/Image|ảnh/i), {
+        clipboardData: { items: [] },
+      })
+    })
+
+    await act(async () => {})
+
+    expect(screen.getByAltText('mock.png')).toBeInTheDocument()
+
+    act(() => {
+      fireEvent.click(screen.getByTitle(/Clear|Xóa/i))
+    })
+
+    expect(screen.queryByAltText('mock.png')).not.toBeInTheDocument()
+    expect(window.api.translateImage).not.toHaveBeenCalled()
+  })
+
   it('restarts an in-flight manual translation when the target language changes', async () => {
     type TranslateApiResult = Awaited<ReturnType<typeof window.api.translate>>
     let resolveFirst: ((value: TranslateApiResult) => void) | undefined

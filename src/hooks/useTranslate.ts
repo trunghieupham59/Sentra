@@ -712,11 +712,15 @@ export function useTranslate() {
     setIsTranslating(false)
     stopSpeak()
     setSourceText('')
+    setImageAttachment(null)
+    setImageRegions(null)
+    setEditedImageUrl(null)
     setTranslatedText('')
     setPhoneticText('')
     setTranslateError(null)
     setDetectedSourceLang(null)
     setIsDetectingLang(false)
+    setImageSwitchNotice(null)
   }, [stopSpeak, setIsTranslating, setSourceText, setTranslatedText, setPhoneticText, setTranslateError, cancelActiveTranslation])
 
   /** Dismisses the current error banner — clears translateError in store */
