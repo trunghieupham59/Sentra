@@ -693,6 +693,8 @@ const ja: Translations = {
   chat_research_done_label: '思考完了',
   chat_research_steps_unit: 'ステップ',
   chat_research_aspects_suffix: '{count}観点',
+  chat_deep_research_resume: '調査を再開',
+
   chat_deep_research_summarizing: '結果を統合中…',
 
   chat_deep_research_badge: 'Deep Research',

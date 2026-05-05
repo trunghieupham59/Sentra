@@ -498,6 +498,28 @@
     to   { opacity: 1; transform: translateY(0);    }
   }
 
+  /* ── Resume Deep Research button ──────────────────────────────────────
+   *
+   * Shown at the bottom of the panel when ChatPage detects a persisted
+   * resume snapshot — clicking re-runs the pipeline from the next phase.
+   * Indigo gradient mirrors the Deep Research badge so the affordance is
+   * visually associated with the same feature. */
+  .chat-research-resume-row {
+    @apply flex justify-center px-3 py-2
+           border-t border-gray-100/70 dark:border-neutral-800/60;
+  }
+  .chat-research-resume-button {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg
+           text-[12px] font-semibold cursor-pointer transition-all duration-150
+           bg-gradient-to-r from-indigo-500 to-violet-500 text-white
+           shadow-sm shadow-indigo-900/15
+           hover:from-indigo-600 hover:to-violet-600 hover:scale-[1.02]
+           active:scale-95
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300
+           dark:from-indigo-600 dark:to-violet-600;
+  }
+
+
 
   /* Research-final highlight card */
   .chat-research-final {

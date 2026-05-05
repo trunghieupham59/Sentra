@@ -842,6 +842,10 @@ export interface Translations {
    *  phase have been collapsed, e.g. ` · 4 khía cạnh` / ` · 4 aspects`.
    *  Template `{count}` — full row reads `${stepLabel} · {count} aspects`. */
   chat_research_aspects_suffix: string
+  /** Label on the "Resume Deep Research" button in ResearchStepsPanel
+   *  shown when a stopped pipeline has a persisted resume snapshot. */
+  chat_deep_research_resume: string
+
   chat_deep_research_summarizing: string
   chat_deep_research_badge: string
 

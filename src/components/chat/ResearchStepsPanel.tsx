@@ -48,7 +48,15 @@ import {
 
 interface ResearchStepsPanelProps {
   steps: ChatMessage[]
+  /**
+   * Optional click handler for the "Tiếp tục nghiên cứu" header button.
+   * The button only renders when this callback is provided — `ChatPage`
+   * passes it on the LAST panel of a session whose `deepResearchResumeState`
+   * snapshot indicates the pipeline halted before synthesis.
+   */
+  onResume?: () => void
 }
+
 
 /**
  * One visual row in the panel — represents either a single step (rare) or
@@ -451,9 +459,10 @@ function PhasePill({ group, rowTitle }: PhasePillProps) {
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-export function ResearchStepsPanel({ steps }: ResearchStepsPanelProps) {
+export function ResearchStepsPanel({ steps, onResume }: ResearchStepsPanelProps) {
   const t = useT()
   const [isOpen, setIsOpen] = useState(true)
+
 
   const groups = useMemo(() => buildPhaseGroups(steps), [steps])
 
@@ -519,7 +528,26 @@ export function ResearchStepsPanel({ steps }: ResearchStepsPanelProps) {
             ))}
           </ul>
         )}
+
+        {/* Resume button — surfaces only when ChatPage detects a persisted
+         *  resume snapshot for the active session and the pipeline halted
+         *  before synthesis. Clicking it replays the pipeline from the next
+         *  unfinished phase (already-completed phases are skipped inside
+         *  the service via `isPhaseDone`). */}
+        {onResume && !isAnyLoading && (
+          <div className="chat-research-resume-row">
+            <button
+              type="button"
+              onClick={onResume}
+              className="chat-research-resume-button"
+            >
+              <SparklesIcon className="h-3.5 w-3.5" />
+              <span>{t.chat_deep_research_resume}</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
 }
+

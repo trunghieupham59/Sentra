@@ -694,6 +694,8 @@ const en: Translations = {
   chat_research_done_label: 'Thought',
   chat_research_steps_unit: 'steps',
   chat_research_aspects_suffix: '{count} aspects',
+  chat_deep_research_resume: 'Resume research',
+
   chat_deep_research_summarizing: 'Synthesizing results…',
 
   chat_deep_research_badge: 'Deep Research',

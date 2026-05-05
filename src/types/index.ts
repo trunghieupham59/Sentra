@@ -379,6 +379,48 @@ export interface ChatMessage {
   cost?: UsageCost
 }
 
+/**
+ * Snapshot of the Deep Research pipeline state — persisted on the session
+ * so a Stop / interruption can be resumed from the last completed phase
+ * instead of restarting from scratch (and re-paying for already-finished
+ * provider calls).
+ *
+ * The renderer writes this whenever a phase completes, and clears it once
+ * the synthesis phase finishes (or the user starts a brand-new question).
+ * `ResearchStepsPanel` shows a "Tiếp tục nghiên cứu" button while this
+ * snapshot exists.
+ */
+export interface DeepResearchResumeState {
+  /** Original user question that kicked off the pipeline. */
+  question: string
+  /** Aspects discovered in Phase 1 — drives the survey loop. */
+  aspects: string[]
+  /** All accumulated findings to date. */
+  knowledgeBase: Array<{ label: string; content: string }>
+  /** Image context extracted in Phase 1 (when an image was attached). */
+  imageContext: string
+  /** Image-derived search terms (Phase 1, image attachments only). */
+  imageSearchTerms: string[]
+  /** Whether any web search succeeded — controls synthesis prompt tone. */
+  anyWebSearch: boolean
+  /** Cross-reference output (only set after Phase 4 completes). */
+  crossContent?: string
+  /** Last phase that finished cleanly — pipeline resumes from the next one. */
+  lastCompletedPhase: 'analyze' | 'survey' | 'gap' | 'deep' | 'cross' | 'synth'
+  /**
+   * Last completed gap-analysis iteration (1-based). Used by the resume
+   * orchestration to skip already-run gap rounds. 0 = no gap round done yet.
+   */
+  lastGapIteration: number
+  /** Whether attached images were included in the original run. */
+  hasImages: boolean
+  /**
+   * Original carefulReasoning toggle — preserved so resume produces the same
+   * synthesis behaviour the user expected.
+   */
+  carefulReasoning?: boolean
+}
+
 export interface ChatSession {
   id: string
   title: string
@@ -389,7 +431,14 @@ export interface ChatSession {
   updatedAt: number
   /** Estimated total provider API cost for this chat thread. */
   cost?: UsageCost
+  /**
+   * Persisted Deep Research pipeline state. Set when the user stops the
+   * pipeline mid-run; cleared when synthesis completes or the user starts a
+   * new question. Drives the "Tiếp tục nghiên cứu" UX in `ResearchStepsPanel`.
+   */
+  deepResearchResumeState?: DeepResearchResumeState
 }
+
 
 export interface ChatResult {
   success: boolean

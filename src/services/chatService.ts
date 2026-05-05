@@ -94,6 +94,15 @@ function createChatStreamRequestId() {
  */
 export const CHAT_STREAM_CANCELLED_ERROR_CODE = 'CANCELLED'
 
+/**
+ * Renderer-side fallback message used when the user aborts an in-flight
+ * `sendAbortable` call before the IPC layer has finalised. Mirrors the
+ * sentinel string the main process emits so localisers can map both paths
+ * to the same translation.
+ */
+const CHAT_STREAM_CANCELLED_MESSAGE = 'Stream cancelled'
+
+
 /** Cancel an in-flight chat stream by `requestId`. Safe to call multiple times. */
 export function cancelChatStream(requestId: string): void {
   try {
@@ -107,6 +116,57 @@ export const chatService = {
   /** Send a conversational message — supports text + image content, multi-turn. */
   send: (params: ChatParams): Promise<ChatResult> =>
     window.api.chat(params),
+
+  /**
+   * Abortable variant of `send`. Uses the streaming IPC under the hood (which
+   * already supports cancellation via `chatStreamCancel`) and returns the full
+   * concatenated reply once the stream ends — i.e. the caller gets the same
+   * "send" semantics but can cancel mid-flight.
+   *
+   * Used by Deep Research so that clicking Stop kills the in-flight provider
+   * call within ~milliseconds instead of waiting for the current step's HTTP
+   * response to land. We don't care about per-token streaming here, just the
+   * abort pathway, so token callbacks are intentionally not exposed.
+   *
+   * Falls back gracefully to `window.api.chat` when the streaming IPC is
+   * missing (older Electron preload bundle) — in that case cancellation is
+   * best-effort: the renderer-side signal handler still rejects immediately,
+   * but the background HTTP call cannot be aborted.
+   */
+  sendAbortable: async (
+    params: ChatParams,
+    options: { signal?: AbortSignal } = {},
+  ): Promise<ChatResult> => {
+    const { signal } = options
+    if (!signal) return window.api.chat(params)
+    if (signal.aborted) {
+      return { success: false, error: CHAT_STREAM_CANCELLED_MESSAGE, errorCode: CHAT_STREAM_CANCELLED_ERROR_CODE }
+    }
+    if (
+      typeof window.api.chatStream !== 'function' ||
+      typeof window.api.onChatStreamEvent !== 'function'
+    ) {
+      // Older preload — no streaming IPC. The signal still rejects from the
+      // renderer's perspective so the UI doesn't deadlock, but the background
+      // HTTP request will continue until natural completion.
+      return Promise.race([
+        window.api.chat(params),
+        new Promise<ChatResult>((resolve) => {
+          signal.addEventListener('abort', () => {
+            resolve({
+              success: false,
+              error: CHAT_STREAM_CANCELLED_MESSAGE,
+              errorCode: CHAT_STREAM_CANCELLED_ERROR_CODE,
+            })
+          }, { once: true })
+        }),
+      ])
+    }
+    // Streaming IPC available — let the existing stream() pipeline handle the
+    // cancel-IPC plumbing. We pass through the signal but ignore tokens.
+    return chatService.stream(params, { signal })
+  },
+
 
   /**
    * Edit an attached image and return the generated image result.

@@ -32,10 +32,12 @@
  * via LANG_RULE to mirror the user's question language).
  */
 
+import type { DeepResearchResumeState } from '../types'
 import { tpl } from '../utils/tpl'
 import type { ChatMessageContent } from './chatService'
 import { chatService } from './chatService'
 import { formatWebSearchResults, getCurrentLocaleDateTime, hasWebSearchApi } from './searchResultFormatting'
+
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -84,7 +86,17 @@ export interface DeepResearchCallbacks {
   onStepComplete: (msgId: string, content: string, isFinal: boolean) => void
   /** Called when a step fails with an error. */
   onStepError: (msgId: string, error: string) => void
+  /**
+   * Persistence hook — fired whenever a phase finishes successfully so the
+   * caller can snapshot the in-progress pipeline state. Pass `null` once
+   * the synthesis phase completes (or when the whole pipeline succeeds) so
+   * the caller can clear the resume snapshot.
+   *
+   * Optional: callers that don't care about resume can omit this.
+   */
+  onResumeStateChange?: (state: DeepResearchResumeState | null) => void
 }
+
 
 
 /**
@@ -158,7 +170,18 @@ export interface DeepResearchParams {
    * notes where the verbose math-discipline preamble is wasted tokens.
    */
   carefulReasoning?: boolean
+  /**
+   * Optional snapshot of a previous, interrupted run. When supplied, the
+   * pipeline resumes from `lastCompletedPhase` instead of starting fresh —
+   * skipping all phases the snapshot already finished, restoring the
+   * accumulated knowledge base, and continuing with the next phase.
+   *
+   * Used by the renderer when the user clicks "Tiếp tục nghiên cứu" on a
+   * stopped Deep Research run.
+   */
+  resumeState?: DeepResearchResumeState
 }
+
 
 
 export interface DeepResearchImageAttachment {
@@ -345,12 +368,28 @@ const DEFAULT_ASPECTS = [
 // ─── Main pipeline ────────────────────────────────────────────────────────────
 
 export const deepResearchService = {
-  async run({ provider, model, question, images = [], uiText, callbacks, signal, carefulReasoning }: DeepResearchParams): Promise<void> {
+  async run({ provider, model, question, images = [], uiText, callbacks, signal, carefulReasoning, resumeState }: DeepResearchParams): Promise<void> {
 
     const date = getCurrentLocaleDateTime()
     const webAvailable = hasWebSearchApi()
-    const { onStepStart, onStepComplete, onStepError } = callbacks
+    const { onStepStart, onStepComplete, onStepError, onResumeStateChange } = callbacks
     const hasImages = images.length > 0
+
+    /**
+     * Phase ordering helper used to decide whether a given phase should run
+     * during a resumed pipeline. We compare the index of `phase` to the index
+     * of `resumeState.lastCompletedPhase`; if `phase` is at or before the
+     * snapshot's last-completed phase, it has already finished and we skip
+     * the work (but still emit a synthetic step bubble so the UI shows the
+     * timeline correctly).
+     */
+    const PHASE_ORDER: DeepResearchStepPhase[] = ['analyze', 'survey', 'gap', 'deep', 'cross', 'synth']
+    const phaseIndex = (p: DeepResearchStepPhase): number => PHASE_ORDER.indexOf(p)
+    const isPhaseDone = (p: DeepResearchStepPhase): boolean => {
+      if (!resumeState) return false
+      return phaseIndex(p) <= phaseIndex(resumeState.lastCompletedPhase)
+    }
+
 
     /**
      * Sentinel error message for Deep Research user cancellation. The
@@ -364,97 +403,153 @@ export const deepResearchService = {
       if (signal?.aborted) throw new Error(CANCELLED)
     }
 
-    // Accumulated knowledge base (all findings from all phases)
-    const knowledgeBase: Array<{ label: string; content: string }> = []
-    let anyWebSearch = false
-    let imageContext = ''
-    let imageSearchTerms: string[] = []
+    /**
+     * Wraps `chatService.sendAbortable` so the caller doesn't have to thread
+     * `signal` through every `await`. The signal forwards to the streaming
+     * IPC under the hood, which lets the user kill the in-flight provider
+     * call within milliseconds when they click Stop — instead of waiting for
+     * the current step's HTTP response to finish naturally.
+     */
+    type SendChatParams = Parameters<typeof chatService.sendAbortable>[0]
+    const sendChat = (params: SendChatParams) =>
+      chatService.sendAbortable(params, { signal })
+
+
+
+    // Accumulated state — resumed runs hydrate from `resumeState` so phases
+    // already completed in the previous run aren't re-paid for.
+    const knowledgeBase: Array<{ label: string; content: string }> = resumeState
+      ? [...resumeState.knowledgeBase]
+      : []
+    let anyWebSearch = resumeState?.anyWebSearch ?? false
+    let imageContext = resumeState?.imageContext ?? ''
+    let imageSearchTerms: string[] = resumeState?.imageSearchTerms ?? []
+
+    /**
+     * Build a fresh snapshot reflecting current pipeline state. Helper exists
+     * so each phase can persist its outcome at the right moment without
+     * duplicating the field list.
+     */
+    const buildSnapshot = (
+      lastCompletedPhase: DeepResearchStepPhase,
+      lastGapIteration: number,
+      crossContentValue?: string,
+    ): DeepResearchResumeState => ({
+      question,
+      aspects,
+      knowledgeBase: [...knowledgeBase],
+      imageContext,
+      imageSearchTerms,
+      anyWebSearch,
+      crossContent: crossContentValue,
+      lastCompletedPhase,
+      lastGapIteration,
+      hasImages,
+      carefulReasoning,
+    })
 
     // ── Phase 1: Initial Analysis ─────────────────────────────────────────
-    const analyzeMsgId = onStepStart(uiText.stepAnalyze, { phase: 'analyze' })
-    let aspects = DEFAULT_ASPECTS
+    let aspects: string[] = resumeState?.aspects ?? DEFAULT_ASPECTS
 
+    if (!isPhaseDone('analyze')) {
+      const analyzeMsgId = onStepStart(uiText.stepAnalyze, { phase: 'analyze' })
 
-    try {
-      const result = await chatService.send({
-        provider, model,
-        messages: [{ role: 'user', content: buildResearchContent(question, images) }],
-        systemPrompt: ANALYZE_PROMPT(date, hasImages),
-      })
-      const reply = getReply(result)
-      if (reply) {
-        const m = reply.match(/\{[\s\S]*\}/)
-        if (m) {
-          try {
-            const p = JSON.parse(m[0])
-            const parsedAspects = parseStringArray(p.aspects)
-            if (parsedAspects.length >= 2) aspects = parsedAspects.slice(0, 4)
-            if (hasImages && typeof p.imageContext === 'string') {
-              imageContext = p.imageContext.trim()
-            }
-            if (hasImages) {
-              imageSearchTerms = parseStringArray(p.searchTerms).slice(0, 6)
-            }
-          } catch { /* use defaults */ }
+      try {
+        const result = await sendChat({
+          provider, model,
+          messages: [{ role: 'user', content: buildResearchContent(question, images) }],
+          systemPrompt: ANALYZE_PROMPT(date, hasImages),
+        })
+        const reply = getReply(result)
+        if (reply) {
+          const m = reply.match(/\{[\s\S]*\}/)
+          if (m) {
+            try {
+              const p = JSON.parse(m[0])
+              const parsedAspects = parseStringArray(p.aspects)
+              if (parsedAspects.length >= 2) aspects = parsedAspects.slice(0, 4)
+              if (hasImages && typeof p.imageContext === 'string') {
+                imageContext = p.imageContext.trim()
+              }
+              if (hasImages) {
+                imageSearchTerms = parseStringArray(p.searchTerms).slice(0, 6)
+              }
+            } catch { /* use defaults */ }
+          }
         }
+      } catch (err) {
+        onStepError(analyzeMsgId, err instanceof Error ? err.message : uiText.errorAnalyze)
+        throw err
       }
-    } catch (err) {
-      onStepError(analyzeMsgId, err instanceof Error ? err.message : uiText.errorAnalyze)
-      throw err
+
+      const analyzeContent = [
+        webAvailable ? uiText.modeRealtime : uiText.modeAiOnly,
+        '',
+        tpl(uiText.willStudy, { count: aspects.length }),
+        ...aspects.map((a, i) => `${i + 1}. ${a}`),
+        ...(imageContext ? ['', tpl(uiText.imageContext, { context: imageContext })] : []),
+        ...(imageSearchTerms.length > 0 ? [tpl(uiText.imageTerms, { terms: imageSearchTerms.join(', ') })] : []),
+      ].join('\n')
+      onStepComplete(analyzeMsgId, analyzeContent, false)
+      if (imageContext) {
+        knowledgeBase.push({ label: uiText.imageKbLabel, content: imageContext })
+      }
+      onResumeStateChange?.(buildSnapshot('analyze', 0))
     }
 
-    const analyzeContent = [
-      webAvailable ? uiText.modeRealtime : uiText.modeAiOnly,
-      '',
-      tpl(uiText.willStudy, { count: aspects.length }),
-      ...aspects.map((a, i) => `${i + 1}. ${a}`),
-      ...(imageContext ? ['', tpl(uiText.imageContext, { context: imageContext })] : []),
-      ...(imageSearchTerms.length > 0 ? [tpl(uiText.imageTerms, { terms: imageSearchTerms.join(', ') })] : []),
-    ].join('\n')
-    onStepComplete(analyzeMsgId, analyzeContent, false)
-    if (imageContext) {
-      knowledgeBase.push({ label: uiText.imageKbLabel, content: imageContext })
-    }
 
     // ── Phase 2: First-pass research (Breadth) ────────────────────────────
     // The label is intentionally short (just the phase name, e.g. "Khảo sát")
     // because the renderer collapses every survey step into one pill and shows
     // the per-aspect detail inside a hover-info popover. We still pass the
     // `aspect` text via meta so the popover can list what each step researched.
-    for (const aspect of aspects) {
-      throwIfCancelled()
-      const msgId = onStepStart(
-        tpl(uiText.stepRound1, { aspect }),
-        { phase: 'survey', aspect },
-      )
-
-      try {
-        const webCtx = await webSearch(
-          buildSearchQuery(aspect, question, imageContext, imageSearchTerms),
-          uiText.webSummary,
+    if (!isPhaseDone('survey')) {
+      for (const aspect of aspects) {
+        throwIfCancelled()
+        const msgId = onStepStart(
+          tpl(uiText.stepRound1, { aspect }),
+          { phase: 'survey', aspect },
         )
-        if (webCtx) anyWebSearch = true
 
-        const result = await chatService.send({
-          provider, model,
-          messages: [{ role: 'user', content: buildResearchContent(`Analyze this aspect: ${aspect}`, images) }],
-          systemPrompt: RESEARCH_PROMPT(date, aspect, question, webCtx, imageContext),
-        })
-        const content = getReply(result) ?? tpl(uiText.cannotAnalyze, {
-          error: describeChatFailure(result, uiText.errorUnknown),
-        })
-        knowledgeBase.push({ label: aspect, content })
-        onStepComplete(msgId, content, false)
-      } catch (err) {
-        const e = err instanceof Error ? err.message : uiText.errorGeneric
-        onStepError(msgId, e)
-        knowledgeBase.push({ label: aspect, content: tpl(uiText.errorInline, { error: e }) })
+        try {
+          const webCtx = await webSearch(
+            buildSearchQuery(aspect, question, imageContext, imageSearchTerms),
+            uiText.webSummary,
+          )
+          if (webCtx) anyWebSearch = true
+
+          const result = await sendChat({
+            provider, model,
+            messages: [{ role: 'user', content: buildResearchContent(`Analyze this aspect: ${aspect}`, images) }],
+            systemPrompt: RESEARCH_PROMPT(date, aspect, question, webCtx, imageContext),
+          })
+          const content = getReply(result) ?? tpl(uiText.cannotAnalyze, {
+            error: describeChatFailure(result, uiText.errorUnknown),
+          })
+          knowledgeBase.push({ label: aspect, content })
+          onStepComplete(msgId, content, false)
+          // Snapshot after each aspect so a Stop mid-survey can resume
+          // from the very next aspect rather than restarting Phase 2.
+          onResumeStateChange?.(buildSnapshot('survey', 0))
+        } catch (err) {
+          const e = err instanceof Error ? err.message : uiText.errorGeneric
+          onStepError(msgId, e)
+          knowledgeBase.push({ label: aspect, content: tpl(uiText.errorInline, { error: e }) })
+        }
       }
     }
 
+
     // ── Phase 3: Gap Analysis Loop ────────────────────────────────────────
-    for (let iteration = 1; iteration <= MAX_GAP_ITERATIONS; iteration++) {
+    // When resuming, skip iterations that already finished. We use the
+    // `lastGapIteration` field on the snapshot — `0` means no gap round has
+    // run yet, `1` means the first gap round is done, etc.
+    const startIteration = (resumeState && (resumeState.lastCompletedPhase === 'gap' || resumeState.lastCompletedPhase === 'deep'))
+      ? resumeState.lastGapIteration + 1
+      : 1
+    for (let iteration = startIteration; iteration <= MAX_GAP_ITERATIONS; iteration++) {
       throwIfCancelled()
+
       const allFindings = knowledgeBase
         .map((k, i) => `### ${i + 1}. ${k.label}\n${k.content}`)
         .join('\n\n---\n\n')
@@ -468,7 +563,7 @@ export const deepResearchService = {
 
 
       try {
-        const result = await chatService.send({
+        const result = await sendChat({
           provider, model,
           messages: [{ role: 'user', content: buildResearchContent(GAP_ANALYSIS_CONTENT(question, allFindings, imageContext), images) }],
           systemPrompt: GAP_ANALYSIS_PROMPT(date),
@@ -498,6 +593,10 @@ export const deepResearchService = {
             ].join('\n')
 
         onStepComplete(gapMsgId, gapContent, false)
+        // Snapshot after each gap-evaluation so a Stop here can pick up at
+        // the deep-dive sub-phase (or the next iteration) without re-doing
+        // the gap analysis call.
+        onResumeStateChange?.(buildSnapshot('gap', iteration))
       } catch (err) {
         onStepError(gapMsgId, err instanceof Error ? err.message : uiText.errorEval)
         gapResult.isComplete = true // fall through to synthesis on error
@@ -505,6 +604,7 @@ export const deepResearchService = {
 
       // If complete, stop the loop
       if (gapResult.isComplete || gapResult.queries.length === 0) break
+
 
       // Chase each gap with targeted search + analysis
       for (let g = 0; g < Math.min(gapResult.queries.length, MAX_GAPS_PER_ROUND); g++) {
@@ -523,7 +623,7 @@ export const deepResearchService = {
           )
           if (webCtx) anyWebSearch = true
 
-          const result = await chatService.send({
+          const result = await sendChat({
             provider, model,
             messages: [{ role: 'user', content: buildResearchContent(`Deep dive research: ${gapLabel}`, images) }],
             systemPrompt: RESEARCH_PROMPT(date, gapLabel, question, webCtx, imageContext),
@@ -533,6 +633,10 @@ export const deepResearchService = {
           })
           knowledgeBase.push({ label: `${uiText.deeperLabel} ${gapLabel}`, content })
           onStepComplete(deepMsgId, content, false)
+          // Persist after each deep-dive aspect — granular snapshot helps a
+          // mid-loop Stop resume from the very next gap instead of redoing
+          // the whole gap-iteration.
+          onResumeStateChange?.(buildSnapshot('deep', iteration))
         } catch (err) {
           const e = err instanceof Error ? err.message : uiText.errorGeneric
           onStepError(deepMsgId, e)
@@ -542,32 +646,44 @@ export const deepResearchService = {
     }
 
     // ── Phase 4: Cross-reference ──────────────────────────────────────────
-    const crossMsgId = onStepStart(uiText.stepCross, { phase: 'cross' })
+    // Resumed runs that already produced a cross-reference output reuse it
+    // verbatim — we still emit a step bubble so the timeline stays coherent.
+    let crossContent = resumeState?.crossContent ?? ''
+    if (!isPhaseDone('cross')) {
+      const crossMsgId = onStepStart(uiText.stepCross, { phase: 'cross' })
+
+      const allFindingsCross = knowledgeBase
+        .map((k, i) => `### ${i + 1}. ${k.label}\n${k.content}`)
+        .join('\n\n---\n\n')
+
+      try {
+        const result = await sendChat({
+          provider, model,
+          messages: [{ role: 'user', content: buildResearchContent(CROSS_REFERENCE_CONTENT(question, allFindingsCross, imageContext), images) }],
+          systemPrompt: CROSS_REFERENCE_PROMPT(date, anyWebSearch),
+          bypassLengthCheck: true,
+        })
+        crossContent = getReply(result)
+          ?? tpl(uiText.crossFailed, { error: describeChatFailure(result, uiText.errorUnknown) })
+        onStepComplete(crossMsgId, crossContent, false)
+        onResumeStateChange?.(buildSnapshot('cross', resumeState?.lastGapIteration ?? 0, crossContent))
+      } catch (err) {
+        const e = err instanceof Error ? err.message : uiText.errorCross
+        onStepError(crossMsgId, e)
+        crossContent = tpl(uiText.crossFailedInline, { error: e })
+      }
+    }
+
+    // ── Phase 5: Final Synthesis ──────────────────────────────────────────
+    // Synth never gets skipped — even when resuming we always re-run it so
+    // the user gets a fresh user-facing answer that incorporates the full
+    // knowledge base. After it succeeds we clear the resume snapshot so the
+    // panel hides the "Tiếp tục" button.
+    const synthMsgId = onStepStart(uiText.stepSynth, { phase: 'synth' })
 
     const allFindingsFinal = knowledgeBase
       .map((k, i) => `### ${i + 1}. ${k.label}\n${k.content}`)
       .join('\n\n---\n\n')
-
-    let crossContent = ''
-    try {
-      const result = await chatService.send({
-        provider, model,
-        messages: [{ role: 'user', content: buildResearchContent(CROSS_REFERENCE_CONTENT(question, allFindingsFinal, imageContext), images) }],
-        systemPrompt: CROSS_REFERENCE_PROMPT(date, anyWebSearch),
-        bypassLengthCheck: true,
-      })
-      crossContent = getReply(result)
-        ?? tpl(uiText.crossFailed, { error: describeChatFailure(result, uiText.errorUnknown) })
-      onStepComplete(crossMsgId, crossContent, false)
-    } catch (err) {
-      const e = err instanceof Error ? err.message : uiText.errorCross
-      onStepError(crossMsgId, e)
-      crossContent = tpl(uiText.crossFailedInline, { error: e })
-    }
-
-    // ── Phase 5: Final Synthesis ──────────────────────────────────────────
-    const synthMsgId = onStepStart(uiText.stepSynth, { phase: 'synth' })
-
 
     const synthContext = [
       `## Research Findings (${knowledgeBase.length} sources)`,
@@ -578,7 +694,7 @@ export const deepResearchService = {
     ].join('\n\n')
 
     try {
-      const result = await chatService.send({
+      const result = await sendChat({
         provider, model,
         messages: [{
           role: 'user',
@@ -599,6 +715,9 @@ export const deepResearchService = {
         ?? tpl(uiText.synthFailed, { error: describeChatFailure(result, uiText.errorUnknown) })
 
       onStepComplete(synthMsgId, synthesis, true)
+      // Pipeline finished — clear the resume snapshot so the renderer hides
+      // the "Tiếp tục nghiên cứu" button.
+      onResumeStateChange?.(null)
     } catch (err) {
       const e = err instanceof Error ? err.message : uiText.errorSynth
       onStepError(synthMsgId, e)
@@ -606,3 +725,4 @@ export const deepResearchService = {
     }
   },
 }
+

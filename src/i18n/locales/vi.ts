@@ -694,6 +694,8 @@ const vi: Translations = {
   chat_research_done_label: 'Đã suy nghĩ',
   chat_research_steps_unit: 'bước',
   chat_research_aspects_suffix: '{count} khía cạnh',
+  chat_deep_research_resume: 'Tiếp tục nghiên cứu',
+
   chat_deep_research_summarizing: 'Đang tổng hợp kết quả…',
 
   chat_deep_research_badge: 'Deep Research',

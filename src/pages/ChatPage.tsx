@@ -27,7 +27,8 @@ import { chatService } from '../services/chatService'
 import { deepResearchService } from '../services/deepResearchService'
 import { smartThinkingService } from '../services/smartThinkingService'
 import { useAppStore, useT } from '../store/useAppStore'
-import type { ChatMessage, ChatMessageContent } from '../types'
+import type { ChatMessage, ChatMessageContent, DeepResearchResumeState } from '../types'
+
 import { localizeChatError, localizeChatException } from '../utils/chatErrors'
 import { createClientId } from '../utils/id'
 import { extractImageFromClipboard, resizeImageFile } from '../utils/imageUtils'
@@ -176,8 +177,9 @@ export function ChatPage() {
     chatSessions, activeChatSessionId, chatSystemPrompt, systemPromptPresets,
     createChatSession, setActiveChatSession, addChatMessage, updateChatMessage,
     addChatSessionCost, clearChatSession, setChatSystemPrompt, addSystemPromptPreset, openSettings,
-    recordUsageCost,
+    recordUsageCost, setDeepResearchResumeState,
   } = useAppStore()
+
 
   const t = useT()
 
@@ -423,11 +425,162 @@ export function ChatPage() {
     t,
   ])
 
+  /**
+   * Run (or resume) the Deep Research pipeline against an active session.
+   *
+   * Extracted from the original `handleSend` Deep Research branch so that
+   * the new "Tiếp tục nghiên cứu" button can call the same orchestration
+   * with a `resumeState` argument — both code paths share the exact same
+   * step bubbles, callbacks, and persistence wiring, so resume looks
+   * identical to a fresh run from the user's perspective.
+   *
+   * The function expects the user message + any attachments to already be
+   * pushed into the session — fresh runs do that in `handleSend`, resumed
+   * runs simply skip it because the original user message is still there.
+   */
+  const runDeepResearchPipeline = useCallback(async ({
+    sessionId,
+    question,
+    images,
+    resumeState,
+  }: {
+    sessionId: string
+    question: string
+    images: { imageBase64: string; imageMimeType: string }[]
+    resumeState?: DeepResearchResumeState
+  }) => {
+    const drController = new AbortController()
+    abortControllerRef.current = drController
+    setIsSending(true)
+
+    try {
+      await deepResearchService.run({
+        signal: drController.signal,
+        provider: selectedProvider,
+        model: selectedModels[selectedProvider],
+        question,
+        carefulReasoning: true,
+        images: images.length > 0 ? images : undefined,
+        resumeState,
+        uiText: {
+          stepAnalyze: t.chat_deep_research_step_analyze,
+          stepRound1: t.chat_deep_research_step_round1,
+          stepGap: t.chat_deep_research_step_gap,
+          stepDeep: t.chat_deep_research_step_deep,
+          stepCross: t.chat_deep_research_step_cross,
+          stepSynth: t.chat_deep_research_step_synth,
+          modeRealtime: t.chat_deep_research_mode_realtime,
+          modeAiOnly: t.chat_deep_research_mode_ai_only,
+          willStudy: t.chat_deep_research_will_study,
+          imageContext: t.chat_deep_research_image_context,
+          imageTerms: t.chat_deep_research_image_terms,
+          imageKbLabel: t.chat_deep_research_image_kb_label,
+          complete: t.chat_deep_research_complete,
+          gapsFound: t.chat_deep_research_gaps_found,
+          deeperLabel: t.chat_deep_research_deeper_label,
+          cannotAnalyze: t.chat_deep_research_cannot_analyze,
+          cannotResearch: t.chat_deep_research_cannot_research,
+          crossFailed: t.chat_deep_research_cross_failed,
+          crossFailedInline: t.chat_deep_research_cross_failed_inline,
+          synthFailed: t.chat_deep_research_synth_failed,
+          errorInline: t.chat_deep_research_error_inline,
+          errorAnalyze: t.chat_deep_research_error_analyze,
+          errorGeneric: t.chat_deep_research_error_generic,
+          errorEval: t.chat_deep_research_error_eval,
+          errorCross: t.chat_deep_research_error_cross,
+          errorSynth: t.chat_deep_research_error_synth,
+          errorUnknown: t.chat_deep_research_error_unknown,
+          webSummary: t.chat_deep_research_web_summary,
+        },
+        callbacks: {
+          onStepStart: (label, meta) => {
+            const msgId = createClientId('msg-dr')
+            addChatMessage(sessionId, {
+              id: msgId,
+              role: 'assistant',
+              content: [{ type: 'text', text: '' }],
+              timestamp: Date.now(),
+              isLoading: true,
+              isResearchStep: true,
+              researchStepLabel: label,
+              researchStepPhase: meta.phase,
+              researchStepAspect: meta.aspect,
+            })
+            return msgId
+          },
+          onStepComplete: (msgId, content, isFinal) => {
+            updateChatMessage(sessionId, msgId, {
+              content: [{ type: 'text', text: content }],
+              isLoading: false,
+              isResearchStep: !isFinal,
+              isResearchFinal: isFinal,
+              ...(isFinal ? { researchStepLabel: undefined } : {}),
+            })
+            if (isFinal) {
+              recordChatCost(sessionId, msgId, question, content)
+            }
+          },
+          onStepError: (msgId, error) => {
+            updateChatMessage(sessionId, msgId, {
+              isLoading: false,
+              error: localizeChatException(t, error, t.chat_error_failed_response),
+              isResearchStep: true,
+            })
+          },
+          // Persist phase-level snapshots so a Stop / page reload can resume
+          // the run from the last completed phase. The store action accepts
+          // `null` to clear the snapshot when synthesis succeeds.
+          onResumeStateChange: (state) => {
+            setDeepResearchResumeState(sessionId, state)
+          },
+        },
+      })
+    } catch {
+      // Catastrophic + cancellation errors are surfaced via per-step
+      // callbacks; we swallow here so the orchestration's `finally` always
+      // resets the in-flight controller flag.
+    } finally {
+      if (abortControllerRef.current === drController) {
+        abortControllerRef.current = null
+      }
+      setIsSending(false)
+    }
+  }, [
+    selectedProvider,
+    selectedModels,
+    addChatMessage,
+    updateChatMessage,
+    recordChatCost,
+    setDeepResearchResumeState,
+    t,
+  ])
+
+  /**
+   * Click handler for the "Tiếp tục nghiên cứu" button on a stopped Deep
+   * Research panel. Restores the persisted snapshot and replays the
+   * pipeline starting from the next phase — already-completed phases are
+   * skipped inside the service (see `isPhaseDone`), so the user pays only
+   * for the remaining steps.
+   */
+  const handleResumeDeepResearch = useCallback(async () => {
+    if (isSending || !activeChatSessionId) return
+    const session = useAppStore.getState().chatSessions.find((s) => s.id === activeChatSessionId)
+    const resumeState = session?.deepResearchResumeState
+    if (!resumeState) return
+    await runDeepResearchPipeline({
+      sessionId: activeChatSessionId,
+      question: resumeState.question,
+      images: [],
+      resumeState,
+    })
+  }, [isSending, activeChatSessionId, runDeepResearchPipeline])
+
   const handleSend = useCallback(async () => {
 
     const text = inputText.trim()
     if ((!text && !attachedImage) || isSending) return
     if (!hasKey) return
+
 
     const sessionId = ensureSession()
 
@@ -458,107 +611,16 @@ export function ChatPage() {
       addChatMessage(sessionId, userMsg)
       setInputText('')
       setAttachedImage(null)
-      const drController = new AbortController()
-      abortControllerRef.current = drController
-      setIsSending(true)
-
-      try {
-        await deepResearchService.run({
-          signal: drController.signal,
-          provider: selectedProvider,
-          model: selectedModels[selectedProvider],
-          question: text || 'Research the attached image in depth.',
-          carefulReasoning: true,
-          images: attachedImage
-
-            ? [{
-                imageBase64: attachedImage.base64,
-                imageMimeType: attachedImage.mimeType,
-              }]
-            : undefined,
-          uiText: {
-            stepAnalyze: t.chat_deep_research_step_analyze,
-            stepRound1: t.chat_deep_research_step_round1,
-            stepGap: t.chat_deep_research_step_gap,
-            stepDeep: t.chat_deep_research_step_deep,
-            stepCross: t.chat_deep_research_step_cross,
-            stepSynth: t.chat_deep_research_step_synth,
-            modeRealtime: t.chat_deep_research_mode_realtime,
-            modeAiOnly: t.chat_deep_research_mode_ai_only,
-            willStudy: t.chat_deep_research_will_study,
-            imageContext: t.chat_deep_research_image_context,
-            imageTerms: t.chat_deep_research_image_terms,
-            imageKbLabel: t.chat_deep_research_image_kb_label,
-            complete: t.chat_deep_research_complete,
-            gapsFound: t.chat_deep_research_gaps_found,
-            deeperLabel: t.chat_deep_research_deeper_label,
-            cannotAnalyze: t.chat_deep_research_cannot_analyze,
-            cannotResearch: t.chat_deep_research_cannot_research,
-            crossFailed: t.chat_deep_research_cross_failed,
-            crossFailedInline: t.chat_deep_research_cross_failed_inline,
-            synthFailed: t.chat_deep_research_synth_failed,
-            errorInline: t.chat_deep_research_error_inline,
-            errorAnalyze: t.chat_deep_research_error_analyze,
-            errorGeneric: t.chat_deep_research_error_generic,
-            errorEval: t.chat_deep_research_error_eval,
-            errorCross: t.chat_deep_research_error_cross,
-            errorSynth: t.chat_deep_research_error_synth,
-            errorUnknown: t.chat_deep_research_error_unknown,
-            webSummary: t.chat_deep_research_web_summary,
-          },
-          callbacks: {
-            // Persist phase + aspect on the message so `ResearchStepsPanel`
-            // can group consecutive steps of the same phase into one compact
-            // pill (e.g. "Khảo sát · 4 khía cạnh") and show the per-aspect
-            // detail inside a hover-info popover.
-            onStepStart: (label, meta) => {
-              const msgId = createClientId('msg-dr')
-              addChatMessage(sessionId, {
-                id: msgId,
-                role: 'assistant',
-                content: [{ type: 'text', text: '' }],
-                timestamp: Date.now(),
-                isLoading: true,
-                isResearchStep: true,
-                researchStepLabel: label,
-                researchStepPhase: meta.phase,
-                researchStepAspect: meta.aspect,
-              })
-              return msgId
-            },
-
-            onStepComplete: (msgId, content, isFinal) => {
-              updateChatMessage(sessionId, msgId, {
-                content: [{ type: 'text', text: content }],
-                isLoading: false,
-                isResearchStep: !isFinal,
-                isResearchFinal: isFinal,
-                ...(isFinal ? { researchStepLabel: undefined } : {}),
-              })
-              if (isFinal) {
-                recordChatCost(sessionId, msgId, text || 'Research the attached image in depth.', content)
-              }
-            },
-            onStepError: (msgId, error) => {
-              updateChatMessage(sessionId, msgId, {
-                isLoading: false,
-                error: localizeChatException(t, error, t.chat_error_failed_response),
-                isResearchStep: true,
-              })
-            },
-          },
-        })
-      } catch {
-        // Catastrophic error — individual step errors handled by onStepError.
-        // Cancellation throws too, but is just used to halt the pipeline.
-      } finally {
-        if (abortControllerRef.current === drController) {
-          abortControllerRef.current = null
-        }
-        setIsSending(false)
-      }
+      await runDeepResearchPipeline({
+        sessionId,
+        question: text || 'Research the attached image in depth.',
+        images: attachedImage
+          ? [{ imageBase64: attachedImage.base64, imageMimeType: attachedImage.mimeType }]
+          : [],
+      })
       return
     }
+
 
     addChatMessage(sessionId, userMsg)
     setInputText('')
@@ -855,11 +917,13 @@ export function ChatPage() {
     selectedModels,
     chatSystemPrompt,
     recordChatCost,
+    runDeepResearchPipeline,
     t,
   ])
 
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+
     if (shouldSendChatMessage(e.nativeEvent, chatSendShortcut, platform)) {
       e.preventDefault()
       handleSend()
@@ -1290,10 +1354,23 @@ export function ChatPage() {
                           group.push(messages[i])
                           i++
                         }
+                        // Only show the Resume button on the LAST research
+                        // panel of the conversation — older panels in earlier
+                        // turns are historic and shouldn't be re-invoked.
+                        const isLastPanel = i >= messages.length
+                        const showResume = isLastPanel
+                          && !isSending
+                          && !!activeSession?.deepResearchResumeState
+                          && activeSession.deepResearchResumeState.lastCompletedPhase !== 'synth'
                         rendered.push(
-                          <ResearchStepsPanel key={`rsp-${group[0].id}`} steps={group} />
+                          <ResearchStepsPanel
+                            key={`rsp-${group[0].id}`}
+                            steps={group}
+                            onResume={showResume ? handleResumeDeepResearch : undefined}
+                          />
                         )
                         continue
+
                       }
                       rendered.push(
                         <MessageBubble

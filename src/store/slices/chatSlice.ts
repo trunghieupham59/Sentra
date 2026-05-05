@@ -4,7 +4,15 @@
  * Manages all chat-related state in isolation so it can be reasoned about,
  * tested, and evolved independently of translation or settings state.
  */
-import type { ChatMessage, ChatSession, Provider, SystemPromptPreset, UsageCost } from '../../types'
+import type {
+  ChatMessage,
+  ChatSession,
+  DeepResearchResumeState,
+  Provider,
+  SystemPromptPreset,
+  UsageCost,
+} from '../../types'
+
 import { createClientId } from '../../utils/id'
 import type { SliceSet } from './sliceTypes'
 
@@ -30,6 +38,17 @@ export interface ChatSlice {
   updateChatMessage: (sessionId: string, messageId: string, updates: Partial<ChatMessage>) => void
   addChatSessionCost: (sessionId: string, cost: UsageCost) => void
   clearChatSession: (sessionId: string) => void
+  /**
+   * Persist (or clear with `null`) the in-progress Deep Research pipeline
+   * state on a session. Called from the deep-research orchestration after
+   * each phase completes so a Stop / page reload can later resume from the
+   * last successfully-finished phase instead of restarting the whole run.
+   */
+  setDeepResearchResumeState: (
+    sessionId: string,
+    state: DeepResearchResumeState | null,
+  ) => void
+
   setChatSystemPrompt: (prompt: string) => void
   addSystemPromptPreset: (preset: Omit<SystemPromptPreset, 'id'>) => string
   updateSystemPromptPreset: (id: string, updates: Partial<Omit<SystemPromptPreset, 'id'>>) => void
@@ -133,9 +152,34 @@ export const createChatSlice = (set: SliceSet): ChatSlice => ({
   clearChatSession: (sessionId) =>
     set((state: ChatSlice) => ({
       chatSessions: state.chatSessions.map((s) =>
-        s.id === sessionId ? { ...s, messages: [], cost: undefined, updatedAt: Date.now() } : s
+        s.id === sessionId
+          ? {
+              ...s,
+              messages: [],
+              cost: undefined,
+              // Clearing a session also drops any half-finished Deep Research
+              // pipeline — the user is starting over so the resume snapshot
+              // is no longer relevant.
+              deepResearchResumeState: undefined,
+              updatedAt: Date.now(),
+            }
+          : s
       ),
     })),
+
+  setDeepResearchResumeState: (sessionId, resumeState) =>
+    set((state: ChatSlice) => ({
+      chatSessions: state.chatSessions.map((s) =>
+        s.id === sessionId
+          ? {
+              ...s,
+              deepResearchResumeState: resumeState ?? undefined,
+              updatedAt: Date.now(),
+            }
+          : s
+      ),
+    })),
+
 
   setChatSystemPrompt: (prompt) => set({ chatSystemPrompt: prompt }),
 
