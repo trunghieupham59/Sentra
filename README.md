@@ -51,13 +51,13 @@ Viezan is a desktop translation workspace for text, images, live audio, chat and
 
 View all versions on the [GitHub Releases page](https://github.com/trunghieupham59/Viezan/releases).
 
-## What's New in v2.1.0
+## What's New in v2.1.3
 
 | Area | Change |
 | --- | --- |
-| Dictionary | Adds selected-text dictionary lookup with a fast preview and enriched detail view. |
-| Browser Integration | Improves extension popup recovery after service worker reloads. |
-| UI | Tightens popup, tooltip and selection lookup layout so loading and overflow states stay readable. |
+| Hotkeys | Adds a native visual indicator so translation shortcut state changes are visible immediately. |
+| Reliability | Hardens CodeQL workflow handling and makes generated icon writes safer during automation. |
+| Chat | Tightens chat page state handling around provider-driven interactions. |
 
 ## Features
 
