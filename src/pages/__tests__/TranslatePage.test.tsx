@@ -1,7 +1,18 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { IMAGE_AUTO_TRANSLATE_DELAY_MS } from '../../constants/ui'
 import { useAppStore } from '../../store/useAppStore'
+import { extractImageFromClipboard, resizeImageFile } from '../../utils/imageUtils'
 import { TranslatePage } from '../TranslatePage'
+
+vi.mock('../../utils/imageUtils', async () => {
+  const actual = await vi.importActual<typeof import('../../utils/imageUtils')>('../../utils/imageUtils')
+  return {
+    ...actual,
+    extractImageFromClipboard: vi.fn(),
+    resizeImageFile: vi.fn(),
+  }
+})
 
 function openAdvancedConfig() {
   const configButton = screen.getByTitle(/Advanced AI Config|Cấu hình AI/i)
@@ -13,6 +24,25 @@ function openAdvancedConfig() {
 // Reset store before each test
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.useRealTimers()
+  vi.mocked(window.api.translate).mockReset()
+  vi.mocked(window.api.translate).mockResolvedValue({ success: false })
+  vi.mocked(window.api.translateImage).mockReset()
+  vi.mocked(window.api.translateImage).mockResolvedValue({ success: false })
+  const cancelTranslateMock = vi.mocked(
+    window.api.cancelTranslate as NonNullable<typeof window.api.cancelTranslate>
+  )
+  cancelTranslateMock.mockReset()
+  cancelTranslateMock.mockResolvedValue({ success: false, error: 'NOT_FOUND' })
+  vi.mocked(extractImageFromClipboard).mockReturnValue(null)
+  vi.mocked(resizeImageFile).mockResolvedValue({
+    base64: 'mock-image-base64',
+    mimeType: 'image/png',
+    previewUrl: 'data:image/png;base64,mock-image-base64',
+    width: 100,
+    height: 80,
+    fileName: 'mock.png',
+  })
   act(() => {
     useAppStore.setState({
       sourceText: '',
@@ -43,6 +73,89 @@ describe('TranslatePage', () => {
     // In manual mode (autoTranslate=false), a translate button should appear
     const buttons = screen.getAllByRole('button')
     expect(buttons.length).toBeGreaterThan(0)
+  })
+
+  it('does not auto-translate a pasted image while manual mode is active', async () => {
+    vi.useFakeTimers()
+    const file = new File(['image'], 'manual.png', { type: 'image/png' })
+    vi.mocked(extractImageFromClipboard).mockReturnValue(file)
+
+    render(<TranslatePage />)
+
+    act(() => {
+      fireEvent.paste(screen.getByLabelText(/Image|ảnh/i), {
+        clipboardData: { items: [] },
+      })
+    })
+
+    await act(async () => {})
+
+    expect(resizeImageFile).toHaveBeenCalledWith(file, expect.any(Number), { useQualityLoop: true })
+
+    act(() => {
+      vi.advanceTimersByTime(IMAGE_AUTO_TRANSLATE_DELAY_MS + 50)
+    })
+
+    expect(window.api.translateImage).not.toHaveBeenCalled()
+    vi.useRealTimers()
+  })
+
+  it('restarts an in-flight manual translation when the target language changes', async () => {
+    type TranslateApiResult = Awaited<ReturnType<typeof window.api.translate>>
+    let resolveFirst: ((value: TranslateApiResult) => void) | undefined
+
+    vi.mocked(window.api.translate)
+      .mockImplementationOnce(() => new Promise<TranslateApiResult>((resolve) => {
+        resolveFirst = resolve
+      }))
+      .mockResolvedValueOnce({ success: true, translatedText: 'こんにちは' })
+
+    act(() => {
+      useAppStore.setState({
+        sourceText: 'Hello',
+        targetLang: 'vi',
+        autoTranslate: false,
+      })
+    })
+
+    render(<TranslatePage />)
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /^(Translate|Dịch)$/i }))
+    })
+
+    await waitFor(() => {
+      expect(window.api.translate).toHaveBeenCalledWith(expect.objectContaining({
+        sourceText: 'Hello',
+        targetLang: 'vi',
+      }))
+    })
+
+    act(() => {
+      useAppStore.getState().setTargetLang('ja')
+    })
+
+    await waitFor(() => {
+      expect(window.api.translate).toHaveBeenCalledTimes(2)
+      expect(window.api.translate).toHaveBeenLastCalledWith(expect.objectContaining({
+        sourceText: 'Hello',
+        targetLang: 'ja',
+      }))
+    })
+
+    expect(window.api.cancelTranslate).toHaveBeenCalledWith(expect.objectContaining({
+      requestId: expect.any(String),
+    }))
+
+    await waitFor(() => {
+      expect(useAppStore.getState().translatedText).toBe('こんにちは')
+    })
+
+    await act(async () => {
+      resolveFirst?.({ success: true, translatedText: 'Xin chào cũ' })
+    })
+
+    expect(useAppStore.getState().translatedText).toBe('こんにちは')
   })
 
   it('shows Auto/Manual toggle button', () => {

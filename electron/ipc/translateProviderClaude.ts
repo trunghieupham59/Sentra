@@ -1,6 +1,6 @@
 import { MAX_OUTPUT_TOKENS_CLAUDE, VERIFY_MAX_TOKENS, VERIFY_MODEL_CLAUDE } from './ipcConstants'
 import { buildPrompt, buildRewritePrompt, REWRITE_SYSTEM_PROMPT, SYSTEM_PROMPT } from './translatePrompts'
-import type { DetectFn, RewriteFn, StreamFn, TranslateFn, VerifyFn } from './translateProviderTypes'
+import type { DetectFn, RewriteFn, StreamFn, TranslateFn, TranslateRequestOptions, VerifyFn } from './translateProviderTypes'
 
 export const translateWithClaude: TranslateFn = async (
   apiKey,
@@ -12,15 +12,19 @@ export const translateWithClaude: TranslateFn = async (
   style,
   phoneticOnly,
   phoneticMode,
+  options: TranslateRequestOptions = {},
 ) => {
   const Anthropic = (await import('@anthropic-ai/sdk')).default
   const client = new Anthropic({ apiKey })
-  const message = await client.messages.create({
-    model,
-    max_tokens: MAX_OUTPUT_TOKENS_CLAUDE,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style, phoneticOnly, phoneticMode) }],
-  })
+  const message = await client.messages.create(
+    {
+      model,
+      max_tokens: MAX_OUTPUT_TOKENS_CLAUDE,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style, phoneticOnly, phoneticMode) }],
+    },
+    options.signal ? { signal: options.signal } : undefined,
+  )
   const block = message.content[0]
   if (block.type === 'text') return block.text.trim()
   throw new Error('Unexpected response type from Claude')

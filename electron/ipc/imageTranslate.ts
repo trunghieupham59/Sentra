@@ -8,18 +8,25 @@ import {
   VISION_SCORE_CHEAP, VISION_SCORE_GEN_WEIGHT, VISION_SCORE_LITE_PENALTY,VISION_SCORE_MID, 
   VISION_SCORE_SLOW, 
 } from './ipcConstants'
-import { invalidIpcInput, isNonEmptyString, isSafeLanguageCode, parseProviderModel } from './ipcValidation'
+import { invalidIpcInput, isNonEmptyString, isRecord, isSafeLanguageCode, parseProviderModel } from './ipcValidation'
+import { isAbortError } from './providers/chatProviderTypes'
 import { getStoredApiKey } from './storage'
 
 /** Allowed image MIME types for Gemini image-edit (whitelist prevents injection via IPC). */
 const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 
-/** Returns a fetch with a timeout via AbortController. Rejects with AbortError on timeout. */
-function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response> {
+/** Returns a fetch with a timeout via AbortController. Rejects with AbortError on timeout/cancel. */
+function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number, signal?: AbortSignal): Promise<Response> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
+  const onAbort = () => controller.abort()
+  if (signal?.aborted) controller.abort()
+  signal?.addEventListener('abort', onAbort, { once: true })
   return fetch(url, { ...options, signal: controller.signal })
-    .finally(() => clearTimeout(timer))
+    .finally(() => {
+      clearTimeout(timer)
+      signal?.removeEventListener('abort', onAbort)
+    })
 }
 
 // ── Vision model discovery (no hardcoded model IDs) ───────────────────────────
@@ -167,6 +174,7 @@ function langName(code: string): string {
 interface ImageTranslateParams {
   provider: string
   model: string
+  requestId?: string
   imageBase64: string
   imageMimeType: string
   sourceLang: string
@@ -191,6 +199,9 @@ function parseImageTranslateParams(rawParams: unknown): ParsedImageTranslatePara
   if (!isNonEmptyString(params.imageBase64)) {
     return { ok: false, response: invalidIpcInput('No image data provided') }
   }
+  if (params.requestId !== undefined && !isNonEmptyString(params.requestId)) {
+    return { ok: false, response: invalidIpcInput('Invalid request id') }
+  }
   if (!isNonEmptyString(params.imageMimeType) || !ALLOWED_IMAGE_MIME_TYPES.has(params.imageMimeType)) {
     return { ok: false, response: invalidIpcInput('Unsupported image MIME type') }
   }
@@ -206,6 +217,7 @@ function parseImageTranslateParams(rawParams: unknown): ParsedImageTranslatePara
     value: {
       provider,
       model,
+      requestId: typeof params.requestId === 'string' ? params.requestId : undefined,
       imageBase64: params.imageBase64,
       imageMimeType: params.imageMimeType,
       sourceLang: params.sourceLang,
@@ -272,7 +284,8 @@ async function translateImageWithGeminiEdit(
   imageBase64: string,
   imageMimeType: string,
   sourceLang: string,
-  targetLang: string
+  targetLang: string,
+  signal?: AbortSignal,
 ): Promise<string | null> {
   // R-SEC-02: Whitelist validate MIME type before embedding in JSON request body
   if (!ALLOWED_IMAGE_MIME_TYPES.has(imageMimeType)) {
@@ -312,7 +325,7 @@ async function translateImageWithGeminiEdit(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-  }, VISION_DISCOVERY_TIMEOUT_MS)
+  }, VISION_DISCOVERY_TIMEOUT_MS, signal)
 
   if (!res.ok) {
     const errText = await res.text()
@@ -345,8 +358,10 @@ async function translateImageWithGemini(
   imageBase64: string,
   imageMimeType: string,
   sourceLang: string,
-  targetLang: string
+  targetLang: string,
+  signal?: AbortSignal,
 ): Promise<TextRegion[]> {
+  if (signal?.aborted) throw new Error('image-translate-cancelled')
   const { GoogleGenerativeAI } = await import('@google/generative-ai')
   const genAI = new GoogleGenerativeAI(apiKey)
   const genModel = genAI.getGenerativeModel({ model })
@@ -360,6 +375,7 @@ async function translateImageWithGemini(
     },
     buildPrompt(sourceLang, targetLang),
   ])
+  if (signal?.aborted) throw new Error('image-translate-cancelled')
 
   const text = result.response.text().trim()
   const jsonMatch = text.match(/\[[\s\S]*\]/)
@@ -373,34 +389,38 @@ async function translateImageWithClaude(
   imageBase64: string,
   imageMimeType: string,
   sourceLang: string,
-  targetLang: string
+  targetLang: string,
+  signal?: AbortSignal,
 ): Promise<TextRegion[]> {
   const Anthropic = (await import('@anthropic-ai/sdk')).default
   const client = new Anthropic({ apiKey })
 
-  const message = await client.messages.create({
-    model,
-    max_tokens: MAX_CHAT_OUTPUT_TOKENS,  // HC-02
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: imageMimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
-              data: imageBase64,
+  const message = await client.messages.create(
+    {
+      model,
+      max_tokens: MAX_CHAT_OUTPUT_TOKENS,  // HC-02
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: imageMimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+                data: imageBase64,
+              },
             },
-          },
-          {
-            type: 'text',
-            text: buildPrompt(sourceLang, targetLang),
-          },
-        ],
-      },
-    ],
-  })
+            {
+              type: 'text',
+              text: buildPrompt(sourceLang, targetLang),
+            },
+          ],
+        },
+      ],
+    },
+    signal ? { signal } : undefined,
+  )
 
   const block = message.content[0]
   if (block.type !== 'text') return []
@@ -416,7 +436,8 @@ async function translateImageWithOpenAI(
   imageBase64: string,
   imageMimeType: string,
   sourceLang: string,
-  targetLang: string
+  targetLang: string,
+  signal?: AbortSignal,
 ): Promise<TextRegion[]> {
   const OpenAI = (await import('openai')).default
   const client = new OpenAI({ apiKey })
@@ -424,28 +445,31 @@ async function translateImageWithOpenAI(
   // Ensure we use a vision-capable model
   const visionModel = model.includes('o1') || model === 'gpt-3.5-turbo' ? 'gpt-4o' : model
 
-  const completion = await client.chat.completions.create({
-    model: visionModel,
-    max_completion_tokens: MAX_CHAT_OUTPUT_TOKENS,  // HC-02
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'image_url',
-            image_url: {
-              url: `data:${imageMimeType};base64,${imageBase64}`,
-              detail: 'high',
+  const completion = await client.chat.completions.create(
+    {
+      model: visionModel,
+      max_completion_tokens: MAX_CHAT_OUTPUT_TOKENS,  // HC-02
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:${imageMimeType};base64,${imageBase64}`,
+                detail: 'high',
+              },
             },
-          },
-          {
-            type: 'text',
-            text: buildPrompt(sourceLang, targetLang),
-          },
-        ],
-      },
-    ],
-  })
+            {
+              type: 'text',
+              text: buildPrompt(sourceLang, targetLang),
+            },
+          ],
+        },
+      ],
+    },
+    signal ? { signal } : undefined,
+  )
 
   const text = (completion.choices[0]?.message?.content ?? '').trim()
   const jsonMatch = text.match(/\[[\s\S]*\]/)
@@ -469,7 +493,7 @@ export {
 
 type ImageTranslateFn = (
   apiKey: string, model: string, imageBase64: string, imageMimeType: string,
-  sourceLang: string, targetLang: string
+  sourceLang: string, targetLang: string, signal?: AbortSignal
 ) => Promise<TextRegion[]>
 
 const IMAGE_TRANSLATE_PROVIDERS: Record<string, ImageTranslateFn> = {
@@ -480,12 +504,26 @@ const IMAGE_TRANSLATE_PROVIDERS: Record<string, ImageTranslateFn> = {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+const IMAGE_TRANSLATE_CANCELLED_MESSAGE = 'image-translate-cancelled'
+const activeImageTranslateControllers = new Map<string, AbortController>()
+
 export function registerImageTranslateHandlers(ipcMain: IpcMain) {
+  ipcMain.handle('image:translate:cancel', async (_event, rawParams: unknown) => {
+    if (!isRecord(rawParams) || !isNonEmptyString(rawParams.requestId)) {
+      return { success: false, error: 'INVALID_INPUT' }
+    }
+    const controller = activeImageTranslateControllers.get(rawParams.requestId)
+    if (!controller) return { success: false, error: 'NOT_FOUND' }
+    controller.abort()
+    activeImageTranslateControllers.delete(rawParams.requestId)
+    return { success: true }
+  })
+
   ipcMain.handle('image:translate', async (event, rawParams: unknown) => {
     const parsed = parseImageTranslateParams(rawParams)
     if (!parsed.ok) return parsed.response
     const params = parsed.value
-    const { provider, model, imageBase64, imageMimeType, sourceLang, targetLang } = params
+    const { provider, model, requestId, imageBase64, imageMimeType, sourceLang, targetLang } = params
 
     if (!imageBase64) {
       return { success: false, error: 'No image data provided' }
@@ -507,17 +545,21 @@ export function registerImageTranslateHandlers(ipcMain: IpcMain) {
       return { success: false, error: `Unknown provider: ${provider}` }
     }
 
+    const controller = requestId ? new AbortController() : null
+    if (requestId && controller) activeImageTranslateControllers.set(requestId, controller)
+
     try {
       // ── Gemini: try image-edit model first for best quality ───────────────
       if (provider === 'gemini') {
         try {
           const editedImageBase64 = await translateImageWithGeminiEdit(
-            apiKey, imageBase64, imageMimeType, sourceLang, targetLang
+            apiKey, imageBase64, imageMimeType, sourceLang, targetLang, controller?.signal
           )
           if (editedImageBase64) {
             return { success: true, editedImageBase64, regions: [] }
           }
         } catch (editErr) {
+          if (controller?.signal.aborted || isAbortError(editErr)) throw editErr
           console.warn('Gemini image-edit failed, falling back to regions:', editErr)
           // Fall through to OCR+regions approach below
         }
@@ -560,7 +602,8 @@ export function registerImageTranslateHandlers(ipcMain: IpcMain) {
         }
 
         try {
-          regions = await fn(key, m, imageBase64, imageMimeType, sourceLang, targetLang)
+          if (controller?.signal.aborted) throw new Error(IMAGE_TRANSLATE_CANCELLED_MESSAGE)
+          regions = await fn(key, m, imageBase64, imageMimeType, sourceLang, targetLang, controller?.signal)
           usedModel = m
           usedProvider = p
           succeeded = true
@@ -620,10 +663,17 @@ export function registerImageTranslateHandlers(ipcMain: IpcMain) {
         ...(switched ? { usedModel, usedProvider } : {}),
       }
     } catch (error: unknown) {
+      if (controller?.signal.aborted || isAbortError(error)) {
+        return { success: false, error: IMAGE_TRANSLATE_CANCELLED_MESSAGE, errorCode: 'CANCELLED' }
+      }
       console.error(`Image translation error with ${provider}:`, error)
       const msg = error instanceof Error ? error.message : String(error)
       // DUP-01: use classifyProviderError for standard error categorization
       return classifyProviderError(msg)
+    } finally {
+      if (requestId && activeImageTranslateControllers.get(requestId) === controller) {
+        activeImageTranslateControllers.delete(requestId)
+      }
     }
   })
 }

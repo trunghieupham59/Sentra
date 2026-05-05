@@ -1,7 +1,7 @@
 import { MAX_OUTPUT_TOKENS_OPENAI } from './ipcConstants'
 import { LOCAL_AI_PLACEHOLDER_KEY, resolveLocalAiRequestModel } from './localAi'
 import { buildPrompt, buildRewritePrompt, REWRITE_SYSTEM_PROMPT, SYSTEM_PROMPT } from './translatePrompts'
-import type { DetectFn, RewriteFn, StreamFn, TranslateFn, VerifyFn } from './translateProviderTypes'
+import type { DetectFn, RewriteFn, StreamFn, TranslateFn, TranslateRequestOptions, VerifyFn } from './translateProviderTypes'
 
 async function getLocalOpenAIClient(model: string) {
   const OpenAI = (await import('openai')).default
@@ -22,16 +22,20 @@ export const translateWithLocal: TranslateFn = async (
   style,
   phoneticOnly,
   phoneticMode,
+  options: TranslateRequestOptions = {},
 ) => {
   const { client, model: resolvedModel } = await getLocalOpenAIClient(model)
-  const completion = await client.chat.completions.create({
-    model: resolvedModel,
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style, phoneticOnly, phoneticMode) },
-    ],
-    max_tokens: MAX_OUTPUT_TOKENS_OPENAI,
-  })
+  const completion = await client.chat.completions.create(
+    {
+      model: resolvedModel,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style, phoneticOnly, phoneticMode) },
+      ],
+      max_tokens: MAX_OUTPUT_TOKENS_OPENAI,
+    },
+    options.signal ? { signal: options.signal } : undefined,
+  )
   return (completion.choices[0]?.message?.content ?? '').trim()
 }
 

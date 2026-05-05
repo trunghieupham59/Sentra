@@ -43,6 +43,7 @@ if (typeof window !== 'undefined') {
   Object.defineProperty(window, 'api', {
     value: {
       translate: vi.fn().mockResolvedValue({ success: false }),
+      cancelTranslate: vi.fn().mockResolvedValue({ success: false, error: 'NOT_FOUND' }),
       rewriteText: vi.fn().mockResolvedValue({ success: false }),
       transcribeAudio: vi.fn().mockResolvedValue({ success: false }),
       speakText: vi.fn().mockResolvedValue({ success: false }),

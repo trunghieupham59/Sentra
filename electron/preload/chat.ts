@@ -51,6 +51,7 @@ export const chatSection = {
   translateImage: (params: {
     provider: string
     model: string
+    requestId?: string
     imageBase64: string
     imageMimeType: string
     sourceLang: string

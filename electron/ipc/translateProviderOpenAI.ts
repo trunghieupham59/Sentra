@@ -1,6 +1,6 @@
 import { MAX_OUTPUT_TOKENS_OPENAI, VERIFY_MAX_TOKENS, VERIFY_MODEL_OPENAI } from './ipcConstants'
 import { buildPrompt, buildRewritePrompt, REWRITE_SYSTEM_PROMPT, SYSTEM_PROMPT } from './translatePrompts'
-import type { DetectFn, RewriteFn, StreamFn, TranslateFn, VerifyFn } from './translateProviderTypes'
+import type { DetectFn, RewriteFn, StreamFn, TranslateFn, TranslateRequestOptions, VerifyFn } from './translateProviderTypes'
 
 export const translateWithOpenAI: TranslateFn = async (
   apiKey,
@@ -12,17 +12,21 @@ export const translateWithOpenAI: TranslateFn = async (
   style,
   phoneticOnly,
   phoneticMode,
+  options: TranslateRequestOptions = {},
 ) => {
   const OpenAI = (await import('openai')).default
   const client = new OpenAI({ apiKey })
-  const completion = await client.chat.completions.create({
-    model,
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style, phoneticOnly, phoneticMode) },
-    ],
-    max_completion_tokens: MAX_OUTPUT_TOKENS_OPENAI,
-  })
+  const completion = await client.chat.completions.create(
+    {
+      model,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style, phoneticOnly, phoneticMode) },
+      ],
+      max_completion_tokens: MAX_OUTPUT_TOKENS_OPENAI,
+    },
+    options.signal ? { signal: options.signal } : undefined,
+  )
   return (completion.choices[0]?.message?.content ?? '').trim()
 }
 

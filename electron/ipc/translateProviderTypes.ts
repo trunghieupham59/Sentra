@@ -1,5 +1,9 @@
 import type { PhoneticMode, TranslationStyle } from './translateValidation'
 
+export interface TranslateRequestOptions {
+  signal?: AbortSignal
+}
+
 export type TranslateFn = (
   apiKey: string,
   model: string,
@@ -10,6 +14,7 @@ export type TranslateFn = (
   style: TranslationStyle,
   phoneticOnly: boolean,
   phoneticMode: PhoneticMode,
+  options?: TranslateRequestOptions,
 ) => Promise<string>
 
 export type RewriteFn = (

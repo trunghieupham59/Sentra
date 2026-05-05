@@ -1,7 +1,9 @@
 import type { IpcMain } from 'electron'
 import { classifyProviderError, noApiKeyResponse } from './errorUtils'
 import { DETECT_LANG_MAX_CHARS } from './ipcConstants'
+import { isNonEmptyString, isRecord } from './ipcValidation'
 import { isLocalProvider, LOCAL_AI_PLACEHOLDER_KEY } from './localAi'
+import { isAbortError } from './providers/chatProviderTypes'
 import { isValidProvider, unknownProviderError } from './providers/types'
 import { withRetry } from './retry'
 import { getStoredApiKey } from './storage'
@@ -36,7 +38,21 @@ function getProviderCredential(provider: string) {
   return isLocalProvider(provider) ? LOCAL_AI_PLACEHOLDER_KEY : getStoredApiKey(provider)
 }
 
+const TRANSLATE_CANCELLED_MESSAGE = 'translate-cancelled'
+const activeTranslateControllers = new Map<string, AbortController>()
+
 export function registerTranslateHandlers(ipcMain: IpcMain) {
+  ipcMain.handle('translate:cancel', async (_event, rawParams: unknown) => {
+    if (!isRecord(rawParams) || !isNonEmptyString(rawParams.requestId)) {
+      return { success: false, error: 'INVALID_INPUT' }
+    }
+    const controller = activeTranslateControllers.get(rawParams.requestId)
+    if (!controller) return { success: false, error: 'NOT_FOUND' }
+    controller.abort()
+    activeTranslateControllers.delete(rawParams.requestId)
+    return { success: true }
+  })
+
   ipcMain.handle('translate:verify', async (_event, provider: string, apiKey: string) => {
     if (!isLocalProvider(provider) && !apiKey?.trim()) {
       return { success: false, error: 'API key is empty' }
@@ -67,7 +83,7 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
     const parsed = parseTranslateParams(rawParams)
     if (!parsed.ok) return parsed.response
     const params = parsed.value
-    const { provider, model, sourceText, sourceLang, targetLang, showFurigana, translationStyle, phoneticOnly, phoneticMode } = params
+    const { provider, model, requestId, sourceText, sourceLang, targetLang, showFurigana, translationStyle, phoneticOnly, phoneticMode } = params
     const effectivePhoneticMode: PhoneticMode = phoneticMode ?? (showFurigana ? 'standard' : 'off')
 
     if (!sourceText.trim()) return { success: false, error: 'Source text is empty' }
@@ -80,18 +96,33 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
       const translateFn = TRANSLATE_PROVIDERS[provider]
       if (!translateFn) return unknownProviderError(provider)
 
+      const controller = requestId ? new AbortController() : null
+      if (requestId && controller) activeTranslateControllers.set(requestId, controller)
+      const options = controller ? { signal: controller.signal } : undefined
       const needsChunking = !phoneticOnly && sourceText.length > CHUNK_CHAR_LIMIT
-      const translatedText = needsChunking
-        ? await translateChunked(
-            (text) => translateFn(apiKey, model, text, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'general', false, effectivePhoneticMode),
-            sourceText,
-          )
-        : await withRetry(() =>
-            translateFn(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'general', !!phoneticOnly, effectivePhoneticMode)
-          )
+      try {
+        const translatedText = needsChunking
+          ? await translateChunked(
+              (text) => {
+                if (controller?.signal.aborted) throw new Error(TRANSLATE_CANCELLED_MESSAGE)
+                return translateFn(apiKey, model, text, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'general', false, effectivePhoneticMode, options)
+              },
+              sourceText,
+            )
+          : await withRetry(() =>
+              translateFn(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'general', !!phoneticOnly, effectivePhoneticMode, options)
+            )
 
-      return { success: true, translatedText }
+        return { success: true, translatedText }
+      } finally {
+        if (requestId && activeTranslateControllers.get(requestId) === controller) {
+          activeTranslateControllers.delete(requestId)
+        }
+      }
     } catch (error: unknown) {
+      if (isAbortError(error)) {
+        return { success: false, error: TRANSLATE_CANCELLED_MESSAGE, errorCode: 'CANCELLED' }
+      }
       console.error(`Translation error with ${provider}:`, error)
       const msg = error instanceof Error ? error.message : String(error)
       const classified = classifyProviderError(msg)

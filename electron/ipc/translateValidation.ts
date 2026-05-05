@@ -7,6 +7,7 @@ export type PhoneticMode = 'off' | 'standard' | 'phonetic'
 export interface TranslateParams {
   provider: string
   model: string
+  requestId?: string
   sourceText: string
   sourceLang: string
   targetLang: string
@@ -82,6 +83,9 @@ export function parseTranslateParams(rawParams: unknown): ParsedParams<Translate
   if (typeof rawParams.sourceText !== 'string') {
     return { ok: false, response: invalidIpcInput('Source text is required') }
   }
+  if (rawParams.requestId !== undefined && !isNonEmptyString(rawParams.requestId)) {
+    return { ok: false, response: invalidIpcInput('Invalid request id') }
+  }
   if (!isSafeLanguageCode(rawParams.sourceLang)) {
     return { ok: false, response: invalidIpcInput('Invalid source language') }
   }
@@ -102,6 +106,7 @@ export function parseTranslateParams(rawParams: unknown): ParsedParams<Translate
     value: {
       provider: provider.value,
       model: model.value,
+      requestId: typeof rawParams.requestId === 'string' ? rawParams.requestId : undefined,
       sourceText: rawParams.sourceText,
       sourceLang: rawParams.sourceLang,
       targetLang: rawParams.targetLang,
@@ -165,4 +170,3 @@ export function parseDetectLanguageParams(rawParams: unknown): ParsedParams<{ pr
     },
   }
 }
-

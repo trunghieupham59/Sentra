@@ -106,6 +106,7 @@ export function useTranslate() {
   const showFurigana = phoneticMode !== 'off'
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const activeTranslateRequestIdRef = useRef<string | null>(null)
   /**
    * Monotonically-increasing counter that identifies the "current" translation job.
    * Incremented each time a new job starts OR when the user cancels (clears content/image).
@@ -275,6 +276,13 @@ export function useTranslate() {
       })
   }, []) // All values are passed as params → no external deps needed
 
+  const cancelActiveTranslation = useCallback(() => {
+    const requestId = activeTranslateRequestIdRef.current
+    if (!requestId) return
+    void window.api.cancelTranslate?.({ requestId })
+    activeTranslateRequestIdRef.current = null
+  }, [])
+
   const recordTranslationHistory = useCallback((trigger: TranslateTrigger, plainText: string) => {
     const timestamp = Date.now()
     const model = selectedModels[selectedProvider]
@@ -386,9 +394,15 @@ export function useTranslate() {
 
   const runTranslate = useCallback(async (trigger: TranslateTrigger) => {
     if (!hasKey) { setTranslateError(t.translate_error_no_key); return }
-    if (isTranslating) return
 
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+      debounceRef.current = null
+    }
+    cancelActiveTranslation()
     const generation = ++translateGenerationRef.current
+    const requestId = createClientId('translate')
+    activeTranslateRequestIdRef.current = requestId
     setIsTranslating(true)
     setTranslateError(null)
     setImageSwitchNotice(null)
@@ -399,6 +413,7 @@ export function useTranslate() {
         const result = await window.api.translateImage({
           provider: selectedProvider,
           model: selectedModels[selectedProvider],
+          requestId,
           imageBase64: imageAttachment.base64,
           imageMimeType: imageAttachment.mimeType,
           sourceLang,
@@ -439,6 +454,7 @@ export function useTranslate() {
         setTranslateError(err instanceof Error ? err.message : 'Unexpected error')
       } finally {
         if (translateGenerationRef.current === generation) setIsTranslating(false)
+        if (translateGenerationRef.current === generation) activeTranslateRequestIdRef.current = null
       }
       return
     }
@@ -447,11 +463,16 @@ export function useTranslate() {
     // Clear stale detection result whenever a new translation starts
     setDetectedSourceLang(null)
     setIsDetectingLang(false)
-    if (!sourceText.trim()) { setIsTranslating(false); return }
+    if (!sourceText.trim()) {
+      activeTranslateRequestIdRef.current = null
+      setIsTranslating(false)
+      return
+    }
     try {
       const baseParams = {
         provider: selectedProvider,
         model: selectedModels[selectedProvider],
+        requestId,
         sourceText,
         sourceLang,
         targetLang,
@@ -488,10 +509,11 @@ export function useTranslate() {
       setTranslateError(err instanceof Error ? err.message : 'Unexpected error')
     } finally {
       if (translateGenerationRef.current === generation) setIsTranslating(false)
+      if (translateGenerationRef.current === generation) activeTranslateRequestIdRef.current = null
     }
   }, [imageAttachment, sourceText, sourceLang, targetLang, selectedProvider, selectedModels,
-       isTranslating, hasKey, translationStyle,
-       setIsTranslating, setTranslateError, setTranslatedText, setPhoneticText, t, detectLanguageInBackground, recordTranslationHistory, generatePhoneticText])
+       hasKey, translationStyle,
+       setIsTranslating, setTranslateError, setTranslatedText, setPhoneticText, t, detectLanguageInBackground, recordTranslationHistory, generatePhoneticText, cancelActiveTranslation])
 
   const handleTranslate = useCallback(() => runTranslate('manual'), [runTranslate])
 
@@ -564,11 +586,11 @@ export function useTranslate() {
 
   // Auto-translate when an image is attached — image has no text to debounce on
   useEffect(() => {
-    if (!imageAttachment) return
+    if (!autoTranslate || !imageAttachment) return
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => { runTranslateRef.current('auto') }, IMAGE_AUTO_TRANSLATE_DELAY_MS)  // HC-03
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [imageAttachment])
+  }, [autoTranslate, imageAttachment])
 
   // Re-translate when style changes (skip first render, skip manual mode)
   // biome-ignore lint/correctness/useExhaustiveDependencies: translationStyle is the intentional trigger; runTranslate is accessed via a stable ref
@@ -583,8 +605,12 @@ export function useTranslate() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: lang changes are the triggers; sourceText/imageAttachment/runTranslate accessed via stable refs
   useEffect(() => {
     if (!langInitRef.current) { langInitRef.current = true; return }
-    if (!autoTranslateRef.current) return
     if (!sourceTextRef.current.trim() && !imageAttachmentRef.current) return
+    if (isTranslatingRef.current) {
+      runTranslateRef.current(autoTranslateRef.current ? 'auto' : 'manual')
+      return
+    }
+    if (!autoTranslateRef.current) return
     runTranslateRef.current('auto')
   }, [targetLang, sourceLang])
 
@@ -601,6 +627,7 @@ export function useTranslate() {
   const handleSwapLanguages = useCallback(() => {
     if (!translatedText || translatedText === IMAGE_TRANSLATED_SENTINEL || imageAttachment) return
     translateGenerationRef.current++
+    cancelActiveTranslation()
     stopSpeak()
     // Delegates all text/lang state to the store. Passes detectedSourceLang so the store
     // can use it as the new targetLang instead of falling back to sourceLang/'ja'.
@@ -610,7 +637,7 @@ export function useTranslate() {
     setDetectedSourceLang(null)
     setIsDetectingLang(false)
   }, [translatedText, detectedSourceLang, imageAttachment, stopSpeak, swapLanguages,
-      setTranslateError, setIsTranslating])
+      setTranslateError, setIsTranslating, cancelActiveTranslation])
 
   const handleCopy = async () => {
     const textToCopy = showFurigana && phoneticText ? phoneticText : translatedText
@@ -681,6 +708,7 @@ export function useTranslate() {
   /** Clears the source panel (ClearButton) — cancels any in-flight translation */
   const handleClearSource = useCallback(() => {
     translateGenerationRef.current++
+    cancelActiveTranslation()
     setIsTranslating(false)
     stopSpeak()
     setSourceText('')
@@ -689,7 +717,7 @@ export function useTranslate() {
     setTranslateError(null)
     setDetectedSourceLang(null)
     setIsDetectingLang(false)
-  }, [stopSpeak, setIsTranslating, setSourceText, setTranslatedText, setPhoneticText, setTranslateError])
+  }, [stopSpeak, setIsTranslating, setSourceText, setTranslatedText, setPhoneticText, setTranslateError, cancelActiveTranslation])
 
   /** Dismisses the current error banner — clears translateError in store */
   const handleDismissError = useCallback(() => {
@@ -699,6 +727,7 @@ export function useTranslate() {
   /** Removes the attached image (ImageAttachmentPreview onRemove) — cancels in-flight job */
   const handleRemoveImage = useCallback(() => {
     translateGenerationRef.current++
+    cancelActiveTranslation()
     setIsTranslating(false)
     setImageAttachment(null)
     setImageRegions(null)
@@ -707,7 +736,7 @@ export function useTranslate() {
     setPhoneticText('')
     setTranslateError(null)
     setImageSwitchNotice(null)
-  }, [setIsTranslating, setTranslatedText, setPhoneticText, setTranslateError])
+  }, [setIsTranslating, setTranslatedText, setPhoneticText, setTranslateError, cancelActiveTranslation])
 
   return {
     // ── Store state (needed by JSX) ─────────────────────────────────────────

@@ -1,6 +1,8 @@
 import { VERIFY_MODEL_GEMINI } from './ipcConstants'
 import { buildPrompt, buildRewritePrompt, REWRITE_SYSTEM_PROMPT, SYSTEM_PROMPT } from './translatePrompts'
-import type { DetectFn, RewriteFn, StreamFn, TranslateFn, VerifyFn } from './translateProviderTypes'
+import type { DetectFn, RewriteFn, StreamFn, TranslateFn, TranslateRequestOptions, VerifyFn } from './translateProviderTypes'
+
+const TRANSLATE_CANCELLED_MESSAGE = 'translate-cancelled'
 
 export const translateWithGemini: TranslateFn = async (
   apiKey,
@@ -12,11 +14,14 @@ export const translateWithGemini: TranslateFn = async (
   style,
   phoneticOnly,
   phoneticMode,
+  options: TranslateRequestOptions = {},
 ) => {
+  if (options.signal?.aborted) throw new Error(TRANSLATE_CANCELLED_MESSAGE)
   const { GoogleGenerativeAI } = await import('@google/generative-ai')
   const genAI = new GoogleGenerativeAI(apiKey)
   const genModel = genAI.getGenerativeModel({ model, systemInstruction: SYSTEM_PROMPT })
   const result = await genModel.generateContent(buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style, phoneticOnly, phoneticMode))
+  if (options.signal?.aborted) throw new Error(TRANSLATE_CANCELLED_MESSAGE)
   return result.response.text().trim()
 }
 

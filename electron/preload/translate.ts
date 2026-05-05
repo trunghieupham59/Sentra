@@ -78,6 +78,7 @@ export const translateSection = {
   translate: (params: {
     provider: string
     model: string
+    requestId?: string
     sourceText: string
     sourceLang: string
     targetLang: string
@@ -86,6 +87,15 @@ export const translateSection = {
     translationStyle?: string
     phoneticOnly?: boolean
   }) => ipcRenderer.invoke('translate', params),
+
+  // Cancel an in-flight text or image translation request by renderer requestId.
+  cancelTranslate: async (params: { requestId: string }) => {
+    const [textResult, imageResult] = await Promise.all([
+      ipcRenderer.invoke('translate:cancel', params),
+      ipcRenderer.invoke('image:translate:cancel', params),
+    ])
+    return textResult?.success ? textResult : imageResult
+  },
 
   // Rewrite text to be more natural in its own language (preserves meaning/tone)
   rewriteText: (params: {

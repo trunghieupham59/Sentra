@@ -14,6 +14,7 @@ import type { ImageTranslateResult, TranslateParams, TranslateResult, Translatio
 export interface TranslateImageParams {
   provider: string
   model: string
+  requestId?: string
   imageBase64: string
   imageMimeType: string
   sourceLang: string

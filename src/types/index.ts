@@ -119,6 +119,7 @@ export interface Language {
 export interface TranslateParams {
   provider: Provider
   model: string
+  requestId?: string
   sourceText: string
   sourceLang: string
   targetLang: string
@@ -611,6 +612,7 @@ export interface WindowApi {
   onLocalAiInstallProgress: (cb: (progress: LocalAiInstallProgress) => void) => () => void
   verifyKey: (provider: string, apiKey: string) => Promise<VerifyResult>
   translate: (params: TranslateParams) => Promise<TranslateResult>
+  cancelTranslate?: (params: { requestId: string }) => Promise<{ success: boolean; error?: string }>
   rewriteText: (params: {
     provider: string
     model: string
@@ -645,6 +647,7 @@ export interface WindowApi {
   translateImage: (params: {
     provider: string
     model: string
+    requestId?: string
     imageBase64: string
     imageMimeType: string
     sourceLang: string
