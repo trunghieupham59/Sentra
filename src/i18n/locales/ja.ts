@@ -442,6 +442,7 @@ const ja: Translations = {
   chat_voice_stop: '録音停止',
   chat_empty_title: 'AIとチャット',
   chat_empty_desc: '何でも質問、画像を添付、または音声で入力できます。',
+
   chat_system_prompt: 'システムプロンプト',
   chat_system_prompt_placeholder: 'あなたは親切なアシスタントです…',
   chat_system_prompt_none: 'なし',
@@ -616,12 +617,16 @@ const ja: Translations = {
   chat_deep_research_enable: 'Deep Researchを有効化',
   chat_deep_research_disable: 'Deep Researchを無効化',
   chat_deep_research_api: 'Deep Research API',
-  chat_deep_research_step_analyze: '質問を分析中',
-  chat_deep_research_step_round1: 'ラウンド1 — 調査: {aspect}',
-  chat_deep_research_step_gap: 'ギャップ評価 — ラウンド {round}',
-  chat_deep_research_step_deep: '深掘り調査: {aspect}',
-  chat_deep_research_step_cross: 'クロスリファレンス',
-  chat_deep_research_step_synth: '最終統合',
+  // Step labels are intentionally short — multiple steps of the same phase
+  // are collapsed into one compact pill (e.g. "調査 · 4観点") and the
+  // per-aspect detail lives in a hover-info popover.
+  chat_deep_research_step_analyze: '分析',
+  chat_deep_research_step_round1: '調査',
+  chat_deep_research_step_gap: 'ギャップ確認',
+  chat_deep_research_step_deep: '深掘り',
+  chat_deep_research_step_cross: '照合',
+  chat_deep_research_step_synth: '統合',
+
   chat_deep_research_mode_realtime: '**リアルタイムモード** — 各ステップでWeb検索を実施',
   chat_deep_research_mode_ai_only: '**AI専用モード** — Tavilyキー未設定。Settings → API KeysからキーをセットするとWeb検索が有効になります。',
   chat_deep_research_will_study: '**{count}個の観点を複数ラウンドで調査します:**',
@@ -649,6 +654,7 @@ const ja: Translations = {
   chat_smart_thinking_disable: 'Smart Thinkingを無効化',
   chat_smart_thinking_hint: 'AIが必要なときだけWeb検索を実行',
   chat_smart_thinking_badge: 'Smart Thinking',
+
   chat_smart_thinking_searching: 'Web検索中…',
   chat_smart_thinking_step_label_prefix: 'Web検索',
   chat_smart_thinking_summary_title: 'Web要約',
@@ -684,7 +690,11 @@ const ja: Translations = {
   live_speaker_default: 'スピーカー 1',
   live_screen_permission_title: '画面録画権限が必要',
   chat_thinking_label: '考え中',
+  chat_research_done_label: '思考完了',
+  chat_research_steps_unit: 'ステップ',
+  chat_research_aspects_suffix: '{count}観点',
   chat_deep_research_summarizing: '結果を統合中…',
+
   chat_deep_research_badge: 'Deep Research',
   live_error_stt_failed: 'STT失敗 — 次のチャンクで再試行中',
   live_error_system_audio_unavailable: 'システムオーディオが利用できません — 画面共有ダイアログで「オーディオを共有」を有効にしてから再試行してください。',

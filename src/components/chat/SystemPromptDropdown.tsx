@@ -107,12 +107,13 @@ export function SystemPromptDropdown({
         type="button"
         onClick={() => setShowDropdown((v) => !v)}
         title={t.chat_system_prompt}
-        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border
-                    transition-all duration-200 select-none cursor-pointer whitespace-nowrap
+        className={`flex w-full items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border
+                    transition-all duration-150 select-none cursor-pointer whitespace-nowrap
                     ${isActive
-                      ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950 dark:border-indigo-800 dark:text-indigo-400'
-                      : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700'}`}
+                      ? 'bg-gradient-to-r from-indigo-50 to-violet-50 border-indigo-200/80 text-indigo-700 shadow-sm shadow-indigo-900/[0.05] dark:from-indigo-950/40 dark:to-violet-950/40 dark:border-indigo-800/60 dark:text-indigo-200'
+                      : 'bg-white border-gray-200 text-gray-600 hover:border-blue-200 hover:bg-blue-50/60 hover:text-blue-700 shadow-sm shadow-gray-900/[0.04] dark:bg-neutral-900 dark:border-neutral-800 dark:text-gray-300 dark:hover:border-blue-800 dark:hover:bg-blue-950/40 dark:hover:text-blue-200'}`}
       >
+
         <DocumentIcon />
         <span className="max-w-[120px] truncate">
           {activePreset ? activePreset.name : t.chat_system_prompt}

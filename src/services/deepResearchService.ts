@@ -50,14 +50,42 @@ const MAX_SEARCH_RESULTS = 5
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+/**
+ * Logical phase identifier passed to {@link DeepResearchCallbacks.onStepStart}.
+ * The renderer uses it to group consecutive steps of the same phase into one
+ * compact pill (e.g. "Khảo sát · 4 khía cạnh") instead of rendering N rows.
+ *
+ * Kept loose (`string` union) so the service stays decoupled from renderer
+ * types — `src/types/index.ts` defines the matching `ResearchStepPhase`.
+ */
+export type DeepResearchStepPhase =
+  | 'analyze'
+  | 'survey'
+  | 'gap'
+  | 'deep'
+  | 'cross'
+  | 'synth'
+
+export interface DeepResearchStepMeta {
+  /** Phase this step belongs to (drives the grouped pill UI). */
+  phase: DeepResearchStepPhase
+  /**
+   * Optional aspect / sub-question descriptor — surfaced inside the hover
+   * info popover so users can see what each grouped step researched. Empty
+   * for phase-level steps (analyze / cross / synth).
+   */
+  aspect?: string
+}
+
 export interface DeepResearchCallbacks {
   /** Called when a new step starts. Must return the generated message ID. */
-  onStepStart: (label: string) => string
+  onStepStart: (label: string, meta: DeepResearchStepMeta) => string
   /** Called when a step completes. `isFinal` = true only for the synthesis step. */
   onStepComplete: (msgId: string, content: string, isFinal: boolean) => void
   /** Called when a step fails with an error. */
   onStepError: (msgId: string, error: string) => void
 }
+
 
 /**
  * Localized strings rendered into the chat thread by the deep-research pipeline.
@@ -122,7 +150,16 @@ export interface DeepResearchParams {
    * circuit cleanly when the user clicks Stop.
    */
   signal?: AbortSignal
+  /**
+   * Forward the user's "Careful Reasoning" toggle to the synthesis step (the
+   * step that produces the user-visible final answer). Intermediate steps
+   * (analyze, per-aspect research, gap analysis, deep-dive, cross-reference)
+   * intentionally skip the directive — they emit structured JSON or compact
+   * notes where the verbose math-discipline preamble is wasted tokens.
+   */
+  carefulReasoning?: boolean
 }
+
 
 export interface DeepResearchImageAttachment {
   imageBase64: string
@@ -308,7 +345,8 @@ const DEFAULT_ASPECTS = [
 // ─── Main pipeline ────────────────────────────────────────────────────────────
 
 export const deepResearchService = {
-  async run({ provider, model, question, images = [], uiText, callbacks, signal }: DeepResearchParams): Promise<void> {
+  async run({ provider, model, question, images = [], uiText, callbacks, signal, carefulReasoning }: DeepResearchParams): Promise<void> {
+
     const date = getCurrentLocaleDateTime()
     const webAvailable = hasWebSearchApi()
     const { onStepStart, onStepComplete, onStepError } = callbacks
@@ -333,8 +371,9 @@ export const deepResearchService = {
     let imageSearchTerms: string[] = []
 
     // ── Phase 1: Initial Analysis ─────────────────────────────────────────
-    const analyzeMsgId = onStepStart(uiText.stepAnalyze)
+    const analyzeMsgId = onStepStart(uiText.stepAnalyze, { phase: 'analyze' })
     let aspects = DEFAULT_ASPECTS
+
 
     try {
       const result = await chatService.send({
@@ -378,9 +417,17 @@ export const deepResearchService = {
     }
 
     // ── Phase 2: First-pass research (Breadth) ────────────────────────────
+    // The label is intentionally short (just the phase name, e.g. "Khảo sát")
+    // because the renderer collapses every survey step into one pill and shows
+    // the per-aspect detail inside a hover-info popover. We still pass the
+    // `aspect` text via meta so the popover can list what each step researched.
     for (const aspect of aspects) {
       throwIfCancelled()
-      const msgId = onStepStart(tpl(uiText.stepRound1, { aspect }))
+      const msgId = onStepStart(
+        tpl(uiText.stepRound1, { aspect }),
+        { phase: 'survey', aspect },
+      )
+
       try {
         const webCtx = await webSearch(
           buildSearchQuery(aspect, question, imageContext, imageSearchTerms),
@@ -413,8 +460,12 @@ export const deepResearchService = {
         .join('\n\n---\n\n')
 
       // Ask AI: is the research complete? What's missing?
-      const gapMsgId = onStepStart(tpl(uiText.stepGap, { round: iteration }))
+      const gapMsgId = onStepStart(
+        tpl(uiText.stepGap, { round: iteration }),
+        { phase: 'gap' },
+      )
       let gapResult: GapAnalysisResult = { isComplete: true, gaps: [], queries: [] }
+
 
       try {
         const result = await chatService.send({
@@ -459,7 +510,11 @@ export const deepResearchService = {
       for (let g = 0; g < Math.min(gapResult.queries.length, MAX_GAPS_PER_ROUND); g++) {
         const query = gapResult.queries[g]
         const gapLabel = gapResult.gaps[g] ?? query
-        const deepMsgId = onStepStart(tpl(uiText.stepDeep, { aspect: gapLabel }))
+        const deepMsgId = onStepStart(
+          tpl(uiText.stepDeep, { aspect: gapLabel }),
+          { phase: 'deep', aspect: gapLabel },
+        )
+
 
         try {
           const webCtx = await webSearch(
@@ -487,7 +542,8 @@ export const deepResearchService = {
     }
 
     // ── Phase 4: Cross-reference ──────────────────────────────────────────
-    const crossMsgId = onStepStart(uiText.stepCross)
+    const crossMsgId = onStepStart(uiText.stepCross, { phase: 'cross' })
+
     const allFindingsFinal = knowledgeBase
       .map((k, i) => `### ${i + 1}. ${k.label}\n${k.content}`)
       .join('\n\n---\n\n')
@@ -510,7 +566,8 @@ export const deepResearchService = {
     }
 
     // ── Phase 5: Final Synthesis ──────────────────────────────────────────
-    const synthMsgId = onStepStart(uiText.stepSynth)
+    const synthMsgId = onStepStart(uiText.stepSynth, { phase: 'synth' })
+
 
     const synthContext = [
       `## Research Findings (${knowledgeBase.length} sources)`,
@@ -534,7 +591,9 @@ export const deepResearchService = {
         systemPrompt: SYNTHESIS_PROMPT(date, anyWebSearch),
         bypassLengthCheck: true,
         maxOutputTokens: 'model-max',
+        carefulReasoning,
       })
+
 
       const synthesis = getReply(result)
         ?? tpl(uiText.synthFailed, { error: describeChatFailure(result, uiText.errorUnknown) })

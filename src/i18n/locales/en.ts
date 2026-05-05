@@ -442,6 +442,7 @@ const en: Translations = {
   chat_voice_stop: 'Stop recording',
   chat_empty_title: 'Chat with AI',
   chat_empty_desc: 'Ask anything, attach images, or record your voice.',
+
   chat_system_prompt: 'System Prompt',
   chat_system_prompt_placeholder: 'You are a helpful assistant…',
   chat_system_prompt_none: 'None',
@@ -616,12 +617,17 @@ const en: Translations = {
   chat_deep_research_enable: 'Enable Deep Research Mode',
   chat_deep_research_disable: 'Disable Deep Research',
   chat_deep_research_api: 'Deep Research API',
-  chat_deep_research_step_analyze: 'Analyzing the question',
-  chat_deep_research_step_round1: 'Round 1 — researching: {aspect}',
-  chat_deep_research_step_gap: 'Gap evaluation — round {round}',
-  chat_deep_research_step_deep: 'Deep dive: {aspect}',
-  chat_deep_research_step_cross: 'Cross-reference',
-  chat_deep_research_step_synth: 'Final synthesis',
+  // Step labels are intentionally short — multiple steps of the same phase
+  // are collapsed into one compact pill (e.g. "Survey · 4 aspects") and the
+  // per-aspect detail lives in a hover-info popover, so the row title never
+  // needs to spell out the aspect or round number itself.
+  chat_deep_research_step_analyze: 'Analyze',
+  chat_deep_research_step_round1: 'Survey',
+  chat_deep_research_step_gap: 'Gap check',
+  chat_deep_research_step_deep: 'Deep dive',
+  chat_deep_research_step_cross: 'Cross-check',
+  chat_deep_research_step_synth: 'Synthesize',
+
   chat_deep_research_mode_realtime: '**Real-time mode** — live web search at every step',
   chat_deep_research_mode_ai_only: '**AI-only mode** — no Tavily key. Add a key in Settings → API Keys to enable web search.',
   chat_deep_research_will_study: '**Will research {count} aspects across multiple iterations:**',
@@ -649,6 +655,7 @@ const en: Translations = {
   chat_smart_thinking_disable: 'Disable Smart Thinking',
   chat_smart_thinking_hint: 'AI auto-detects when web search is needed',
   chat_smart_thinking_badge: 'Smart Thinking',
+
   chat_smart_thinking_searching: 'Searching the web…',
   chat_smart_thinking_step_label_prefix: 'Web search',
   chat_smart_thinking_summary_title: 'Web summary',
@@ -684,7 +691,11 @@ const en: Translations = {
   live_speaker_default: 'Speaker 1',
   live_screen_permission_title: 'Screen Recording Permission Required',
   chat_thinking_label: 'Thinking',
+  chat_research_done_label: 'Thought',
+  chat_research_steps_unit: 'steps',
+  chat_research_aspects_suffix: '{count} aspects',
   chat_deep_research_summarizing: 'Synthesizing results…',
+
   chat_deep_research_badge: 'Deep Research',
   live_error_stt_failed: 'STT failed — retrying next chunk',
   live_error_system_audio_unavailable: 'System audio not available — please check "Share audio" in the screen sharing dialog, then try again.',

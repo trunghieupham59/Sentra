@@ -332,6 +332,16 @@ export interface ChatMessageContent {
   imageFileName?: string
 }
 
+/**
+ * Logical phase a Deep-Research step belongs to. Used by `ResearchStepsPanel`
+ * to collapse multiple consecutive steps of the same phase (e.g. 4 "survey"
+ * aspects, 6 "deep dive" follow-ups) into a single compact pill, mirroring
+ * the Cursor / ChatGPT tool-call pattern. The label shown to the user is a
+ * short phase name (e.g. "Khảo sát · 4 khía cạnh") and the per-aspect detail
+ * lives behind a hover-info popover instead of being rendered inline.
+ */
+export type ResearchStepPhase = 'analyze' | 'survey' | 'gap' | 'deep' | 'cross' | 'synth'
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
@@ -343,6 +353,20 @@ export interface ChatMessage {
   isResearchStep?: boolean
   /** Label shown in the research step header, e.g. "Phân tích câu hỏi" */
   researchStepLabel?: string
+  /**
+   * Phase this research step belongs to. Drives the pill icon/title in
+   * `ResearchStepsPanel` and lets multiple steps of the same phase be
+   * collapsed into one row. Optional for back-compat with older messages.
+   */
+  researchStepPhase?: ResearchStepPhase
+  /**
+   * Free-text descriptor for the specific aspect / sub-question this step
+   * focuses on (e.g. the aspect name for a Survey step or the gap label for
+   * a Deep-dive step). Surfaced inside the hover-info popover so users can
+   * see what each grouped step actually researched without the row title
+   * itself becoming long.
+   */
+  researchStepAspect?: string
   /** Deep Research mode — final synthesis bubble (highlighted, indigo) */
   isResearchFinal?: boolean
   /**
@@ -619,8 +643,16 @@ export interface WindowApi {
     bypassLengthCheck?: boolean
     /** Optional larger output budget for long-form synthesis calls */
     maxOutputTokens?: number | 'model-max'
+    /**
+     * When true, the main process injects the "REASONING DISCIPLINE" directive
+     * into the system prompt so the provider walks through math step-by-step
+     * and self-checks the answer against every stated constraint. Used by the
+     * Chat composer's "Careful Reasoning" toggle.
+     */
+    carefulReasoning?: boolean
   }) => Promise<ChatResult>
   editChatImage?: (params: {
+
     provider: string
     model: string
     prompt: string
@@ -645,9 +677,17 @@ export interface WindowApi {
     bypassLengthCheck?: boolean
     /** Optional larger output budget for long-form synthesis calls */
     maxOutputTokens?: number | 'model-max'
+    /**
+     * When true, the main process injects the "REASONING DISCIPLINE" directive
+     * into the system prompt so the provider walks through math step-by-step
+     * and self-checks the answer against every stated constraint. Used by the
+     * Chat composer's "Careful Reasoning" toggle.
+     */
+    carefulReasoning?: boolean
   }) => Promise<ChatResult>
   /**
    * Cancel an in-flight chat stream by `requestId`. The renderer calls this
+
    * when the user clicks the Stop button in chat input. The main-process
    * handler aborts the underlying provider request, so token streaming halts
    * almost immediately. Resolves with `{ success: true }` when the cancel

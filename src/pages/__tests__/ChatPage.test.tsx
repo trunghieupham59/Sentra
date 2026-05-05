@@ -228,9 +228,10 @@ describe('ChatPage', () => {
       useAppStore.setState({ keyStatus: { gemini: true, claude: false, openai: false, local: false } })
     })
     const runSpy = vi.spyOn(deepResearchService, 'run').mockImplementation(async ({ callbacks }) => {
-      const msgId = callbacks.onStepStart('Tổng hợp cuối cùng')
+      const msgId = callbacks.onStepStart('Tổng hợp cuối cùng', { phase: 'synth' })
       callbacks.onStepComplete(msgId, 'Research done', true)
     })
+
 
     try {
       render(<ChatPage />)
@@ -413,9 +414,12 @@ describe('ChatPage', () => {
     await waitFor(() => expect(window.api.chatStream).toHaveBeenCalled())
 
     stream.emit({ type: 'token', token: 'New' })
-    expect(screen.getByText('New')).toBeInTheDocument()
+    // chatService.stream batches tokens via `bufferIntervalMs` (~60 ms) before
+    // dispatching the store update, so the rendered text appears asynchronously.
+    await waitFor(() => expect(screen.getByText('New')).toBeInTheDocument())
 
     stream.resolve({ success: true, reply: 'New response' })
+
 
     await waitFor(() => {
       const assistant = useAppStore.getState().chatSessions[0].messages.find((m) => m.id === 'msg-assistant')

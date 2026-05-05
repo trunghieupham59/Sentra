@@ -442,6 +442,7 @@ const vi: Translations = {
   chat_voice_stop: 'Dừng thu âm',
   chat_empty_title: 'Chat với AI',
   chat_empty_desc: 'Hỏi bất kỳ điều gì, đính kèm ảnh, hoặc thu âm giọng nói.',
+
   chat_system_prompt: 'System Prompt',
   chat_system_prompt_placeholder: 'Bạn là trợ lý hữu ích…',
   chat_system_prompt_none: 'Không có',
@@ -616,12 +617,17 @@ const vi: Translations = {
   chat_deep_research_enable: 'Bật Deep Research Mode',
   chat_deep_research_disable: 'Tắt Deep Research',
   chat_deep_research_api: 'Deep Research API',
-  chat_deep_research_step_analyze: 'Phân tích câu hỏi',
-  chat_deep_research_step_round1: 'Vòng 1 — Nghiên cứu: {aspect}',
-  chat_deep_research_step_gap: 'Đánh giá khoảng trống — Vòng {round}',
-  chat_deep_research_step_deep: 'Nghiên cứu sâu: {aspect}',
-  chat_deep_research_step_cross: 'Kiểm chứng chéo',
-  chat_deep_research_step_synth: 'Tổng hợp cuối cùng',
+  // Step labels are intentionally short — multiple steps of the same phase
+  // are collapsed into one compact pill (e.g. "Khảo sát · 4 khía cạnh") and
+  // the per-aspect detail lives in a hover-info popover, so the row title
+  // never needs to spell out the aspect or round number itself.
+  chat_deep_research_step_analyze: 'Phân tích',
+  chat_deep_research_step_round1: 'Khảo sát',
+  chat_deep_research_step_gap: 'Rà khoảng trống',
+  chat_deep_research_step_deep: 'Đào sâu',
+  chat_deep_research_step_cross: 'Đối chiếu',
+  chat_deep_research_step_synth: 'Tổng hợp',
+
   chat_deep_research_mode_realtime: '**Real-time mode** — Tìm kiếm web thực tế cho mỗi bước',
   chat_deep_research_mode_ai_only: '**AI-only mode** — Không có Tavily key. Thêm key trong Settings → API Keys để bật web search.',
   chat_deep_research_will_study: '**Sẽ nghiên cứu {count} khía cạnh, qua nhiều vòng lặp:**',
@@ -649,6 +655,7 @@ const vi: Translations = {
   chat_smart_thinking_disable: 'Tắt Smart Thinking',
   chat_smart_thinking_hint: 'AI tự phân tích và tìm web khi cần',
   chat_smart_thinking_badge: 'Smart Thinking',
+
   chat_smart_thinking_searching: 'Đang tìm web…',
   chat_smart_thinking_step_label_prefix: 'Tìm web',
   chat_smart_thinking_summary_title: 'Tóm tắt web',
@@ -684,7 +691,11 @@ const vi: Translations = {
   live_speaker_default: 'Speaker 1',
   live_screen_permission_title: 'Cần cấp quyền Screen Recording',
   chat_thinking_label: 'Đang suy nghĩ',
+  chat_research_done_label: 'Đã suy nghĩ',
+  chat_research_steps_unit: 'bước',
+  chat_research_aspects_suffix: '{count} khía cạnh',
   chat_deep_research_summarizing: 'Đang tổng hợp kết quả…',
+
   chat_deep_research_badge: 'Deep Research',
   live_error_stt_failed: 'Nhận dạng thất bại — đang thử lại',
   live_error_system_audio_unavailable: 'Không có âm thanh hệ thống — vui lòng bật "Share audio" trong hộp thoại chia sẻ màn hình, rồi thử lại.',

@@ -10,7 +10,15 @@ import { ChartBlock, parseChartArtifact } from './markdown/ChartBlock'
 interface Props {
   text: string
   className?: string
+  /**
+   * When true, use a smaller base font size + tighter spacing — suitable
+   * for nested previews like the research-step popover where the markdown
+   * is meta-content (not the user-facing answer). The default look is
+   * unchanged so existing call sites keep their `text-[15px]` baseline.
+   */
+  compact?: boolean
 }
+
 
 /** Check if a line is a table separator row (|---|---|) */
 function isTableSeparator(line: string): boolean {
@@ -28,7 +36,8 @@ function parseTableRow(line: string): string[] {
   return line.trim().slice(1, -1).split('|').map(cell => cell.trim())
 }
 
-export function MarkdownText({ text, className }: Props) {
+export function MarkdownText({ text, className, compact = false }: Props) {
+
   const t = useT()
   const chartLabels = {
     bar: t.markdown_chart_bar,
@@ -249,5 +258,12 @@ export function MarkdownText({ text, className }: Props) {
   flushOrderedList()
   if (tableLines.length > 0) flushTable()
 
-  return <div className={`text-[15px] space-y-0.5 ${className ?? ''}`}>{elements}</div>
+  // The wrapper sets the baseline font size. Compact mode shrinks the body
+  // to ~12px which is intentional in the research-step popover where the
+  // markdown is meta/diagnostic content rather than the primary answer.
+  // Caller-supplied `className` is appended last so it can still override
+  // size when needed (e.g. the popover passes `text-[11.5px]`).
+  const baseClass = compact ? 'text-[12px] space-y-0.5' : 'text-[15px] space-y-0.5'
+  return <div className={`${baseClass} ${className ?? ''}`}>{elements}</div>
 }
+

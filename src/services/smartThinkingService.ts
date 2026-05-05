@@ -93,7 +93,15 @@ export interface SmartThinkingParams {
    * streaming answer is cancelled and orchestration short-circuits.
    */
   signal?: AbortSignal
+  /**
+   * Forward the user's "Careful Reasoning" toggle to the final streaming
+   * answer call. The classifier step deliberately does NOT receive it —
+   * classification is a short JSON-only task that doesn't benefit from
+   * the step-by-step discipline directive.
+   */
+  carefulReasoning?: boolean
 }
+
 
 interface ClassifyResult {
   needsWeb: boolean
@@ -443,7 +451,9 @@ export const smartThinkingService = {
     uiText,
     callbacks,
     signal,
+    carefulReasoning,
   }: SmartThinkingParams): Promise<void> {
+
     const date = getCurrentLocaleDateTime()
     const {
       onStepStart,
@@ -580,7 +590,9 @@ export const smartThinkingService = {
           systemPrompt: finalSystemPrompt,
           // Web context can be long — bypass the standard length check
           bypassLengthCheck: Boolean(webContext),
+          carefulReasoning,
         },
+
         {
           onToken: (token) => {
             streamed += token

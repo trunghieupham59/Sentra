@@ -1,16 +1,24 @@
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
+
 import { useAppStore, useT } from '../../store/useAppStore'
 import type { ChatMessage, ChatMessageContent } from '../../types'
 import { AppLogoIcon } from '../AppLogo'
 import { MarkdownText } from '../MarkdownText'
-import { CopyIcon, DownloadIcon, RefreshIcon, SparklesIcon, SpinnerIcon, UserIcon, XIcon } from '../ui/icons'
+import { CopyIcon, DownloadIcon, LightbulbIcon, RefreshIcon, SparklesIcon, SpinnerIcon, UserIcon, XIcon } from '../ui/icons'
 import { UsageCostBadge } from '../ui/UsageCostBadge'
 
-
-const MESSAGE_ACTION_BUTTON_CLASS = 'flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors duration-150 cursor-pointer dark:text-gray-500'
-const MESSAGE_COPY_BUTTON_CLASS = `${MESSAGE_ACTION_BUTTON_CLASS} hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300`
-const MESSAGE_DOWNLOAD_BUTTON_CLASS = `${MESSAGE_ACTION_BUTTON_CLASS} hover:bg-emerald-50 hover:text-emerald-500 dark:hover:bg-emerald-950 dark:hover:text-emerald-400`
-const MESSAGE_REGENERATE_BUTTON_CLASS = `${MESSAGE_ACTION_BUTTON_CLASS} hover:bg-blue-50 hover:text-blue-500 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-blue-950 dark:hover:text-blue-400`
+/**
+ * Shared button shells for the message-action toolbar (copy / download /
+ * regenerate). They sit *inside* `.chat-message-actions`, which fades the
+ * whole row in only on hover or focus — the visual rule "controls reveal on
+ * intent" matches modern chat UIs (ChatGPT, Claude) and keeps the conversation
+ * scroll clean.
+ */
+const MESSAGE_ACTION_BUTTON_CLASS =
+  'flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition-colors duration-150 cursor-pointer dark:text-gray-500'
+const MESSAGE_COPY_BUTTON_CLASS = `${MESSAGE_ACTION_BUTTON_CLASS} hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-neutral-800 dark:hover:text-gray-200`
+const MESSAGE_DOWNLOAD_BUTTON_CLASS = `${MESSAGE_ACTION_BUTTON_CLASS} hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/50 dark:hover:text-emerald-400`
+const MESSAGE_REGENERATE_BUTTON_CLASS = `${MESSAGE_ACTION_BUTTON_CLASS} hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-blue-950/50 dark:hover:text-blue-300`
 
 /**
  * Strip any trailing ellipsis/dot punctuation a locale baked into its loading
@@ -117,9 +125,6 @@ function SmartThinkingLabel({ label }: { label: string }) {
 }
 
 
-
-
-
 function getImageSource(content: ChatMessageContent): string | null {
   if (content.imagePreviewUrl) return content.imagePreviewUrl
   if (content.imageBase64 && content.imageMimeType) {
@@ -141,7 +146,7 @@ interface MessageBubbleProps {
   regenerateLabel?: string
 }
 
-export function MessageBubble({
+function MessageBubbleImpl({
   message,
   onCopy,
   onCopyImage,
@@ -153,6 +158,7 @@ export function MessageBubble({
   downloadImageLabel,
   regenerateLabel,
 }: MessageBubbleProps) {
+
   const t = useT()
   const costCurrency = useAppStore((state) => state.costCurrency)
   const isUser = message.role === 'user'
@@ -180,19 +186,23 @@ export function MessageBubble({
   if (message.isResearchStep) {
     return (
       <div className="flex gap-2 items-start pl-11">
-        <div className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700
-                        bg-white dark:bg-gray-900 overflow-hidden text-xs shadow-sm">
+        <div className="chat-research-step flex-1">
           {/* Header — always visible, click to expand/collapse */}
           <button
             type="button"
             onClick={() => !message.isLoading && setIsStepCollapsed((v) => !v)}
             className="w-full flex items-center justify-between px-3 py-2
-                       text-gray-500 dark:text-gray-400
-                       hover:bg-gray-50 dark:hover:bg-gray-800/50
+                       text-gray-600 dark:text-gray-300
+                       hover:bg-gray-100/60 dark:hover:bg-neutral-800/40
                        transition-colors duration-150 cursor-pointer"
           >
-            <span className="font-medium text-left">
-              {message.isLoading ? <ThinkingLabel muted /> : message.researchStepLabel}
+            <span className="flex items-center gap-2 font-medium text-left">
+              {!message.isLoading && (
+                <LightbulbIcon className="h-3.5 w-3.5 text-indigo-500/80 dark:text-indigo-300/80" />
+              )}
+              <span>
+                {message.isLoading ? <ThinkingLabel muted /> : message.researchStepLabel}
+              </span>
             </span>
 
             {message.isLoading ? (
@@ -209,8 +219,8 @@ export function MessageBubble({
 
           {/* Content — hidden when collapsed or loading */}
           {!isStepCollapsed && !message.isLoading && textContent && (
-            <div className="px-3 py-2.5 border-t border-gray-100 dark:border-gray-800
-                            text-gray-600 dark:text-gray-300 leading-relaxed">
+            <div className="px-3 py-2.5 border-t border-gray-200/60 dark:border-neutral-800
+                            text-gray-600 dark:text-gray-300 leading-relaxed bg-white/60 dark:bg-neutral-950/30">
               <MarkdownText text={textContent} className="text-xs" />
             </div>
           )}
@@ -230,44 +240,43 @@ export function MessageBubble({
   // ── Research Final bubble (highlighted, indigo) ───────────────────────────
   if (message.isResearchFinal) {
     return (
-      <div className="flex gap-3 items-start">
+      <div className="group flex gap-3 items-start">
         {/* Avatar */}
         <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center overflow-hidden
-                        bg-white dark:bg-gray-800
-                        border border-indigo-200 dark:border-indigo-700">
+                        bg-white dark:bg-neutral-900
+                        border border-indigo-200 dark:border-indigo-800/70 shadow-sm shadow-indigo-900/[0.06]">
           <AppLogoIcon size={28} />
         </div>
 
-        <div className="flex-1 flex flex-col gap-1.5">
+        <div className="flex-1 min-w-0 flex flex-col gap-1.5">
           {message.isLoading ? (
-            <div className="rounded-lg border-2 border-indigo-200 dark:border-indigo-700
-                            bg-indigo-50/30 dark:bg-indigo-950/20 px-4 py-3">
+            <div className="rounded-2xl border border-indigo-200/70 dark:border-indigo-900/60
+                            bg-gradient-to-br from-indigo-50/50 via-white to-violet-50/50
+                            dark:from-indigo-950/30 dark:via-neutral-900 dark:to-violet-950/30
+                            px-4 py-3 shadow-sm shadow-indigo-900/[0.05]">
               <div className="flex items-center gap-2">
-                <SpinnerIcon className="w-4 h-4 animate-spin text-indigo-400" />
-                <span className="text-xs text-indigo-500 dark:text-indigo-400">{t.chat_deep_research_summarizing}</span>
+                <SmartThinkingLabel label={t.chat_deep_research_summarizing} />
               </div>
             </div>
           ) : (
-            <div className="rounded-lg border-2 border-indigo-200 dark:border-indigo-700
-                            bg-white dark:bg-gray-900 overflow-hidden shadow-sm">
+            <div className="chat-research-final">
               {/* Badge header */}
-              <div className="flex items-center gap-2 px-4 py-2.5
-                              border-b border-indigo-100 dark:border-indigo-900/50
-                              bg-indigo-50/60 dark:bg-indigo-950/20">
-                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest select-none">
+              <div className="chat-research-final-header">
+                <SparklesIcon className="h-3.5 w-3.5 text-indigo-500 dark:text-indigo-300" />
+                <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-200 uppercase tracking-[0.18em] select-none">
                   {t.chat_deep_research_badge}
                 </span>
               </div>
               {/* Content */}
-              <div className="px-4 py-3 select-text cursor-text">
+              <div className="px-4 py-3.5 select-text cursor-text">
                 <MarkdownText text={textContent} />
               </div>
             </div>
           )}
 
-          {/* Timestamp + copy */}
+          {/* Timestamp + copy — hover-only */}
           {!message.isLoading && textContent && (
-            <div className="flex items-center gap-1 px-1">
+            <div className="chat-message-actions flex items-center gap-1 px-1">
               <span className="text-[10px] text-gray-400 dark:text-gray-600">
                 {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
@@ -278,7 +287,7 @@ export function MessageBubble({
                 aria-label={copyLabel ?? t.translate_copy}
                 className={MESSAGE_COPY_BUTTON_CLASS}
               >
-                <CopyIcon className="w-4 h-4" />
+                <CopyIcon className="w-3.5 h-3.5" />
               </button>
             </div>
           )}
@@ -288,11 +297,15 @@ export function MessageBubble({
   }
 
   // ── Normal bubble ─────────────────────────────────────────────────────────
+  const showPinnedActions = !isUser && (isLastAssistant || Boolean(message.error))
+
   return (
-    <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'} items-end`}>
+    <div className={`group flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'} items-end`}>
       {/* Avatar */}
-      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center overflow-hidden
-                       ${isUser ? 'bg-blue-500' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'}`}>
+      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center overflow-hidden shadow-sm
+                       ${isUser
+                         ? 'bg-gradient-to-br from-blue-500 to-indigo-500 shadow-blue-900/15'
+                         : 'bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 shadow-gray-900/[0.05]'}`}>
         {isUser ? (
           <UserIcon className="w-4 h-4 text-white" />
         ) : (
@@ -300,7 +313,7 @@ export function MessageBubble({
         )}
       </div>
 
-      <div className={`flex flex-col gap-1.5 max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
+      <div className={`flex flex-col gap-1.5 min-w-0 max-w-[78%] ${isUser ? 'items-end' : 'items-start w-full'}`}>
         {/* Image attachments */}
         {imageContents.map((img, i) => {
           const imageSrc = getImageSource(img)
@@ -317,8 +330,8 @@ export function MessageBubble({
               <img
                 src={imageSrc}
                 alt={img.imageFileName ?? 'attachment'}
-                className="max-w-full rounded-xl max-h-64 object-contain border border-gray-200 dark:border-gray-700
-                           transition-shadow duration-150 hover:shadow-lg"
+                className="max-w-full rounded-xl max-h-64 object-contain border border-gray-200 dark:border-neutral-800
+                           transition-shadow duration-150 hover:shadow-lg shadow-sm shadow-gray-900/[0.05]"
               />
             </button>
           )
@@ -340,12 +353,8 @@ export function MessageBubble({
             )}
           </div>
         ) : textContent ? (
-
-
           <div className={`break-words select-text cursor-text
-                           ${isUser
-                             ? 'rounded-lg rounded-br-sm bg-blue-500 px-4 py-3 text-white'
-                             : 'px-0 py-1 text-gray-900 dark:text-gray-100'}`}>
+                           ${isUser ? 'chat-bubble-user' : 'chat-bubble-assistant'}`}>
             {isUser ? (
               <span className="text-sm leading-relaxed whitespace-pre-wrap">{textContent}</span>
             ) : (
@@ -353,7 +362,7 @@ export function MessageBubble({
             )}
           </div>
         ) : message.error ? (
-          <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-lg px-4 py-3 text-sm text-red-700 dark:text-red-300 select-text cursor-text">
+          <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-xl px-4 py-3 text-sm text-red-700 dark:text-red-300 select-text cursor-text shadow-sm">
             {message.error}
           </div>
         ) : null}
@@ -364,9 +373,12 @@ export function MessageBubble({
           </div>
         )}
 
-        {/* Timestamp + Copy + Regenerate */}
-        <div className={`flex items-center gap-1 px-1 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-          <span className="text-[10px] text-gray-400 dark:text-gray-600">
+        {/* Timestamp + Copy + Regenerate — hover-reveal except for the
+         * always-visible last assistant / error message which gets pinned so
+         * the user always sees regenerate / copy without hunting for it. */}
+        <div className={`chat-message-actions ${showPinnedActions ? 'chat-message-actions-pinned' : ''} flex items-center gap-1 px-1
+                         ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+          <span className="text-[10px] text-gray-400 dark:text-gray-600 tabular-nums">
             {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
           {!isUser && message.cost && (
@@ -382,7 +394,7 @@ export function MessageBubble({
               aria-label={copyLabel ?? t.translate_copy}
               className={MESSAGE_COPY_BUTTON_CLASS}
             >
-              <CopyIcon className="w-4 h-4" />
+              <CopyIcon className="w-3.5 h-3.5" />
             </button>
           )}
 
@@ -395,7 +407,7 @@ export function MessageBubble({
               aria-label={downloadImageLabel ?? t.chat_download_image}
               className={MESSAGE_DOWNLOAD_BUTTON_CLASS}
             >
-              <DownloadIcon className="w-4 h-4" />
+              <DownloadIcon className="w-3.5 h-3.5" />
             </button>
           )}
 
@@ -409,7 +421,7 @@ export function MessageBubble({
               aria-label={regenerateLabel ?? t.chat_regenerate}
               className={MESSAGE_REGENERATE_BUTTON_CLASS}
             >
-              <RefreshIcon className="w-4 h-4" />
+              <RefreshIcon className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
@@ -417,7 +429,7 @@ export function MessageBubble({
 
       {previewImageSrc && (
         <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 fade-in"
           role="dialog"
           aria-modal="true"
           aria-label={t.chat_image_preview}
@@ -483,3 +495,67 @@ export function MessageBubble({
     </div>
   )
 }
+
+/**
+ * Custom equality so MessageBubble only re-renders when something the bubble
+ * actually displays has changed. Critical during streaming: ChatPage triggers
+ * a re-render for every token, but only the *target* message's `content`
+ * changes — every other bubble stays stable. We compare:
+ *
+ *   - identity-stable scalar fields (id, role, isLoading, error, …)
+ *   - the textual content (cheap reference compare on the text leaf)
+ *   - the number of image content parts (rarely changes)
+ *
+ * Callbacks are intentionally *not* compared by identity — ChatPage passes
+ * fresh closures every render, but they have no observable effect on a
+ * non-target bubble. We accept the tiny risk of a stale closure firing in
+ * exchange for skipping ~99% of token-time re-renders.
+ */
+function areMessageBubblePropsEqual(prev: MessageBubbleProps, next: MessageBubbleProps): boolean {
+  if (prev.message === next.message
+    && prev.isLastAssistant === next.isLastAssistant
+    && prev.isSending === next.isSending
+    && prev.copyLabel === next.copyLabel
+    && prev.downloadImageLabel === next.downloadImageLabel
+    && prev.regenerateLabel === next.regenerateLabel
+  ) return true
+
+  // Different message reference — compare the fields the bubble renders.
+  const a = prev.message
+  const b = next.message
+  if (a.id !== b.id) return false
+  if (a.role !== b.role) return false
+  if (a.timestamp !== b.timestamp) return false
+  if (a.isLoading !== b.isLoading) return false
+  if (a.error !== b.error) return false
+  if (a.isResearchStep !== b.isResearchStep) return false
+  if (a.isResearchFinal !== b.isResearchFinal) return false
+  if (a.isSmartThinkingStep !== b.isSmartThinkingStep) return false
+  if (a.researchStepLabel !== b.researchStepLabel) return false
+  if (a.cost !== b.cost) return false
+  if (a.content !== b.content && a.content.length !== b.content.length) return false
+  // Compare each content slot — text is the only frequently-changing leaf.
+  if (a.content !== b.content) {
+    for (let i = 0; i < a.content.length; i++) {
+      const ca = a.content[i]
+      const cb = b.content[i]
+      if (ca.type !== cb.type) return false
+      if (ca.text !== cb.text) return false
+      if (ca.imageBase64 !== cb.imageBase64) return false
+      if (ca.imagePreviewUrl !== cb.imagePreviewUrl) return false
+    }
+  }
+  if (prev.isLastAssistant !== next.isLastAssistant) return false
+  if (prev.isSending !== next.isSending) return false
+  if (prev.copyLabel !== next.copyLabel) return false
+  if (prev.downloadImageLabel !== next.downloadImageLabel) return false
+  if (prev.regenerateLabel !== next.regenerateLabel) return false
+  return true
+}
+
+/**
+ * Memoised export — see `areMessageBubblePropsEqual` for the equality contract.
+ * This avoids re-rendering every bubble in a long conversation each time a
+ * single token streams into the active assistant message.
+ */
+export const MessageBubble = memo(MessageBubbleImpl, areMessageBubblePropsEqual)

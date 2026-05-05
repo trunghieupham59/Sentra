@@ -115,6 +115,7 @@ export const useAppStore = create<AppState>()(
         chatSessions: state.chatSessions,
         chatSystemPrompt: state.chatSystemPrompt,
         systemPromptPresets: state.systemPromptPresets,
+
         langUsage: state.langUsage,
         dictionaryEntries: state.dictionaryEntries,
         costCurrency: state.costCurrency,

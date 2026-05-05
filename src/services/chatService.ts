@@ -39,7 +39,16 @@ interface ChatParams {
   bypassLengthCheck?: boolean
   /** Optional larger output budget for long-form synthesis calls */
   maxOutputTokens?: number | 'model-max'
+  /**
+   * When true, the IPC handler asks the provider to apply the
+   * "REASONING DISCIPLINE" directive (restate assumptions, show step-by-step
+   * math, self-check the answer against every stated constraint). Used for
+   * finance/tax/quantitative questions where silent miscalculation is the
+   * dominant failure mode of base-tier chat models.
+   */
+  carefulReasoning?: boolean
 }
+
 
 interface ChatImageEditParams {
   provider: string
@@ -60,7 +69,20 @@ interface ChatStreamCallbacks {
    * provider request is closed and no further tokens are streamed.
    */
   signal?: AbortSignal
+  /**
+   * Optional buffer interval in ms. When set (e.g. 60), `onToken` is invoked
+   * with batched tokens at most once per `bufferIntervalMs` instead of for
+   * every individual provider token. The renderer therefore commits ~16
+   * store updates per second instead of ~50–100, eliminating most of the
+   * re-render cost during long replies.
+   *
+   * Defaults to 0 (no buffering) for backward compatibility — Smart Thinking
+   * and Deep Research callers that build their own UI on top of `onToken`
+   * keep their existing behaviour. ChatPage / Quick Chat opt in to 60 ms.
+   */
+  bufferIntervalMs?: number
 }
+
 
 function createChatStreamRequestId() {
   return createClientId('chat-stream')
@@ -110,12 +132,56 @@ export const chatService = {
       return window.api.chat(params)
     }
 
+    // ── Token buffering ─────────────────────────────────────────────────────
+    // When `bufferIntervalMs` is set, we accumulate tokens in `pendingBuffer`
+    // and flush them as a single concatenated token at most once per interval.
+    // This caps store-update frequency to ~16 Hz (60 ms) for typical use,
+    // skipping ~70% of re-renders during long streamed responses.
+    const bufferMs = callbacks.bufferIntervalMs ?? 0
+    let pendingBuffer = ''
+    let flushTimer: ReturnType<typeof setTimeout> | null = null
+
+    const flushNow = () => {
+      if (flushTimer) {
+        clearTimeout(flushTimer)
+        flushTimer = null
+      }
+      if (pendingBuffer && callbacks.onToken) {
+        const out = pendingBuffer
+        pendingBuffer = ''
+        callbacks.onToken(out)
+      }
+    }
+
+    const scheduleFlush = () => {
+      if (flushTimer) return
+      flushTimer = setTimeout(() => {
+        flushTimer = null
+        flushNow()
+      }, bufferMs)
+    }
+
     const requestId = createChatStreamRequestId()
     const cleanup = window.api.onChatStreamEvent(requestId, (event: ChatStreamEvent) => {
       if (event.type === 'start') callbacks.onStart?.()
-      if (event.type === 'token' && event.token) callbacks.onToken?.(event.token)
-      if (event.type === 'end' && event.reply !== undefined) callbacks.onEnd?.(event.reply)
-      if (event.type === 'error' && event.error) callbacks.onError?.(event.error, event.errorCode)
+      if (event.type === 'token' && event.token) {
+        if (bufferMs > 0 && callbacks.onToken) {
+          pendingBuffer += event.token
+          scheduleFlush()
+        } else {
+          callbacks.onToken?.(event.token)
+        }
+      }
+      if (event.type === 'end' && event.reply !== undefined) {
+        // Drain the buffer before announcing the end so the renderer doesn't
+        // see a stale partial reply.
+        flushNow()
+        callbacks.onEnd?.(event.reply)
+      }
+      if (event.type === 'error' && event.error) {
+        flushNow()
+        callbacks.onError?.(event.error, event.errorCode)
+      }
     })
 
     // When the caller aborts mid stream, fire-and-forget the cancel IPC so the
@@ -132,8 +198,14 @@ export const chatService = {
     try {
       return await window.api.chatStream({ ...params, requestId })
     } finally {
+      // Ensure we never leak a pending flush timer or unflushed tokens.
+      if (flushTimer) {
+        clearTimeout(flushTimer)
+        flushTimer = null
+      }
       callbacks.signal?.removeEventListener('abort', onAbort)
       cleanup()
     }
   },
 }
+

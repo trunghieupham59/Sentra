@@ -3,11 +3,15 @@ import { type DeepResearchUiText, deepResearchService } from '../deepResearchSer
 
 const TEST_UI_TEXT: DeepResearchUiText = {
   stepAnalyze: 'Analyze',
-  stepRound1: 'Round 1: {aspect}',
-  stepGap: 'Gap round {round}',
-  stepDeep: 'Deep dive: {aspect}',
-  stepCross: 'Cross-reference',
-  stepSynth: 'Synthesis',
+  // The renderer collapses every Survey step into one pill, so the label is
+  // intentionally just the phase name; per-aspect detail is surfaced via the
+  // hover-info popover (see ResearchStepsPanel).
+  stepRound1: 'Survey',
+  stepGap: 'Gap check',
+  stepDeep: 'Deep dive',
+  stepCross: 'Cross-check',
+  stepSynth: 'Synthesize',
+
   modeRealtime: 'Real-time mode',
   modeAiOnly: 'AI-only mode',
   willStudy: 'Studying {count} aspects',

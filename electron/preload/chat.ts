@@ -29,7 +29,14 @@ type ChatParams = {
   bypassLengthCheck?: boolean
   /** Optional larger output budget for long-form synthesis calls */
   maxOutputTokens?: number | 'model-max'
+  /**
+   * When true, the main process injects the "REASONING DISCIPLINE" directive
+   * into the system prompt so the provider walks through math step-by-step
+   * and self-checks the answer against every stated constraint.
+   */
+  carefulReasoning?: boolean
 }
+
 
 type ChatImageEditParams = {
   provider: string

@@ -53,6 +53,21 @@ export const MAX_CHAT_OUTPUT_TOKENS = 4_096
  */
 export const MAX_CHAT_REQUEST_CHARS = 3_000
 
+/**
+ * Maximum total chat payload size in bytes — protects the main process from
+ * pathological requests (large image attachments + long history) that would
+ * otherwise consume tens of megabytes of RAM during IPC marshalling.
+ *
+ * The cap is computed against the JSON-serialised request body; image base64
+ * strings are the dominant contributor. 12 MB lets a typical 1.5 MB resized
+ * photo round-trip with comfortable headroom for history + system prompt.
+ *
+ * When exceeded, `parseChatParams` returns a typed `PAYLOAD_TOO_LARGE` error
+ * code so the renderer can prompt the user to remove an attachment.
+ */
+export const MAX_CHAT_PAYLOAD_BYTES = 12 * 1024 * 1024
+
+
 // ── API key verification token limit ─────────────────────────────────────────
 /**
  * HC-NEW-09: Max output tokens for API key verification calls.

@@ -43,11 +43,18 @@ export function ModelSelector() {
     try {
       const result = await window.api.fetchModels(provider)
       if (result.success && result.models.length > 0) {
-        const wasEmpty = dynamicModels[provider].length === 0
         setDynamicModels(provider, result.models)
         const ids = result.models.map((m) => m.id)
-        const currentInList = ids.includes(selectedModels[provider])
-        if (forceRecommended || !currentInList || wasEmpty) {
+        const currentSelection = selectedModels[provider]
+        const currentInList = Boolean(currentSelection) && ids.includes(currentSelection)
+        // Only override the user's saved model when:
+        //   1. caller explicitly asks for the recommended model (forceRecommended), OR
+        //   2. the user's selection is no longer valid (not in the freshly fetched list).
+        // Previously we also overrode when the local `dynamicModels` cache was
+        // empty — but that cache is NOT persisted, so it is empty on every app
+        // start / settings re-open / key reload, which silently wiped the user's
+        // chosen model back to "recommended" each time.
+        if (forceRecommended || !currentInList) {
           const target = result.recommendedModel ?? result.models[0].id
           setSelectedModel(provider, target)
         }

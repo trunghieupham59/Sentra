@@ -139,6 +139,7 @@ export function AIChatPopup() {
     chatSystemPrompt,
     chatSendShortcut,
   } = useAppStore()
+
   const t = useT()
 
   // ── Visible state — current/active Q&A pair ─────────────────────────────
@@ -329,7 +330,12 @@ export function AIChatPopup() {
           question: userText,
           messages: payload,
           systemPrompt: chatSystemPrompt || undefined,
+          // Careful Reasoning is always on by default (handled in the IPC
+          // layer): the small token cost is well worth preventing silent
+          // miscalculations on quantitative questions.
+          carefulReasoning: true,
           uiText: {
+
             webSearchStepLabelPrefix: t.chat_smart_thinking_step_label_prefix,
             webSearchSummaryTitle: t.chat_smart_thinking_summary_title,
             webSearchDefaultReason: t.chat_smart_thinking_default_reason,
@@ -382,6 +388,7 @@ export function AIChatPopup() {
     },
     [buildMessages, selectedProvider, model, chatSystemPrompt, t, focusInput],
   )
+
 
   /** Send a new question (or follow-up). Folds previous answer into history. */
   const handleSend = useCallback(async () => {

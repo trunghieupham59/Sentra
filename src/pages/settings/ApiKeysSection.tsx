@@ -409,6 +409,7 @@ export function ApiKeysSection() {
   const keyStatus = useAppStore((state) => state.keyStatus)
   const setDynamicModels = useAppStore((state) => state.setDynamicModels)
   const setSelectedModel = useAppStore((state) => state.setSelectedModel)
+  const selectedModels = useAppStore((state) => state.selectedModels)
   const costCurrency = useAppStore((state) => state.costCurrency)
   const setCostCurrency = useAppStore((state) => state.setCostCurrency)
   const apiKeyUsageTotals = useAppStore((state) => state.apiKeyUsageTotals)
@@ -452,7 +453,18 @@ export function ApiKeysSection() {
       })
       setKeyStatus('local', result.available)
       setDynamicModels('local', result.models)
-      setSelectedModel('local', result.recommendedModel ?? 'local-auto')
+      // Only override the user's saved local model when their previous choice
+      // is no longer installed/available — otherwise opening Settings (which
+      // triggers a refresh) would silently reset the model back to the
+      // recommended default every single time.
+      const installedIds = result.models.map((m) => m.id)
+      const previousLocalModel = selectedModels.local
+      const previousIsValid = Boolean(previousLocalModel) && (
+        installedIds.includes(previousLocalModel) || previousLocalModel === 'local-auto'
+      )
+      if (!previousIsValid) {
+        setSelectedModel('local', result.recommendedModel ?? 'local-auto')
+      }
       return result
     } finally {
       setLocalLoading(false)

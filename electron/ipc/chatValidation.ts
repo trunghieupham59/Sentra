@@ -1,5 +1,6 @@
-import { MAX_CHAT_REQUEST_CHARS } from './ipcConstants'
+import { MAX_CHAT_PAYLOAD_BYTES, MAX_CHAT_REQUEST_CHARS } from './ipcConstants'
 import { invalidIpcInput, isNonEmptyString, isRecord, parseProviderModel } from './ipcValidation'
+
 
 export type MaxOutputTokensRequest = number | 'model-max'
 
@@ -23,7 +24,15 @@ export interface ChatParams {
   bypassLengthCheck?: boolean
   maxOutputTokens?: MaxOutputTokensRequest
   requestId?: string
+  /**
+   * When true, the system prompt is augmented with the "REASONING DISCIPLINE"
+   * directive (see `chatPrompts.ts`) so the model restates assumptions and
+   * walks through math step-by-step before answering. Used for finance/tax/
+   * quantitative questions where silent miscalculation is the failure mode.
+   */
+  carefulReasoning?: boolean
 }
+
 
 export type ParsedChatParams =
   | { ok: true; value: ChatParams }
@@ -36,6 +45,30 @@ const MAX_CHAT_MODEL_ID_CHARS = 200
 const MAX_SYSTEM_PROMPT_CHARS = 20_000
 const MAX_CHAT_REQUEST_ID_CHARS = 100
 
+/**
+ * Cheaply estimate the IPC payload size by counting the base64 and text
+ * lengths inside `messages`. We deliberately avoid `JSON.stringify` on the
+ * raw payload because for very large requests (50+ MB) the stringify itself
+ * costs hundreds of milliseconds; the per-field length sum is within ~5%
+ * of the JSON byte count and is sufficient for cap enforcement.
+ */
+function estimateChatPayloadBytes(rawParams: Record<string, unknown>): number {
+  let bytes = 0
+  if (typeof rawParams.systemPrompt === 'string') bytes += rawParams.systemPrompt.length
+  const messages = rawParams.messages
+  if (Array.isArray(messages)) {
+    for (const m of messages) {
+      if (!isRecord(m) || !Array.isArray(m.content)) continue
+      for (const c of m.content) {
+        if (!isRecord(c)) continue
+        if (typeof c.text === 'string') bytes += c.text.length
+        if (typeof c.imageBase64 === 'string') bytes += c.imageBase64.length
+      }
+    }
+  }
+  return bytes
+}
+
 export function parseChatParams(rawParams: unknown): ParsedChatParams {
   const providerModel = parseProviderModel(rawParams, {
     payloadName: 'Chat',
@@ -44,6 +77,24 @@ export function parseChatParams(rawParams: unknown): ParsedChatParams {
   if (!providerModel.ok) return providerModel
   const { provider, model } = providerModel.value
   const params = providerModel.params
+
+  // Cap total payload size — protects RAM from runaway image+history payloads.
+  // The renderer should never reach this in normal use (image resize caps at
+  // ~1.5 MB), so a violation indicates either a bug or a hostile caller.
+  const payloadBytes = estimateChatPayloadBytes(params)
+  if (payloadBytes > MAX_CHAT_PAYLOAD_BYTES) {
+    const mb = (payloadBytes / (1024 * 1024)).toFixed(1)
+    const limitMb = (MAX_CHAT_PAYLOAD_BYTES / (1024 * 1024)).toFixed(0)
+    return {
+      ok: false,
+      response: {
+        success: false,
+        error: `Chat payload too large (${mb} MB). Maximum is ${limitMb} MB. Try removing an image attachment.`,
+        errorCode: 'PAYLOAD_TOO_LARGE',
+      },
+    }
+  }
+
 
   if (!Array.isArray(params.messages)) {
     return { ok: false, response: invalidIpcInput('Messages are required') }
@@ -86,6 +137,10 @@ export function parseChatParams(rawParams: unknown): ParsedChatParams {
   if (params.bypassLengthCheck !== undefined && typeof params.bypassLengthCheck !== 'boolean') {
     return { ok: false, response: invalidIpcInput('Invalid bypass flag') }
   }
+  if (params.carefulReasoning !== undefined && typeof params.carefulReasoning !== 'boolean') {
+    return { ok: false, response: invalidIpcInput('Invalid careful-reasoning flag') }
+  }
+
   if (
     params.maxOutputTokens !== undefined &&
     params.maxOutputTokens !== 'model-max' &&
@@ -125,6 +180,8 @@ export function parseChatParams(rawParams: unknown): ParsedChatParams {
       bypassLengthCheck: params.bypassLengthCheck,
       maxOutputTokens: params.maxOutputTokens as MaxOutputTokensRequest | undefined,
       requestId: typeof params.requestId === 'string' ? params.requestId.trim() : undefined,
+      carefulReasoning: params.carefulReasoning as boolean | undefined,
     },
   }
 }
+

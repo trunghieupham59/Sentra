@@ -507,6 +507,7 @@ export interface Translations {
   chat_empty_title: string
   chat_empty_desc: string
   chat_system_prompt: string
+
   chat_system_prompt_placeholder: string
   /** HC-NEW-04: Label for the "None" option in SystemPromptDropdown */
   chat_system_prompt_none: string
@@ -781,6 +782,7 @@ export interface Translations {
   chat_smart_thinking_disable: string
   chat_smart_thinking_hint: string
   chat_smart_thinking_badge: string
+
   chat_smart_thinking_searching: string
   chat_smart_thinking_step_label_prefix: string
   chat_smart_thinking_summary_title: string
@@ -829,8 +831,20 @@ export interface Translations {
 
   // Chat — MessageBubble
   chat_thinking_label: string
+  /** Header label shown on the grouped research-steps panel once every step
+   *  in a Deep Research run has finished, e.g. "Đã suy nghĩ". */
+  chat_research_done_label: string
+  /** Unit word appended after the step count in the grouped header,
+   *  e.g. "bước" / "steps". The full header reads
+   *  `${chat_research_done_label} · ${count} ${chat_research_steps_unit}`. */
+  chat_research_steps_unit: string
+  /** Suffix appended to a research-pill row when multiple steps of the same
+   *  phase have been collapsed, e.g. ` · 4 khía cạnh` / ` · 4 aspects`.
+   *  Template `{count}` — full row reads `${stepLabel} · {count} aspects`. */
+  chat_research_aspects_suffix: string
   chat_deep_research_summarizing: string
   chat_deep_research_badge: string
+
 
   // Live — runtime error messages
   live_error_stt_failed: string

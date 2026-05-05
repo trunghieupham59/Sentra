@@ -183,4 +183,6 @@ export const createChatSlice = (set: SliceSet): ChatSlice => ({
         ? (state.systemPromptPresets.find((p) => p.id === id)?.content ?? state.chatSystemPrompt)
         : state.chatSystemPrompt,
     })),
+
 })
+
