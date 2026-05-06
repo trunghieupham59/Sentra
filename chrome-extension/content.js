@@ -53,6 +53,12 @@
   const COPY_TITLE = isMac ? 'Copy translation (Cmd+C)' : 'Copy translation (Ctrl+C)'
   const REPLACE_TITLE = isMac ? 'Replace selected text (Cmd+Enter)' : 'Replace selected text (Ctrl+Enter)'
   const LISTEN_LABEL = 'Listen'
+  const CONTENT_COPY = {
+    logoAlt: 'Viezan',
+    close: 'Close',
+    targetLanguage: 'Target language',
+    translationStyle: 'Translation style',
+  }
 
   // ── Cleanup stale UI from a previous content script instance ──────────────
   // When the extension is reloaded/updated, background.js re-injects this
@@ -71,7 +77,7 @@
   btn.title = 'Viezan Translate'
   const btnImg = document.createElement('img')
   btnImg.src = ICON_URL
-  btnImg.alt = 'Viezan'
+  btnImg.alt = CONTENT_COPY.logoAlt
   btn.appendChild(btnImg)
 
   // Build tooltip (avoid putting chrome-extension:// URL in innerHTML)
@@ -79,14 +85,14 @@
   tooltip.id = 'tre-result-tooltip'
   tooltip.innerHTML = `
     <div class="tre-tooltip-header">
-      <img class="tre-tooltip-logo" alt="Viezan" />
+      <img class="tre-tooltip-logo" />
       <span class="tre-tooltip-label">VIEZAN</span>
       <span class="tre-status-badge">
         <span class="tre-status-dot tre-status-loading"></span>
         <span class="tre-status-text">Connecting...</span>
       </span>
       <div class="tre-header-spacer"></div>
-      <button class="tre-close-btn" title="Close">x</button>
+      <button class="tre-close-btn">x</button>
     </div>
     <div class="tre-controls-row">
       <div class="tre-model-stack">
@@ -95,11 +101,11 @@
       </div>
       <div class="tre-select-field">
         <label>To</label>
-        <select class="tre-lang-select" title="Target language"></select>
+        <select class="tre-lang-select"></select>
       </div>
       <div class="tre-select-field">
         <label>Style</label>
-        <select class="tre-style-select" title="Translation style"></select>
+        <select class="tre-style-select"></select>
       </div>
     </div>
     <div class="tre-tooltip-body">
@@ -122,6 +128,11 @@
   `
   // Set logo src separately after innerHTML is parsed (avoids chrome-extension:// in innerHTML)
   tooltip.querySelector('.tre-tooltip-logo').src = ICON_URL
+  tooltip.querySelector('.tre-tooltip-logo').alt = CONTENT_COPY.logoAlt
+  tooltip.querySelector('.tre-close-btn').title = CONTENT_COPY.close
+  tooltip.querySelector('.tre-close-btn').setAttribute('aria-label', CONTENT_COPY.close)
+  tooltip.querySelector('.tre-lang-select').title = CONTENT_COPY.targetLanguage
+  tooltip.querySelector('.tre-style-select').title = CONTENT_COPY.translationStyle
 
   try {
     root.appendChild(btn)

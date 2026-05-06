@@ -27,10 +27,10 @@ export function TranslationRow({ speaker, text, speakerNameMap }: TranslationRow
   return (
     <div className="flex items-start gap-2">
       <SpeakerBadge name={displayName} colorClass={colorClass} />
-      <span className="text-sm font-medium text-blue-700 dark:text-blue-300 leading-relaxed">
+      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 leading-relaxed">
         {displayedText}
         {displayedText !== text && (
-          <span className="inline-block ml-0.5 w-0.5 h-3.5 bg-blue-400 dark:bg-blue-600 animate-pulse align-middle" />
+          <span className="inline-block ml-0.5 w-0.5 h-3.5 bg-gray-400 dark:bg-gray-600 animate-pulse align-middle" />
         )}
       </span>
     </div>

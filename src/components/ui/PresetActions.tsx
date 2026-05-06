@@ -34,7 +34,7 @@ export function PresetActions({
           type="button"
           onClick={onSetDefault}
           title={setDefaultTitle}
-          className="p-1.5 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors cursor-pointer"
+          className="btn-icon btn-icon-sm border-transparent bg-transparent shadow-none"
         >
           <CheckIcon />
         </button>
@@ -44,7 +44,7 @@ export function PresetActions({
         type="button"
         onClick={onApply}
         title={applyTitle}
-        className="p-1.5 rounded-lg text-gray-400 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-950 transition-colors cursor-pointer"
+        className="btn-icon btn-icon-sm border-transparent bg-transparent shadow-none"
       >
         <ClipboardIcon className="w-3.5 h-3.5" />
       </button>
@@ -52,7 +52,7 @@ export function PresetActions({
       <button
         type="button"
         onClick={onEdit}
-        className="p-1.5 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors cursor-pointer"
+        className="btn-icon btn-icon-sm border-transparent bg-transparent shadow-none"
       >
         <PencilIcon />
       </button>
@@ -61,7 +61,7 @@ export function PresetActions({
         type="button"
         onClick={onDelete}
         title={deleteTitle}
-        className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-colors cursor-pointer"
+        className="btn-icon btn-icon-sm btn-icon-danger"
       >
         <TrashIcon />
       </button>

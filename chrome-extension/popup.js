@@ -10,6 +10,11 @@ const REPLACE_LABEL = 'Replace'
 const COPY_TITLE = isMac ? 'Copy translation (Cmd+C)' : 'Copy translation (Ctrl+C)'
 const REPLACE_TITLE = isMac ? 'Replace selected text (Cmd+Enter)' : 'Replace selected text (Ctrl+Enter)'
 const LISTEN_LABEL = 'Listen'
+const POPUP_COPY = {
+  translationControls: 'Translation controls',
+  sourcePlaceholder: 'Paste or type text here...',
+  resultPlaceholder: 'Translation appears here...',
+}
 
 // Last translated text — used by Copy and Replace buttons
 let lastTranslated = ''
@@ -52,6 +57,21 @@ function showStatus (msg, type) {
 
 function hideStatus () {
   $('status-msg').style.display = 'none'
+}
+
+function renderResultPlaceholder () {
+  const resultEl = $('result-text')
+  resultEl.textContent = ''
+  const placeholder = document.createElement('span')
+  placeholder.className = 'result-placeholder'
+  placeholder.textContent = POPUP_COPY.resultPlaceholder
+  resultEl.appendChild(placeholder)
+}
+
+function applyStaticCopy () {
+  $('popup-controls')?.setAttribute('aria-label', POPUP_COPY.translationControls)
+  $('input-text').placeholder = POPUP_COPY.sourcePlaceholder
+  renderResultPlaceholder()
 }
 
 function setProviderBadge (el, provider) {
@@ -138,11 +158,12 @@ function showResult (text) {
 function clearResult () {
   ttsPlayer.stop()
   lastTranslated = ''
-  $('result-text').innerHTML = '<span class="result-placeholder">Translation appears here...</span>'
+  renderResultPlaceholder()
   $('footer-result').style.display = 'none'
 }
 
 async function init () {
+  applyStaticCopy()
   const settings = await getSettings()
   const hasToken = !!settings.token
 

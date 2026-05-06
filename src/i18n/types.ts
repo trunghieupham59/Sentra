@@ -657,6 +657,7 @@ export interface Translations {
   ai_chat_popup_input_too_long: string
   ai_chat_popup_new_line: string
   ai_chat_popup_close: string
+  ai_chat_popup_turns: string
 
   // Settings — AI Chat Hotkey
   settings_chat_hotkey_section: string
@@ -842,9 +843,13 @@ export interface Translations {
    *  phase have been collapsed, e.g. ` · 4 khía cạnh` / ` · 4 aspects`.
    *  Template `{count}` — full row reads `${stepLabel} · {count} aspects`. */
   chat_research_aspects_suffix: string
+  /** Accessible label for the research phase details popover trigger. */
+  chat_research_show_details: string
   /** Label on the "Resume Deep Research" button in ResearchStepsPanel
    *  shown when a stopped pipeline has a persisted resume snapshot. */
   chat_deep_research_resume: string
+  /** Short label used inside the compact composer Resume button. */
+  chat_deep_research_resume_short: string
 
   chat_deep_research_summarizing: string
   chat_deep_research_badge: string

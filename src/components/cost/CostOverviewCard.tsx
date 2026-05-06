@@ -34,17 +34,17 @@ interface FeatureSummary {
 const FEATURE_ORDER: UsageFeature[] = ['chat', 'translate', 'live', 'dictionary']
 
 const FEATURE_BAR_COLORS: Record<UsageFeature, string> = {
-  chat: 'bg-blue-500 dark:bg-blue-400',
-  translate: 'bg-emerald-500 dark:bg-emerald-400',
-  live: 'bg-purple-500 dark:bg-purple-400',
-  dictionary: 'bg-amber-500 dark:bg-amber-400',
+  chat: 'bg-gray-950 dark:bg-gray-100',
+  translate: 'bg-gray-700 dark:bg-gray-300',
+  live: 'bg-gray-500 dark:bg-gray-400',
+  dictionary: 'bg-gray-400 dark:bg-gray-500',
 }
 
 const FEATURE_DOT_COLORS: Record<UsageFeature, string> = {
-  chat: 'bg-blue-500',
-  translate: 'bg-emerald-500',
-  live: 'bg-purple-500',
-  dictionary: 'bg-amber-500',
+  chat: 'bg-gray-950 dark:bg-gray-100',
+  translate: 'bg-gray-700 dark:bg-gray-300',
+  live: 'bg-gray-500 dark:bg-gray-400',
+  dictionary: 'bg-gray-400 dark:bg-gray-500',
 }
 
 function aggregateTotals(totals: Partial<Record<Provider, UsageTotal>>) {
@@ -95,18 +95,18 @@ export function CostOverviewCard({ totals, currency, onCurrencyChange, onResetAl
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white shadow-sm dark:border-emerald-900/40 dark:from-emerald-950/30 dark:via-gray-900 dark:to-gray-900">
+    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
       {/* Header row */}
-      <div className="flex items-center justify-between gap-3 border-b border-emerald-100/70 bg-white/50 px-4 py-3 backdrop-blur-sm dark:border-emerald-900/30 dark:bg-gray-900/40">
+      <div className="flex items-center justify-between gap-3 border-b border-gray-100 bg-gray-50 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-gray-600 ring-1 ring-gray-200 dark:bg-neutral-800 dark:text-gray-300 dark:ring-neutral-700">
             <CoinsIcon className="h-4 w-4" />
           </span>
           <div className="leading-tight">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
               {t.settings_cost_section_title}
             </h3>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+            <p className="ui-meta">
               {t.settings_cost_overview_estimated} · {t.settings_cost_section_desc.split('.')[0]}
             </p>
           </div>
@@ -121,7 +121,7 @@ export function CostOverviewCard({ totals, currency, onCurrencyChange, onResetAl
             <button
               type="button"
               onClick={handleResetAll}
-              className="h-7 rounded-lg border border-gray-200 bg-white px-2.5 text-xs font-medium text-gray-600 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-red-900/60 dark:hover:bg-red-950/30 dark:hover:text-red-300"
+              className="btn-danger btn-xs"
             >
               {t.settings_cost_reset_all}
             </button>
@@ -136,13 +136,13 @@ export function CostOverviewCard({ totals, currency, onCurrencyChange, onResetAl
             {/* Hero stat */}
             <div className="flex items-end justify-between gap-4">
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-wide text-emerald-700/80 dark:text-emerald-300/80">
+                <p className="ui-kicker text-gray-500 dark:text-gray-400">
                   {t.settings_cost_overview_total}
                 </p>
                 <p className="mt-0.5 flex items-baseline gap-1.5 font-bold tabular-nums text-gray-900 dark:text-gray-100">
                   <span className="text-3xl">~{formatUsageAmount(summary.amountUsd, currency)}</span>
                 </p>
-                <p className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">
+                <p className="ui-meta mt-0.5">
                   {t.settings_cost_overview_total_desc}
                 </p>
               </div>
@@ -197,7 +197,7 @@ function KpiTile({
 }) {
   return (
     <div className="rounded-xl border border-gray-100 bg-white px-3 py-2 dark:border-gray-700/70 dark:bg-gray-800/60">
-      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+      <div className="ui-kicker flex items-center gap-1.5">
         <span className="text-gray-400 dark:text-gray-500">{icon}</span>
         <span>{label}</span>
       </div>
@@ -228,7 +228,7 @@ function FeatureBreakdown({
 
   return (
     <section className="space-y-1.5">
-      <h4 className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+      <h4 className="ui-kicker">
         {heading}
       </h4>
       <ul className="space-y-1.5">
@@ -243,8 +243,8 @@ function FeatureBreakdown({
                 </div>
                 <div className="flex items-center gap-2 tabular-nums text-gray-500 dark:text-gray-400">
                   <span>~{formatUsageAmount(entry.amountUsd, currency)}</span>
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500">·</span>
-                  <span className="text-[10px]">{entry.requestCount}</span>
+                  <span className="ui-micro">·</span>
+                  <span className="ui-micro">{entry.requestCount}</span>
                 </div>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">

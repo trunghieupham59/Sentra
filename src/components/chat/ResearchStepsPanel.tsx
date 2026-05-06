@@ -48,13 +48,6 @@ import {
 
 interface ResearchStepsPanelProps {
   steps: ChatMessage[]
-  /**
-   * Optional click handler for the "Tiếp tục nghiên cứu" header button.
-   * The button only renders when this callback is provided — `ChatPage`
-   * passes it on the LAST panel of a session whose `deepResearchResumeState`
-   * snapshot indicates the pipeline halted before synthesis.
-   */
-  onResume?: () => void
 }
 
 
@@ -147,17 +140,17 @@ function PhaseIcon({ phase }: { phase: ResearchStepPhase | 'unknown' }) {
   // phases at a glance.
   switch (phase) {
     case 'analyze':
-      return <SparklesIcon className={`${PHASE_ICON_CLASS} text-sky-500 dark:text-sky-300`} />
+      return <SparklesIcon className={`${PHASE_ICON_CLASS} text-gray-500 dark:text-gray-300`} />
     case 'survey':
-      return <LightbulbIcon className={`${PHASE_ICON_CLASS} text-amber-500 dark:text-amber-300`} />
+      return <LightbulbIcon className={`${PHASE_ICON_CLASS} text-gray-500 dark:text-gray-300`} />
     case 'gap':
-      return <InfoCircleIcon className={`${PHASE_ICON_CLASS} text-orange-500 dark:text-orange-300`} />
+      return <InfoCircleIcon className={`${PHASE_ICON_CLASS} text-gray-500 dark:text-gray-300`} />
     case 'deep':
-      return <LightbulbIcon className={`${PHASE_ICON_CLASS} text-violet-500 dark:text-violet-300`} />
+      return <LightbulbIcon className={`${PHASE_ICON_CLASS} text-gray-500 dark:text-gray-300`} />
     case 'cross':
-      return <CheckCircleIcon className={`${PHASE_ICON_CLASS} text-emerald-500 dark:text-emerald-300`} />
+      return <CheckCircleIcon className={`${PHASE_ICON_CLASS} text-gray-500 dark:text-gray-300`} />
     case 'synth':
-      return <SparklesIcon className={`${PHASE_ICON_CLASS} text-indigo-500 dark:text-indigo-300`} />
+      return <SparklesIcon className={`${PHASE_ICON_CLASS} text-gray-500 dark:text-gray-300`} />
     default:
       return <SparklesIcon className={`${PHASE_ICON_CLASS} text-gray-400 dark:text-gray-500`} />
   }
@@ -170,12 +163,12 @@ function StatusIndicator({ status }: { status: PhaseStatus }) {
   if (status === 'error') {
     return (
       <span
-        className="inline-block w-2 h-2 rounded-full bg-red-400 dark:bg-red-500"
+        className="ui-status-dot ui-status-dot-danger inline-block h-2 w-2"
         aria-hidden
       />
     )
   }
-  return <CheckCircleIcon className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
+  return <CheckCircleIcon className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
 }
 
 // ── Hover info popover ────────────────────────────────────────────────────────
@@ -276,7 +269,7 @@ function InfoPopover({ anchor, group, onClose, onMouseEnter, onMouseLeave }: Inf
 
       <div className="chat-research-info-popover-header">
         <PhaseIcon phase={group.phase} />
-        <span className="text-[12px] font-semibold text-gray-800 dark:text-gray-100 truncate">
+        <span className="truncate text-xs font-semibold text-gray-800 dark:text-gray-100">
           {group.title}
         </span>
       </div>
@@ -289,16 +282,16 @@ function InfoPopover({ anchor, group, onClose, onMouseEnter, onMouseLeave }: Inf
             <div key={step.id} className="chat-research-info-popover-item">
               {(aspect || group.steps.length > 1) && (
                 <div className="flex items-center gap-1.5 mb-1">
-                  <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500 tabular-nums">
+                  <span className="ui-micro font-medium tabular-nums">
                     {idx + 1}.
                   </span>
-                  <span className="text-[11.5px] font-semibold text-gray-700 dark:text-gray-200 line-clamp-2">
+                  <span className="line-clamp-2 text-xs font-semibold text-gray-700 dark:text-gray-200">
                     {aspect ?? group.title}
                   </span>
                 </div>
               )}
               {step.error ? (
-                <div className="text-[11.5px] text-red-500 dark:text-red-400">
+                <div className="ui-error-text text-xs">
                   {step.error}
                 </div>
               ) : compact ? (
@@ -313,7 +306,7 @@ function InfoPopover({ anchor, group, onClose, onMouseEnter, onMouseLeave }: Inf
                 />
 
               ) : step.isLoading ? (
-                <div className="text-[11.5px] italic text-gray-400 dark:text-gray-500">
+                <div className="text-xs italic text-gray-400 dark:text-gray-500">
                   …
                 </div>
               ) : null}
@@ -331,6 +324,7 @@ function InfoPopover({ anchor, group, onClose, onMouseEnter, onMouseLeave }: Inf
 interface PhasePillProps {
   group: PhaseGroup
   rowTitle: string
+  showDetailsLabel: string
 }
 
 /**
@@ -341,7 +335,7 @@ interface PhasePillProps {
  */
 const POPOVER_HOVER_CLOSE_DELAY_MS = 150
 
-function PhasePill({ group, rowTitle }: PhasePillProps) {
+function PhasePill({ group, rowTitle, showDetailsLabel }: PhasePillProps) {
   const buttonRef = useRef<HTMLButtonElement>(null)
   /**
    * Open state for the per-pill info popover. We track two open modes:
@@ -425,7 +419,7 @@ function PhasePill({ group, rowTitle }: PhasePillProps) {
               if (popoverMode === 'hover') scheduleHoverClose()
             }}
             className={`chat-research-pill-info ${isOpen ? 'chat-research-pill-info-active' : ''}`}
-            aria-label="Show details"
+            aria-label={showDetailsLabel}
           >
             <InfoCircleIcon className="w-3.5 h-3.5" />
           </button>
@@ -459,7 +453,7 @@ function PhasePill({ group, rowTitle }: PhasePillProps) {
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-export function ResearchStepsPanel({ steps, onResume }: ResearchStepsPanelProps) {
+export function ResearchStepsPanel({ steps }: ResearchStepsPanelProps) {
   const t = useT()
   const [isOpen, setIsOpen] = useState(true)
 
@@ -487,16 +481,13 @@ export function ResearchStepsPanel({ steps, onResume }: ResearchStepsPanelProps)
         <button
           type="button"
           onClick={() => setIsOpen((v) => !v)}
-          className="w-full flex items-center justify-between gap-2 px-3 py-2
-                     text-gray-600 dark:text-gray-300
-                     hover:bg-gray-100/60 dark:hover:bg-neutral-800/40
-                     transition-colors duration-150 cursor-pointer"
+          className="btn-menu-item justify-between"
         >
-          <span className="flex items-center gap-2 font-medium text-left text-[12.5px]">
+          <span className="flex items-center gap-2 text-left text-xs font-medium">
             {isAnyLoading ? (
-              <SparklesIcon className="h-3.5 w-3.5 text-indigo-500/80 dark:text-indigo-300/80 animate-pulse" />
+              <SparklesIcon className="h-3.5 w-3.5 text-gray-500/80 dark:text-gray-300/80 animate-pulse" />
             ) : (
-              <LightbulbIcon className="h-3.5 w-3.5 text-indigo-500/80 dark:text-indigo-300/80" />
+              <LightbulbIcon className="h-3.5 w-3.5 text-gray-500/80 dark:text-gray-300/80" />
             )}
             <span>{headerLabel}</span>
           </span>
@@ -524,30 +515,13 @@ export function ResearchStepsPanel({ steps, onResume }: ResearchStepsPanelProps)
                 key={group.steps[0].id}
                 group={group}
                 rowTitle={buildPhaseTitle(group, t.chat_research_aspects_suffix)}
+                showDetailsLabel={t.chat_research_show_details}
               />
             ))}
           </ul>
         )}
 
-        {/* Resume button — surfaces only when ChatPage detects a persisted
-         *  resume snapshot for the active session and the pipeline halted
-         *  before synthesis. Clicking it replays the pipeline from the next
-         *  unfinished phase (already-completed phases are skipped inside
-         *  the service via `isPhaseDone`). */}
-        {onResume && !isAnyLoading && (
-          <div className="chat-research-resume-row">
-            <button
-              type="button"
-              onClick={onResume}
-              className="chat-research-resume-button"
-            >
-              <SparklesIcon className="h-3.5 w-3.5" />
-              <span>{t.chat_deep_research_resume}</span>
-            </button>
-          </div>
-        )}
       </div>
     </div>
   )
 }
-

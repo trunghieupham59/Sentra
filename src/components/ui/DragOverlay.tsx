@@ -18,7 +18,7 @@ interface DragOverlayProps {
    */
   zIndex?: 'z-30' | 'z-50'
   /**
-   * When true, adds an emerald ring around the overlay container —
+   * When true, adds a neutral ring around the overlay container —
    * used by ChatPage where the entire page is the drop zone.
    * @default false
    */
@@ -29,13 +29,13 @@ export function DragOverlay({ label, zIndex = 'z-30', showRing = false }: DragOv
   return (
     <div
       className={`absolute inset-0 ${zIndex} flex items-center justify-center pointer-events-none
-                  ${showRing ? 'ring-2 ring-inset ring-emerald-300 dark:ring-emerald-700' : ''}`}
+                  ${showRing ? 'ring-2 ring-inset ring-gray-300 dark:ring-gray-700' : ''}`}
     >
       <div className="flex flex-col items-center gap-2 px-6 py-4 rounded-lg
-                      bg-white/90 dark:bg-gray-900/90 border-2 border-dashed border-emerald-400
+                      bg-white/90 dark:bg-gray-900/90 border-2 border-dashed border-gray-400
                       shadow-lg">
-        <UploadIcon className="w-8 h-8 text-emerald-500" />
-        <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+        <UploadIcon className="w-8 h-8 text-gray-500" />
+        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
           {label}
         </span>
       </div>

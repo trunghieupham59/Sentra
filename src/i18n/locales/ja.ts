@@ -572,6 +572,7 @@ const ja: Translations = {
   ai_chat_popup_input_too_long: '入力が長すぎます。短くして送信してください。',
   ai_chat_popup_new_line: '改行',
   ai_chat_popup_close: '閉じる',
+  ai_chat_popup_turns: '{count}ターン',
   settings_chat_hotkey_section: 'AIチャット ホットキー',
   settings_chat_hotkey_section_desc: '任意のアプリでショートカットを押すと、AIクイック質問ポップアップの表示/非表示を切り替えます。',
   settings_chat_hotkey_enabled: 'ホットキーを有効にする',
@@ -693,7 +694,9 @@ const ja: Translations = {
   chat_research_done_label: '思考完了',
   chat_research_steps_unit: 'ステップ',
   chat_research_aspects_suffix: '{count}観点',
+  chat_research_show_details: '調査の詳細を表示',
   chat_deep_research_resume: '調査を再開',
+  chat_deep_research_resume_short: '再開',
 
   chat_deep_research_summarizing: '結果を統合中…',
 

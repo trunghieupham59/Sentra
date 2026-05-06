@@ -1,5 +1,5 @@
 /**
- * AutoTranslateToggle — pill-style toggle button for switching between
+ * AutoTranslateToggle — compact toggle button for switching between
  * automatic and manual translation modes.
  *
  * Fixed width (112 px) prevents layout shift when the label text changes.
@@ -34,15 +34,14 @@ export function AutoTranslateToggle({
       onClick={() => onChange(!autoTranslate)}
       title={autoTranslate ? titleAuto : titleManual}
       className={[
-        'flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[13px] font-medium',
-        'border transition-all duration-200 select-none cursor-pointer',
+        'btn-secondary btn-sm font-medium',
         'w-[112px] justify-start',
         autoTranslate
-          ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100 dark:bg-green-950 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900'
-          : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700',
+          ? 'btn-active'
+          : 'bg-gray-50 text-gray-500 dark:bg-neutral-800 dark:text-gray-400',
       ].join(' ')}
     >
-      <MiniToggleTrack checked={autoTranslate} color="green" />
+      <MiniToggleTrack checked={autoTranslate} />
       <span className="whitespace-nowrap">{autoTranslate ? labelAuto : labelManual}</span>
     </button>
   )

@@ -2,7 +2,7 @@
  * ButtonGroup — generic "pick one from a set" button row.
  *
  * Renders a row of bordered buttons where the selected value is highlighted
- * in blue. Used by FontSizePicker and TokenTtlPicker (and any future
+ * with the neutral app accent. Used by FontSizePicker and TokenTtlPicker (and any future
  * single-selection option group).
  *
  * @example
@@ -37,17 +37,15 @@ export function ButtonGroup<T extends string | number>({
   containerClassName = '',
 }: ButtonGroupProps<T>) {
   return (
-    <div className={`flex items-center gap-1 ${containerClassName}`}>
+    <div className={`segmented-control ${containerClassName}`}>
       {options.map((opt) => (
         <button
           key={opt.value}
           type="button"
           onClick={() => onChange(opt.value)}
           className={[
-            'px-3 py-1 rounded-lg text-xs font-medium border transition-all duration-150 cursor-pointer',
-            value === opt.value
-              ? 'bg-blue-600 text-white border-blue-600'
-              : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-blue-400',
+            'btn-segment',
+            value === opt.value ? 'btn-segment-active' : '',
           ].join(' ')}
         >
           {opt.label}

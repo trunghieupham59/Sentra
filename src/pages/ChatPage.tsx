@@ -8,6 +8,7 @@ import { ProviderIcon } from '../components/ProviderIcon'
 import { DragOverlay } from '../components/ui/DragOverlay'
 import { ImagePreviewThumbnail } from '../components/ui/ImagePreviewThumbnail'
 import {
+  ArrowRightIcon,
   ChevronDownIcon,
   GearIcon,
   ImageIcon,
@@ -24,7 +25,7 @@ import { MAX_CHAT_IMAGE_DIMENSION } from '../constants/image'
 import { COPY_FEEDBACK_DURATION_MS } from '../constants/ui'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import { chatService } from '../services/chatService'
-import { deepResearchService } from '../services/deepResearchService'
+import { DEEP_RESEARCH_CANCELLED_ERROR, deepResearchService } from '../services/deepResearchService'
 import { smartThinkingService } from '../services/smartThinkingService'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { ChatMessage, ChatMessageContent, DeepResearchResumeState } from '../types'
@@ -523,7 +524,9 @@ export function ChatPage() {
           onStepError: (msgId, error) => {
             updateChatMessage(sessionId, msgId, {
               isLoading: false,
-              error: localizeChatException(t, error, t.chat_error_failed_response),
+              error: error === DEEP_RESEARCH_CANCELLED_ERROR
+                ? undefined
+                : localizeChatException(t, error, t.chat_error_failed_response),
               isResearchStep: true,
             })
           },
@@ -609,6 +612,7 @@ export function ChatPage() {
     // ── Deep Research path ────────────────────────────────────────────────────
     if (deepResearchMode && (text || attachedImage)) {
       addChatMessage(sessionId, userMsg)
+      setDeepResearchResumeState(sessionId, null)
       setInputText('')
       setAttachedImage(null)
       await runDeepResearchPipeline({
@@ -623,6 +627,7 @@ export function ChatPage() {
 
 
     addChatMessage(sessionId, userMsg)
+    setDeepResearchResumeState(sessionId, null)
     setInputText('')
     setAttachedImage(null)
     const sendController = new AbortController()
@@ -918,6 +923,7 @@ export function ChatPage() {
     chatSystemPrompt,
     recordChatCost,
     runDeepResearchPipeline,
+    setDeepResearchResumeState,
     t,
   ])
 
@@ -1004,6 +1010,13 @@ export function ChatPage() {
   const messages = activeSession?.messages ?? []
   const currentModel = selectedModels[selectedProvider]
   const currentModelLabel = formatModelName(selectedProvider, currentModel)
+  const canResumeDeepResearch = Boolean(
+    !isSending
+    && !inputText.trim()
+    && !attachedImage
+    && activeSession?.deepResearchResumeState
+    && activeSession.deepResearchResumeState.lastCompletedPhase !== 'synth',
+  )
 
   /** Shared input area — reused in both empty-state and messages-state layouts */
   const inputArea = (
@@ -1011,11 +1024,11 @@ export function ChatPage() {
       {/* Image attach error */}
       {attachImageError && (
         <div className="px-4 pt-2 flex items-center gap-2">
-          <p className="text-xs text-red-500 dark:text-red-400">{attachImageError}</p>
+          <p className="ui-error-text text-xs">{attachImageError}</p>
           <button
             type="button"
             onClick={() => setAttachImageError(null)}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
+            className="btn-icon btn-icon-xs btn-icon-danger"
             aria-label={t.translate_error_dismiss}
           >
             <XIcon className="w-3 h-3" />
@@ -1026,11 +1039,11 @@ export function ChatPage() {
       {/* Active mode pills row — only renders when Deep Research is on */}
       {deepResearchMode && (
         <div className="flex items-center gap-1.5 px-4 pt-3">
-          <span className="chat-pill chat-pill-indigo">
+          <span className="chat-pill chat-pill-neutral">
             <LightbulbIcon className="h-2.5 w-2.5" />
             <span>{t.chat_deep_research_badge}</span>
           </span>
-          <span className="text-[10px] text-gray-400 dark:text-gray-600">
+          <span className="ui-micro">
             {t.chat_deep_research_hint}
           </span>
         </div>
@@ -1048,18 +1061,17 @@ export function ChatPage() {
 
       {/* Voice overlay */}
       {isVoiceActive && (
-        <div className="flex items-center gap-3 px-4 py-2 mx-3 mt-2 rounded-lg
-                        bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/50">
+        <div className="voice-recording-panel mx-3 mt-2 flex items-center gap-3 px-4 py-2">
           <div className="flex items-end gap-[3px] h-5">
             {[1, 2, 3, 4, 5].map((i) => (
               <span
                 key={i}
-                className="w-1 rounded-full bg-red-400 dark:bg-red-500 animate-bounce"
+                className="voice-recording-bar"
                 style={{ height: `${VOICE_BAR_HEIGHT_BASE_PX + (i % 3) * VOICE_BAR_HEIGHT_STEP_PX}px`, animationDuration: `${VOICE_BAR_DURATION_BASE_S + i * VOICE_BAR_DURATION_STEP_S}s`, animationDelay: `${i * VOICE_BAR_DELAY_STEP_S}s` }}
               />
             ))}
           </div>
-          <span className={`text-xs font-medium ${isVoiceInterim ? 'text-gray-400 italic' : 'text-red-500 dark:text-red-400'}`}>
+          <span className={`text-xs font-medium ${isVoiceInterim ? 'text-gray-400 italic' : 'voice-recording-text'}`}>
             {inputText || '…'}
           </span>
         </div>
@@ -1079,11 +1091,7 @@ export function ChatPage() {
           placeholder={t.chat_placeholder}
           rows={1}
           disabled={isSending}
-          className={`w-full resize-none bg-transparent px-2 py-1.5 text-[14px] leading-relaxed
-                      focus:outline-none
-                      placeholder-gray-400 dark:placeholder-gray-600
-                      text-gray-900 dark:text-gray-100
-                      disabled:opacity-60
+          className={`chat-input-field
                       ${isVoiceInterim ? 'italic text-gray-400 dark:text-gray-500' : ''}`}
           style={{ maxHeight: `${CHAT_TEXTAREA_MAX_HEIGHT_PX}px`, overflowY: 'auto' }}
         />
@@ -1128,7 +1136,7 @@ export function ChatPage() {
           type="button"
           onClick={() => setDeepResearchMode((v) => !v)}
           title={deepResearchMode ? t.chat_deep_research_disable : t.chat_deep_research_enable}
-          className={`chat-action-button ${deepResearchMode ? 'chat-action-button-active-indigo' : ''}`}
+          className={`chat-action-button ${deepResearchMode ? 'chat-action-button-active-neutral' : ''}`}
         >
           <LightbulbIcon className="w-4 h-4" />
         </button>
@@ -1137,21 +1145,17 @@ export function ChatPage() {
 
         {/* Char counter — subtle, only when getting close to long text */}
         {inputText.length > 600 && (
-          <span className="text-[10px] text-gray-400 dark:text-gray-600 tabular-nums px-1">
+          <span className="ui-micro tabular-nums px-1">
             {inputText.length}
           </span>
         )}
 
         {/*
-         * Send / Stop morphing button.
+         * Send / Stop / Resume morphing button.
          *
-         * While `isSending` is true the primary action is to stop the
-         * in-flight request — the button switches to a red Stop button so
-         * the user can interrupt long answers (mirrors ChatGPT / Claude UX).
-         * The Stop button is only ENABLED when an AbortController is
-         * actually attached to abortControllerRef; otherwise the request is
-         * not interruptible (e.g. image-edit IPC) and the button stays
-         * disabled to avoid a confusing no-op click.
+         * The primary action always occupies the same slot in the composer:
+         * Send for a new prompt, Stop while work is running, Resume when a
+         * stopped Deep Research checkpoint is waiting and the draft is empty.
          */}
         {isSending ? (
           <button
@@ -1162,7 +1166,18 @@ export function ChatPage() {
             aria-label={t.chat_stop}
             className="chat-stop-button disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <StopSquareIcon className="w-3.5 h-3.5" />
+            <StopSquareIcon className="w-5 h-5" />
+          </button>
+        ) : canResumeDeepResearch ? (
+          <button
+            type="button"
+            onClick={handleResumeDeepResearch}
+            title={t.chat_deep_research_resume}
+            aria-label={t.chat_deep_research_resume}
+            className="chat-resume-button"
+          >
+            <span className="chat-primary-action-label">{t.chat_deep_research_resume_short}</span>
+            <ArrowRightIcon className="h-3.5 w-3.5" />
           </button>
         ) : (
           <button
@@ -1213,7 +1228,7 @@ export function ChatPage() {
 
             {/* Active session turn count — subtle informational text */}
             {messages.length > 0 && (
-              <span className="hidden md:inline text-[11px] font-medium text-gray-400 dark:text-gray-600 ml-1">
+              <span className="ui-meta ml-1 hidden font-medium md:inline">
                 · {messages.filter((m) => m.role === 'user').length} {t.history_chat_messages}
               </span>
             )}
@@ -1237,7 +1252,7 @@ export function ChatPage() {
                 type="button"
                 onClick={handleClear}
                 title={t.chat_clear}
-                className="toolbar-pill-button cursor-pointer whitespace-nowrap hover:!border-red-200 hover:!bg-red-50 hover:!text-red-600 dark:hover:!bg-red-950/50 dark:hover:!text-red-400"
+                className="toolbar-pill-button toolbar-pill-danger cursor-pointer whitespace-nowrap"
               >
                 <TrashIcon />
                 <span>{t.chat_clear}</span>
@@ -1281,31 +1296,26 @@ export function ChatPage() {
           {messages.length === 0 ? (
             /* ── Empty state: centered layout (ChatGPT-style) ── */
             <div className="flex-1 flex flex-col items-center justify-center gap-10 px-4 pb-8 overflow-y-auto">
-              {/* Logo + description — generous breathing room, larger halo */}
+              {/* Logo + description — generous breathing room */}
               <div className="flex flex-col items-center gap-5 text-center select-none">
                 <div className="relative">
-                  <span
-                    className="absolute -inset-6 rounded-full bg-gradient-to-br from-blue-300/40 via-sky-200/30 to-indigo-400/30
-                               blur-2xl dark:from-blue-500/25 dark:via-sky-500/15 dark:to-indigo-600/25"
-                    aria-hidden
-                  />
                   <AppLogoIcon size={84} />
                 </div>
                 <div className="flex flex-col gap-2">
                   <h2 className="text-2xl font-semibold tracking-tight text-gray-800 dark:text-gray-100">
                     {t.chat_empty_title}
                   </h2>
-                  <p className="text-[14px] leading-relaxed text-gray-500 dark:text-gray-400 max-w-[360px] mx-auto">
+                  <p className="ui-caption mx-auto max-w-[360px] leading-relaxed">
                     {t.chat_empty_desc}
                   </p>
                 </div>
                 {!hasKey && (
                   <div className="flex flex-col items-center gap-2 mt-1">
-                    <p className="text-xs text-orange-500 dark:text-orange-400">{t.chat_error_no_key}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.chat_error_no_key}</p>
                     <button
                       type="button"
                       onClick={() => openSettings()}
-                      className="btn-primary text-xs py-1.5 px-3"
+                      className="btn-primary btn-sm"
                     >
                       {t.chat_error_open_settings}
                     </button>
@@ -1354,19 +1364,10 @@ export function ChatPage() {
                           group.push(messages[i])
                           i++
                         }
-                        // Only show the Resume button on the LAST research
-                        // panel of the conversation — older panels in earlier
-                        // turns are historic and shouldn't be re-invoked.
-                        const isLastPanel = i >= messages.length
-                        const showResume = isLastPanel
-                          && !isSending
-                          && !!activeSession?.deepResearchResumeState
-                          && activeSession.deepResearchResumeState.lastCompletedPhase !== 'synth'
                         rendered.push(
                           <ResearchStepsPanel
                             key={`rsp-${group[0].id}`}
                             steps={group}
-                            onResume={showResume ? handleResumeDeepResearch : undefined}
                           />
                         )
                         continue
@@ -1397,7 +1398,7 @@ export function ChatPage() {
 
               {/* Input — panel footer, wrapped as composer card */}
               <div className="flex-shrink-0 px-3 pb-3 pt-1 border-t border-gray-200/80 dark:border-neutral-800
-                              bg-gradient-to-b from-transparent to-gray-50/40 dark:to-neutral-950/30">
+                              bg-gray-50/70 dark:bg-neutral-950/40">
                 <div className="chat-composer">
                   {inputArea}
                 </div>

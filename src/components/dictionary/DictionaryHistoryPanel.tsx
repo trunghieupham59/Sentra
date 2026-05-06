@@ -91,19 +91,16 @@ export function DictionaryHistoryPanel({
                 type="button"
                 onClick={() => onTabChange(id)}
                 className={[
-                  'flex-1 min-w-0 flex items-center justify-center gap-2 h-8 rounded-md px-2',
-                  'text-xs font-semibold transition-all duration-150 cursor-pointer',
-                  isActive
-                    ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-50 shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200',
+                  'btn-segment flex-1',
+                  isActive ? 'btn-segment-active' : '',
                 ].join(' ')}
               >
                 <span className="truncate">{label}</span>
                 <span
                   className={[
-                    'min-w-[18px] px-1 rounded-full text-[10px] font-semibold leading-tight tabular-nums',
+                    'ui-badge-xs min-w-[18px] justify-center px-1 tabular-nums',
                     isActive
-                      ? 'bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-300'
+                      ? 'bg-gray-100 text-gray-600 dark:bg-gray-950 dark:text-gray-300'
                       : 'bg-gray-200 text-gray-500 dark:bg-gray-800 dark:text-gray-500',
                   ].join(' ')}
                 >
@@ -122,14 +119,14 @@ export function DictionaryHistoryPanel({
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               placeholder={t.history_search_placeholder}
-              className="h-7 w-full rounded-md border border-gray-200 bg-gray-50/60 pl-7 pr-7 text-xs text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-500/15 dark:border-neutral-800 dark:bg-neutral-950/45 dark:text-gray-200 dark:placeholder:text-gray-600 dark:focus:bg-neutral-900"
+              className="h-7 w-full rounded-md border border-gray-200 bg-gray-50/60 pl-7 pr-7 text-xs text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-500/15 dark:border-neutral-800 dark:bg-neutral-950/45 dark:text-gray-200 dark:placeholder:text-gray-600 dark:focus:bg-neutral-900"
             />
             {filter && (
               <button
                 type="button"
                 onClick={() => setFilter('')}
                 title={t.history_search_clear}
-                className="absolute right-1 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-neutral-800 dark:hover:text-gray-200"
+                className="btn-icon btn-icon-xs absolute right-1 top-1/2 -translate-y-1/2 border-transparent bg-transparent text-gray-400 shadow-none dark:bg-transparent"
               >
                 <XIcon className="h-2.5 w-2.5" />
               </button>
@@ -163,7 +160,7 @@ export function DictionaryHistoryPanel({
                     className={[
                       'group relative flex cursor-pointer items-start gap-2.5 px-3 py-2.5 transition-colors',
                       isSelected
-                        ? 'bg-blue-50 dark:bg-blue-950/35'
+                        ? 'bg-gray-50 dark:bg-gray-950/35'
                         : 'hover:bg-gray-50 dark:hover:bg-neutral-950/40',
                     ].join(' ')}
                   >
@@ -172,7 +169,7 @@ export function DictionaryHistoryPanel({
                       aria-hidden
                       className={[
                         'absolute left-0 top-2 bottom-2 w-0.5 rounded-r',
-                        isSelected ? 'bg-blue-500' : 'bg-transparent',
+                        isSelected ? 'bg-gray-500' : 'bg-transparent',
                       ].join(' ')}
                     />
 
@@ -186,18 +183,18 @@ export function DictionaryHistoryPanel({
                           className={[
                             'truncate text-sm font-semibold',
                             isSelected
-                              ? 'text-blue-950 dark:text-blue-100'
+                              ? 'text-gray-950 dark:text-gray-100'
                               : 'text-gray-900 dark:text-gray-100',
                           ].join(' ')}
                         >
                           {entry.result.headword}
                         </span>
                         {entry.result.pronunciation && (
-                          <span className="truncate font-mono text-[11px] text-gray-400 dark:text-gray-500">
+                          <span className="ui-meta truncate font-mono">
                             /{entry.result.pronunciation.replace(/^\/|\/$/g, '')}/
                           </span>
                         )}
-                        <span className="ml-auto flex-shrink-0 text-[10px] tabular-nums text-gray-400 dark:text-gray-600">
+                        <span className="ui-micro ml-auto flex-shrink-0 tabular-nums">
                           {formatRelativeTime(entry.createdAt)}
                         </span>
                       </div>
@@ -217,10 +214,10 @@ export function DictionaryHistoryPanel({
                       }}
                       aria-label={entry.favorite ? t.dictionary_unfavorite : t.dictionary_favorite}
                       className={[
-                        'flex h-6 w-6 flex-shrink-0 items-center justify-center rounded transition-all',
+                        'btn-icon btn-icon-xs flex-shrink-0 border-transparent bg-transparent shadow-none dark:bg-transparent',
                         entry.favorite
-                          ? 'text-amber-500 dark:text-amber-300 opacity-100'
-                          : 'text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 hover:text-amber-500 dark:hover:text-amber-300',
+                          ? 'btn-active opacity-100'
+                          : 'text-gray-300 opacity-0 group-hover:opacity-100 dark:text-gray-600',
                       ].join(' ')}
                     >
                       <StarIcon className="h-3.5 w-3.5" />
@@ -240,7 +237,7 @@ export function DictionaryHistoryPanel({
             type="button"
             onClick={onClearHistory}
             disabled={!entries.some((entry) => !entry.favorite)}
-            className="btn-ghost px-2 text-xs"
+            className="btn-ghost btn-xs"
             title={t.dictionary_clear_history}
           >
             <TrashIcon className="h-3.5 w-3.5" />
@@ -250,7 +247,7 @@ export function DictionaryHistoryPanel({
             <button
               type="button"
               onClick={onDeleteSelected}
-              className="btn-ghost px-2 text-xs text-red-500 hover:text-red-600 dark:text-red-400"
+              className="btn-danger btn-xs"
               title={t.dictionary_delete}
             >
               <TrashIcon className="h-3.5 w-3.5" />

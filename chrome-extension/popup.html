@@ -24,7 +24,7 @@
   <div class="popup-shell" id="connected-state" style="display:none">
     <header class="popup-header">
       <div class="brand-mark">
-        <img src="icons/icon128.png" alt="Viezan" />
+        <img src="icons/icon128.png" alt="" aria-hidden="true" />
       </div>
       <div class="brand-copy">
         <div class="brand-title">Viezan</div>
@@ -40,7 +40,7 @@
       </button>
     </header>
 
-    <section class="popup-controls" aria-label="Translation controls">
+    <section class="popup-controls" id="popup-controls">
       <div class="model-stack">
         <span class="meta-badge ctrl-badge-loading" id="ctrl-provider">Provider</span>
         <span class="meta-badge ctrl-badge-model ctrl-badge-loading" id="ctrl-model">Model</span>
@@ -58,12 +58,12 @@
     <main class="popup-body">
       <section class="text-panel panel-source" aria-labelledby="source-label">
         <div class="panel-label" id="source-label">Original</div>
-        <textarea class="source-textarea" id="input-text" placeholder="Paste or type text here..."></textarea>
+        <textarea class="source-textarea" id="input-text"></textarea>
       </section>
       <div class="panel-divider" aria-hidden="true"></div>
       <section class="text-panel panel-result" aria-labelledby="result-label">
         <div class="panel-label" id="result-label">Translation</div>
-        <div class="result-text" id="result-text"><span class="result-placeholder">Translation appears here...</span></div>
+        <div class="result-text" id="result-text"></div>
       </section>
     </main>
 

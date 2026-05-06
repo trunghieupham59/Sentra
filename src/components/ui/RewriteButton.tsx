@@ -44,11 +44,10 @@ export function RewriteButton({
       title={labelRewrite}
       disabled={isAnyRewriting}
       className={[
-        'flex items-center gap-1 px-2 py-1 rounded-full text-xs',
-        'transition-all duration-200 cursor-pointer',
+        'btn-ghost btn-xs',
         isThisPanel
-          ? 'bg-violet-500 text-white shadow-sm'
-          : 'text-gray-400 hover:text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-950 dark:hover:text-violet-400',
+          ? 'btn-icon-active'
+          : 'text-gray-400',
         isAnyRewriting && !isThisPanel ? 'opacity-40 cursor-not-allowed' : '',
       ].join(' ')}
     >

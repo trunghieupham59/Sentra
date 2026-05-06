@@ -115,7 +115,6 @@ export function PreferencesSection() {
             checked={autoTranslate}
             onChange={setAutoTranslate}
             aria-label={t.settings_auto_translate}
-            color="green"
           />
         </div>
 
@@ -134,7 +133,7 @@ export function PreferencesSection() {
                 step={100}
                 value={autoTranslateDelay}
                 onChange={(e) => setAutoTranslateDelay(Number(e.target.value))}
-                className="w-24 accent-blue-600"
+                className="w-24 accent-gray-600"
               />
               <span className="text-xs text-gray-500 font-mono w-14 text-right tabular-nums">
                 {autoTranslateDelay}ms

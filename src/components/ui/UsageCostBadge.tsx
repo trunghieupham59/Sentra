@@ -4,7 +4,7 @@
  *
  * Variants:
  *   - size: 'sm' (history rows, inline) | 'md' (chat bubble, dictionary)
- *   - tone: 'emerald' (default — savings vibe) | 'neutral' (subdued)
+ *   - tone: 'neutral' (subdued)
  *
  * Hovering reveals a native title with the input/output token breakdown,
  * so power users can audit how the number was estimated.
@@ -13,7 +13,7 @@ import type { UsageCost, UsageCurrency } from '../../types'
 import { formatTokenCount, formatUsageAmount } from '../../utils/usageCost'
 
 type BadgeSize = 'sm' | 'md'
-type BadgeTone = 'emerald' | 'neutral'
+type BadgeTone = 'neutral'
 
 interface UsageCostBadgeProps {
   cost?: Pick<UsageCost, 'amountUsd' | 'estimated' | 'inputTokens' | 'outputTokens' | 'totalTokens'>
@@ -25,13 +25,11 @@ interface UsageCostBadgeProps {
 }
 
 const SIZE_CLASSES: Record<BadgeSize, string> = {
-  sm: 'gap-1 px-2 py-0.5 text-[10px]',
-  md: 'gap-1.5 px-2.5 py-1 text-[11px]',
+  sm: 'ui-badge-xs gap-1',
+  md: 'ui-badge gap-1.5 py-1',
 }
 
 const TONE_CLASSES: Record<BadgeTone, string> = {
-  emerald:
-    'bg-emerald-50 text-emerald-700 ring-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-900/50',
   neutral:
     'bg-gray-100 text-gray-600 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700',
 }
@@ -41,7 +39,7 @@ export function UsageCostBadge({
   currency,
   label,
   size = 'sm',
-  tone = 'emerald',
+  tone = 'neutral',
   className,
 }: UsageCostBadgeProps) {
   if (!cost) return null
@@ -58,7 +56,7 @@ export function UsageCostBadge({
   return (
     <span
       className={[
-        'inline-flex items-center rounded-full font-semibold ring-1',
+        'ring-1',
         SIZE_CLASSES[size],
         TONE_CLASSES[tone],
         className ?? '',

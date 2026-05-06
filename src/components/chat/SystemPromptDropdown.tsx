@@ -107,11 +107,7 @@ export function SystemPromptDropdown({
         type="button"
         onClick={() => setShowDropdown((v) => !v)}
         title={t.chat_system_prompt}
-        className={`flex w-full items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border
-                    transition-all duration-150 select-none cursor-pointer whitespace-nowrap
-                    ${isActive
-                      ? 'bg-gradient-to-r from-indigo-50 to-violet-50 border-indigo-200/80 text-indigo-700 shadow-sm shadow-indigo-900/[0.05] dark:from-indigo-950/40 dark:to-violet-950/40 dark:border-indigo-800/60 dark:text-indigo-200'
-                      : 'bg-white border-gray-200 text-gray-600 hover:border-blue-200 hover:bg-blue-50/60 hover:text-blue-700 shadow-sm shadow-gray-900/[0.04] dark:bg-neutral-900 dark:border-neutral-800 dark:text-gray-300 dark:hover:border-blue-800 dark:hover:bg-blue-950/40 dark:hover:text-blue-200'}`}
+        className={`btn-secondary w-full justify-start whitespace-nowrap ${isActive ? 'btn-active' : ''}`}
       >
 
         <DocumentIcon />
@@ -119,7 +115,7 @@ export function SystemPromptDropdown({
           {activePreset ? activePreset.name : t.chat_system_prompt}
         </span>
         {isActive && (
-          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />
+          <span className="w-1.5 h-1.5 rounded-full bg-gray-500 flex-shrink-0" />
         )}
         <ChevronDownIcon className="w-2.5 h-2.5 flex-shrink-0" />
       </button>
@@ -129,8 +125,7 @@ export function SystemPromptDropdown({
         <div className="floating-panel absolute right-0 top-full mt-1 w-72 z-50 overflow-hidden">
 
           {/* Header */}
-          <p className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider
-                         border-b border-gray-100 dark:border-gray-700">
+          <p className="ui-kicker border-b border-gray-100 px-3 py-1.5 dark:border-gray-700">
             {t.settings_chat_presets}
           </p>
 
@@ -138,18 +133,14 @@ export function SystemPromptDropdown({
           <button
             type="button"
             onClick={() => { onSetChatSystemPrompt(''); setShowDropdown(false) }}
-            className={`w-full text-left px-3 py-2 text-sm transition-colors cursor-pointer
-                        flex items-center gap-2
-                        ${!chatSystemPrompt
-                          ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300'
-                          : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
+            className={`btn-menu-item justify-start text-left ${!chatSystemPrompt ? 'btn-active' : ''}`}
           >
             <div className="flex-1 min-w-0">
               <span className="font-medium">{t.chat_system_prompt_none}</span>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{t.chat_system_prompt_none_desc}</p>
             </div>
             {!chatSystemPrompt && (
-              <RadioCheckedIcon className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+              <RadioCheckedIcon className="w-4 h-4 text-gray-500 flex-shrink-0" />
             )}
           </button>
 
@@ -168,17 +159,13 @@ export function SystemPromptDropdown({
                     onSetChatSystemPrompt(preset.content)
                     setShowDropdown(false)
                   }}
-                  className={`w-full text-left px-3 py-2 text-sm transition-colors cursor-pointer
-                               flex items-start gap-2
-                               ${chatSystemPrompt === preset.content
-                                 ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300'
-                                 : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
+                  className={`btn-menu-item items-start justify-start text-left ${chatSystemPrompt === preset.content ? 'btn-active' : 'text-gray-700 dark:text-gray-200'}`}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="font-medium truncate">{preset.name}</span>
                       {preset.isDefault && (
-                        <span className="text-[9px] px-1 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 shrink-0">
+                        <span className="ui-badge-xs shrink-0 rounded-md px-1 text-gray-600 dark:bg-neutral-700 dark:text-gray-300">
                           {t.settings_chat_preset_is_default}
                         </span>
                       )}
@@ -188,7 +175,7 @@ export function SystemPromptDropdown({
                     </p>
                   </div>
                   {chatSystemPrompt === preset.content && (
-                    <RadioCheckedIcon className="w-4 h-4 text-indigo-500 flex-shrink-0 mt-0.5" />
+                    <RadioCheckedIcon className="w-4 h-4 text-gray-500 flex-shrink-0 mt-0.5" />
                   )}
                 </button>
               ))
@@ -198,7 +185,7 @@ export function SystemPromptDropdown({
           {/* Inline Add Preset Form */}
           {showAddForm && (
             <div className="border-t border-gray-100 dark:border-gray-700 p-3 space-y-2">
-              <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+              <p className="ui-kicker">
                 {t.settings_chat_preset_add}
               </p>
               <input
@@ -207,29 +194,20 @@ export function SystemPromptDropdown({
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder={t.settings_chat_preset_name_placeholder}
-                className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600
-                           bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-100
-                           placeholder-gray-400 dark:placeholder-gray-500
-                           focus:outline-none focus:border-indigo-400 dark:focus:border-indigo-500
-                           transition-colors"
+                className="field-input field-input-sm"
               />
               <textarea
                 value={newContent}
                 onChange={(e) => setNewContent(e.target.value)}
                 placeholder={t.chat_system_prompt_placeholder}
                 rows={3}
-                className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600
-                           bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-100
-                           placeholder-gray-400 dark:placeholder-gray-500
-                           focus:outline-none focus:border-indigo-400 dark:focus:border-indigo-500
-                           resize-none transition-colors"
+                className="field-textarea field-textarea-sm"
               />
               <div className="flex items-center gap-2 justify-end">
                 <button
                   type="button"
                   onClick={handleCancelAdd}
-                  className="text-xs px-2.5 py-1 rounded-lg text-gray-500 dark:text-gray-400
-                             hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                  className="btn-secondary btn-xs"
                 >
                   {t.settings_chat_preset_cancel}
                 </button>
@@ -237,9 +215,7 @@ export function SystemPromptDropdown({
                   type="button"
                   onClick={handleSavePreset}
                   disabled={!newName.trim() || !newContent.trim()}
-                  className="text-xs px-2.5 py-1 rounded-lg bg-indigo-500 text-white
-                             hover:bg-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed
-                             transition-colors cursor-pointer"
+                  className="btn-primary btn-xs"
                 >
                   {t.settings_chat_preset_save}
                 </button>
@@ -254,8 +230,7 @@ export function SystemPromptDropdown({
               <button
                 type="button"
                 onClick={handleOpenAddForm}
-                className="text-xs text-indigo-500 dark:text-indigo-400 hover:underline cursor-pointer
-                           transition-colors flex items-center gap-1"
+                className="btn-link text-xs"
               >
                 <PlusIcon />
                 {t.settings_chat_preset_add}
@@ -264,8 +239,7 @@ export function SystemPromptDropdown({
               <button
                 type="button"
                 onClick={handleCancelAdd}
-                className="text-xs text-gray-400 dark:text-gray-500 hover:underline cursor-pointer
-                           transition-colors flex items-center gap-1"
+                className="btn-link text-xs text-gray-400 dark:text-gray-500"
               >
                 <XIcon className="w-3 h-3" />
                 {t.settings_chat_preset_cancel}
@@ -276,7 +250,7 @@ export function SystemPromptDropdown({
             <button
               type="button"
               onClick={() => { setShowDropdown(false); onNavigateSettings() }}
-              className="text-xs text-blue-500 dark:text-blue-400 hover:underline cursor-pointer transition-colors flex items-center gap-1"
+              className="btn-link text-xs"
             >
               {t.settings_title}
               <ChevronRightIcon />

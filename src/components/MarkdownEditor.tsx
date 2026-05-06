@@ -187,7 +187,7 @@ export function MarkdownEditor({ value, onChange, placeholder, className, onBlur
       className={`cursor-text ${className ?? ''}`}
     >
       {isEmpty && focusedLine === null && (
-        <span className="text-gray-400 dark:text-gray-600 text-[15px] select-none pointer-events-none">
+        <span className="ui-reader-muted pointer-events-none select-none text-gray-400 dark:text-gray-600">
           {placeholder}
         </span>
       )}
@@ -213,9 +213,7 @@ export function MarkdownEditor({ value, onChange, placeholder, className, onBlur
             onKeyDown={(e) => handleKeyDown(idx, e)}
             onBlur={handleLineBlur}
             rows={1}
-            className="w-full bg-transparent outline-none resize-none overflow-hidden
-                       font-mono text-[15px] leading-relaxed text-gray-700 dark:text-gray-200
-                       py-0 px-0 block"
+            className="ui-reader-text block w-full resize-none overflow-hidden bg-transparent px-0 py-0 font-mono outline-none"
             style={{ minHeight: '1.6em' }}
           />
         ) : (

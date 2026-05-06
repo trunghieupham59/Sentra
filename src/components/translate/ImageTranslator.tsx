@@ -101,8 +101,8 @@ export function ImageTranslator({ onImageReady, onClose }: ImageTranslatorProps)
         <div className="flex items-center justify-between px-5 py-3.5
                         border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center">
-              <ImageIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+              <ImageIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
             </div>
             <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
               {t.image_translate_title}
@@ -111,9 +111,7 @@ export function ImageTranslator({ onImageReady, onClose }: ImageTranslatorProps)
           <button
             type="button"
             onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded-full
-                       text-gray-400 hover:text-gray-600 hover:bg-gray-100
-                       dark:hover:text-gray-300 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+            className="btn-icon btn-icon-sm"
           >
             <XIcon className="w-4 h-4" />
           </button>
@@ -125,8 +123,8 @@ export function ImageTranslator({ onImageReady, onClose }: ImageTranslatorProps)
             /* Processing state */
             <div className="flex flex-col items-center gap-4 py-10">
               <div className="relative w-14 h-14">
-                <div className="absolute inset-0 rounded-full bg-emerald-100 dark:bg-emerald-900/30 animate-ping" style={{ animationDuration: PROCESSING_PING_DURATION_S }} />
-                <div className="relative w-14 h-14 rounded-full bg-emerald-500 flex items-center justify-center shadow-md">
+                <div className="absolute inset-0 rounded-full bg-gray-100 dark:bg-gray-900/30 animate-ping" style={{ animationDuration: PROCESSING_PING_DURATION_S }} />
+                <div className="relative w-14 h-14 rounded-full bg-gray-500 flex items-center justify-center shadow-md">
                   <SpinnerIcon className="w-6 h-6 text-white animate-spin" />
                 </div>
               </div>
@@ -144,16 +142,16 @@ export function ImageTranslator({ onImageReady, onClose }: ImageTranslatorProps)
                   'flex flex-col items-center justify-center rounded-lg border-2 border-dashed',
                   'cursor-pointer transition-all duration-200 select-none py-12 px-6 text-center',
                   isDragging
-                    ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-emerald-300 hover:bg-gray-50 dark:hover:bg-gray-800/50',
+                    ? 'border-gray-400 bg-gray-50 dark:bg-gray-950/30'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50',
                 ].join(' ')}
                 onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={handleDrop}
               >
                 <div className={`w-14 h-14 rounded-lg flex items-center justify-center mb-4 transition-colors
-                                ${isDragging ? 'bg-emerald-100 dark:bg-emerald-900' : 'bg-gray-100 dark:bg-gray-800'}`}>
-                  <UploadIcon className={`w-7 h-7 transition-colors ${isDragging ? 'text-emerald-500' : 'text-gray-400'}`} />
+                                ${isDragging ? 'bg-gray-100 dark:bg-gray-900' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                  <UploadIcon className={`w-7 h-7 transition-colors ${isDragging ? 'text-gray-500' : 'text-gray-400'}`} />
                 </div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
                   {t.image_translate_upload_hint.split('\n')[0]}
@@ -172,10 +170,9 @@ export function ImageTranslator({ onImageReady, onClose }: ImageTranslatorProps)
               />
 
               {errorMsg && (
-                <div className="mt-3 flex items-start gap-2 p-3 rounded-lg
-                                bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900">
-                  <AlertTriangleIcon className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-red-700 dark:text-red-300">{errorMsg}</p>
+                <div className="ui-error-box mt-3 flex items-start gap-2">
+                  <AlertTriangleIcon className="ui-error-icon w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs">{errorMsg}</p>
                 </div>
               )}
             </>

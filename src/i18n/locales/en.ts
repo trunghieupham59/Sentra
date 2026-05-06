@@ -572,6 +572,7 @@ const en: Translations = {
   ai_chat_popup_input_too_long: 'Input is too long. Trim it down to send.',
   ai_chat_popup_new_line: 'New line',
   ai_chat_popup_close: 'Close',
+  ai_chat_popup_turns: '{count} turns',
   settings_chat_hotkey_section: 'AI Chat Hotkey',
   settings_chat_hotkey_section_desc: 'Press a shortcut in any app to show or hide the AI quick-ask popup.',
   settings_chat_hotkey_enabled: 'Enable Hotkey',
@@ -694,7 +695,9 @@ const en: Translations = {
   chat_research_done_label: 'Thought',
   chat_research_steps_unit: 'steps',
   chat_research_aspects_suffix: '{count} aspects',
+  chat_research_show_details: 'Show research details',
   chat_deep_research_resume: 'Resume research',
+  chat_deep_research_resume_short: 'Resume',
 
   chat_deep_research_summarizing: 'Synthesizing results…',
 

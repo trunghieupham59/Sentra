@@ -9,10 +9,11 @@ export function AppLogoIcon({ size = 64 }: { size?: number }) {
   return (
     <img
       src={logoSrc}
-      alt="Viezan App Logo Icon"
+      alt=""
+      aria-hidden="true"
       width={size}
       height={size}
-      style={{ objectFit: 'contain' }}
+      style={{ objectFit: 'contain', filter: 'grayscale(1) contrast(1.08)' }}
       draggable={false}
     />
   )

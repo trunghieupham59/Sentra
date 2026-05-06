@@ -108,7 +108,7 @@ export function ChatPresetsSection() {
                 <button
                   type="button"
                   onClick={() => setChatNewSessionShortcut('')}
-                  className="p-1 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                  className="btn-icon btn-icon-sm btn-icon-danger"
                   title={t.settings_hotkey_clear}
                 >
                   <XIcon />
@@ -118,7 +118,7 @@ export function ChatPresetsSection() {
                 <button
                   type="button"
                   onClick={() => setChatNewSessionShortcut(DEFAULT_CHAT_NEW_SESSION_SHORTCUT)}
-                  className="px-2 py-1 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-blue-300 dark:hover:border-blue-700 transition-colors cursor-pointer"
+                  className="btn-secondary btn-xs"
                 >
                   {t.settings_chat_shortcut_restore_default}
                 </button>
@@ -147,9 +147,7 @@ export function ChatPresetsSection() {
             <button
               type="button"
               onClick={() => { setShowAddForm((v) => !v); setEditingPresetId(null) }}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium
-                         bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400
-                         hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors cursor-pointer border border-blue-200 dark:border-blue-800"
+              className="btn-secondary btn-xs"
             >
               <PlusIcon />
               {t.settings_chat_preset_add}
@@ -165,7 +163,7 @@ export function ChatPresetsSection() {
                 onChange={(e) => setNewPresetName(e.target.value)}
                 placeholder={t.settings_chat_preset_name_placeholder}
                 className="w-full text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600
-                           rounded-lg px-3 py-1.5 outline-none focus:border-blue-400 dark:focus:border-blue-600
+                           rounded-lg px-3 py-1.5 outline-none focus:border-gray-400 dark:focus:border-gray-600
                            text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500"
               />
               <textarea
@@ -174,7 +172,7 @@ export function ChatPresetsSection() {
                 placeholder={t.chat_system_prompt_placeholder}
                 rows={3}
                 className="w-full text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600
-                           rounded-lg px-3 py-1.5 outline-none resize-none focus:border-blue-400 dark:focus:border-blue-600
+                           rounded-lg px-3 py-1.5 outline-none resize-none focus:border-gray-400 dark:focus:border-gray-600
                            text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500"
               />
               <SettingsFormActions
@@ -204,7 +202,7 @@ export function ChatPresetsSection() {
                         onChange={(e) => setEditName(e.target.value)}
                         placeholder={t.settings_chat_preset_name_placeholder}
                         className="w-full text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600
-                                   rounded-lg px-3 py-1.5 outline-none focus:border-blue-400 dark:focus:border-blue-600
+                                   rounded-lg px-3 py-1.5 outline-none focus:border-gray-400 dark:focus:border-gray-600
                                    text-gray-800 dark:text-gray-200 placeholder-gray-400"
                       />
                       <textarea
@@ -212,7 +210,7 @@ export function ChatPresetsSection() {
                         onChange={(e) => setEditContent(e.target.value)}
                         rows={3}
                         className="w-full text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600
-                                   rounded-lg px-3 py-1.5 outline-none resize-none focus:border-blue-400 dark:focus:border-blue-600
+                                   rounded-lg px-3 py-1.5 outline-none resize-none focus:border-gray-400 dark:focus:border-gray-600
                                    text-gray-800 dark:text-gray-200"
                       />
                       <SettingsFormActions
@@ -231,7 +229,7 @@ export function ChatPresetsSection() {
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{preset.name}</span>
                           {preset.isDefault && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 font-medium">
+                            <span className="ui-badge-xs font-medium text-gray-600 dark:bg-gray-900/50 dark:text-gray-400">
                               {t.settings_chat_preset_is_default}
                             </span>
                           )}

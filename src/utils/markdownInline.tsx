@@ -9,7 +9,7 @@
  */
 
 const LINK_CLASS =
-  'font-medium text-blue-600 underline underline-offset-2 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 break-words cursor-pointer'
+  'font-medium text-gray-800 underline underline-offset-2 hover:text-gray-950 dark:text-gray-200 dark:hover:text-white break-words cursor-pointer'
 
 const TRAILING_LINK_PUNCTUATION = '.,!?:;'
 const CLOSING_BRACKET_TO_OPENING: Record<string, string> = {

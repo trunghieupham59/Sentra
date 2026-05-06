@@ -38,7 +38,7 @@ const MAX_CHART_SERIES = 4
 const MAX_CHART_LABEL_CHARS = 40
 const MAX_CHART_TITLE_CHARS = 80
 
-const CHART_COLORS = ['#2563eb', '#059669', '#dc2626', '#7c3aed', '#ea580c', '#0891b2']
+const CHART_COLORS = ['#111827', '#374151', '#4b5563', '#6b7280', '#9ca3af', '#d1d5db']
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)

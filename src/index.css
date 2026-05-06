@@ -22,8 +22,8 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     user-select: none;
-    background-color: #f5f7fb;
-    color: #0f172a;
+    background-color: #f6f6f6;
+    color: #111827;
   }
 
   html.quick-chat-window,
@@ -50,32 +50,220 @@
 }
 
 @layer components {
-  /* ── Buttons ─────────────────────────────── */
+  /* ── Buttons ───────────────────────────────
+   * One neutral desktop language for app, modal, chat, and settings actions.
+   * Variants share radius, focus, disabled, and motion; only intent changes. */
+  .btn-primary,
+  .btn-secondary,
+  .btn-soft,
+  .btn-ghost,
+  .btn-danger,
+  .btn-link,
+  .toolbar-pill-button {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg
+           font-semibold leading-none transition-colors duration-150 select-none
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60
+           disabled:cursor-not-allowed disabled:opacity-45;
+  }
+
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2
-           bg-blue-600 text-white text-sm font-semibold rounded-lg
-           hover:bg-blue-700 active:bg-blue-800 shadow-sm shadow-blue-900/10
-           disabled:opacity-40 disabled:cursor-not-allowed
-           transition-colors duration-100 select-none;
+    @apply min-h-9 border border-gray-950 bg-gray-950 px-3.5 py-2 text-sm text-white
+           shadow-sm shadow-gray-900/10 hover:border-gray-800 hover:bg-gray-800 active:bg-black
+           disabled:border-gray-300 disabled:bg-gray-300 disabled:text-white disabled:shadow-none
+           dark:border-gray-100 dark:bg-gray-100 dark:text-neutral-950
+           dark:hover:border-white dark:hover:bg-white
+           dark:disabled:border-neutral-700 dark:disabled:bg-neutral-700 dark:disabled:text-neutral-400;
+  }
+
+  .btn-secondary {
+    @apply min-h-9 border border-gray-200 bg-white px-3.5 py-2 text-sm text-gray-700
+           shadow-sm shadow-gray-900/5 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-950
+           dark:border-neutral-700 dark:bg-neutral-900 dark:text-gray-200
+           dark:hover:border-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-gray-100;
+  }
+
+  .btn-soft {
+    @apply min-h-9 border border-gray-200 bg-gray-50 px-3.5 py-2 text-sm text-gray-700
+           hover:border-gray-300 hover:bg-gray-100 hover:text-gray-950
+           dark:border-neutral-700 dark:bg-neutral-800 dark:text-gray-200
+           dark:hover:border-neutral-500 dark:hover:bg-neutral-700 dark:hover:text-gray-100;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-1.5 px-3 py-1.5
-           text-gray-500 text-sm rounded-md
-           hover:bg-gray-100 hover:text-gray-700 active:bg-gray-200
-           disabled:opacity-40 disabled:cursor-not-allowed
-           transition-colors duration-100 select-none
-           dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200;
+    @apply min-h-8 border border-transparent bg-transparent px-2.5 py-1.5 text-sm text-gray-500
+           hover:bg-gray-100 hover:text-gray-800 active:bg-gray-200
+           dark:text-gray-400 dark:hover:bg-neutral-800 dark:hover:text-gray-100;
+  }
+
+  .btn-danger {
+    @apply min-h-9 border border-red-200 bg-red-50 px-3.5 py-2 text-sm text-red-600
+           hover:border-red-300 hover:bg-red-100 hover:text-red-700
+           dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300
+           dark:hover:border-red-800 dark:hover:bg-red-950/50 dark:hover:text-red-200;
+  }
+
+  .btn-icon-danger {
+    @apply border-transparent bg-transparent text-gray-400 shadow-none
+           hover:border-red-200 hover:bg-red-50 hover:text-red-500
+           dark:bg-transparent dark:text-gray-500
+           dark:hover:bg-red-950/40 dark:hover:text-red-300;
+  }
+
+  .btn-link {
+    @apply rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm text-gray-600
+           underline-offset-2 hover:text-gray-950 hover:underline
+           dark:text-gray-300 dark:hover:text-gray-100;
+  }
+
+  .btn-language-tab {
+    @apply inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-transparent
+           bg-transparent px-3 py-2 text-sm font-medium text-gray-500 transition-colors duration-150 select-none
+           hover:bg-gray-100 hover:text-gray-800
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60
+           disabled:cursor-not-allowed disabled:opacity-45
+           dark:text-gray-400 dark:hover:bg-neutral-800 dark:hover:text-gray-100;
+  }
+
+  .btn-sm {
+    @apply min-h-8 px-3 py-1.5 text-xs;
+  }
+
+  .btn-xs {
+    @apply min-h-6 px-2 py-1 text-xs;
+  }
+
+  .btn-icon,
+  .toolbar-icon-button {
+    @apply inline-flex h-8 w-8 items-center justify-center rounded-lg border
+           border-gray-200 bg-white text-gray-500 shadow-sm shadow-gray-900/5
+           transition-colors duration-150 select-none
+           hover:border-gray-300 hover:bg-gray-100 hover:text-gray-950
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60
+           disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-50 disabled:text-gray-300 disabled:shadow-none
+           dark:border-neutral-700 dark:bg-neutral-900 dark:text-gray-400
+           dark:hover:border-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-gray-100
+           dark:disabled:border-neutral-800 dark:disabled:bg-neutral-900 dark:disabled:text-neutral-700;
+  }
+
+  .btn-icon-sm {
+    @apply h-7 w-7;
+  }
+
+  .btn-icon-xs {
+    @apply h-6 w-6;
+  }
+
+  .btn-icon-lg {
+    @apply h-9 w-9;
+  }
+
+  .btn-icon-xl {
+    @apply h-10 w-10;
+  }
+
+  .btn-icon-2xl {
+    @apply h-12 w-12;
+  }
+
+  .btn-active,
+  .btn-icon-active,
+  .toolbar-icon-button-active {
+    @apply border-gray-400 bg-gray-100 text-gray-950
+           dark:border-gray-500 dark:bg-neutral-800 dark:text-gray-100;
+  }
+
+  .toolbar-pill-button {
+    @apply min-h-8 border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-600
+           shadow-sm shadow-gray-900/5 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-950
+           dark:border-neutral-700 dark:bg-neutral-900 dark:text-gray-400
+           dark:hover:border-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-gray-100;
+  }
+
+  .toolbar-pill-danger {
+    @apply hover:!border-red-200 hover:!bg-red-50 hover:!text-red-600
+           dark:hover:!bg-red-950/50 dark:hover:!text-red-400;
+  }
+
+  .btn-segment {
+    @apply inline-flex min-h-8 min-w-0 items-center justify-center gap-2 rounded-md px-3 py-1.5
+           text-xs font-medium text-gray-500 transition-colors duration-150
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60
+           disabled:cursor-not-allowed disabled:opacity-45
+           hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200;
+  }
+
+  .btn-segment-active {
+    @apply bg-white text-gray-950 shadow-sm shadow-gray-900/5
+           dark:bg-neutral-800 dark:text-gray-100;
+  }
+
+  .btn-segment-lg {
+    @apply min-h-9;
+  }
+
+  .btn-stack-option {
+    @apply flex-col items-start px-2.5 py-1.5 text-left;
+  }
+
+  .btn-choice-card {
+    @apply flex-col items-start justify-start px-3 py-2.5 text-left;
+  }
+
+  .btn-swatch {
+    @apply h-6 w-6 rounded-lg border-2 border-gray-200 shadow-sm shadow-gray-900/5
+           transition-transform duration-150 hover:scale-105
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60
+           dark:border-neutral-700;
+  }
+
+  .btn-swatch-active {
+    @apply border-gray-600 ring-2 ring-gray-300
+           dark:border-gray-300 dark:ring-neutral-600;
+  }
+
+  .btn-menu-item {
+    @apply inline-flex min-h-9 w-full items-center gap-1.5 rounded-none border border-transparent
+           bg-transparent px-3 py-2 text-sm font-semibold text-gray-600 transition-colors duration-150 select-none
+           hover:bg-gray-100 hover:text-gray-800 active:bg-gray-200
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60
+           disabled:cursor-not-allowed disabled:opacity-45
+           dark:text-gray-300 dark:hover:bg-neutral-800 dark:hover:text-gray-100;
+  }
+
+  .btn-row-action {
+    @apply inline-flex min-h-0 flex-1 items-start justify-start rounded-none border border-transparent
+           bg-transparent p-0 text-left text-sm font-normal text-inherit transition-colors duration-150
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60;
+  }
+
+  .btn-nav-item {
+    @apply min-h-10 w-full justify-start gap-3 px-3 py-2 text-left text-sm shadow-none;
+  }
+
+  .btn-nav-item-collapsed {
+    @apply justify-center px-0;
   }
 
   /* ── Select ──────────────────────────────── */
+  .btn-select {
+    @apply inline-flex h-8 items-center justify-between gap-1.5 rounded-lg border
+           border-gray-200 bg-gray-100 px-2.5 text-xs font-medium text-gray-500
+           shadow-sm shadow-gray-900/5 transition-colors duration-150 select-none
+           dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400;
+  }
+
+  .btn-select-active {
+    @apply border-gray-300 bg-gray-100 text-gray-900
+           dark:border-neutral-600 dark:bg-neutral-800 dark:text-gray-100;
+  }
+
   .select-field {
-    @apply block w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg
-           text-[13px] font-medium text-gray-700 appearance-none cursor-pointer
-           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+    @apply block min-h-8 w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg
+           text-xs font-medium text-gray-700 appearance-none cursor-pointer
+           focus:outline-none focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500
            transition-colors duration-100
            dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200
-           dark:focus:border-blue-400;
+           dark:focus:border-gray-400;
   }
 
   /* ── Cards ───────────────────────────────── */
@@ -86,9 +274,8 @@
 
   /* ── App surfaces ────────────────────────── */
   .app-shell {
-    @apply flex flex-col h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,#e0f2fe_0,#f5f7fb_24rem,#f5f7fb_100%)]
-           text-gray-950 dark:bg-[radial-gradient(circle_at_top_left,#172554_0,#0a0a0a_22rem,#0a0a0a_100%)]
-           dark:text-gray-50;
+    @apply flex flex-col h-screen overflow-hidden bg-gray-100 text-gray-950
+           dark:bg-neutral-950 dark:text-gray-50;
   }
 
   .app-page {
@@ -101,7 +288,7 @@
 
   .app-topbar {
     @apply relative z-30 flex items-center flex-shrink-0 min-h-11 overflow-visible rounded-lg border border-white/80 bg-white/80 px-3 py-2
-           shadow-sm shadow-gray-900/5 backdrop-blur
+           shadow-sm shadow-gray-900/5
            dark:border-white/10 dark:bg-neutral-900/80 dark:shadow-black/20;
   }
 
@@ -115,13 +302,13 @@
   }
 
   .surface-panel-focus {
-    @apply focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-500/15
-           dark:focus-within:border-blue-700 dark:focus-within:ring-blue-400/15;
+    @apply focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-500/15
+           dark:focus-within:border-gray-500 dark:focus-within:ring-gray-400/15;
   }
 
   .surface-panel-drop {
-    @apply border-emerald-300 bg-emerald-50/95 ring-2 ring-inset ring-emerald-300
-           dark:border-emerald-700 dark:bg-emerald-950/30 dark:ring-emerald-700;
+    @apply border-gray-400 bg-gray-50/95 ring-2 ring-inset ring-gray-300
+           dark:border-gray-500 dark:bg-neutral-900/70 dark:ring-gray-600;
   }
 
   .surface-footer {
@@ -140,29 +327,142 @@
            dark:border-neutral-800 dark:bg-neutral-950 dark:shadow-black/60;
   }
 
-  .toolbar-icon-button {
-    @apply inline-flex items-center justify-center w-8 h-8 rounded-lg border
-           border-gray-200 bg-white text-gray-500 shadow-sm shadow-gray-900/5 transition-colors duration-150
-           hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600
-           dark:border-neutral-700 dark:bg-neutral-900 dark:text-gray-400
-           dark:hover:border-blue-800 dark:hover:bg-blue-950/40 dark:hover:text-blue-300;
-  }
-
-  .toolbar-icon-button-active {
-    @apply border-blue-300 bg-blue-50 text-blue-700
-           dark:border-blue-700 dark:bg-blue-950/50 dark:text-blue-300;
-  }
-
-  .toolbar-pill-button {
-    @apply inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white
-           px-2.5 py-1.5 text-xs font-semibold text-gray-600 shadow-sm shadow-gray-900/5 transition-colors duration-150
-           hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700
-           dark:border-neutral-700 dark:bg-neutral-900 dark:text-gray-400
-           dark:hover:border-blue-800 dark:hover:bg-blue-950/40 dark:hover:text-blue-200;
-  }
-
   .popover-title {
     @apply text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest;
+  }
+
+  /* ── Typography tokens ───────────────────── */
+  .ui-micro {
+    @apply text-[10px] text-gray-400 dark:text-gray-600;
+  }
+
+  .ui-meta {
+    @apply text-[11px] text-gray-500 dark:text-gray-400;
+  }
+
+  .ui-caption {
+    @apply text-xs text-gray-500 dark:text-gray-400;
+  }
+
+  .ui-kicker {
+    @apply text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500;
+  }
+
+  .ui-reader-text {
+    @apply text-[15px] leading-relaxed text-gray-700 dark:text-gray-200;
+  }
+
+  .ui-reader-muted {
+    @apply text-[15px] leading-relaxed text-gray-300 dark:text-gray-700;
+  }
+
+  .ui-badge {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2 py-0.5
+           text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300;
+  }
+
+  .ui-badge-danger {
+    @apply bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300;
+  }
+
+  .ui-badge-muted {
+    @apply bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400;
+  }
+
+  .ui-badge-xs {
+    @apply inline-flex items-center rounded-full bg-gray-100 px-1.5 py-0.5
+           text-[10px] font-semibold leading-none text-gray-700 dark:bg-gray-950 dark:text-gray-300;
+  }
+
+  .ui-token-badge {
+    @apply inline-flex items-center rounded-md bg-gray-50 px-1.5 py-0.5
+           text-[10px] font-semibold uppercase tracking-wide text-gray-700
+           dark:bg-gray-950/45 dark:text-gray-300;
+  }
+
+  .ui-index-dot {
+    @apply mt-1 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-gray-50
+           text-[10px] font-semibold tabular-nums text-gray-600
+           dark:bg-gray-950/40 dark:text-gray-300;
+  }
+
+  .ui-status-dot {
+    @apply h-1.5 w-1.5 flex-shrink-0 rounded-full bg-gray-400;
+  }
+
+  .ui-status-dot-danger {
+    @apply bg-red-500;
+  }
+
+  .ui-status-ping-danger {
+    @apply bg-red-400;
+  }
+
+  .ui-error-text {
+    @apply text-red-600 dark:text-red-400;
+  }
+
+  .ui-error-icon {
+    @apply text-red-500 dark:text-red-400;
+  }
+
+  .ui-error-box {
+    @apply rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700
+           dark:border-red-900/70 dark:bg-red-950/35 dark:text-red-300;
+  }
+
+  .ui-error-banner {
+    @apply rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600
+           dark:border-red-900 dark:bg-red-950/30 dark:text-red-400;
+  }
+
+  .ui-error-divider-top {
+    @apply border-t border-red-100 dark:border-red-900/30;
+  }
+
+  .ui-alert-toast {
+    @apply rounded-lg bg-red-600 px-4 py-3 text-white shadow-lg shadow-red-900/20
+           dark:bg-red-700;
+  }
+
+  .thinking-state-pill-error {
+    @apply border-red-200/80 bg-red-50 text-red-700 shadow-red-900/[0.04]
+           dark:border-red-900/70 dark:bg-red-950/35 dark:text-red-300;
+  }
+
+  .voice-recording-panel {
+    @apply rounded-lg border border-red-100 bg-red-50
+           dark:border-red-900/50 dark:bg-red-950/20;
+  }
+
+  .voice-recording-text {
+    @apply text-red-500 dark:text-red-400;
+  }
+
+  .voice-recording-bar {
+    @apply w-1 rounded-full bg-red-400 animate-bounce dark:bg-red-500;
+  }
+
+  .voice-recording-core {
+    @apply bg-red-500 dark:bg-red-600;
+  }
+
+  .voice-ripple-soft {
+    @apply bg-red-100 dark:bg-red-900/20;
+  }
+
+  .voice-ripple-medium {
+    @apply bg-red-200 dark:bg-red-900/30;
+  }
+
+  .voice-ripple-strong {
+    @apply bg-red-300 dark:bg-red-900/50;
+  }
+
+  .keyboard-key {
+    @apply inline-flex h-5 min-w-[20px] items-center justify-center rounded-md border
+           border-gray-200 bg-white px-1 text-[11px] font-medium text-gray-500
+           shadow-sm shadow-gray-900/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:text-gray-400;
   }
 
   /* ── Text areas ──────────────────────────── */
@@ -174,16 +474,75 @@
            focus:outline-none select-text;
   }
 
+  .chat-input-field {
+    @apply w-full resize-none bg-transparent px-2 py-1.5 text-sm leading-relaxed
+           text-gray-900 placeholder:text-gray-400 focus:outline-none disabled:opacity-60
+           dark:text-gray-100 dark:placeholder:text-gray-600;
+  }
+
+  .quick-chat-input-field {
+    @apply min-h-9 w-full resize-none rounded-lg bg-transparent px-2 py-2 pr-9
+           text-lg font-medium leading-snug text-gray-900 placeholder:text-gray-400
+           outline-none disabled:opacity-60;
+  }
+
   /* ── Section label ───────────────────────── */
   .section-label {
     @apply text-xs font-semibold text-gray-400 uppercase tracking-widest
            dark:text-gray-500;
   }
 
+  /* ── Form controls ───────────────────────── */
+  .field-input,
+  .field-textarea {
+    @apply w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm
+           text-gray-800 placeholder:text-gray-400 shadow-sm shadow-gray-900/5
+           transition-colors select-text
+           focus:outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-500/20
+           disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400 disabled:opacity-70
+           dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500
+           dark:focus:border-gray-400 dark:focus:ring-gray-400/15
+           dark:disabled:bg-neutral-900 dark:disabled:text-gray-600;
+  }
+
+  .field-input-sm,
+  .field-textarea-sm {
+    @apply px-2.5 py-1.5 text-xs;
+  }
+
+  .field-textarea {
+    @apply resize-none leading-relaxed;
+  }
+
+  .field-input-mono {
+    @apply font-mono;
+  }
+
+  .field-input-muted {
+    @apply bg-gray-50 text-gray-400 cursor-pointer pr-9
+           dark:bg-gray-700/50 dark:text-gray-500;
+  }
+
+  .field-input-success {
+    @apply border-gray-400 dark:border-gray-500;
+  }
+
+  .field-input-error {
+    @apply border-red-400 focus:border-red-500 focus:ring-red-500/20
+           dark:border-red-600 dark:focus:border-red-500 dark:focus:ring-red-500/15;
+  }
+
+  .inline-pill-input {
+    @apply rounded-full border border-gray-300 bg-white px-1.5 py-0.5 text-xs
+           text-gray-700 transition-colors select-text
+           focus:outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-500/15
+           dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:focus:border-gray-500;
+  }
+
   .search-field {
     @apply w-full h-9 rounded-lg border border-gray-200 bg-white pl-9 pr-9 text-sm text-gray-800
            shadow-sm shadow-gray-900/5 placeholder:text-gray-400
-           focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400
+           focus:outline-none focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500
            transition-colors select-text
            dark:border-neutral-800 dark:bg-neutral-900 dark:text-gray-100 dark:placeholder:text-gray-600;
   }
@@ -234,7 +593,7 @@
   animation: thinkingDot 1.2s ease-in-out infinite both;
 }
 
-/* ── Shimmer sweep — used on Smart Thinking gradient pill ───────────── */
+/* ── Shimmer sweep — used on Smart Thinking pill ────────────────────── */
 @keyframes thinkingShimmer {
   0%   { background-position: -200% 0; }
   100% { background-position: 200% 0; }
@@ -262,13 +621,13 @@
   .chat-composer {
     @apply flex flex-col rounded-2xl border border-gray-200/90 bg-white/95
            shadow-sm shadow-gray-900/[0.04] transition-all duration-150
-           focus-within:border-blue-300 focus-within:shadow-md focus-within:shadow-blue-900/[0.06]
+           focus-within:border-gray-400 focus-within:shadow-md focus-within:shadow-gray-900/[0.06]
            dark:border-neutral-800 dark:bg-neutral-900/80 dark:shadow-black/30
-           dark:focus-within:border-blue-700 dark:focus-within:shadow-blue-950/40;
+           dark:focus-within:border-gray-500 dark:focus-within:shadow-black/40;
   }
   .chat-composer-drop {
-    @apply !border-emerald-300 !ring-2 !ring-inset !ring-emerald-200
-           dark:!border-emerald-700 dark:!ring-emerald-900;
+    @apply !border-gray-400 !ring-2 !ring-inset !ring-gray-300
+           dark:!border-gray-500 dark:!ring-gray-700;
   }
 
   /* Mode pills — used for Deep Research / Careful Reasoning / Smart Thinking */
@@ -276,81 +635,96 @@
     @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5
            text-[11px] font-semibold tracking-tight select-none;
   }
-  .chat-pill-indigo {
-    @apply border-indigo-200/80 bg-gradient-to-r from-indigo-50 to-violet-50 text-indigo-700
-           dark:border-indigo-800/60 dark:from-indigo-950/40 dark:to-violet-950/40 dark:text-indigo-200;
+  .chat-pill-neutral {
+    @apply border-gray-200/80 bg-gray-50 text-gray-700
+           dark:border-neutral-700 dark:bg-neutral-800 dark:text-gray-200;
   }
-  .chat-pill-amber {
-    @apply border-amber-200/80 bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700
-           dark:border-amber-800/60 dark:from-amber-950/40 dark:to-orange-950/40 dark:text-amber-200;
+  .chat-pill-muted {
+    @apply border-gray-200/80 bg-gray-50 text-gray-700
+           dark:border-neutral-700 dark:bg-neutral-800 dark:text-gray-200;
   }
-  .chat-pill-blue {
-    @apply border-blue-200/80 bg-gradient-to-r from-blue-50 to-sky-50 text-blue-700
-           dark:border-blue-800/60 dark:from-blue-950/40 dark:to-sky-950/40 dark:text-blue-200;
+  .chat-pill-subtle {
+    @apply border-gray-200/80 bg-gray-50 text-gray-700
+           dark:border-neutral-700 dark:bg-neutral-800 dark:text-gray-200;
   }
 
   /* Composer action buttons — for mic / image / DR toggle / Careful toggle */
   .chat-action-button {
-    @apply inline-flex items-center justify-center w-9 h-9 rounded-xl text-gray-500
-           transition-all duration-150 cursor-pointer
-           hover:bg-gray-100 hover:text-gray-700
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400
-           dark:text-gray-400 dark:hover:bg-neutral-800 dark:hover:text-gray-200;
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent
+           bg-transparent text-gray-500 transition-colors duration-150
+           hover:border-gray-200 hover:bg-gray-100 hover:text-gray-950
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60
+           disabled:cursor-not-allowed disabled:opacity-45
+           dark:text-gray-400 dark:hover:border-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-gray-100;
   }
-  .chat-action-button-active-indigo {
-    @apply !bg-indigo-100 !text-indigo-700
-           dark:!bg-indigo-950/60 dark:!text-indigo-200;
+  .chat-action-button-active-neutral {
+    @apply !border-gray-300 !bg-gray-100 !text-gray-950
+           dark:!border-neutral-600 dark:!bg-neutral-800 dark:!text-gray-100;
   }
-  .chat-action-button-active-amber {
-    @apply !bg-amber-100 !text-amber-700
-           dark:!bg-amber-950/60 dark:!text-amber-200;
+  .chat-action-button-active-muted {
+    @apply !border-gray-300 !bg-gray-100 !text-gray-950
+           dark:!border-neutral-600 dark:!bg-neutral-800 dark:!text-gray-100;
   }
 
-  /* Send / Stop primary button — circular, gradient, slight scale on hover.
+  /* Send / Stop / Resume primary action.
    *
-   * Both Send and Stop share the same outer dimensions, radius, transitions,
-   * and focus ring so the button morphs in place when the AI starts/stops
-   * generating. We avoid radically different visual treatments (e.g. a hard
-   * red square stop) because that creates a jarring layout flicker every
-   * time a stream starts. Instead, the Stop button reuses the soft gradient
-   * shell from Send and only swaps the colour palette to a calmer rose tone
-   * with a subtle pulsing halo to signal "in progress, click to halt." */
+   * Send and Stop stay icon-only because their symbols are standard composer
+   * actions. Resume is a compact pill with a short label so a checkpoint is
+   * explicit instead of being hidden behind a decorative sparkle icon. */
+  .chat-send-button,
+  .chat-stop-button,
+  .chat-resume-button {
+    @apply inline-flex h-10 shrink-0 items-center justify-center rounded-lg
+           border text-sm font-semibold leading-none transition-colors duration-150
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60 disabled:cursor-not-allowed
+           disabled:opacity-55;
+  }
   .chat-send-button {
-    @apply inline-flex items-center justify-center w-10 h-10 rounded-full text-white
-           shadow-sm shadow-blue-900/20 transition-all duration-150 cursor-pointer
-           bg-gradient-to-br from-blue-500 to-indigo-500
-           hover:from-blue-600 hover:to-indigo-600 hover:scale-[1.04] active:scale-95
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300
-           disabled:from-gray-300 disabled:to-gray-300 disabled:opacity-60 disabled:cursor-not-allowed
-           disabled:hover:scale-100 disabled:shadow-none
-           dark:disabled:from-neutral-700 dark:disabled:to-neutral-700;
+    @apply w-10 border-gray-950 bg-gray-950 text-white shadow-sm shadow-gray-900/15
+           hover:border-gray-800 hover:bg-gray-800 active:bg-black
+           focus-visible:ring-gray-300
+           disabled:border-gray-300 disabled:bg-gray-300 disabled:text-white disabled:shadow-none
+           dark:border-gray-100 dark:bg-gray-100 dark:text-neutral-950 dark:hover:border-white dark:hover:bg-white
+           dark:disabled:border-neutral-700 dark:disabled:bg-neutral-700;
   }
   .chat-stop-button {
-    @apply relative inline-flex items-center justify-center w-10 h-10 rounded-full text-white
-           shadow-sm shadow-rose-900/15 transition-all duration-150 cursor-pointer
-           bg-gradient-to-br from-rose-400 to-red-500
-           hover:from-rose-500 hover:to-red-600 hover:scale-[1.04] active:scale-95
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300
-           dark:from-rose-500 dark:to-red-500;
+    @apply w-10 border-red-200 bg-white text-red-600 shadow-sm shadow-red-900/10
+           hover:border-red-300 hover:bg-red-50 active:bg-red-100
+           focus-visible:ring-red-300
+           dark:border-red-900/60 dark:bg-neutral-950 dark:text-red-300
+           dark:hover:border-red-700 dark:hover:bg-red-950/40;
   }
-  /* Soft pulse ring drawn behind the Stop button while a request is in
-   * flight — purely decorative; pulse keeps the user aware that work is
-   * still happening even when nothing else on screen is animating. */
-  .chat-stop-button::before {
-    content: '';
-    position: absolute;
-    inset: -3px;
-    border-radius: 9999px;
-    background: linear-gradient(135deg, rgba(244, 63, 94, 0.25), rgba(239, 68, 68, 0.0));
-    opacity: 0.55;
-    z-index: -1;
-    animation: thinkingGlow 1.6s ease-in-out infinite;
+  .chat-resume-button {
+    @apply gap-1.5 border-gray-300 bg-gray-50 px-3 text-gray-800
+           shadow-sm shadow-gray-900/10
+           hover:border-gray-400 hover:bg-gray-100 active:bg-gray-200
+           focus-visible:ring-gray-300
+           dark:border-neutral-600 dark:bg-neutral-800 dark:text-gray-100
+           dark:hover:border-neutral-500 dark:hover:bg-neutral-700;
+  }
+  .chat-primary-action-label {
+    @apply max-w-[6rem] overflow-hidden text-ellipsis whitespace-nowrap text-xs;
+  }
+
+  .thinking-inline-label {
+    @apply inline-flex items-center gap-2 text-xs font-medium text-gray-500 select-none
+           dark:text-gray-400;
+  }
+
+  .thinking-state-pill {
+    @apply inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50
+           px-3 py-1 text-xs font-semibold text-gray-700 shadow-sm shadow-gray-900/[0.04]
+           select-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-gray-200 dark:shadow-black/30;
+  }
+
+  .thinking-state-pill-shimmer {
+    @apply relative overflow-hidden shadow-gray-900/[0.05];
   }
 
   /* Bubbles — soft user bubble + clean assistant body */
   .chat-bubble-user {
-    @apply rounded-2xl rounded-br-md bg-blue-500 px-4 py-3 text-white shadow-sm shadow-blue-900/10
-           dark:bg-blue-600;
+    @apply rounded-2xl rounded-br-md bg-gray-950 px-4 py-3 text-white shadow-sm shadow-gray-900/10
+           dark:bg-gray-100 dark:text-neutral-950;
   }
   .chat-bubble-assistant {
     @apply px-1 py-1 text-gray-900 dark:text-gray-100;
@@ -361,9 +735,9 @@
   .chat-suggest-chip {
     @apply flex items-start gap-3 rounded-xl border border-gray-200 bg-white/80 px-4 py-3 text-left
            shadow-sm shadow-gray-900/[0.03] transition-all duration-150 cursor-pointer
-           hover:-translate-y-0.5 hover:border-blue-300 hover:bg-white hover:shadow-md hover:shadow-blue-900/[0.06]
+           hover:-translate-y-0.5 hover:border-gray-300 hover:bg-white hover:shadow-md hover:shadow-gray-900/[0.06]
            dark:border-neutral-800 dark:bg-neutral-900/70
-           dark:hover:border-blue-700 dark:hover:bg-neutral-900;
+           dark:hover:border-neutral-600 dark:hover:bg-neutral-900;
   }
 
 
@@ -371,9 +745,9 @@
   .chat-model-badge {
     @apply inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5
            text-[12px] font-semibold text-gray-700 shadow-sm shadow-gray-900/[0.04] transition-colors duration-150 cursor-pointer
-           hover:border-blue-300 hover:bg-blue-50/60 hover:text-blue-700
+           hover:border-gray-300 hover:bg-gray-100 hover:text-gray-950
            dark:border-neutral-800 dark:bg-neutral-900 dark:text-gray-200
-           dark:hover:border-blue-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-200;
+           dark:hover:border-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-gray-100;
   }
 
   /* Hover-only message actions (timestamp + copy/regen/download) */
@@ -388,19 +762,19 @@
    * already in store that still render via MessageBubble). New replies use
    * .chat-research-panel below to group every step into one card. */
   .chat-research-step {
-    @apply rounded-xl border border-gray-200/80 bg-gradient-to-r from-gray-50 to-slate-50/60
+    @apply rounded-xl border border-gray-200/80 bg-gray-50
            text-xs shadow-sm shadow-gray-900/[0.03] overflow-hidden
-           dark:border-neutral-800 dark:from-neutral-900/80 dark:to-neutral-900/40;
+           dark:border-neutral-800 dark:bg-neutral-900/80;
   }
 
   /* Grouped research-steps panel — replaces N separate step cards with a
    * single tidy "thinking" block, matching the Cursor / Claude tool-call
    * pattern. The container surface stays muted gray so the user's eye flows
-   * straight to the final indigo answer card below it. */
+   * straight to the final answer card below it. */
   .chat-research-panel {
-    @apply rounded-xl border border-gray-200/80 bg-gradient-to-r from-gray-50 to-slate-50/60
+    @apply rounded-xl border border-gray-200/80 bg-gray-50
            text-xs shadow-sm shadow-gray-900/[0.03] overflow-hidden
-           dark:border-neutral-800 dark:from-neutral-900/80 dark:to-neutral-900/40;
+           dark:border-neutral-800 dark:bg-neutral-900/80;
   }
   /* Step rows — left vertical timeline bar + per-row marker dots
    * (kept for back-compat with the legacy flat step list; the new
@@ -449,15 +823,15 @@
   .chat-research-pill-info {
     @apply inline-flex items-center justify-center
            h-5 w-5 rounded-md
-           text-gray-400 hover:text-indigo-500
-           hover:bg-indigo-50/70
-           dark:text-gray-500 dark:hover:text-indigo-300
-           dark:hover:bg-indigo-950/40
+           text-gray-400 hover:text-gray-950
+           hover:bg-gray-100
+           dark:text-gray-500 dark:hover:text-gray-100
+           dark:hover:bg-neutral-800
            transition-colors duration-150 cursor-pointer;
   }
   .chat-research-pill-info-active {
-    @apply text-indigo-500 bg-indigo-50/80
-           dark:text-indigo-300 dark:bg-indigo-950/50;
+    @apply text-gray-950 bg-gray-100
+           dark:text-gray-100 dark:bg-neutral-800;
   }
   .chat-research-pill-status {
     @apply inline-flex items-center justify-center w-4 h-4 flex-shrink-0;
@@ -482,8 +856,7 @@
   .chat-research-info-popover-header {
     @apply flex items-center gap-2 px-3 py-2
            border-b border-gray-100 dark:border-neutral-800
-           bg-gradient-to-r from-gray-50 to-slate-50/70
-           dark:from-neutral-900 dark:to-neutral-900/60;
+           bg-gray-50 dark:bg-neutral-900;
   }
   .chat-research-info-popover-body {
     @apply flex-1 min-h-0 overflow-y-auto px-3 py-2 flex flex-col gap-3;
@@ -498,70 +871,28 @@
     to   { opacity: 1; transform: translateY(0);    }
   }
 
-  /* ── Resume Deep Research button ──────────────────────────────────────
-   *
-   * Shown at the bottom of the panel when ChatPage detects a persisted
-   * resume snapshot — clicking re-runs the pipeline from the next phase.
-   * Indigo gradient mirrors the Deep Research badge so the affordance is
-   * visually associated with the same feature. */
-  .chat-research-resume-row {
-    @apply flex justify-center px-3 py-2
-           border-t border-gray-100/70 dark:border-neutral-800/60;
-  }
-  .chat-research-resume-button {
-    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg
-           text-[12px] font-semibold cursor-pointer transition-all duration-150
-           bg-gradient-to-r from-indigo-500 to-violet-500 text-white
-           shadow-sm shadow-indigo-900/15
-           hover:from-indigo-600 hover:to-violet-600 hover:scale-[1.02]
-           active:scale-95
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300
-           dark:from-indigo-600 dark:to-violet-600;
-  }
-
-
-
   /* Research-final highlight card */
   .chat-research-final {
-    @apply rounded-2xl overflow-hidden border border-indigo-200/70 bg-white shadow-md shadow-indigo-900/[0.06]
-           dark:border-indigo-900/60 dark:bg-neutral-900 dark:shadow-black/40;
+    @apply rounded-2xl overflow-hidden border border-gray-200/80 bg-white shadow-md shadow-gray-900/[0.06]
+           dark:border-neutral-800 dark:bg-neutral-900 dark:shadow-black/40;
   }
   .chat-research-final-header {
-    @apply flex items-center gap-2 px-4 py-2.5 border-b border-indigo-100/80
-           bg-gradient-to-r from-indigo-50 via-violet-50 to-sky-50
-           dark:border-indigo-900/40 dark:from-indigo-950/50 dark:via-violet-950/40 dark:to-sky-950/50;
+    @apply flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50
+           dark:border-neutral-800 dark:bg-neutral-900;
   }
 }
 
-/* ── Skeleton shimmer — smooth gradient sweep for loading placeholders ─ */
-@keyframes skeletonShimmer {
-  0%   { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+/* ── Skeleton loading placeholders ─ */
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 0.62; }
+  50%      { opacity: 1; }
 }
 .skeleton-shimmer {
-  background-image: linear-gradient(
-    90deg,
-    rgba(15, 23, 42, 0.05) 0%,
-    rgba(15, 23, 42, 0.10) 40%,
-    rgba(15, 23, 42, 0.14) 50%,
-    rgba(15, 23, 42, 0.10) 60%,
-    rgba(15, 23, 42, 0.05) 100%
-  );
-  background-size: 200% 100%;
-  background-repeat: no-repeat;
   background-color: rgba(15, 23, 42, 0.06);
-  animation: skeletonShimmer 1.6s ease-in-out infinite;
+  animation: skeletonPulse 1.6s ease-in-out infinite;
 }
 .dark .skeleton-shimmer,
 html.dark .skeleton-shimmer {
-  background-image: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.04) 0%,
-    rgba(255, 255, 255, 0.08) 40%,
-    rgba(255, 255, 255, 0.12) 50%,
-    rgba(255, 255, 255, 0.08) 60%,
-    rgba(255, 255, 255, 0.04) 100%
-  );
   background-color: rgba(255, 255, 255, 0.05);
 }
 

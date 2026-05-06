@@ -58,17 +58,16 @@ export function TranslateToolbar({
       <div className="flex items-end gap-3 flex-shrink-0">
         {/* Style dropdown with label above */}
         <div className="flex flex-col items-start gap-1">
-          <span className="text-[0.65rem] font-medium text-gray-400 whitespace-nowrap uppercase tracking-wide">
+          <span className="ui-kicker whitespace-nowrap">
             {labelStyleLabel}
           </span>
           <div className="relative">
             <select
               value={translationStyle}
               onChange={(e) => onStyleChange(e.target.value as TranslationStyle)}
-              className={`text-[13px] font-medium px-2.5 py-1.5 pr-6 rounded-full border appearance-none cursor-pointer
-                          transition-colors duration-200 outline-none w-36
+              className={`select-field h-8 w-36 py-1.5 pl-2.5 pr-7
                           ${translationStyle !== 'general'
-                            ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-400'
+                            ? 'bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-400'
                             : 'bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'
                           }`}
             >
@@ -87,7 +86,7 @@ export function TranslateToolbar({
 
         {/* Phonetic dropdown with label above */}
         <div className="flex flex-col items-start gap-1">
-          <span className="text-[0.65rem] font-medium text-gray-400 whitespace-nowrap uppercase tracking-wide">
+          <span className="ui-kicker whitespace-nowrap">
             {labelPhoneticSection}
           </span>
           <PhoneticToggle
@@ -102,7 +101,7 @@ export function TranslateToolbar({
 
         {/* Auto/Manual toggle with label above */}
         <div className="flex flex-col items-start gap-1">
-          <span className="text-[0.65rem] font-medium text-gray-400 whitespace-nowrap uppercase tracking-wide">
+          <span className="ui-kicker whitespace-nowrap">
             {labelAutoSection}
           </span>
           <AutoTranslateToggle

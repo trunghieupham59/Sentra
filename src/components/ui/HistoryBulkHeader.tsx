@@ -32,14 +32,12 @@ export function HistoryBulkHeader({
           type="button"
           onClick={onSelectAll}
           disabled={totalCount === 0}
-          className="inline-flex items-center gap-2 text-xs font-medium text-gray-500
-                     hover:text-gray-700 disabled:opacity-50 disabled:hover:text-gray-500
-                     dark:text-gray-400 dark:hover:text-gray-200 dark:disabled:hover:text-gray-400 transition-colors"
+          className="btn-ghost btn-xs"
         >
           <span className={[
             'w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors',
             isAllSelected || isIndeterminate
-              ? 'bg-blue-500 border-blue-500'
+              ? 'bg-gray-500 border-gray-500'
               : 'border-gray-300 dark:border-gray-600',
           ].join(' ')}>
             {isAllSelected && <CheckIcon className="w-2.5 h-2.5 text-white" />}
@@ -60,10 +58,7 @@ export function HistoryBulkHeader({
           type="button"
           onClick={onDeleteSelected}
           disabled={selectedCount === 0}
-          className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg
-                     bg-red-50 text-red-600 hover:bg-red-100 disabled:invisible
-                     dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-900/40
-                     font-medium transition-colors"
+          className="btn-danger btn-xs disabled:invisible"
         >
           <TrashIcon className="w-3.5 h-3.5" />
           {labelDeleteSelected}

@@ -111,8 +111,8 @@ export function DictionarySearchPanel({
             {/* Char counter inside input — only shown when typing */}
             {charLength > 0 && (
               <span
-                className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-[10px] font-medium tabular-nums ${
-                  isCharOver ? 'text-red-500 dark:text-red-400' : 'text-gray-300 dark:text-gray-600'
+                className={`ui-micro pointer-events-none absolute top-1/2 -translate-y-1/2 font-medium tabular-nums ${
+                  isCharOver ? 'ui-error-text' : 'text-gray-300 dark:text-gray-600'
                 }`}
                 style={{ right: '2rem' }}
               >
@@ -124,7 +124,7 @@ export function DictionarySearchPanel({
                 type="button"
                 onClick={() => onTermChange('')}
                 title={t.history_search_clear}
-                className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-neutral-800 dark:hover:text-gray-200"
+                className="btn-icon btn-icon-xs absolute right-1.5 top-1/2 -translate-y-1/2 border-transparent bg-transparent text-gray-400 shadow-none dark:bg-transparent"
               >
                 <XIcon className="h-3 w-3" />
               </button>
@@ -154,7 +154,7 @@ export function DictionarySearchPanel({
           <button
             type="submit"
             disabled={isLoading || !canSubmit}
-            className="btn-primary h-9 flex-shrink-0 px-4"
+            className="btn-primary flex-shrink-0"
           >
             {isLoading ? (
               <RefreshIcon className="h-3.5 w-3.5 spinner" />
@@ -173,7 +173,7 @@ export function DictionarySearchPanel({
         <button
           type="button"
           onClick={() => setContextOpen((v) => !v)}
-          className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-neutral-800 dark:hover:text-gray-200"
+          className="btn-ghost btn-xs"
         >
           {contextOpen ? (
             <ChevronDownIcon className="h-3 w-3" />
@@ -182,7 +182,7 @@ export function DictionarySearchPanel({
           )}
           <span>{t.dictionary_context_label}</span>
           {context.trim() && (
-            <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+            <span className="ui-badge-xs">
               {context.trim().length}
             </span>
           )}
@@ -203,8 +203,8 @@ export function DictionarySearchPanel({
 
       {/* ── Inline error ───────────────────────────────────────────────── */}
       {error && (
-        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/35 dark:text-red-300">
-          <AlertTriangleIcon className="mt-0.5 h-4 w-4 flex-shrink-0" />
+        <div className="ui-error-box flex items-start gap-2">
+          <AlertTriangleIcon className="ui-error-icon mt-0.5 h-4 w-4 flex-shrink-0" />
           <span>{error}</span>
         </div>
       )}

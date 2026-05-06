@@ -3,15 +3,13 @@
  * Replaces 6+ copies of the same inline button pattern.
  *
  * Usage:
- *   <ToggleSwitch checked={autoTranslate} onChange={setAutoTranslate} color="green" />
+ *   <ToggleSwitch checked={autoTranslate} onChange={setAutoTranslate} />
  */
 interface ToggleSwitchProps {
   checked: boolean
   onChange: (value: boolean) => void
   /** Aria label for accessibility */
   'aria-label'?: string
-  /** Track colour when active. Default: 'blue' */
-  color?: 'blue' | 'green'
   disabled?: boolean
   className?: string
 }
@@ -20,14 +18,11 @@ export function ToggleSwitch({
   checked,
   onChange,
   'aria-label': ariaLabel,
-  color = 'blue',
   disabled = false,
   className = '',
 }: ToggleSwitchProps) {
   const trackColor = checked
-    ? color === 'green'
-      ? 'bg-green-500'
-      : 'bg-blue-600'
+    ? 'bg-gray-950 dark:bg-gray-100'
     : 'bg-gray-300 dark:bg-gray-600'
 
   return (
@@ -40,7 +35,7 @@ export function ToggleSwitch({
       onClick={() => onChange(!checked)}
       className={[
         'relative inline-flex flex-shrink-0 items-center w-9 h-5 rounded-full',
-        'transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+        'transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400',
         'disabled:opacity-40 disabled:cursor-not-allowed',
         disabled ? 'cursor-not-allowed' : 'cursor-pointer',
         trackColor,
@@ -49,7 +44,7 @@ export function ToggleSwitch({
     >
       <span
         className={[
-          'absolute w-4 h-4 bg-white rounded-full shadow transition-transform duration-200',
+          'absolute w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 dark:bg-neutral-950',
           checked ? 'translate-x-[18px]' : 'translate-x-0.5',
         ].join(' ')}
       />

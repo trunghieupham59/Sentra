@@ -74,14 +74,14 @@ export function UpdaterSection() {
             {/* Update available */}
             {updaterStatus.type === 'available' && (
               <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
+                <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
                   <DownloadIcon className="w-4 h-4 flex-shrink-0" />
                   <span>{tpl(t.settings_update_available, { version: updaterStatus.version ?? '' })}</span>
                 </div>
                 <button
                   type="button"
                   onClick={handleDownloadUpdate}
-                  className="flex-shrink-0 px-3 py-1.5 text-xs rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors cursor-pointer"
+                  className="btn-primary btn-sm flex-shrink-0"
                 >
                   {updaterStatus.downloadUrl ? t.settings_update_download_installer : t.settings_update_download}
                 </button>
@@ -90,7 +90,7 @@ export function UpdaterSection() {
 
             {/* Up to date */}
             {updaterStatus.type === 'not-available' && (
-              <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+              <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
                 <CheckIcon className="w-4 h-4 flex-shrink-0" />
                 <span>{tpl(t.settings_update_not_available, { version: updaterStatus.version ?? appVersion ?? '' })}</span>
               </div>
@@ -99,7 +99,7 @@ export function UpdaterSection() {
             {/* Downloading */}
             {updaterStatus.type === 'downloading' && (
               <div className="space-y-1.5">
-                <div className="flex items-center text-xs text-blue-600 dark:text-blue-400">
+                <div className="flex items-center text-xs text-gray-600 dark:text-gray-400">
                   <span className="flex items-center gap-2">
                     <SpinnerIcon className="w-3.5 h-3.5 animate-spin" />
                     {tpl(t.settings_update_downloading, { percent: updaterStatus.percent ?? 0 })}
@@ -107,7 +107,7 @@ export function UpdaterSection() {
                 </div>
                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
                   <div
-                    className="bg-blue-500 h-full rounded-full transition-all duration-300"
+                    className="bg-gray-500 h-full rounded-full transition-all duration-300"
                     style={{ width: `${updaterStatus.percent ?? 0}%` }}
                   />
                 </div>
@@ -117,7 +117,7 @@ export function UpdaterSection() {
             {/* Downloaded — ready to install */}
             {updaterStatus.type === 'downloaded' && (
               <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
                   <CheckCircleIcon className="w-4 h-4 flex-shrink-0" />
                   <span>{tpl(t.settings_update_downloaded, { version: updaterStatus.version ?? '' })}</span>
                 </div>
@@ -126,7 +126,7 @@ export function UpdaterSection() {
                     <button
                       type="button"
                       onClick={handleOpenInstaller}
-                      className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 font-medium transition-colors cursor-pointer"
+                      className="btn-secondary btn-sm"
                     >
                       {t.settings_update_open_installer}
                     </button>
@@ -134,7 +134,7 @@ export function UpdaterSection() {
                   <button
                     type="button"
                     onClick={handleInstallUpdate}
-                    className="px-3 py-1.5 text-xs rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium transition-colors cursor-pointer"
+                    className="btn-primary btn-sm"
                   >
                     {installerMode ? t.settings_update_open_installer : t.settings_update_install}
                   </button>
@@ -144,7 +144,7 @@ export function UpdaterSection() {
 
             {/* Code-signature error (macOS unsigned app) */}
             {updaterStatus.type === 'error-codesign' && (
-              <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400">
+              <div className="flex items-start gap-2 text-xs text-gray-600 dark:text-gray-400">
                 <AlertTriangleIcon className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 <span>{t.settings_update_error_codesign}</span>
               </div>
@@ -152,8 +152,8 @@ export function UpdaterSection() {
 
             {/* Generic error */}
             {updaterStatus.type === 'error' && (
-              <div className="flex items-start gap-2 text-xs text-red-600 dark:text-red-400">
-                <AlertTriangleIcon className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <div className="ui-error-text flex items-start gap-2 text-xs">
+                <AlertTriangleIcon className="ui-error-icon w-4 h-4 flex-shrink-0 mt-0.5" />
                 <span>{t.settings_update_error}{updaterStatus.error ? `: ${updaterStatus.error}` : ''}</span>
               </div>
             )}

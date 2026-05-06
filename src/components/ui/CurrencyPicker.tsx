@@ -5,6 +5,7 @@
  */
 import type { UsageCurrency } from '../../types'
 import { USAGE_CURRENCY_OPTIONS } from '../../utils/usageCost'
+import { ChevronDownIcon } from './icons'
 
 interface CurrencyPickerProps {
   value: UsageCurrency
@@ -23,9 +24,9 @@ export function CurrencyPicker({ value, onChange, ariaLabel, className }: Curren
         className={[
           'h-7 appearance-none rounded-lg border border-gray-200 bg-white pl-2.5 pr-7',
           'text-xs font-semibold text-gray-700 outline-none transition-colors',
-          'hover:border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-100',
+          'hover:border-gray-300 focus:border-gray-500 focus:ring-2 focus:ring-gray-200',
           'dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200',
-          'dark:hover:border-gray-600 dark:focus:border-blue-500 dark:focus:ring-blue-900/40',
+          'dark:hover:border-gray-600 dark:focus:border-gray-400 dark:focus:ring-neutral-700',
         ].join(' ')}
       >
         {USAGE_CURRENCY_OPTIONS.map((option) => (
@@ -34,15 +35,7 @@ export function CurrencyPicker({ value, onChange, ariaLabel, className }: Curren
           </option>
         ))}
       </select>
-      <svg
-        className="pointer-events-none absolute right-1.5 h-3 w-3 text-gray-400 dark:text-gray-500"
-        viewBox="0 0 12 12"
-        fill="none"
-        stroke="currentColor"
-        aria-hidden="true"
-      >
-        <path d="M3 5l3 3 3-3" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+      <ChevronDownIcon className="pointer-events-none absolute right-1.5 h-3 w-3 text-gray-400 dark:text-gray-500" />
     </div>
   )
 }

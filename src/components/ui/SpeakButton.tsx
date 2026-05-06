@@ -53,11 +53,10 @@ export function SpeakButton({
       onClick={() => onSpeak(text, lang, panel)}
       title={isThisPanel ? labelStop : labelSpeak}
       className={[
-        'flex items-center gap-1 px-2 py-1 rounded-full text-xs',
-        'transition-all duration-200 cursor-pointer',
+        'btn-ghost btn-xs',
         isThisPanel
-          ? 'bg-blue-500 text-white shadow-sm hover:bg-blue-600'
-          : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950 dark:hover:text-blue-400',
+          ? 'btn-icon-active'
+          : 'text-gray-400',
       ].join(' ')}
     >
       {isLoading ? (

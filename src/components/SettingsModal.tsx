@@ -45,9 +45,7 @@ export function SettingsModal() {
             type="button"
             onClick={closeSettings}
             aria-label={t.settings_close}
-            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400
-                       hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-800
-                       transition-colors"
+            className="btn-icon btn-icon-sm"
           >
             <XIcon className="w-4 h-4" />
           </button>

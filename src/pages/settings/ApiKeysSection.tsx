@@ -99,12 +99,12 @@ function LocalAiProviderCard({
         <span className={[
           'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
           available
-            ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+            ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
             : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400',
         ].join(' ')}>
           <span className={[
             'w-1.5 h-1.5 rounded-full flex-shrink-0',
-            available ? 'bg-green-500' : 'bg-gray-400',
+            available ? 'bg-gray-500' : 'bg-gray-400',
           ].join(' ')} />
           {available ? t.settings_local_ai_running : t.settings_local_ai_not_running}
         </span>
@@ -126,7 +126,7 @@ function LocalAiProviderCard({
             type="button"
             onClick={onBenchmark}
             disabled={benchmarking}
-            className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 font-medium text-gray-600 shadow-sm ring-1 ring-gray-200 transition-colors hover:text-gray-900 disabled:opacity-50 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-700"
+            className="btn-secondary btn-sm"
           >
             {benchmarking ? <SpinnerIcon className="w-3.5 h-3.5 animate-spin" /> : null}
             {benchmarking ? t.settings_local_ai_benchmarking : t.settings_local_ai_benchmark}
@@ -135,7 +135,7 @@ function LocalAiProviderCard({
             type="button"
             onClick={onRefresh}
             disabled={loading}
-            className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 font-medium text-gray-600 shadow-sm ring-1 ring-gray-200 transition-colors hover:text-gray-900 disabled:opacity-50 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-700"
+            className="btn-secondary btn-sm"
           >
             {loading ? <SpinnerIcon className="w-3.5 h-3.5 animate-spin" /> : <RefreshIcon className="w-3.5 h-3.5" />}
             {t.model_refresh}
@@ -198,13 +198,13 @@ function LocalAiProviderCard({
               {t.settings_local_ai_suggested_models}
             </h4>
             {canDownloadModels ? (
-              <span className="text-[11px] text-gray-400">{t.settings_local_ai_download_hint}</span>
+              <span className="ui-meta text-gray-400">{t.settings_local_ai_download_hint}</span>
             ) : (
               <button
                 type="button"
                 onClick={onInstallOllama}
                 disabled={installingOllama}
-                className="flex flex-shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 dark:disabled:bg-gray-700"
+                className="btn-primary btn-sm flex-shrink-0"
               >
                 {installingOllama && <SpinnerIcon className="h-3.5 w-3.5 animate-spin" />}
                 {installingOllama ? t.settings_local_ai_installing_ollama : t.settings_local_ai_install_ollama}
@@ -216,18 +216,18 @@ function LocalAiProviderCard({
             <div className={[
               'rounded-xl border px-3 py-3 text-xs',
               installingOllama
-                ? 'border-blue-100 bg-blue-50/80 dark:border-blue-900/50 dark:bg-blue-950/20'
+                ? 'border-gray-100 bg-gray-50/80 dark:border-gray-900/50 dark:bg-gray-950/20'
                 : 'border-gray-100 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/70',
             ].join(' ')}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    {installingOllama && <SpinnerIcon className="h-3.5 w-3.5 animate-spin text-blue-600 dark:text-blue-300" />}
+                    {installingOllama && <SpinnerIcon className="h-3.5 w-3.5 animate-spin text-gray-600 dark:text-gray-300" />}
                     <p className="font-semibold text-gray-800 dark:text-gray-100">
                       {installingOllama ? t.settings_local_ai_installing_ollama : t.settings_local_ai_install_runtime_title}
                     </p>
                     {installingOllama && (
-                      <span className="rounded-full bg-white px-2 py-0.5 font-medium text-blue-700 ring-1 ring-blue-100 dark:bg-blue-950 dark:text-blue-300 dark:ring-blue-900">
+                      <span className="rounded-full bg-white px-2 py-0.5 font-medium text-gray-700 ring-1 ring-gray-100 dark:bg-gray-950 dark:text-gray-300 dark:ring-gray-900">
                         {activeInstallPercent}%
                       </span>
                     )}
@@ -242,16 +242,16 @@ function LocalAiProviderCard({
                   <button
                     type="button"
                     onClick={onCancelInstall}
-                    className="flex-shrink-0 rounded-lg bg-white px-3 py-1.5 font-medium text-blue-700 shadow-sm ring-1 ring-blue-100 transition-colors hover:bg-blue-50 dark:bg-blue-950 dark:text-blue-300 dark:ring-blue-900 dark:hover:bg-blue-900/60"
+                    className="btn-secondary btn-sm flex-shrink-0"
                   >
                     {t.settings_local_ai_cancel_install}
                   </button>
                 )}
               </div>
               {installingOllama && (
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/80 ring-1 ring-blue-100 dark:bg-blue-950 dark:ring-blue-900">
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/80 ring-1 ring-gray-100 dark:bg-gray-950 dark:ring-gray-900">
                   <div
-                    className="h-full rounded-full bg-blue-600 transition-[width] duration-500"
+                    className="h-full rounded-full bg-gray-600 transition-[width] duration-500"
                     style={{ width: `${activeInstallPercent}%` }}
                   />
                 </div>
@@ -281,17 +281,17 @@ function LocalAiProviderCard({
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-medium text-gray-800 dark:text-gray-100">{model.name}</p>
                         {model.id === recommended?.id && (
-                          <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-600 dark:bg-blue-950/50 dark:text-blue-300">
+                          <span className="ui-badge text-xs font-medium text-gray-600 dark:bg-gray-950/50 dark:text-gray-300">
                             {t.settings_local_ai_recommended}
                           </span>
                         )}
                         {model.installed && (
-                          <span className="rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-600 dark:bg-green-950/50 dark:text-green-300">
+                          <span className="ui-badge text-xs font-medium text-gray-600 dark:bg-gray-950/50 dark:text-gray-300">
                             {t.settings_local_ai_installed}
                           </span>
                         )}
                         {model.estimatedSizeGb && (
-                          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                          <span className="ui-badge text-xs font-medium text-gray-500 dark:text-gray-400">
                             {t.settings_local_ai_model_size} ~{model.estimatedSizeGb} GB
                           </span>
                         )}
@@ -304,10 +304,8 @@ function LocalAiProviderCard({
                         onClick={() => model.installed ? onUninstallModel(model.id) : onDownloadModel(model.id)}
                         disabled={isDownloading || isUninstalling || Boolean(downloadingModel) || Boolean(uninstallingModel)}
                         className={[
-                          'flex flex-shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors disabled:bg-gray-200 disabled:text-gray-400 dark:disabled:bg-gray-700',
-                          model.installed
-                            ? 'bg-red-50 text-red-600 ring-1 ring-red-100 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-300 dark:ring-red-900/60 dark:hover:bg-red-950/50'
-                            : 'bg-blue-600 text-white hover:bg-blue-700',
+                          'btn-sm flex-shrink-0',
+                          model.installed ? 'btn-danger' : 'btn-primary',
                         ].join(' ')}
                       >
                         {(isDownloading || isUninstalling) && <SpinnerIcon className="w-3.5 h-3.5 animate-spin" />}
@@ -326,18 +324,18 @@ function LocalAiProviderCard({
                     )}
                   </div>
                   {activeDownloadProgress && (
-                    <div className="mt-3 rounded-lg bg-blue-50 px-3 py-2 dark:bg-blue-950/20">
-                      <div className="flex items-center justify-between gap-3 text-[11px]">
-                        <span className="min-w-0 truncate font-medium text-blue-700 dark:text-blue-300">
+                    <div className="mt-3 rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-950/20">
+                      <div className="ui-meta flex items-center justify-between gap-3">
+                        <span className="min-w-0 truncate font-medium text-gray-700 dark:text-gray-300">
                           {t.settings_local_ai_downloading_model}: {activeDownloadProgress.message}
                         </span>
-                        <span className="flex-shrink-0 font-semibold text-blue-700 dark:text-blue-300">
+                        <span className="flex-shrink-0 font-semibold text-gray-700 dark:text-gray-300">
                           {activeDownloadBytes ? `${activeDownloadBytes} · ` : ''}{activeDownloadPercent}%
                         </span>
                       </div>
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white ring-1 ring-blue-100 dark:bg-blue-950 dark:ring-blue-900">
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white ring-1 ring-gray-100 dark:bg-gray-950 dark:ring-gray-900">
                         <div
-                          className="h-full rounded-full bg-blue-600 transition-[width] duration-300"
+                          className="h-full rounded-full bg-gray-600 transition-[width] duration-300"
                           style={{ width: `${activeDownloadPercent}%` }}
                         />
                       </div>
@@ -354,8 +352,8 @@ function LocalAiProviderCard({
         <p className={[
           'rounded-lg px-3 py-2 text-xs font-medium',
           downloadError || installError
-            ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300'
-            : 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300',
+            ? 'ui-error-box text-xs font-medium'
+            : 'bg-gray-50 text-gray-700 dark:bg-gray-900/20 dark:text-gray-300',
         ].join(' ')}>
           {downloadError ?? installError ?? downloadSuccess ?? installSuccess}
         </p>
@@ -379,14 +377,14 @@ function LocalAiProviderCard({
               <button
                 type="button"
                 onClick={onDismissRestartPrompt}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                className="btn-secondary"
               >
                 {t.settings_local_ai_restart_later}
               </button>
               <button
                 type="button"
                 onClick={onRestartApp}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                className="btn-primary"
               >
                 {t.settings_local_ai_restart_now}
               </button>
@@ -732,7 +730,7 @@ export function ApiKeysSection() {
             <button
               type="button"
               onClick={() => window.api?.openExternal(JINA_DOCS_URL)}
-              className="text-blue-500 hover:text-blue-700 hover:underline"
+              className="btn-link"
             >
               Jina AI
             </button>

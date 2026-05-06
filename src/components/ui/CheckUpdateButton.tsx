@@ -37,11 +37,8 @@ export function CheckUpdateButton({
       onClick={onClick}
       disabled={isDisabled}
       className={[
-        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer',
-        'disabled:opacity-40 disabled:cursor-not-allowed',
-        isDownloaded
-          ? 'bg-green-600 hover:bg-green-700 text-white border-green-600'
-          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-600 hover:border-blue-400 hover:text-blue-600',
+        isDownloaded ? 'btn-primary' : 'btn-secondary',
+        'btn-sm',
       ].join(' ')}
     >
       {status === 'checking' && <SpinnerIcon className="w-3 h-3 animate-spin" />}

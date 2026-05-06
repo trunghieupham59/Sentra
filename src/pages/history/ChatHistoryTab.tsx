@@ -69,7 +69,7 @@ export function ChatHistoryTab({ query }: ChatHistoryTabProps) {
               icon={<ChatBubbleIcon className="w-7 h-7" />}
               title={t.history_no_results}
               desc={t.history_no_results_desc}
-              tone="blue"
+              tone="muted"
             />
           ) : (
             <ul className="p-3 space-y-2">
@@ -103,11 +103,11 @@ export function ChatHistoryTab({ query }: ChatHistoryTabProps) {
                     meta={(
                       <>
                         <ProviderBadge provider={session.provider} />
-                        <span className="text-[10px] text-gray-400 dark:text-gray-600">
+                        <span className="ui-micro">
                           {msgCount} {t.history_chat_messages}
                         </span>
                         <UsageCostBadge cost={session.cost} currency={costCurrency} />
-                        <span className="text-[10px] text-gray-300 dark:text-gray-700 ml-auto">
+                        <span className="ui-micro ml-auto">
                           {formatTime(session.updatedAt, t)}
                         </span>
                       </>
@@ -124,10 +124,10 @@ export function ChatHistoryTab({ query }: ChatHistoryTabProps) {
                                   key={msg.id}
                                   className={`px-3 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0
                                             ${msg.role === 'user'
-                                              ? 'bg-blue-50 dark:bg-blue-950/20'
+                                              ? 'bg-gray-50 dark:bg-gray-950/20'
                                               : 'bg-white dark:bg-gray-900'}`}
                                 >
-                                  <p className="text-[10px] font-semibold text-gray-400 mb-0.5">
+                                  <p className="ui-micro mb-0.5 font-semibold">
                                     {msg.role === 'user' ? t.history_chat_role_user : t.history_chat_role_ai}
                                   </p>
                                   <p className="text-gray-700 dark:text-gray-300 line-clamp-2">{text}</p>
@@ -140,10 +140,7 @@ export function ChatHistoryTab({ query }: ChatHistoryTabProps) {
                           <button
                             type="button"
                             onClick={() => handleOpen(session)}
-                            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg
-                                     bg-blue-50 text-blue-600 hover:bg-blue-100
-                                     dark:bg-blue-950 dark:text-blue-400 dark:hover:bg-blue-900
-                                     font-medium transition-colors"
+                            className="btn-secondary btn-sm"
                           >
                             <ChatBubbleIcon className="w-3.5 h-3.5" />
                             {t.history_chat_open}

@@ -35,12 +35,12 @@ export function HotkeyRecordButton({
       onClick={onClick}
       onBlur={onBlur}
       className={[
-        'px-3 py-1.5 rounded-lg text-xs font-mono border transition-all min-w-[160px] text-center',
+        'btn-secondary btn-sm min-w-[160px] justify-center text-center font-mono',
         isRecording
-          ? 'bg-blue-50 dark:bg-blue-950 border-blue-400 text-blue-700 dark:text-blue-300 ring-2 ring-blue-300/50'
+          ? 'border-gray-400 bg-gray-50 text-gray-700 ring-2 ring-gray-300/50 dark:bg-gray-950 dark:text-gray-300'
           : value
-            ? 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200'
-            : 'bg-gray-50 dark:bg-gray-800/50 border-dashed border-gray-300 dark:border-gray-600 text-gray-400',
+            ? 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+            : 'border-dashed border-gray-300 bg-gray-50 text-gray-400 dark:border-gray-600 dark:bg-gray-800/50',
       ].join(' ')}
     >
       {isRecording ? recordingText : value || noneText}

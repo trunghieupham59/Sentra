@@ -20,9 +20,9 @@ export function TargetLanguageSelector({
   const targetIsOther = !targetTopLangs.includes(targetLang)
 
   const pillBase =
-    'relative px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors duration-150 cursor-pointer select-none flex-shrink-0'
-  const pillActive = 'text-blue-600 dark:text-blue-400'
-  const pillInactive = 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+    'btn-language-tab relative flex-shrink-0 whitespace-nowrap'
+  const pillActive = 'text-gray-700 dark:text-gray-200'
+  const pillInactive = 'text-gray-500 dark:text-gray-400'
 
   const handleTargetChange = (lang: string) => {
     recordLangUsage(lang)
@@ -42,7 +42,7 @@ export function TargetLanguageSelector({
         >
           {langNames[code] ?? code}
           {targetLang === code && (
-            <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-blue-600 dark:bg-blue-400 rounded-full" />
+            <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-600 dark:bg-gray-400 rounded-full" />
           )}
         </button>
       ))}
@@ -54,7 +54,7 @@ export function TargetLanguageSelector({
       >
         <ChevronDownIcon className="w-4 h-4" />
         {targetIsOther && (
-          <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-blue-600 dark:bg-blue-400 rounded-full" />
+          <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-600 dark:bg-gray-400 rounded-full" />
         )}
         <select
           value={targetLang}

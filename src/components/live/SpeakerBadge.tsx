@@ -54,9 +54,7 @@ export function SpeakerBadge({
             if (e.key === 'Escape') setIsRenaming(false)
           }}
           onBlur={submit}
-          className="w-20 px-1.5 py-0.5 text-[10px] rounded-full border border-blue-300 dark:border-blue-700
-                     bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300
-                     focus:outline-none focus:border-blue-500"
+          className="inline-pill-input w-20"
         />
       </div>
     )
@@ -68,8 +66,7 @@ export function SpeakerBadge({
         type="button"
         onClick={() => { setValue(name); setIsRenaming(true) }}
         title={t.live_speakers_rename_hint}
-        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold
-                    flex-shrink-0 mt-0.5 cursor-pointer hover:opacity-80 group ${colorClass} ${className}`}
+        className={`ui-badge-xs mt-0.5 flex-shrink-0 cursor-pointer gap-1 hover:opacity-80 group ${colorClass} ${className}`}
       >
         {name}
         <PencilIcon className="w-2.5 h-2.5 opacity-0 group-hover:opacity-60 transition-opacity" />
@@ -79,8 +76,7 @@ export function SpeakerBadge({
 
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold
-                  flex-shrink-0 mt-0.5 ${colorClass} ${className}`}
+      className={`ui-badge-xs mt-0.5 flex-shrink-0 ${colorClass} ${className}`}
     >
       {name}
     </span>

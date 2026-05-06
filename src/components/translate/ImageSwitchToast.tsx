@@ -21,9 +21,7 @@ export function ImageSwitchToast({
   return (
     <div className="pointer-events-auto fixed bottom-16 left-1/2 -translate-x-1/2 z-50
                     max-w-sm w-full mx-4 fade-in">
-      <div className="flex items-start gap-2.5 px-4 py-3
-                      bg-red-600 dark:bg-red-700 text-white
-                      rounded-xl shadow-lg shadow-red-900/20">
+      <div className="ui-alert-toast flex items-start gap-2.5">
         <AlertTriangleIcon className="w-4 h-4 flex-shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
           <p className="text-xs font-semibold leading-snug">{titleLabel}</p>
@@ -36,7 +34,7 @@ export function ImageSwitchToast({
         <button
           type="button"
           onClick={onDismiss}
-          className="flex-shrink-0 text-white/70 hover:text-white cursor-pointer mt-0.5"
+          className="btn-icon btn-icon-sm mt-0.5 flex-shrink-0 border-white/10 bg-transparent text-white/70 shadow-none hover:bg-white/10 hover:text-white"
           aria-label={t.translate_error_dismiss}
         >
           <XIcon className="w-3.5 h-3.5" />

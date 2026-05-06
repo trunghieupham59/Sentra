@@ -53,7 +53,7 @@ function ProviderLogoFrame({
       className={[
         'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border',
         selected
-          ? 'border-blue-200 bg-white text-gray-950 dark:border-blue-900 dark:bg-gray-950 dark:text-white'
+          ? 'border-gray-200 bg-white text-gray-950 dark:border-gray-900 dark:bg-gray-950 dark:text-white'
           : 'border-gray-200 bg-gray-50 text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100',
       ].join(' ')}
     >
@@ -68,11 +68,10 @@ function ProviderCard({ label, description, statusBadge, icon, note, selected, o
       type="button"
       onClick={onSelect}
       className={[
-        'text-left px-3 py-2.5 rounded-lg border transition-colors min-h-[104px]',
-        'flex flex-col gap-2',
+        'btn-secondary btn-choice-card min-h-[104px] gap-2',
         selected
-          ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300'
-          : 'border-gray-200 bg-white text-gray-700 hover:border-blue-200 hover:bg-blue-50/50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:border-blue-900 dark:hover:bg-blue-950/20',
+          ? 'btn-active'
+          : '',
       ].join(' ')}
       aria-pressed={selected}
     >
@@ -93,12 +92,12 @@ function ProviderCard({ label, description, statusBadge, icon, note, selected, o
       <div className="min-w-0">
         <p className={[
           'text-xs leading-snug',
-          selected ? 'text-blue-600 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400',
+          selected ? 'text-gray-600 dark:text-gray-300' : 'text-gray-500 dark:text-gray-400',
         ].join(' ')}>
           {description}
         </p>
         {note && (
-          <p className="flex items-start gap-1 text-[10px] text-amber-600 dark:text-amber-400 mt-1 leading-relaxed">
+          <p className="ui-micro mt-1 flex items-start gap-1 leading-relaxed text-gray-500 dark:text-gray-400">
             <AlertTriangleIcon className="w-3 h-3 mt-0.5 flex-shrink-0" />
             <span>{note}</span>
           </p>
@@ -112,9 +111,8 @@ function ProviderCard({ label, description, statusBadge, icon, note, selected, o
 
 function BadgeReady({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold
-                     bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 whitespace-nowrap">
-      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+    <span className="ui-badge-xs gap-1.5 whitespace-nowrap text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+      <span className="w-1.5 h-1.5 rounded-full bg-gray-500 flex-shrink-0" />
       {label}
     </span>
   )
@@ -122,9 +120,8 @@ function BadgeReady({ label }: { label: string }) {
 
 function BadgeWarning({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold
-                     bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 whitespace-nowrap">
-      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+    <span className="ui-badge-xs gap-1.5 whitespace-nowrap text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+      <span className="w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
       {label}
     </span>
   )
@@ -202,7 +199,7 @@ export function SttSection() {
       id: 'auto',
       label: t.settings_stt_auto,
       description: t.settings_stt_auto_desc,
-      icon: <AutoModeIcon className="w-5 h-5 text-blue-600 dark:text-blue-300" />,
+      icon: <AutoModeIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />,
       statusBadge: (
         hasOpenAIKey || hasGeminiKey || groqKeyExists
           ? <BadgeReady label={t.settings_stt_ready} />
@@ -283,7 +280,7 @@ export function SttSection() {
                 <button
                   type="button"
                   onClick={() => window.api?.openExternal(GROQ_CONSOLE_URL)}
-                  className="text-xs text-blue-500 hover:text-blue-700 hover:underline"
+                  className="btn-link text-xs"
                 >
                   {t.settings_get_key}
                 </button>

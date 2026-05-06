@@ -11,13 +11,12 @@ interface HistoryEmptyStateProps {
   icon: ReactNode
   title: string
   desc: string
-  tone?: 'neutral' | 'blue' | 'purple'
+  tone?: 'neutral' | 'muted'
 }
 
 const toneClasses = {
   neutral: 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-600',
-  blue: 'bg-blue-50 text-blue-400 dark:bg-blue-950/30 dark:text-blue-500',
-  purple: 'bg-purple-50 text-purple-400 dark:bg-purple-950/30 dark:text-purple-500',
+  muted: 'bg-gray-50 text-gray-400 dark:bg-gray-950/30 dark:text-gray-500',
 }
 
 export function HistoryEmptyState({ icon, title, desc, tone = 'neutral' }: HistoryEmptyStateProps) {

@@ -50,6 +50,8 @@ const MAX_GAPS_PER_ROUND = 3
 /** Maximum search results per query */
 const MAX_SEARCH_RESULTS = 5
 
+export const DEEP_RESEARCH_CANCELLED_ERROR = 'deep-research-cancelled'
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 /**
@@ -255,6 +257,29 @@ function buildSearchQuery(
     .join(' ')
 }
 
+function deriveCompletedSurveyIndexes(
+  aspects: string[],
+  knowledgeBase: Array<{ label: string; content: string }>,
+  completedAspects: string[] = [],
+): number[] {
+  const completedIndexes = new Set<number>()
+  const markFirstMatchingAspect = (label: string) => {
+    const index = aspects.findIndex((aspect, candidateIndex) =>
+      aspect === label && !completedIndexes.has(candidateIndex)
+    )
+    if (index >= 0) completedIndexes.add(index)
+  }
+
+  for (const item of knowledgeBase) {
+    markFirstMatchingAspect(item.label)
+  }
+  for (const aspect of completedAspects) {
+    markFirstMatchingAspect(aspect)
+  }
+
+  return [...completedIndexes].sort((a, b) => a - b)
+}
+
 // ─── Language rule (prepended to every AI-facing prompt) ─────────────────────
 
 const LANG_RULE = `LANGUAGE RULE — NON-NEGOTIABLE:
@@ -389,6 +414,10 @@ export const deepResearchService = {
       if (!resumeState) return false
       return phaseIndex(p) <= phaseIndex(resumeState.lastCompletedPhase)
     }
+    const isPastPhase = (p: DeepResearchStepPhase): boolean => {
+      if (!resumeState) return false
+      return phaseIndex(resumeState.lastCompletedPhase) > phaseIndex(p)
+    }
 
 
     /**
@@ -397,7 +426,7 @@ export const deepResearchService = {
      * to halt the pipeline early. The renderer treats the message as a
      * non-error completion.
      */
-    const CANCELLED = 'deep-research-cancelled'
+    const CANCELLED = DEEP_RESEARCH_CANCELLED_ERROR
     /** Throws the cancellation sentinel when the user aborted. */
     const throwIfCancelled = () => {
       if (signal?.aborted) throw new Error(CANCELLED)
@@ -410,9 +439,18 @@ export const deepResearchService = {
      * call within milliseconds when they click Stop — instead of waiting for
      * the current step's HTTP response to finish naturally.
      */
+    const isCancelledError = (error: unknown): boolean =>
+      error instanceof Error && error.message === CANCELLED
+
     type SendChatParams = Parameters<typeof chatService.sendAbortable>[0]
-    const sendChat = (params: SendChatParams) =>
-      chatService.sendAbortable(params, { signal })
+    const sendChat = async (params: SendChatParams) => {
+      throwIfCancelled()
+      const result = await chatService.sendAbortable(params, { signal })
+      if (signal?.aborted || result.errorCode === 'CANCELLED') {
+        throw new Error(CANCELLED)
+      }
+      return result
+    }
 
 
 
@@ -425,6 +463,22 @@ export const deepResearchService = {
     let imageContext = resumeState?.imageContext ?? ''
     let imageSearchTerms: string[] = resumeState?.imageSearchTerms ?? []
 
+    // ── Phase 1: Initial Analysis ─────────────────────────────────────────
+    let aspects: string[] = resumeState?.aspects ?? DEFAULT_ASPECTS
+    const surveyCompletedIndexes = new Set(
+      resumeState?.surveyCompletedIndexes?.length
+        ? resumeState.surveyCompletedIndexes
+        : deriveCompletedSurveyIndexes(aspects, knowledgeBase, resumeState?.surveyCompletedAspects),
+    )
+    let activeGapRound = resumeState?.activeGapRound
+      ? {
+          ...resumeState.activeGapRound,
+          gaps: [...resumeState.activeGapRound.gaps],
+          queries: [...resumeState.activeGapRound.queries],
+          completedQueryIndexes: [...resumeState.activeGapRound.completedQueryIndexes],
+        }
+      : undefined
+
     /**
      * Build a fresh snapshot reflecting current pipeline state. Helper exists
      * so each phase can persist its outcome at the right moment without
@@ -434,22 +488,32 @@ export const deepResearchService = {
       lastCompletedPhase: DeepResearchStepPhase,
       lastGapIteration: number,
       crossContentValue?: string,
+      activeGapRoundValue = activeGapRound,
     ): DeepResearchResumeState => ({
       question,
       aspects,
       knowledgeBase: [...knowledgeBase],
+      surveyCompletedAspects: [...surveyCompletedIndexes]
+        .map((index) => aspects[index])
+        .filter((aspect): aspect is string => typeof aspect === 'string'),
+      surveyCompletedIndexes: [...surveyCompletedIndexes],
       imageContext,
       imageSearchTerms,
       anyWebSearch,
       crossContent: crossContentValue,
+      activeGapRound: activeGapRoundValue
+        ? {
+            iteration: activeGapRoundValue.iteration,
+            gaps: [...activeGapRoundValue.gaps],
+            queries: [...activeGapRoundValue.queries],
+            completedQueryIndexes: [...activeGapRoundValue.completedQueryIndexes],
+          }
+        : undefined,
       lastCompletedPhase,
       lastGapIteration,
       hasImages,
       carefulReasoning,
     })
-
-    // ── Phase 1: Initial Analysis ─────────────────────────────────────────
-    let aspects: string[] = resumeState?.aspects ?? DEFAULT_ASPECTS
 
     if (!isPhaseDone('analyze')) {
       const analyzeMsgId = onStepStart(uiText.stepAnalyze, { phase: 'analyze' })
@@ -460,6 +524,7 @@ export const deepResearchService = {
           messages: [{ role: 'user', content: buildResearchContent(question, images) }],
           systemPrompt: ANALYZE_PROMPT(date, hasImages),
         })
+        throwIfCancelled()
         const reply = getReply(result)
         if (reply) {
           const m = reply.match(/\{[\s\S]*\}/)
@@ -478,6 +543,10 @@ export const deepResearchService = {
           }
         }
       } catch (err) {
+        if (isCancelledError(err)) {
+          onStepError(analyzeMsgId, CANCELLED)
+          throw err
+        }
         onStepError(analyzeMsgId, err instanceof Error ? err.message : uiText.errorAnalyze)
         throw err
       }
@@ -503,8 +572,11 @@ export const deepResearchService = {
     // because the renderer collapses every survey step into one pill and shows
     // the per-aspect detail inside a hover-info popover. We still pass the
     // `aspect` text via meta so the popover can list what each step researched.
-    if (!isPhaseDone('survey')) {
-      for (const aspect of aspects) {
+    if (!isPastPhase('survey')) {
+      for (let aspectIndex = 0; aspectIndex < aspects.length; aspectIndex++) {
+        if (surveyCompletedIndexes.has(aspectIndex)) continue
+        const aspect = aspects[aspectIndex]
+        if (!aspect) continue
         throwIfCancelled()
         const msgId = onStepStart(
           tpl(uiText.stepRound1, { aspect }),
@@ -523,15 +595,21 @@ export const deepResearchService = {
             messages: [{ role: 'user', content: buildResearchContent(`Analyze this aspect: ${aspect}`, images) }],
             systemPrompt: RESEARCH_PROMPT(date, aspect, question, webCtx, imageContext),
           })
+          throwIfCancelled()
           const content = getReply(result) ?? tpl(uiText.cannotAnalyze, {
             error: describeChatFailure(result, uiText.errorUnknown),
           })
           knowledgeBase.push({ label: aspect, content })
+          surveyCompletedIndexes.add(aspectIndex)
           onStepComplete(msgId, content, false)
           // Snapshot after each aspect so a Stop mid-survey can resume
           // from the very next aspect rather than restarting Phase 2.
           onResumeStateChange?.(buildSnapshot('survey', 0))
         } catch (err) {
+          if (isCancelledError(err)) {
+            onStepError(msgId, CANCELLED)
+            throw err
+          }
           const e = err instanceof Error ? err.message : uiText.errorGeneric
           onStepError(msgId, e)
           knowledgeBase.push({ label: aspect, content: tpl(uiText.errorInline, { error: e }) })
@@ -541,65 +619,107 @@ export const deepResearchService = {
 
 
     // ── Phase 3: Gap Analysis Loop ────────────────────────────────────────
-    // When resuming, skip iterations that already finished. We use the
-    // `lastGapIteration` field on the snapshot — `0` means no gap round has
-    // run yet, `1` means the first gap round is done, etc.
-    const startIteration = (resumeState && (resumeState.lastCompletedPhase === 'gap' || resumeState.lastCompletedPhase === 'deep'))
-      ? resumeState.lastGapIteration + 1
-      : 1
-    for (let iteration = startIteration; iteration <= MAX_GAP_ITERATIONS; iteration++) {
+    // Resume must be granular inside this loop. A snapshot from `gap` means
+    // the current round's queries are known and pending; a snapshot from
+    // `deep` may still have unfinished queries inside the same round.
+    let startIteration = 1
+    let skipGapLoop = false
+    if (resumeState) {
+      if (isPastPhase('deep')) {
+        skipGapLoop = true
+      } else if (resumeState.lastCompletedPhase === 'gap') {
+        if (activeGapRound) {
+          startIteration = activeGapRound.iteration
+        } else {
+          skipGapLoop = true
+        }
+      } else if (resumeState.lastCompletedPhase === 'deep') {
+        if (
+          activeGapRound
+          && activeGapRound.completedQueryIndexes.length < Math.min(activeGapRound.queries.length, MAX_GAPS_PER_ROUND)
+        ) {
+          startIteration = activeGapRound.iteration
+        } else {
+          startIteration = resumeState.lastGapIteration + 1
+          activeGapRound = undefined
+        }
+      }
+    }
+
+    for (let iteration = startIteration; !skipGapLoop && iteration <= MAX_GAP_ITERATIONS; iteration++) {
       throwIfCancelled()
 
       const allFindings = knowledgeBase
         .map((k, i) => `### ${i + 1}. ${k.label}\n${k.content}`)
         .join('\n\n---\n\n')
 
-      // Ask AI: is the research complete? What's missing?
-      const gapMsgId = onStepStart(
-        tpl(uiText.stepGap, { round: iteration }),
-        { phase: 'gap' },
-      )
       let gapResult: GapAnalysisResult = { isComplete: true, gaps: [], queries: [] }
 
-
-      try {
-        const result = await sendChat({
-          provider, model,
-          messages: [{ role: 'user', content: buildResearchContent(GAP_ANALYSIS_CONTENT(question, allFindings, imageContext), images) }],
-          systemPrompt: GAP_ANALYSIS_PROMPT(date),
-          bypassLengthCheck: true,
-        })
-
-        const reply = getReply(result)
-        if (reply) {
-          const m = reply.match(/\{[\s\S]*\}/)
-          if (m) {
-            try {
-              const p = JSON.parse(m[0])
-              gapResult = {
-                isComplete: Boolean(p.isComplete),
-                gaps: Array.isArray(p.gaps) ? p.gaps.slice(0, MAX_GAPS_PER_ROUND) : [],
-                queries: Array.isArray(p.queries) ? p.queries.slice(0, MAX_GAPS_PER_ROUND) : [],
-              }
-            } catch { gapResult.isComplete = true }
-          }
+      if (activeGapRound?.iteration === iteration) {
+        gapResult = {
+          isComplete: false,
+          gaps: activeGapRound.gaps,
+          queries: activeGapRound.queries,
         }
+      } else {
+        // Ask AI: is the research complete? What's missing?
+        const gapMsgId = onStepStart(
+          tpl(uiText.stepGap, { round: iteration }),
+          { phase: 'gap' },
+        )
 
-        const gapContent = gapResult.isComplete
-          ? uiText.complete
-          : [
-              tpl(uiText.gapsFound, { count: gapResult.gaps.length }),
-              ...gapResult.gaps.map((g, i) => `${i + 1}. ${g}`),
-            ].join('\n')
+        try {
+          const result = await sendChat({
+            provider, model,
+            messages: [{ role: 'user', content: buildResearchContent(GAP_ANALYSIS_CONTENT(question, allFindings, imageContext), images) }],
+            systemPrompt: GAP_ANALYSIS_PROMPT(date),
+            bypassLengthCheck: true,
+          })
+          throwIfCancelled()
 
-        onStepComplete(gapMsgId, gapContent, false)
-        // Snapshot after each gap-evaluation so a Stop here can pick up at
-        // the deep-dive sub-phase (or the next iteration) without re-doing
-        // the gap analysis call.
-        onResumeStateChange?.(buildSnapshot('gap', iteration))
-      } catch (err) {
-        onStepError(gapMsgId, err instanceof Error ? err.message : uiText.errorEval)
-        gapResult.isComplete = true // fall through to synthesis on error
+          const reply = getReply(result)
+          if (reply) {
+            const m = reply.match(/\{[\s\S]*\}/)
+            if (m) {
+              try {
+                const p = JSON.parse(m[0])
+                gapResult = {
+                  isComplete: Boolean(p.isComplete),
+                  gaps: Array.isArray(p.gaps) ? p.gaps.slice(0, MAX_GAPS_PER_ROUND) : [],
+                  queries: Array.isArray(p.queries) ? p.queries.slice(0, MAX_GAPS_PER_ROUND) : [],
+                }
+              } catch { gapResult.isComplete = true }
+            }
+          }
+
+          const gapContent = gapResult.isComplete
+            ? uiText.complete
+            : [
+                tpl(uiText.gapsFound, { count: gapResult.gaps.length }),
+                ...gapResult.gaps.map((g, i) => `${i + 1}. ${g}`),
+              ].join('\n')
+
+          onStepComplete(gapMsgId, gapContent, false)
+          activeGapRound = gapResult.isComplete || gapResult.queries.length === 0
+            ? undefined
+            : {
+                iteration,
+                gaps: [...gapResult.gaps],
+                queries: [...gapResult.queries],
+                completedQueryIndexes: [],
+              }
+          // Snapshot after each gap-evaluation so a Stop here can pick up at
+          // the deep-dive sub-phase (or the next iteration) without re-doing
+          // the gap analysis call.
+          onResumeStateChange?.(buildSnapshot('gap', iteration))
+        } catch (err) {
+          if (isCancelledError(err)) {
+            onStepError(gapMsgId, CANCELLED)
+            throw err
+          }
+          onStepError(gapMsgId, err instanceof Error ? err.message : uiText.errorEval)
+          gapResult.isComplete = true // fall through to synthesis on error
+        }
       }
 
       // If complete, stop the loop
@@ -608,6 +728,8 @@ export const deepResearchService = {
 
       // Chase each gap with targeted search + analysis
       for (let g = 0; g < Math.min(gapResult.queries.length, MAX_GAPS_PER_ROUND); g++) {
+        if (activeGapRound?.completedQueryIndexes.includes(g)) continue
+        throwIfCancelled()
         const query = gapResult.queries[g]
         const gapLabel = gapResult.gaps[g] ?? query
         const deepMsgId = onStepStart(
@@ -628,21 +750,38 @@ export const deepResearchService = {
             messages: [{ role: 'user', content: buildResearchContent(`Deep dive research: ${gapLabel}`, images) }],
             systemPrompt: RESEARCH_PROMPT(date, gapLabel, question, webCtx, imageContext),
           })
+          throwIfCancelled()
           const content = getReply(result) ?? tpl(uiText.cannotResearch, {
             error: describeChatFailure(result, uiText.errorUnknown),
           })
           knowledgeBase.push({ label: `${uiText.deeperLabel} ${gapLabel}`, content })
+          activeGapRound = activeGapRound ?? {
+            iteration,
+            gaps: [...gapResult.gaps],
+            queries: [...gapResult.queries],
+            completedQueryIndexes: [],
+          }
+          activeGapRound.completedQueryIndexes = Array.from(new Set([
+            ...activeGapRound.completedQueryIndexes,
+            g,
+          ])).sort((a, b) => a - b)
           onStepComplete(deepMsgId, content, false)
           // Persist after each deep-dive aspect — granular snapshot helps a
           // mid-loop Stop resume from the very next gap instead of redoing
           // the whole gap-iteration.
           onResumeStateChange?.(buildSnapshot('deep', iteration))
         } catch (err) {
+          if (isCancelledError(err)) {
+            onStepError(deepMsgId, CANCELLED)
+            throw err
+          }
           const e = err instanceof Error ? err.message : uiText.errorGeneric
           onStepError(deepMsgId, e)
           knowledgeBase.push({ label: gapLabel, content: tpl(uiText.errorInline, { error: e }) })
         }
       }
+      activeGapRound = undefined
+      onResumeStateChange?.(buildSnapshot('deep', iteration, undefined, undefined))
     }
 
     // ── Phase 4: Cross-reference ──────────────────────────────────────────
@@ -663,11 +802,16 @@ export const deepResearchService = {
           systemPrompt: CROSS_REFERENCE_PROMPT(date, anyWebSearch),
           bypassLengthCheck: true,
         })
+        throwIfCancelled()
         crossContent = getReply(result)
           ?? tpl(uiText.crossFailed, { error: describeChatFailure(result, uiText.errorUnknown) })
         onStepComplete(crossMsgId, crossContent, false)
         onResumeStateChange?.(buildSnapshot('cross', resumeState?.lastGapIteration ?? 0, crossContent))
       } catch (err) {
+        if (isCancelledError(err)) {
+          onStepError(crossMsgId, CANCELLED)
+          throw err
+        }
         const e = err instanceof Error ? err.message : uiText.errorCross
         onStepError(crossMsgId, e)
         crossContent = tpl(uiText.crossFailedInline, { error: e })
@@ -709,6 +853,7 @@ export const deepResearchService = {
         maxOutputTokens: 'model-max',
         carefulReasoning,
       })
+      throwIfCancelled()
 
 
       const synthesis = getReply(result)
@@ -719,10 +864,13 @@ export const deepResearchService = {
       // the "Tiếp tục nghiên cứu" button.
       onResumeStateChange?.(null)
     } catch (err) {
+      if (isCancelledError(err)) {
+        onStepError(synthMsgId, CANCELLED)
+        throw err
+      }
       const e = err instanceof Error ? err.message : uiText.errorSynth
       onStepError(synthMsgId, e)
       throw err
     }
   },
 }
-

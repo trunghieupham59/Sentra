@@ -15,10 +15,10 @@ import { UsageCostBadge } from '../ui/UsageCostBadge'
  * scroll clean.
  */
 const MESSAGE_ACTION_BUTTON_CLASS =
-  'flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition-colors duration-150 cursor-pointer dark:text-gray-500'
-const MESSAGE_COPY_BUTTON_CLASS = `${MESSAGE_ACTION_BUTTON_CLASS} hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-neutral-800 dark:hover:text-gray-200`
-const MESSAGE_DOWNLOAD_BUTTON_CLASS = `${MESSAGE_ACTION_BUTTON_CLASS} hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/50 dark:hover:text-emerald-400`
-const MESSAGE_REGENERATE_BUTTON_CLASS = `${MESSAGE_ACTION_BUTTON_CLASS} hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-blue-950/50 dark:hover:text-blue-300`
+  'btn-icon btn-icon-sm border-transparent bg-transparent text-gray-400 shadow-none dark:bg-transparent dark:text-gray-500'
+const MESSAGE_COPY_BUTTON_CLASS = MESSAGE_ACTION_BUTTON_CLASS
+const MESSAGE_DOWNLOAD_BUTTON_CLASS = MESSAGE_ACTION_BUTTON_CLASS
+const MESSAGE_REGENERATE_BUTTON_CLASS = MESSAGE_ACTION_BUTTON_CLASS
 
 /**
  * Strip any trailing ellipsis/dot punctuation a locale baked into its loading
@@ -37,14 +37,12 @@ function stripTrailingEllipsis(label: string): string {
  * cycling-string approach so the label width never reflows as the animation
  * progresses.
  */
-function BouncingDots({ size = 'md', tone = 'blue' }: {
+function BouncingDots({ size = 'md', tone = 'gray' }: {
   size?: 'sm' | 'md'
-  tone?: 'blue' | 'gray'
+  tone?: 'gray'
 } = {}) {
   const dotSize = size === 'sm' ? 'h-[4px] w-[4px]' : 'h-[5px] w-[5px]'
-  const colour = tone === 'gray'
-    ? 'bg-gray-400 dark:bg-gray-500'
-    : 'bg-blue-500 dark:bg-blue-400'
+  const colour = { gray: 'bg-gray-400 dark:bg-gray-500' }[tone]
   return (
     <span className="inline-flex items-end gap-[3px] pb-[2px]" aria-hidden="true">
       <span className={`thinking-dot ${dotSize} rounded-full ${colour}`} style={{ animationDelay: '0ms' }} />
@@ -55,8 +53,8 @@ function BouncingDots({ size = 'md', tone = 'blue' }: {
 }
 
 /**
- * Polished "Thinking…" pill — soft blue gradient with a sparkle icon, label,
- * and three bouncing dots. The `muted` variant is used inside the collapsed
+ * Polished "Thinking…" pill — neutral sparkle, label, and three bouncing dots.
+ * The `muted` variant is used inside the collapsed
  * research-step header where the label has to sit on a neutral surface.
  */
 function ThinkingLabel({ muted = false }: { muted?: boolean } = {}) {
@@ -64,7 +62,7 @@ function ThinkingLabel({ muted = false }: { muted?: boolean } = {}) {
   const baseLabel = stripTrailingEllipsis(t.chat_thinking_label)
   if (muted) {
     return (
-      <span className="inline-flex items-center gap-2 text-[12px] font-medium text-gray-500 dark:text-gray-400 select-none">
+      <span className="thinking-inline-label">
         <BouncingDots size="sm" tone="gray" />
         <span>{baseLabel}</span>
       </span>
@@ -72,53 +70,44 @@ function ThinkingLabel({ muted = false }: { muted?: boolean } = {}) {
   }
   return (
     <span
-      className="inline-flex items-center gap-2 rounded-full border border-blue-100/80 bg-gradient-to-r from-blue-50 via-sky-50 to-blue-50
-                 px-3 py-1 text-[12.5px] font-semibold text-blue-700 shadow-sm shadow-blue-900/[0.04] select-none
-                 dark:border-blue-800/40 dark:from-blue-950/40 dark:via-sky-950/30 dark:to-blue-950/40 dark:text-blue-200
-                 dark:shadow-black/30"
+      className="thinking-state-pill"
       role="status"
       aria-live="polite"
     >
       <span className="relative inline-flex h-3.5 w-3.5 items-center justify-center">
-        <span className="thinking-glow absolute inset-0 rounded-full bg-blue-400/30 blur-[3px] dark:bg-blue-300/30" aria-hidden />
-        <SparklesIcon className="relative h-3.5 w-3.5 text-blue-500 dark:text-blue-300" />
+        <span className="thinking-glow absolute inset-0 rounded-full bg-gray-400/25 blur-[3px] dark:bg-gray-300/20" aria-hidden />
+        <SparklesIcon className="relative h-3.5 w-3.5 text-gray-500 dark:text-gray-300" />
       </span>
       <span className="tracking-[0.01em]">{baseLabel}</span>
-      <BouncingDots tone="blue" />
+      <BouncingDots tone="gray" />
     </span>
   )
 }
 
 /**
- * Polished Smart Thinking pill — same shape as ThinkingLabel but with an
- * indigo→sky gradient and a slow shimmer wash to signal the AI is browsing
- * the web on the user's behalf.
+ * Polished Smart Thinking pill — same shape as ThinkingLabel but with a
+ * quiet neutral treatment for web-grounded work.
  */
 function SmartThinkingLabel({ label }: { label: string }) {
   const baseLabel = stripTrailingEllipsis(label)
   return (
     <span
-      className="relative inline-flex items-center gap-2 overflow-hidden rounded-full
-                 border border-indigo-200/70 bg-gradient-to-r from-indigo-50 via-sky-50 to-violet-50
-                 px-3 py-1 text-[12.5px] font-semibold text-indigo-700 shadow-sm shadow-indigo-900/[0.05] select-none
-                 dark:border-indigo-800/40 dark:from-indigo-950/40 dark:via-sky-950/30 dark:to-violet-950/40
-                 dark:text-indigo-200 dark:shadow-black/30"
+      className="thinking-state-pill thinking-state-pill-shimmer"
       title={label}
       role="status"
       aria-live="polite"
     >
       <span
-        className="thinking-shimmer pointer-events-none absolute inset-0 bg-gradient-to-r
-                   from-transparent via-white/55 to-transparent dark:via-white/10"
+        className="thinking-shimmer pointer-events-none absolute inset-0 bg-white/40 dark:bg-white/5"
         aria-hidden
       />
       <span className="relative inline-flex h-3.5 w-3.5 items-center justify-center">
-        <span className="thinking-glow absolute inset-0 rounded-full bg-indigo-400/35 blur-[3px] dark:bg-indigo-300/30" aria-hidden />
-        <SparklesIcon className="relative h-3.5 w-3.5 text-indigo-500 dark:text-indigo-300" />
+        <span className="thinking-glow absolute inset-0 rounded-full bg-gray-400/25 blur-[3px] dark:bg-gray-300/20" aria-hidden />
+        <SparklesIcon className="relative h-3.5 w-3.5 text-gray-500 dark:text-gray-300" />
       </span>
       <span className="relative tracking-[0.01em]">{baseLabel}</span>
       <span className="relative">
-        <BouncingDots tone="blue" />
+        <BouncingDots tone="gray" />
       </span>
     </span>
   )
@@ -191,14 +180,11 @@ function MessageBubbleImpl({
           <button
             type="button"
             onClick={() => !message.isLoading && setIsStepCollapsed((v) => !v)}
-            className="w-full flex items-center justify-between px-3 py-2
-                       text-gray-600 dark:text-gray-300
-                       hover:bg-gray-100/60 dark:hover:bg-neutral-800/40
-                       transition-colors duration-150 cursor-pointer"
+            className="btn-menu-item justify-between"
           >
             <span className="flex items-center gap-2 font-medium text-left">
               {!message.isLoading && (
-                <LightbulbIcon className="h-3.5 w-3.5 text-indigo-500/80 dark:text-indigo-300/80" />
+                <LightbulbIcon className="h-3.5 w-3.5 text-gray-500 dark:text-gray-300" />
               )}
               <span>
                 {message.isLoading ? <ThinkingLabel muted /> : message.researchStepLabel}
@@ -227,8 +213,7 @@ function MessageBubbleImpl({
 
           {/* Error state */}
           {message.error && (
-            <div className="px-3 py-2 border-t border-red-100 dark:border-red-900/30
-                            text-red-500 dark:text-red-400 text-xs">
+            <div className="ui-error-text ui-error-divider-top px-3 py-2 text-xs">
               {message.error}
             </div>
           )}
@@ -237,23 +222,21 @@ function MessageBubbleImpl({
     )
   }
 
-  // ── Research Final bubble (highlighted, indigo) ───────────────────────────
+  // ── Research Final bubble ─────────────────────────────────────────────────
   if (message.isResearchFinal) {
     return (
       <div className="group flex gap-3 items-start">
         {/* Avatar */}
         <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center overflow-hidden
                         bg-white dark:bg-neutral-900
-                        border border-indigo-200 dark:border-indigo-800/70 shadow-sm shadow-indigo-900/[0.06]">
+                        border border-gray-200 dark:border-neutral-800 shadow-sm shadow-gray-900/[0.06]">
           <AppLogoIcon size={28} />
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col gap-1.5">
           {message.isLoading ? (
-            <div className="rounded-2xl border border-indigo-200/70 dark:border-indigo-900/60
-                            bg-gradient-to-br from-indigo-50/50 via-white to-violet-50/50
-                            dark:from-indigo-950/30 dark:via-neutral-900 dark:to-violet-950/30
-                            px-4 py-3 shadow-sm shadow-indigo-900/[0.05]">
+            <div className="rounded-2xl border border-gray-200/80 bg-white px-4 py-3 shadow-sm shadow-gray-900/[0.05]
+                            dark:border-neutral-800 dark:bg-neutral-900">
               <div className="flex items-center gap-2">
                 <SmartThinkingLabel label={t.chat_deep_research_summarizing} />
               </div>
@@ -262,8 +245,8 @@ function MessageBubbleImpl({
             <div className="chat-research-final">
               {/* Badge header */}
               <div className="chat-research-final-header">
-                <SparklesIcon className="h-3.5 w-3.5 text-indigo-500 dark:text-indigo-300" />
-                <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-200 uppercase tracking-[0.18em] select-none">
+                <SparklesIcon className="h-3.5 w-3.5 text-gray-500 dark:text-gray-300" />
+                <span className="ui-kicker font-bold tracking-[0.18em] text-gray-700 dark:text-gray-200">
                   {t.chat_deep_research_badge}
                 </span>
               </div>
@@ -277,7 +260,7 @@ function MessageBubbleImpl({
           {/* Timestamp + copy — hover-only */}
           {!message.isLoading && textContent && (
             <div className="chat-message-actions flex items-center gap-1 px-1">
-              <span className="text-[10px] text-gray-400 dark:text-gray-600">
+              <span className="ui-micro">
                 {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
               <button
@@ -304,10 +287,10 @@ function MessageBubbleImpl({
       {/* Avatar */}
       <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center overflow-hidden shadow-sm
                        ${isUser
-                         ? 'bg-gradient-to-br from-blue-500 to-indigo-500 shadow-blue-900/15'
+                         ? 'bg-gray-950 shadow-gray-900/15 dark:bg-gray-100'
                          : 'bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 shadow-gray-900/[0.05]'}`}>
         {isUser ? (
-          <UserIcon className="w-4 h-4 text-white" />
+          <UserIcon className="w-4 h-4 text-white dark:text-neutral-950" />
         ) : (
           <AppLogoIcon size={28} />
         )}
@@ -325,7 +308,7 @@ function MessageBubbleImpl({
               onClick={() => setPreviewImage(img)}
               title={t.chat_open_image}
               className="block max-w-full rounded-xl cursor-pointer
-                         focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-neutral-950"
+                         focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 dark:focus:ring-offset-neutral-950"
             >
               <img
                 src={imageSrc}
@@ -338,7 +321,7 @@ function MessageBubbleImpl({
         })}
 
         {/* Text / status — mirrors the Quick Chat popup phase indicator:
-         *   • Smart Thinking step running → blue pill "Smart Thinking…"
+         *   • Smart Thinking step running → neutral pill "Smart Thinking…"
          *   • otherwise                   → "Thinking…" label with spinner + cycling dots
          * Both states have a blinking/animated indicator so the user clearly
          * sees the AI is working. */}
@@ -362,13 +345,13 @@ function MessageBubbleImpl({
             )}
           </div>
         ) : message.error ? (
-          <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-xl px-4 py-3 text-sm text-red-700 dark:text-red-300 select-text cursor-text shadow-sm">
+          <div className="ui-error-box select-text cursor-text shadow-sm">
             {message.error}
           </div>
         ) : null}
 
         {message.error && textContent && (
-          <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-lg px-3 py-2 text-xs text-red-700 dark:text-red-300">
+          <div className="ui-error-box text-xs">
             {message.error}
           </div>
         )}
@@ -378,7 +361,7 @@ function MessageBubbleImpl({
          * the user always sees regenerate / copy without hunting for it. */}
         <div className={`chat-message-actions ${showPinnedActions ? 'chat-message-actions-pinned' : ''} flex items-center gap-1 px-1
                          ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-          <span className="text-[10px] text-gray-400 dark:text-gray-600 tabular-nums">
+          <span className="ui-micro tabular-nums">
             {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
           {!isUser && message.cost && (
@@ -451,10 +434,7 @@ function MessageBubbleImpl({
                   type="button"
                   onClick={() => onCopyImage(previewImage)}
                   title={copyLabel ?? t.chat_copy}
-                  className="flex h-9 w-9 items-center justify-center rounded-full
-                             text-white/80 hover:bg-white/10 hover:text-white
-                             focus:outline-none focus:ring-2 focus:ring-white/70
-                             transition-colors duration-150 cursor-pointer"
+                  className="btn-icon btn-icon-lg border-white/10 bg-neutral-950/70 text-white/80 shadow-none hover:bg-white/10 hover:text-white"
                 >
                   <CopyIcon className="w-4 h-4" />
                 </button>
@@ -464,10 +444,7 @@ function MessageBubbleImpl({
                   type="button"
                   onClick={() => onDownloadImage(previewImage)}
                   title={downloadImageLabel ?? t.chat_download_image}
-                  className="flex h-9 w-9 items-center justify-center rounded-full
-                             text-white/80 hover:bg-white/10 hover:text-white
-                             focus:outline-none focus:ring-2 focus:ring-white/70
-                             transition-colors duration-150 cursor-pointer"
+                  className="btn-icon btn-icon-lg border-white/10 bg-neutral-950/70 text-white/80 shadow-none hover:bg-white/10 hover:text-white"
                 >
                   <DownloadIcon className="w-4 h-4" />
                 </button>
@@ -477,10 +454,7 @@ function MessageBubbleImpl({
               type="button"
               onClick={() => setPreviewImage(null)}
               title={t.chat_close_image_preview}
-              className="absolute -top-3 -right-3 w-8 h-8 flex items-center justify-center rounded-full
-                         bg-white text-gray-600 shadow-lg hover:bg-gray-100 hover:text-gray-900
-                         dark:bg-neutral-900 dark:text-gray-300 dark:hover:bg-neutral-800 dark:hover:text-white
-                         transition-colors duration-150 cursor-pointer"
+              className="btn-icon absolute -right-3 -top-3"
             >
               <XIcon className="w-4 h-4" />
             </button>

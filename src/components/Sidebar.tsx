@@ -24,10 +24,10 @@ function SidebarItem({ icon, label, active, badge, collapsed, onClick }: Sidebar
         aria-current={active ? 'page' : undefined}
         // Native OS tooltip in collapsed mode — appears outside the app surface, never overlaps content.
         title={collapsed ? label : undefined}
-        className={`relative w-full h-10 flex items-center ${collapsed ? 'justify-center px-0' : 'justify-start px-3'} gap-3 rounded-lg transition-all duration-150 ${
+        className={`btn-secondary btn-nav-item relative ${collapsed ? 'btn-nav-item-collapsed' : ''} ${
           active
-            ? 'bg-blue-50 text-blue-700 shadow-sm shadow-blue-900/5 dark:bg-blue-950/45 dark:text-blue-300'
-            : 'text-gray-500 hover:text-gray-900 hover:bg-white/80 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-white/5'
+            ? 'btn-active'
+            : 'border-transparent bg-transparent text-gray-500 dark:bg-transparent dark:text-gray-400 dark:hover:bg-white/5'
         }`}
       >
         <span className={`flex items-center justify-center rounded-lg ${collapsed ? 'h-8 w-8' : ''}`}>
@@ -37,7 +37,7 @@ function SidebarItem({ icon, label, active, badge, collapsed, onClick }: Sidebar
           <span className="min-w-0 truncate text-sm font-semibold">{label}</span>
         )}
         {badge && (
-          <span className={`absolute top-1.5 ${collapsed ? 'right-1.5' : 'right-2.5'} w-2 h-2 bg-orange-400 rounded-full border-2 border-white dark:border-neutral-950`} />
+          <span className={`absolute top-1.5 ${collapsed ? 'right-1.5' : 'right-2.5'} w-2 h-2 bg-gray-400 rounded-full border-2 border-white dark:border-neutral-950`} />
         )}
       </button>
     </div>
@@ -69,7 +69,7 @@ export function Sidebar() {
             onClick={toggleSidebar}
             aria-label={t.nav_expand_sidebar}
             title={t.nav_expand_sidebar}
-            className="flex items-center gap-3 min-w-0 cursor-pointer bg-transparent border-0 p-0"
+            className="btn-icon btn-icon-lg border-transparent bg-transparent shadow-none dark:bg-transparent"
           >
             <AppLogoIcon size={34} />
           </button>
@@ -87,8 +87,7 @@ export function Sidebar() {
             onClick={toggleSidebar}
             aria-label={t.nav_collapse_sidebar}
             title={t.nav_collapse_sidebar}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 hover:text-gray-900 hover:bg-white/80
-                       dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-white/5 transition-colors"
+            className="btn-icon btn-icon-sm border-transparent bg-transparent shadow-none dark:bg-transparent"
           >
             <ChevronLeftIcon className="w-4 h-4" />
           </button>

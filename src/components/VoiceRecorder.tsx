@@ -359,23 +359,21 @@ export function VoiceRecorder({
         disabled={disabled || isTranscribing}
         title={isRecording ? titleStop : titleRecord}
         className={[
-          'relative flex items-center justify-center w-8 h-8 rounded-full',
-          'transition-all duration-200 cursor-pointer',
-          'disabled:opacity-40 disabled:cursor-not-allowed',
+          'btn-icon relative',
           isRecording
-            ? 'bg-red-500 text-white shadow-sm hover:bg-red-600'
+            ? 'btn-danger'
             : isTranscribing
-              ? 'bg-blue-500 text-white shadow-sm'
+              ? 'btn-primary'
               : state === 'error'
-                ? 'bg-orange-100 text-orange-500 border border-orange-200 dark:bg-orange-950 dark:border-orange-800 hover:bg-orange-200'
-                : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950 dark:hover:text-blue-400',
+                ? 'btn-secondary'
+                : '',
         ].join(' ')}
       >
         {/* Pulse ring */}
         {(isRecording || isTranscribing) && (
           <span className={[
             'absolute inset-0 rounded-full animate-ping opacity-40',
-            isTranscribing ? 'bg-blue-400' : 'bg-red-400',
+            isTranscribing ? 'bg-gray-400' : 'ui-status-ping-danger',
           ].join(' ')} />
         )}
 
@@ -393,19 +391,19 @@ export function VoiceRecorder({
 
       {/* Inline status label */}
       {isTranscribing && (
-        <span className="text-xs text-blue-500 dark:text-blue-400 animate-pulse whitespace-nowrap">
+        <span className="text-xs text-gray-500 dark:text-gray-400 animate-pulse whitespace-nowrap">
           {labelTranscribing}
         </span>
       )}
       {isRecording && useMediaRecorder && (
-        <span className="text-xs text-red-500 dark:text-red-400 animate-pulse whitespace-nowrap">
+        <span className="voice-recording-text text-xs animate-pulse whitespace-nowrap">
           {labelRecording}
         </span>
       )}
 
       {/* Error tooltip */}
       {state === 'error' && errorMsg && (
-        <span className="absolute left-full ml-2 whitespace-nowrap text-xs text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 px-2 py-1 rounded-md z-10">
+        <span className="absolute left-full ml-2 whitespace-nowrap text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 px-2 py-1 rounded-md z-10">
           {errorMsg === 'network' ? t.voice_error_network : errorMsg}
         </span>
       )}

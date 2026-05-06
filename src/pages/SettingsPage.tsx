@@ -183,10 +183,10 @@ export function SettingsPage() {
                   onClick={() => scrollToSection(id)}
                   title={description}
                   className={[
-                    'w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors',
+                    'btn-secondary btn-nav-item',
                     active
-                      ? 'bg-blue-50 text-blue-700 shadow-sm shadow-blue-900/5 dark:bg-blue-950/40 dark:text-blue-300'
-                      : 'text-gray-600 hover:bg-white hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100',
+                      ? 'btn-active'
+                      : 'border-transparent bg-transparent text-gray-600 dark:bg-transparent dark:text-gray-400 dark:hover:bg-white/5',
                   ].join(' ')}
                   aria-current={active ? 'true' : undefined}
                 >
@@ -212,10 +212,10 @@ export function SettingsPage() {
                     onClick={() => scrollToSection(id)}
                     title={description}
                     className={[
-                      'flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+                      'btn-secondary btn-sm whitespace-nowrap shadow-none',
                       active
-                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
-                        : 'text-gray-500 hover:bg-white dark:text-gray-400 dark:hover:bg-white/5',
+                        ? 'btn-active'
+                        : 'border-transparent bg-transparent text-gray-500 dark:bg-transparent dark:text-gray-400 dark:hover:bg-white/5',
                     ].join(' ')}
                     aria-current={active ? 'true' : undefined}
                   >

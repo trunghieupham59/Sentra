@@ -572,6 +572,7 @@ const vi: Translations = {
   ai_chat_popup_input_too_long: 'Nội dung quá dài. Rút gọn để gửi.',
   ai_chat_popup_new_line: 'Xuống dòng',
   ai_chat_popup_close: 'Đóng',
+  ai_chat_popup_turns: '{count} lượt',
   settings_chat_hotkey_section: 'Phím tắt AI Chat',
   settings_chat_hotkey_section_desc: 'Nhấn phím tắt trong bất kỳ ứng dụng nào để bật hoặc tắt popup hỏi nhanh AI.',
   settings_chat_hotkey_enabled: 'Bật phím tắt',
@@ -694,7 +695,9 @@ const vi: Translations = {
   chat_research_done_label: 'Đã suy nghĩ',
   chat_research_steps_unit: 'bước',
   chat_research_aspects_suffix: '{count} khía cạnh',
+  chat_research_show_details: 'Xem chi tiết nghiên cứu',
   chat_deep_research_resume: 'Tiếp tục nghiên cứu',
+  chat_deep_research_resume_short: 'Tiếp tục',
 
   chat_deep_research_summarizing: 'Đang tổng hợp kết quả…',
 

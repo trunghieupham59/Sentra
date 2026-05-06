@@ -65,17 +65,17 @@ export function LiveHistoryTab({ query }: LiveHistoryTabProps) {
       <div className="flex-1 overflow-y-auto">
         {liveSessions.length === 0 ? (
           <HistoryEmptyState
-            icon={<MicrophoneIcon className="w-7 h-7 text-purple-300 dark:text-purple-700" />}
+            icon={<MicrophoneIcon className="w-7 h-7 text-gray-300 dark:text-gray-700" />}
             title={t.history_live_empty}
             desc={t.history_live_empty_desc}
-            tone="purple"
+            tone="muted"
           />
         ) : filteredSessions.length === 0 ? (
           <HistoryEmptyState
             icon={<MicrophoneIcon className="w-7 h-7" />}
             title={t.history_no_results}
             desc={t.history_no_results_desc}
-            tone="purple"
+            tone="muted"
           />
         ) : (
           <ul className="p-3 space-y-2">
@@ -91,7 +91,7 @@ export function LiveHistoryTab({ query }: LiveHistoryTabProps) {
                   id={session.id}
                   isSelected={isSelected}
                   isExpanded={isExpanded}
-                  tone="purple"
+                  tone="muted"
                   onToggleSelect={toggleSelect}
                   onToggleExpand={(id) => setExpandedId(expandedId === id ? null : id)}
                   preview={(
@@ -109,14 +109,14 @@ export function LiveHistoryTab({ query }: LiveHistoryTabProps) {
                   meta={(
                     <>
                       <ProviderBadge provider={session.provider} />
-                      <span className="text-[10px] text-gray-400 dark:text-gray-600">
+                      <span className="ui-micro">
                         {langLabel(session.sourceLang)} → {langLabel(session.targetLang)}
                       </span>
-                      <span className="text-[10px] text-purple-400 dark:text-purple-600">
+                      <span className="ui-micro">
                         {session.wordCount.toLocaleString()} {t.history_live_words}
                       </span>
                       <UsageCostBadge cost={session.cost} currency={costCurrency} />
-                      <span className="text-[10px] text-gray-300 dark:text-gray-700 ml-auto">
+                      <span className="ui-micro ml-auto">
                         {formatTime(session.createdAt, t)}
                       </span>
                     </>
@@ -125,7 +125,7 @@ export function LiveHistoryTab({ query }: LiveHistoryTabProps) {
                     <div className="px-4 pb-3 pl-11 fade-in space-y-2">
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs">
                         <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 rounded-lg">
-                          <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-1">
+                          <p className="ui-kicker mb-1">
                             {langLabel(session.sourceLang)} · {t.live_panel_original}
                           </p>
                           <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap line-clamp-4">
@@ -133,7 +133,7 @@ export function LiveHistoryTab({ query }: LiveHistoryTabProps) {
                           </p>
                         </div>
                         <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 rounded-lg">
-                          <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-1">
+                          <p className="ui-kicker mb-1">
                             {langLabel(session.targetLang)} · {t.live_panel_translation}
                           </p>
                           <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap line-clamp-4">
@@ -144,42 +144,42 @@ export function LiveHistoryTab({ query }: LiveHistoryTabProps) {
 
                       {/* Summary (if any) */}
                       {session.summary && (
-                        <div className="rounded-lg border border-purple-100 dark:border-purple-900/40
-                                        bg-purple-50/50 dark:bg-purple-950/10 px-3 py-2 text-xs">
-                          <p className="text-[10px] font-semibold uppercase tracking-widest text-purple-500 dark:text-purple-400 mb-1.5">
+                        <div className="rounded-lg border border-gray-100 dark:border-gray-900/40
+                                        bg-gray-50/50 dark:bg-gray-950/10 px-3 py-2 text-xs">
+                          <p className="ui-kicker mb-1.5 text-gray-500 dark:text-gray-400">
                             {t.live_summary_title}
                           </p>
                           <MarkdownText
                             text={session.summary}
-                            className="text-purple-800 dark:text-purple-200"
+                            className="text-gray-800 dark:text-gray-200"
                           />
                         </div>
                       )}
 
                       {/* Action Items (if any) */}
                       {session.actionItems && (
-                        <div className="rounded-lg border border-amber-100 dark:border-amber-900/40
-                                        bg-amber-50/50 dark:bg-amber-950/10 px-3 py-2 text-xs">
-                          <p className="text-[10px] font-semibold uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-1.5">
+                        <div className="rounded-lg border border-gray-100 dark:border-gray-900/40
+                                        bg-gray-50/50 dark:bg-gray-950/10 px-3 py-2 text-xs">
+                          <p className="ui-kicker mb-1.5 text-gray-600 dark:text-gray-400">
                             {t.live_action_items}
                           </p>
                           <MarkdownText
                             text={session.actionItems}
-                            className="text-amber-800 dark:text-amber-200"
+                            className="text-gray-800 dark:text-gray-200"
                           />
                         </div>
                       )}
 
                       {/* Decisions (if any) */}
                       {session.decisions && (
-                        <div className="rounded-lg border border-green-100 dark:border-green-900/40
-                                        bg-green-50/50 dark:bg-green-950/10 px-3 py-2 text-xs">
-                          <p className="text-[10px] font-semibold uppercase tracking-widest text-green-600 dark:text-green-400 mb-1.5">
+                        <div className="rounded-lg border border-gray-100 dark:border-gray-900/40
+                                        bg-gray-50/50 dark:bg-gray-950/10 px-3 py-2 text-xs">
+                          <p className="ui-kicker mb-1.5 text-gray-600 dark:text-gray-400">
                             {t.live_decisions}
                           </p>
                           <MarkdownText
                             text={session.decisions}
-                            className="text-green-800 dark:text-green-200"
+                            className="text-gray-800 dark:text-gray-200"
                           />
                         </div>
                       )}
@@ -189,10 +189,7 @@ export function LiveHistoryTab({ query }: LiveHistoryTabProps) {
                         <button
                           type="button"
                           onClick={() => handleOpenLive(session.id)}
-                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg
-                                     bg-purple-50 text-purple-600 hover:bg-purple-100
-                                     dark:bg-purple-950 dark:text-purple-400 dark:hover:bg-purple-900
-                                     font-medium transition-colors"
+                          className="btn-secondary btn-sm"
                         >
                           <MicrophoneIcon className="w-3.5 h-3.5" />
                           {t.history_live_view}

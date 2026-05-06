@@ -196,7 +196,6 @@ export function HotkeySection() {
               setHotkeyEnabled(next)
               saveHotkeySettings({ enabled: next })
             }}
-            color="green"
           />
         </div>
 
@@ -216,7 +215,7 @@ export function HotkeySection() {
                     setHotkeyEnabled(false)
                     saveHotkeySettings({ hotkey: '', enabled: false })
                   }}
-                  className="p-1 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                  className="btn-icon btn-icon-sm btn-icon-danger"
                   title={t.settings_hotkey_clear}
                 >
                   <XIcon />
@@ -235,16 +234,16 @@ export function HotkeySection() {
             </div>
           </div>
           {hotkeyError && (
-            <p className="text-xs text-red-500 dark:text-red-400">{hotkeyError}</p>
+            <p className="ui-error-text text-xs">{hotkeyError}</p>
           )}
         </div>
 
         {/* Status indicator */}
         {hotkeyStatus !== 'idle' && (
           <div className={`px-4 py-3 flex items-center gap-2 text-xs ${
-            hotkeyStatus === 'translating' ? 'text-blue-600 dark:text-blue-400' :
-            hotkeyStatus === 'done' ? 'text-green-600 dark:text-green-400' :
-            'text-red-600 dark:text-red-400'
+            hotkeyStatus === 'translating' ? 'text-gray-600 dark:text-gray-400' :
+            hotkeyStatus === 'done' ? 'text-gray-600 dark:text-gray-400' :
+            'ui-error-text'
           }`}>
             {hotkeyStatus === 'translating' && <SpinnerIcon className="w-3.5 h-3.5 animate-spin" />}
             <span>{hotkeyStatusMsg}</span>
@@ -273,7 +272,6 @@ export function HotkeySection() {
               setChatHotkeyEnabled(next)
               saveChatHotkeySettings({ enabled: next })
             }}
-            color="blue"
           />
         </div>
 
@@ -293,7 +291,7 @@ export function HotkeySection() {
                     setChatHotkeyEnabled(false)
                     saveChatHotkeySettings({ hotkey: '', enabled: false })
                   }}
-                  className="p-1 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                  className="btn-icon btn-icon-sm btn-icon-danger"
                   title={t.settings_chat_hotkey_clear}
                 >
                   <XIcon />
@@ -312,7 +310,7 @@ export function HotkeySection() {
             </div>
           </div>
           {chatHotkeyError && (
-            <p className="text-xs text-red-500 dark:text-red-400">{chatHotkeyError}</p>
+            <p className="ui-error-text text-xs">{chatHotkeyError}</p>
           )}
         </div>
 

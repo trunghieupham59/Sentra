@@ -192,7 +192,7 @@ export function LiveTranslatePage() {
             <button
               type="button"
               disabled
-              className="flex-shrink-0 flex items-center justify-center w-8 h-8 text-gray-200 dark:text-gray-700 cursor-not-allowed"
+              className="btn-icon flex-shrink-0 border-transparent bg-transparent text-gray-200 shadow-none dark:bg-transparent dark:text-gray-700"
             >
               <SwapIcon className="w-5 h-5" />
             </button>
@@ -219,12 +219,12 @@ export function LiveTranslatePage() {
               }}
               disabled={!hasOpenAIKey || !hasAnyKey}
               className={[
-                'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold flex-shrink-0 transition-all duration-200 select-none',
+                'btn-sm flex-shrink-0',
                 isActive
-                  ? 'bg-red-500 hover:bg-red-600 text-white shadow-sm cursor-pointer'
+                  ? 'btn-danger'
                   : (!hasOpenAIKey || !hasAnyKey)
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600'
-                    : 'bg-blue-500 hover:bg-blue-600 text-white shadow-sm cursor-pointer',
+                    ? 'btn-secondary'
+                    : 'btn-primary',
               ].join(' ')}
             >
               {isActive ? (
@@ -259,20 +259,17 @@ export function LiveTranslatePage() {
 
                   {/* Nguồn âm thanh */}
                   <div className="flex flex-col gap-2">
-                    <span className="text-[0.65rem] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+                    <span className="ui-kicker">
                       {t.live_audio_source_label}
                     </span>
-                    <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700
-                                    bg-gray-50 dark:bg-gray-800 p-0.5 gap-0.5 select-none w-fit">
+                    <div className="segmented-control w-fit">
                       <button
                         type="button" disabled={isActive} onClick={() => setAudioMode('mic')}
                         title={t.live_audio_mode_mic_title}
                         className={[
-                          'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150',
-                          audioMode === 'mic'
-                            ? 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 shadow-sm'
-                            : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400',
-                          isActive ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+                          'btn-segment',
+                          audioMode === 'mic' ? 'btn-segment-active' : '',
+                          isActive ? 'opacity-50' : '',
                         ].join(' ')}
                       >
                         <MicrophoneIcon className="w-3 h-3" />
@@ -282,11 +279,9 @@ export function LiveTranslatePage() {
                         type="button" disabled={isActive} onClick={() => setAudioMode('system')}
                         title={t.live_audio_mode_system_title}
                         className={[
-                          'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150',
-                          audioMode === 'system'
-                            ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                            : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400',
-                          isActive ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+                          'btn-segment',
+                          audioMode === 'system' ? 'btn-segment-active' : '',
+                          isActive ? 'opacity-50' : '',
                         ].join(' ')}
                       >
                         <MonitorIcon className="w-3 h-3" />
@@ -296,11 +291,9 @@ export function LiveTranslatePage() {
                         type="button" disabled={isActive} onClick={() => setAudioMode('both')}
                         title={t.live_audio_mode_both_title}
                         className={[
-                          'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150',
-                          audioMode === 'both'
-                            ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
-                            : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400',
-                          isActive ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+                          'btn-segment',
+                          audioMode === 'both' ? 'btn-segment-active' : '',
+                          isActive ? 'opacity-50' : '',
                         ].join(' ')}
                       >
                         <span className="relative inline-flex items-center w-4 h-3 flex-shrink-0">
@@ -317,7 +310,7 @@ export function LiveTranslatePage() {
 
                   {/* Phụ đề */}
                   <div className="flex flex-col gap-2">
-                    <span className="text-[0.65rem] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+                    <span className="ui-kicker">
                       {t.live_subtitles}
                     </span>
                     <div className="flex items-center gap-2 relative">
@@ -326,10 +319,8 @@ export function LiveTranslatePage() {
                         onClick={() => setShowSubtitles(v => !v)}
                         title={showSubtitles ? t.live_subtitles_hide_title : t.live_subtitles_show_title}
                         className={[
-                          'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer border',
-                          showSubtitles
-                            ? 'bg-blue-500 border-blue-500 text-white shadow-sm'
-                            : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300',
+                          showSubtitles ? 'btn-primary' : 'btn-secondary',
+                          'btn-sm',
                         ].join(' ')}
                       >
                         <SubtitlesIcon className="w-3.5 h-3.5" />
@@ -340,10 +331,8 @@ export function LiveTranslatePage() {
                         onClick={() => setShowSubtitleConfig(v => !v)}
                         title={t.live_subtitle_config_title}
                         className={[
-                          'flex items-center justify-center w-8 h-8 rounded-lg border text-xs font-medium transition-all duration-150 cursor-pointer',
-                          showSubtitleConfig
-                            ? 'bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-950/40 dark:border-blue-700 dark:text-blue-400 shadow-sm'
-                            : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400',
+                          'btn-icon',
+                          showSubtitleConfig ? 'btn-active' : '',
                         ].join(' ')}
                       >
                         <GearIcon className="w-3 h-3" />
@@ -353,7 +342,7 @@ export function LiveTranslatePage() {
                       {showSubtitleConfig && (
                         <div className="floating-panel absolute top-full mt-2 left-0 z-50 w-64 p-3 flex flex-col gap-3 select-none">
                           <div>
-                            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">
+                            <p className="ui-kicker mb-1.5">
                               {t.live_subtitle_text_color}
                             </p>
                             <div className="flex gap-2 flex-wrap">
@@ -362,10 +351,8 @@ export function LiveTranslatePage() {
                                   key={value} type="button" title={label}
                                   onClick={() => setSubtitleSettings(s => ({ ...s, textColor: value }))}
                                   className={[
-                                    'w-6 h-6 rounded-full border-2 cursor-pointer transition-all duration-100',
-                                    subtitleSettings.textColor === value
-                                      ? 'border-blue-500 scale-110 shadow-sm'
-                                      : 'border-gray-200 dark:border-gray-700 hover:scale-110',
+                                    'btn-swatch',
+                                    subtitleSettings.textColor === value ? 'btn-swatch-active' : '',
                                   ].join(' ')}
                                   style={{ background: value }}
                                   aria-label={label}
@@ -374,19 +361,17 @@ export function LiveTranslatePage() {
                             </div>
                           </div>
                           <div>
-                            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">
+                            <p className="ui-kicker mb-1.5">
                               {t.live_subtitle_font_size} — {subtitleSettings.fontSize}px
                             </p>
-                            <div className="flex gap-1">
+                            <div className="segmented-control">
                               {SUBTITLE_FONT_SIZES.map(({ size, label }) => (
                                 <button
                                   key={size} type="button"
                                   onClick={() => setSubtitleSettings(s => ({ ...s, fontSize: size }))}
                                   className={[
-                                    'flex-1 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all duration-100',
-                                    subtitleSettings.fontSize === size
-                                      ? 'bg-blue-500 text-white'
-                                      : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-blue-50 dark:hover:bg-blue-950/30',
+                                    'btn-segment flex-1',
+                                    subtitleSettings.fontSize === size ? 'btn-segment-active' : '',
                                   ].join(' ')}
                                 >
                                   {label}
@@ -395,16 +380,16 @@ export function LiveTranslatePage() {
                             </div>
                           </div>
                           <div>
-                            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">
+                            <p className="ui-kicker mb-1.5">
                               {t.live_subtitle_bg_opacity} — {subtitleSettings.bgOpacity}%
                             </p>
                             <input
                               type="range" min={0} max={100} step={5}
                               value={subtitleSettings.bgOpacity}
                               onChange={e => setSubtitleSettings(s => ({ ...s, bgOpacity: Number(e.target.value) }))}
-                              className="w-full accent-blue-500 cursor-pointer"
+                              className="w-full accent-gray-500 cursor-pointer"
                             />
-                            <div className="flex justify-between text-[9px] text-gray-300 dark:text-gray-600 mt-0.5">
+                            <div className="ui-micro mt-0.5 flex justify-between text-gray-300 dark:text-gray-600">
                               <span>{t.live_subtitle_transparent}</span>
                               <span>{t.live_subtitle_opaque}</span>
                             </div>
@@ -412,7 +397,7 @@ export function LiveTranslatePage() {
                           <button
                             type="button"
                             onClick={() => setSubtitleSettings({ ...DEFAULT_SUBTITLE_SETTINGS })}
-                            className="text-[10px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer text-center transition-colors"
+                            className="btn-link btn-xs justify-center"
                           >
                             {t.live_subtitle_reset}
                           </button>
@@ -427,7 +412,7 @@ export function LiveTranslatePage() {
                   {/* Transcript actions */}
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-[0.65rem] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+                      <span className="ui-kicker">
                         {t.live_transcript_label}
                       </span>
                       {wordCount > 0 && (
@@ -442,10 +427,8 @@ export function LiveTranslatePage() {
                         disabled={!rawTranscript}
                         onClick={() => { handleClear(); setShowAIConfig(false) }}
                         className={[
-                          'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150',
-                          rawTranscript
-                            ? 'text-gray-500 hover:text-red-500 hover:bg-red-50 dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-red-950/30 cursor-pointer'
-                            : 'text-gray-300 dark:text-gray-600 cursor-not-allowed',
+                          'btn-danger btn-xs',
+                          rawTranscript ? '' : 'opacity-45',
                         ].join(' ')}
                       >
                         <TrashIcon className="w-3.5 h-3.5" />
@@ -457,10 +440,8 @@ export function LiveTranslatePage() {
                         onClick={handleExportTxt}
                         title={t.live_export_txt}
                         className={[
-                          'flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150',
-                          rawTranscript
-                            ? 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer'
-                            : 'text-gray-300 dark:text-gray-600 cursor-not-allowed',
+                          'btn-secondary btn-xs',
+                          rawTranscript ? '' : 'opacity-45',
                         ].join(' ')}
                       >
                         <DownloadIcon className="w-3.5 h-3.5" />
@@ -472,10 +453,8 @@ export function LiveTranslatePage() {
                         onClick={handleExportSrt}
                         title={t.live_export_srt}
                         className={[
-                          'flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150',
-                          segments.length
-                            ? 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer'
-                            : 'text-gray-300 dark:text-gray-600 cursor-not-allowed',
+                          'btn-secondary btn-xs',
+                          segments.length ? '' : 'opacity-45',
                         ].join(' ')}
                       >
                         <DownloadIcon className="w-3.5 h-3.5" />
@@ -494,7 +473,7 @@ export function LiveTranslatePage() {
           {!hasOpenAIKey && (
             <Notice>
               {t.live_no_openai_key}{' '}
-              <button type="button" onClick={() => openSettings()} className="underline font-medium cursor-pointer">
+              <button type="button" onClick={() => openSettings()} className="btn-link">
                 {t.translate_error_open_settings}
               </button>
             </Notice>
@@ -512,29 +491,29 @@ export function LiveTranslatePage() {
                   <span className="flex items-center gap-1.5 select-none">
                     {isTranscribing ? (
                       <>
-                        <SpinnerIcon className="w-2.5 h-2.5 animate-spin text-violet-500 flex-shrink-0" />
-                        <span className="text-[10px] font-medium text-violet-500 dark:text-violet-400">{t.voice_transcribing}</span>
+                        <SpinnerIcon className="w-2.5 h-2.5 animate-spin text-gray-500 flex-shrink-0" />
+                        <span className="ui-micro font-medium text-gray-500 dark:text-gray-400">{t.voice_transcribing}</span>
                       </>
                     ) : isTranslating ? (
                       <>
-                        <SpinnerIcon className="w-2.5 h-2.5 animate-spin text-blue-500 flex-shrink-0" />
-                        <span className="text-[10px] font-medium text-blue-500 dark:text-blue-400">{t.live_status_translating}</span>
+                        <SpinnerIcon className="w-2.5 h-2.5 animate-spin text-gray-500 flex-shrink-0" />
+                        <span className="ui-micro font-medium text-gray-500 dark:text-gray-400">{t.live_status_translating}</span>
                       </>
                     ) : pendingText ? (
                       <>
                         <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500" />
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gray-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-gray-500" />
                         </span>
-                        <span className="text-[10px] font-medium text-amber-500 dark:text-amber-400">{t.voice_whisper_mode}</span>
+                        <span className="ui-micro font-medium text-gray-500 dark:text-gray-400">{t.voice_whisper_mode}</span>
                       </>
                     ) : (
                       <>
                         <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gray-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-gray-500" />
                         </span>
-                        <span className="text-[10px] font-medium text-green-600 dark:text-green-400">{t.live_status_listening}</span>
+                        <span className="ui-micro font-medium text-gray-600 dark:text-gray-400">{t.live_status_listening}</span>
                       </>
                     )}
                   </span>
@@ -554,13 +533,12 @@ export function LiveTranslatePage() {
                     ))}
                     {isActive && pendingText && (
                       <div className="flex items-start gap-2 opacity-50">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 mt-0.5
-                                         bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                        <span className="ui-badge-xs mt-0.5 flex-shrink-0 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
                           {segments.length > 0
                             ? (speakerNameMap[segments[segments.length - 1].speaker] || segments[segments.length - 1].speaker)
                             : t.live_speaker_default}
                         </span>
-                        <span className="text-[15px] text-gray-500 dark:text-gray-500 leading-relaxed italic">
+                        <span className="ui-reader-text text-gray-500 dark:text-gray-500 italic">
                           {pendingText}
                           <span className="not-italic inline-block ml-0.5 w-0.5 h-4 bg-gray-400 dark:bg-gray-600 animate-pulse align-middle" />
                         </span>
@@ -573,7 +551,7 @@ export function LiveTranslatePage() {
                     )}
                   </>
                 ) : rawTranscript ? (
-                  <p className="text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap p-1">
+                  <p className="ui-reader-text whitespace-pre-wrap p-1">
                     {rawTranscript}
                     {isActive && <span className="inline-block ml-0.5 w-0.5 h-4 bg-gray-400 dark:bg-gray-600 animate-pulse align-middle" />}
                   </p>
@@ -597,11 +575,8 @@ export function LiveTranslatePage() {
                   onClick={() => handleCopy(rawTranscript, setCopiedRaw)}
                   title={t.translate_copy}
                   className={[
-                    'flex items-center justify-center w-8 h-8 rounded-lg transition-colors duration-150',
-                    rawTranscript
-                      ? 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-800 cursor-pointer'
-                      : 'text-gray-200 dark:text-gray-700 cursor-not-allowed',
-                    copiedRaw ? '!text-green-500 dark:!text-green-400' : '',
+                    'btn-icon',
+                    copiedRaw ? 'btn-active' : '',
                   ].join(' ')}
                 >
                   {copiedRaw ? <CheckIcon className="w-4 h-4" /> : <CopyIcon className="w-4 h-4" />}
@@ -620,20 +595,20 @@ export function LiveTranslatePage() {
               {isActive && (
                 <div className="flex-shrink-0 flex items-center justify-end px-4 pt-2 pb-1">
                   <span className={[
-                    'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold select-none',
+                    'ui-badge-xs gap-1.5 select-none',
                     activeSttProvider === 'whisper'
-                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                      ? 'bg-gray-100 text-gray-700 dark:bg-gray-900/40 dark:text-gray-300'
                       : activeSttProvider === 'gemini'
-                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                        ? 'bg-gray-100 text-gray-700 dark:bg-gray-900/40 dark:text-gray-300'
                         : activeSttProvider === 'groq'
-                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
+                          ? 'bg-gray-100 text-gray-700 dark:bg-gray-900/40 dark:text-gray-300'
                           : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
                   ].join(' ')}>
                     <span className={[
                       'w-1.5 h-1.5 rounded-full flex-shrink-0',
-                      activeSttProvider === 'whisper' ? 'bg-emerald-500' :
-                      activeSttProvider === 'gemini'  ? 'bg-blue-500' :
-                      activeSttProvider === 'groq'    ? 'bg-purple-500' : 'bg-gray-400',
+                      activeSttProvider === 'whisper' ? 'bg-gray-500' :
+                      activeSttProvider === 'gemini'  ? 'bg-gray-500' :
+                      activeSttProvider === 'groq'    ? 'bg-gray-500' : 'bg-gray-400',
                     ].join(' ')} />
                     {activeSttProvider === 'whisper' ? 'Whisper' :
                      activeSttProvider === 'gemini'  ? 'Gemini' :
@@ -655,18 +630,18 @@ export function LiveTranslatePage() {
                     ))}
                     {isActive && isTranslating && (
                       <div className="flex items-center gap-2 pl-1">
-                        <SpinnerIcon className="w-3 h-3 animate-spin text-blue-400" />
-                        <span className="text-xs text-blue-400 italic">{t.live_status_translating}</span>
+                        <SpinnerIcon className="w-3 h-3 animate-spin text-gray-400" />
+                        <span className="text-xs text-gray-400 italic">{t.live_status_translating}</span>
                       </div>
                     )}
                     {isActive && !isTranslating && (
                       <div className="flex items-center gap-2 pl-1">
-                        <span className="inline-block w-0.5 h-4 bg-blue-300 dark:bg-blue-700 animate-pulse" />
+                        <span className="inline-block w-0.5 h-4 bg-gray-300 dark:bg-gray-700 animate-pulse" />
                       </div>
                     )}
                   </>
                 ) : translation ? (
-                  <p className="text-[15px] font-medium text-blue-700 dark:text-blue-300 leading-relaxed whitespace-pre-wrap p-1">
+                  <p className="ui-reader-text font-medium whitespace-pre-wrap p-1">
                     {translation}
                   </p>
                 ) : (
@@ -683,11 +658,8 @@ export function LiveTranslatePage() {
                   onClick={() => handleCopy(translation, setCopiedTx)}
                   title={t.translate_copy}
                   className={[
-                    'flex items-center justify-center w-8 h-8 rounded-lg transition-colors duration-150',
-                    translation
-                      ? 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-800 cursor-pointer'
-                      : 'text-gray-200 dark:text-gray-700 cursor-not-allowed',
-                    copiedTx ? '!text-green-500 dark:!text-green-400' : '',
+                    'btn-icon',
+                    copiedTx ? 'btn-active' : '',
                   ].join(' ')}
                 >
                   {copiedTx ? <CheckIcon className="w-4 h-4" /> : <CopyIcon className="w-4 h-4" />}
@@ -697,9 +669,7 @@ export function LiveTranslatePage() {
                   <button
                     type="button"
                     onClick={handleOpenSummaryPopup}
-                    className="flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold
-                               bg-purple-500 hover:bg-purple-600 text-white cursor-pointer
-                               transition-all duration-200 shadow-sm select-none"
+                    className="btn-primary btn-sm"
                   >
                     <LightbulbIcon className="w-3.5 h-3.5" />
                     {t.live_summarize}
@@ -733,13 +703,13 @@ export function LiveTranslatePage() {
             {/* Popup header */}
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
               <div className="flex items-center gap-2">
-                <LightbulbIcon className="w-4 h-4 text-purple-500" />
+                <LightbulbIcon className="w-4 h-4 text-gray-500" />
                 <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">{t.live_summary_title}</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setShowSummaryPopup(false)}
-                className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-200 dark:hover:bg-gray-800 transition-colors duration-150 cursor-pointer"
+                className="btn-icon btn-icon-sm"
               >
                 <XIcon className="w-4 h-4" />
               </button>
@@ -753,10 +723,8 @@ export function LiveTranslatePage() {
                   type="button"
                   onClick={() => setPostTab(tab)}
                   className={[
-                    'px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-150 cursor-pointer select-none',
-                    postTab === tab
-                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
-                      : 'text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-gray-50 dark:hover:bg-gray-800/50',
+                    'btn-segment whitespace-nowrap',
+                    postTab === tab ? 'btn-segment-active' : '',
                   ].join(' ')}
                 >
                   {tab === 'summary' ? t.live_post_tab_summary : tab === 'actions' ? t.live_post_tab_actions : t.live_post_tab_decisions}
@@ -769,7 +737,7 @@ export function LiveTranslatePage() {
               {/* ── Tóm tắt ── */}
               {postTab === 'summary' && (
                 isSummarizing ? (
-                  <div className="flex flex-col items-center justify-center gap-3 py-10 text-purple-400 dark:text-purple-600">
+                  <div className="flex flex-col items-center justify-center gap-3 py-10 text-gray-400 dark:text-gray-600">
                     <SpinnerIcon className="w-6 h-6 animate-spin" />
                     <span className="text-sm">{t.live_summarizing}</span>
                   </div>
@@ -783,7 +751,7 @@ export function LiveTranslatePage() {
               {/* ── Việc cần làm ── */}
               {postTab === 'actions' && (
                 isExtractingActionItems ? (
-                  <div className="flex flex-col items-center justify-center gap-3 py-10 text-amber-400 dark:text-amber-600">
+                  <div className="flex flex-col items-center justify-center gap-3 py-10 text-gray-400 dark:text-gray-600">
                     <SpinnerIcon className="w-6 h-6 animate-spin" />
                     <span className="text-sm">{t.live_extracting_action_items}</span>
                   </div>
@@ -797,7 +765,7 @@ export function LiveTranslatePage() {
               {/* ── Quyết định ── */}
               {postTab === 'decisions' && (
                 isExtractingDecisions ? (
-                  <div className="flex flex-col items-center justify-center gap-3 py-10 text-green-400 dark:text-green-600">
+                  <div className="flex flex-col items-center justify-center gap-3 py-10 text-gray-400 dark:text-gray-600">
                     <SpinnerIcon className="w-6 h-6 animate-spin" />
                     <span className="text-sm">{t.live_extracting_decisions}</span>
                   </div>
@@ -816,8 +784,7 @@ export function LiveTranslatePage() {
                 <button
                   type="button"
                   onClick={() => handleCopy(summary, setCopiedSummary)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150 cursor-pointer
-                              ${copiedSummary ? 'text-green-600 dark:text-green-400' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-800'}`}
+                  className={`btn-secondary btn-xs ${copiedSummary ? 'btn-active' : ''}`}
                 >
                   {copiedSummary ? <CheckIcon className="w-3.5 h-3.5" /> : <CopyIcon className="w-3.5 h-3.5" />}
                   {copiedSummary ? t.translate_copied : t.translate_copy}
@@ -827,8 +794,7 @@ export function LiveTranslatePage() {
                 <button
                   type="button"
                   onClick={() => handleCopy(actionItems, setCopiedSummary)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150 cursor-pointer
-                              ${copiedSummary ? 'text-green-600 dark:text-green-400' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-800'}`}
+                  className={`btn-secondary btn-xs ${copiedSummary ? 'btn-active' : ''}`}
                 >
                   {copiedSummary ? <CheckIcon className="w-3.5 h-3.5" /> : <CopyIcon className="w-3.5 h-3.5" />}
                   {copiedSummary ? t.translate_copied : t.translate_copy}
@@ -838,8 +804,7 @@ export function LiveTranslatePage() {
                 <button
                   type="button"
                   onClick={() => handleCopy(decisions, setCopiedSummary)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150 cursor-pointer
-                              ${copiedSummary ? 'text-green-600 dark:text-green-400' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-800'}`}
+                  className={`btn-secondary btn-xs ${copiedSummary ? 'btn-active' : ''}`}
                 >
                   {copiedSummary ? <CheckIcon className="w-3.5 h-3.5" /> : <CopyIcon className="w-3.5 h-3.5" />}
                   {copiedSummary ? t.translate_copied : t.translate_copy}
@@ -858,9 +823,7 @@ export function LiveTranslatePage() {
                   <button
                     type="button"
                     onClick={handleSummarize}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold
-                               bg-purple-500 hover:bg-purple-600 text-white cursor-pointer
-                               transition-all duration-200 shadow-sm"
+                    className="btn-primary btn-sm"
                   >
                     <LightbulbIcon className="w-3.5 h-3.5" />
                     {summary ? t.live_summarize_again : t.live_summarize}
@@ -870,9 +833,7 @@ export function LiveTranslatePage() {
                   <button
                     type="button"
                     onClick={handleExtractActionItems}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold
-                               bg-amber-500 hover:bg-amber-600 text-white cursor-pointer
-                               transition-all duration-200 shadow-sm"
+                    className="btn-primary btn-sm"
                   >
                     <CheckIcon className="w-3.5 h-3.5" />
                     {actionItems ? t.live_action_items_extract_again : t.live_action_items_extract}
@@ -882,9 +843,7 @@ export function LiveTranslatePage() {
                   <button
                     type="button"
                     onClick={handleExtractDecisions}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold
-                               bg-green-500 hover:bg-green-600 text-white cursor-pointer
-                               transition-all duration-200 shadow-sm"
+                    className="btn-primary btn-sm"
                   >
                     <CheckIcon className="w-3.5 h-3.5" />
                     {decisions ? t.live_decisions_extract_again : t.live_decisions_extract}
@@ -913,8 +872,8 @@ export function LiveTranslatePage() {
           >
             {/* Header */}
             <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center">
-                <InfoCircleIcon className="w-5 h-5 text-blue-500" />
+              <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-950/40 flex items-center justify-center">
+                <InfoCircleIcon className="w-5 h-5 text-gray-500" />
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
@@ -935,7 +894,7 @@ export function LiveTranslatePage() {
               <button
                 type="button"
                 onClick={() => setShowScreenPermModal(false)}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-150 cursor-pointer"
+                className="btn-secondary btn-sm"
               >
                 {t.translate_error_dismiss}
               </button>
@@ -949,7 +908,7 @@ export function LiveTranslatePage() {
                   }
                   setShowScreenPermModal(false)
                 }}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium bg-blue-500 hover:bg-blue-600 text-white transition-colors duration-150 cursor-pointer shadow-sm"
+                className="btn-primary btn-sm"
               >
                 <GearIcon className="w-3.5 h-3.5" />
                 {t.live_open_system_settings}
@@ -964,9 +923,9 @@ export function LiveTranslatePage() {
       {sttProvider === 'webSpeech' && (
         <div className="absolute bottom-16 inset-x-0 flex justify-center px-4 z-40 pointer-events-none">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg
-                          bg-blue-50 dark:bg-blue-950/60
-                          border border-blue-200 dark:border-blue-700/60
-                          text-blue-600 dark:text-blue-300
+                          bg-gray-50 dark:bg-gray-950/60
+                          border border-gray-200 dark:border-gray-700/60
+                          text-gray-600 dark:text-gray-300
                           text-xs font-medium shadow-sm
                           pointer-events-auto">
             <InfoCircleIcon className="w-3.5 h-3.5 flex-shrink-0" />
@@ -974,7 +933,7 @@ export function LiveTranslatePage() {
             <button
               type="button"
               onClick={() => openSettings()}
-              className="underline font-semibold ml-0.5 cursor-pointer hover:text-blue-800 dark:hover:text-blue-100 transition-colors"
+              className="btn-link ml-0.5 text-xs"
             >
               {t.translate_error_open_settings}
             </button>
@@ -986,9 +945,9 @@ export function LiveTranslatePage() {
       {pipelineError && (
         <div className="pointer-events-none absolute bottom-14 inset-x-0 flex justify-center px-4 z-50">
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg
-                          bg-amber-50 dark:bg-amber-950/60
-                          border border-amber-200 dark:border-amber-700/60
-                          text-amber-700 dark:text-amber-300
+                          bg-gray-50 dark:bg-gray-950/60
+                          border border-gray-200 dark:border-gray-700/60
+                          text-gray-700 dark:text-gray-300
                           text-xs font-medium shadow-md
                           animate-[fadeIn_0.15s_ease-out]">
             <AlertTriangleIcon className="w-3.5 h-3.5 flex-shrink-0" />
@@ -1004,11 +963,11 @@ export function LiveTranslatePage() {
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function Notice({ children, variant = 'warning' }: { children: React.ReactNode; variant?: 'warning' | 'error' }) {
   const cls = variant === 'error'
-    ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900 text-red-700 dark:text-red-300'
-    : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300'
+    ? 'ui-error-box'
+    : 'bg-gray-50 dark:bg-gray-950/30 border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300'
   return (
     <div className={`flex-shrink-0 flex items-start gap-2 p-3 rounded-lg border text-sm ${cls}`}>
-      <AlertTriangleIcon className="w-4 h-4 flex-shrink-0 mt-0.5" />
+      <AlertTriangleIcon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${variant === 'error' ? 'ui-error-icon' : ''}`} />
       <span>{children}</span>
     </div>
   )
@@ -1017,7 +976,7 @@ function Notice({ children, variant = 'warning' }: { children: React.ReactNode; 
 function EmptyPanel({ children, icon, onClick }: { children: React.ReactNode; icon: 'mic' | 'translate'; onClick?: () => void }) {
   const iconEl = icon === 'mic'
     ? <MicrophoneIcon className="w-6 h-6 text-gray-400" />
-    : <TranslateIcon className="w-6 h-6 text-blue-300 dark:text-blue-700" />
+    : <TranslateIcon className="w-6 h-6 text-gray-300 dark:text-gray-700" />
 
   return (
     <div className="h-full flex flex-col items-center justify-center gap-3 select-none">
@@ -1025,7 +984,7 @@ function EmptyPanel({ children, icon, onClick }: { children: React.ReactNode; ic
         <button
           type="button"
           onClick={onClick}
-          className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center transition-all duration-150 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 hover:scale-105 active:scale-95"
+          className="btn-icon btn-icon-2xl"
         >
           {iconEl}
         </button>

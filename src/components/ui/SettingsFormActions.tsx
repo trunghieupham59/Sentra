@@ -33,15 +33,14 @@ export function SettingsFormActions({
   size = 'md',
   topPadding = false,
 }: SettingsFormActionsProps) {
-  const py = size === 'sm' ? 'py-1' : 'py-1.5'
+  const buttonSize = size === 'sm' ? 'btn-xs' : 'btn-sm'
 
   return (
     <div className={`flex gap-2 justify-end${topPadding ? ' pt-1' : ''}`}>
       <button
         type="button"
         onClick={onCancel}
-        className={`px-3 ${py} text-xs rounded-lg border border-gray-200 dark:border-gray-600
-                   text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer`}
+        className={`btn-secondary ${buttonSize}`}
       >
         {cancelLabel}
       </button>
@@ -49,8 +48,7 @@ export function SettingsFormActions({
         type="button"
         onClick={onSubmit}
         disabled={disabled || submitting}
-        className={`flex items-center gap-1.5 px-3 ${py} text-xs rounded-lg bg-blue-600 hover:bg-blue-700 text-white
-                   disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer font-medium`}
+        className={`btn-primary ${buttonSize}`}
       >
         {submitting && <SpinnerIcon className="w-3 h-3 animate-spin" />}
         {submitLabel}

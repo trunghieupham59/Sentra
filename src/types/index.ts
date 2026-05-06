@@ -388,8 +388,8 @@ export interface ChatMessage {
  *
  * The renderer writes this whenever a phase completes, and clears it once
  * the synthesis phase finishes (or the user starts a brand-new question).
- * `ResearchStepsPanel` shows a "Tiếp tục nghiên cứu" button while this
- * snapshot exists.
+ * The ChatPage composer shows a "Tiếp tục nghiên cứu" primary action while
+ * this snapshot exists and no draft prompt is being edited.
  */
 export interface DeepResearchResumeState {
   /** Original user question that kicked off the pipeline. */
@@ -398,6 +398,17 @@ export interface DeepResearchResumeState {
   aspects: string[]
   /** All accumulated findings to date. */
   knowledgeBase: Array<{ label: string; content: string }>
+  /**
+   * Survey aspects that finished cleanly. Kept separately from `knowledgeBase`
+   * so a Stop during the next aspect can retry that unfinished request instead
+   * of treating the whole survey phase as complete.
+   */
+  surveyCompletedAspects?: string[]
+  /**
+   * Numbered survey jobs that finished cleanly. This is the canonical survey
+   * checkpoint because AI-generated aspect labels can repeat.
+   */
+  surveyCompletedIndexes?: number[]
   /** Image context extracted in Phase 1 (when an image was attached). */
   imageContext: string
   /** Image-derived search terms (Phase 1, image attachments only). */
@@ -406,6 +417,17 @@ export interface DeepResearchResumeState {
   anyWebSearch: boolean
   /** Cross-reference output (only set after Phase 4 completes). */
   crossContent?: string
+  /**
+   * Gap/deep-dive work currently being chased. When the user stops in the
+   * middle of a deep-dive query, resume uses this to retry the unfinished
+   * query instead of advancing to the next gap-analysis round.
+   */
+  activeGapRound?: {
+    iteration: number
+    gaps: string[]
+    queries: string[]
+    completedQueryIndexes: number[]
+  }
   /** Last phase that finished cleanly — pipeline resumes from the next one. */
   lastCompletedPhase: 'analyze' | 'survey' | 'gap' | 'deep' | 'cross' | 'synth'
   /**

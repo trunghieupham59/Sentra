@@ -97,15 +97,15 @@ describe('ChatPage', () => {
   it('shows API key warning when no key is configured', () => {
     render(<ChatPage />)
     // When no key, a warning message should appear in empty state
-    const orangeText = document.querySelector('.text-orange-500, .text-orange-400')
-    expect(orangeText).not.toBeNull()
+    const warningText = document.querySelector('.text-gray-500, .text-gray-400')
+    expect(warningText).not.toBeNull()
   })
 
   it('send button is disabled when no API key', () => {
     render(<ChatPage />)
-    // Find the send button (last button, blue circle)
+    // Find the composer send button.
     const buttons = screen.getAllByRole('button')
-    const sendBtn = buttons.find(b => b.getAttribute('title') !== null && b.className.includes('rounded-full') && b.className.includes('bg-blue-500'))
+    const sendBtn = buttons.find(b => b.getAttribute('title') !== null && b.className.includes('chat-send-button'))
     if (sendBtn) {
       expect(sendBtn).toBeDisabled()
     }
@@ -266,6 +266,62 @@ describe('ChatPage', () => {
         }),
         expect.objectContaining({ type: 'text', text: 'Research this image' }),
       ])
+    } finally {
+      runSpy.mockRestore()
+    }
+  })
+
+  it('renders Deep Research resume as the composer primary action', async () => {
+    const resumeState = {
+      question: 'Resume checkpoint question',
+      aspects: ['Aspect A', 'Aspect B'],
+      knowledgeBase: [{ label: 'Aspect A', content: 'Completed A' }],
+      surveyCompletedAspects: ['Aspect A'],
+      imageContext: '',
+      imageSearchTerms: [],
+      anyWebSearch: false,
+      lastCompletedPhase: 'survey' as const,
+      lastGapIteration: 0,
+      hasImages: false,
+    }
+    act(() => {
+      useAppStore.setState({ keyStatus: { gemini: true, claude: false, openai: false, local: false } })
+      const sessionId = useAppStore.getState().createChatSession('gemini', 'gemini-2.0-flash')
+      useAppStore.getState().addChatMessage(sessionId, {
+        id: 'msg-research-step',
+        role: 'assistant',
+        content: [{ type: 'text', text: 'Completed A' }],
+        timestamp: Date.now(),
+        isResearchStep: true,
+        researchStepLabel: 'Survey',
+        researchStepPhase: 'survey',
+        researchStepAspect: 'Aspect A',
+      })
+      useAppStore.getState().setDeepResearchResumeState(sessionId, resumeState)
+    })
+    const runSpy = vi.spyOn(deepResearchService, 'run').mockImplementation(async ({ callbacks }) => {
+      const msgId = callbacks.onStepStart('Tổng hợp cuối cùng', { phase: 'synth' })
+      callbacks.onStepComplete(msgId, 'Research done', true)
+      callbacks.onResumeStateChange?.(null)
+    })
+
+    try {
+      render(<ChatPage />)
+
+      const resumeButton = screen.getByTitle(/resume research/i)
+      expect(resumeButton).toHaveClass('chat-resume-button')
+      expect(resumeButton).toHaveTextContent('Resume')
+
+      fireEvent.click(resumeButton)
+
+      await waitFor(() => expect(runSpy).toHaveBeenCalled())
+      expect(runSpy).toHaveBeenCalledWith(expect.objectContaining({
+        question: 'Resume checkpoint question',
+        resumeState: expect.objectContaining({
+          lastCompletedPhase: 'survey',
+          surveyCompletedAspects: ['Aspect A'],
+        }),
+      }))
     } finally {
       runSpy.mockRestore()
     }

@@ -54,11 +54,10 @@ function stripTrailingEllipsis(label: string): string {
  * fixed-size and absolutely-positioned-in-flow with `inline-flex` so the
  * surrounding label text doesn't reflow as the dots animate.
  */
-function BouncingDots({ tone = 'blue' }: { tone?: 'blue' | 'gray' | 'white' } = {}) {
+function BouncingDots({ tone = 'gray' }: { tone?: 'gray' | 'white' } = {}) {
   const colour =
-    tone === 'gray' ? 'bg-gray-400 dark:bg-gray-500'
-    : tone === 'white' ? 'bg-white/85'
-    : 'bg-blue-500 dark:bg-blue-400'
+    tone === 'white' ? 'bg-white/85'
+    : 'bg-gray-400 dark:bg-gray-500'
   return (
     <span className="inline-flex items-end gap-[3px] pb-[2px]" aria-hidden="true">
       <span className={`thinking-dot h-[5px] w-[5px] rounded-full ${colour}`} style={{ animationDelay: '0ms' }} />
@@ -97,15 +96,15 @@ interface SmartStep {
 /** Small visual key cap used for keyboard hints. */
 function KeyCap({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-md border border-gray-200 bg-white px-1 text-[11px] font-medium text-gray-500 shadow-sm shadow-gray-900/[0.04]">
+    <kbd className="keyboard-key">
       {children}
     </kbd>
   )
 }
 
 /**
- * Polished "Thinking…" pill — soft blue gradient, sparkle icon with a glow
- * halo, label, and three bouncing dots. Used while the model is mulling the
+ * Polished "Thinking…" pill — quiet neutral halo, label, and three bouncing dots.
+ * Used while the model is mulling the
  * question over before any tokens arrive. The pill styling matches the Smart
  * Thinking pill so phase transitions feel cohesive.
  */
@@ -113,17 +112,16 @@ function ThinkingLabel({ label }: { label: string }) {
   const baseLabel = stripTrailingEllipsis(label)
   return (
     <span
-      className="inline-flex items-center gap-2 rounded-full border border-blue-100/80 bg-gradient-to-r from-blue-50 via-sky-50 to-blue-50
-                 px-3 py-1 text-[12.5px] font-semibold text-blue-700 shadow-sm shadow-blue-900/[0.04] select-none"
+      className="thinking-state-pill"
       role="status"
       aria-live="polite"
     >
       <span className="relative inline-flex h-3.5 w-3.5 items-center justify-center">
-        <span className="thinking-glow absolute inset-0 rounded-full bg-blue-400/30 blur-[3px]" aria-hidden />
-        <SparklesIcon className="relative h-3.5 w-3.5 text-blue-500" />
+        <span className="thinking-glow absolute inset-0 rounded-full bg-gray-400/25 blur-[3px]" aria-hidden />
+        <SparklesIcon className="relative h-3.5 w-3.5 text-gray-500 dark:text-gray-300" />
       </span>
       <span className="tracking-[0.01em]">{baseLabel}</span>
-      <BouncingDots tone="blue" />
+      <BouncingDots tone="gray" />
     </span>
   )
 }
@@ -552,7 +550,7 @@ export function AIChatPopup() {
                    shadow-2xl shadow-gray-950/20 backdrop-blur-xl"
         aria-label={t.ai_chat_popup_title}
       >
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-400/70 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gray-200/80" />
 
         {/* === Header / prompt bar ============================================ */}
         <div className="titlebar-drag flex flex-shrink-0 items-center gap-2 border-b border-gray-100 bg-white/70 px-3 py-2.5">
@@ -561,12 +559,12 @@ export function AIChatPopup() {
             onClick={hasContext ? handleNewConversation : undefined}
             disabled={!hasContext}
             title={hasContext ? `New conversation (${primaryModifierShortcut}+N)` : 'Quick AI'}
-            className={`titlebar-no-drag flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg
-                        bg-gradient-to-br from-blue-50 to-white ring-1 ring-blue-100 transition-colors
-                        ${hasContext ? 'cursor-pointer hover:from-blue-100 hover:to-blue-50' : 'cursor-default'}`}
+            className={`titlebar-no-drag btn-icon btn-icon-lg flex-shrink-0 ${
+              hasContext ? '' : 'cursor-default'
+            }`}
           >
             {hasContext ? (
-              <PlusIcon className="h-4 w-4 text-blue-600" />
+              <PlusIcon className="h-4 w-4 text-gray-700" />
             ) : (
               <AppLogoIcon size={24} />
             )}
@@ -581,9 +579,7 @@ export function AIChatPopup() {
               placeholder={placeholder}
               rows={1}
               disabled={isSending}
-              className="min-h-9 w-full resize-none rounded-lg bg-transparent px-2 py-2 pr-9 text-[18px]
-                         font-medium leading-snug text-gray-900 placeholder:text-gray-400 outline-none
-                         disabled:opacity-60"
+              className="quick-chat-input-field"
               style={{ maxHeight: QUICK_TEXTAREA_MAX_HEIGHT_PX, overflowY: 'auto' }}
               aria-label={t.ai_chat_popup_title}
             />
@@ -591,7 +587,7 @@ export function AIChatPopup() {
               <button
                 type="button"
                 onClick={handleClearInput}
-                className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                className="btn-icon btn-icon-xs absolute right-1.5 top-1/2 -translate-y-1/2 border-transparent bg-transparent text-gray-400 shadow-none"
                 aria-label={t.chat_clear}
                 title={t.chat_clear}
               >
@@ -605,10 +601,7 @@ export function AIChatPopup() {
             onClick={handleSend}
             disabled={!canSend}
             title={t.chat_send}
-            className="titlebar-no-drag flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg
-                       bg-blue-500 text-white shadow-sm shadow-blue-900/20 transition-all
-                       hover:bg-blue-600 active:scale-95
-                       disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none"
+            className="titlebar-no-drag btn-primary btn-icon-lg flex-shrink-0 p-0"
             aria-label={t.chat_send}
           >
             {isSending ? (
@@ -622,47 +615,47 @@ export function AIChatPopup() {
         {/* === Body — Q&A list ============================================== */}
         <div
           ref={scrollContainerRef}
-          className="titlebar-drag min-h-0 flex-1 overflow-y-auto bg-gradient-to-b from-gray-50/60 to-gray-50/20 px-4 py-4"
+          className="titlebar-drag min-h-0 flex-1 overflow-y-auto bg-gray-50 px-4 py-4"
         >
           {!hasKey ? (
             <EmptyContainer>
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 ring-1 ring-amber-200">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 ring-1 ring-gray-200">
                 <AppLogoIcon size={32} />
               </div>
-              <p className="max-w-sm text-sm leading-6 text-amber-700">{t.chat_error_no_key}</p>
+              <p className="max-w-sm text-sm leading-6 text-gray-700">{t.chat_error_no_key}</p>
               <button
                 type="button"
                 onClick={handleOpenSettings}
-                className="titlebar-no-drag rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-100"
+                className="titlebar-no-drag btn-secondary btn-sm"
               >
                 {t.chat_error_open_settings}
               </button>
             </EmptyContainer>
           ) : inputTooLong ? (
             <EmptyContainer>
-              <p className="text-sm font-medium text-amber-600">
+              <p className="text-sm font-medium text-gray-700">
                 {trimmedLength.toLocaleString()} / {MAX_CHAT_INPUT_CHARS.toLocaleString()}
               </p>
               <p className="text-xs text-gray-500">{t.ai_chat_popup_input_too_long}</p>
             </EmptyContainer>
           ) : !activeQuestion && !isSending ? (
             <EmptyContainer>
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-50 to-white ring-1 ring-blue-100 shadow-sm shadow-blue-900/5">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white ring-1 ring-gray-200 shadow-sm shadow-gray-900/5">
                 <AppLogoIcon size={42} />
               </div>
               <div className="text-center">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-500/80">
+                <p className="ui-kicker">
                   {t.ai_chat_popup_short_label}
                 </p>
                 <h2 className="mt-0.5 text-xl font-semibold text-gray-900">
                   {t.ai_chat_popup_title}
                 </h2>
               </div>
-              <p className="max-w-[28rem] text-center text-[14px] leading-6 text-gray-500">
+              <p className="ui-caption max-w-[28rem] text-center leading-6">
                 {t.ai_chat_popup_empty_desc}
               </p>
 
-              <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-gray-400">
+              <div className="ui-meta mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
                 <span className="inline-flex items-center gap-1.5">
                   <KeyCap>↵</KeyCap>
                   <span>{t.chat_send}</span>
@@ -745,31 +738,31 @@ export function AIChatPopup() {
           <button
             type="button"
             onClick={handleOpenSettings}
-            className="titlebar-no-drag group inline-flex min-w-0 items-center gap-2 rounded-lg px-2 py-1 text-xs text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800"
+            className="titlebar-no-drag btn-ghost btn-xs group min-w-0"
             title={hasKey ? 'Change model in Settings' : t.chat_error_open_settings}
           >
             <span
               className={`inline-block h-2 w-2 flex-shrink-0 rounded-full ${
                 hasKey
-                  ? 'bg-emerald-400 shadow-[0_0_0_3px_rgba(52,211,153,0.15)]'
-                  : 'bg-amber-400'
+                  ? 'bg-gray-500 shadow-[0_0_0_3px_rgba(75,85,99,0.14)]'
+                  : 'bg-gray-400'
               }`}
               aria-hidden
             />
             <ProviderIcon provider={selectedProvider} size={14} />
-            <span className="truncate text-[12px] font-medium tracking-tight text-gray-700">
+            <span className="truncate text-xs font-medium tracking-tight text-gray-700">
               / {modelLabel}
             </span>
             <span
-              className="hidden items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] font-semibold text-blue-600 sm:inline-flex"
+              className="hidden items-center gap-1 rounded-md bg-gray-100 px-1.5 py-0.5 text-xs font-semibold text-gray-600 sm:inline-flex"
               title={t.chat_smart_thinking_hint}
             >
               <SparklesIcon className="h-3 w-3" />
               <span>{t.chat_smart_thinking_badge}</span>
             </span>
             {turnCount > 1 && (
-              <span className="ml-1 hidden text-[11px] text-gray-400 sm:inline">
-                · {turnCount} turns
+              <span className="ui-meta ml-1 hidden sm:inline">
+                · {tpl(t.ai_chat_popup_turns, { count: turnCount })}
               </span>
             )}
           </button>
@@ -779,10 +772,10 @@ export function AIChatPopup() {
               type="button"
               onClick={() => handleCopy(response, 'footer')}
               disabled={!response.trim()}
-              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 disabled:cursor-not-allowed disabled:text-gray-300 disabled:hover:bg-transparent"
+              className="btn-ghost btn-xs"
             >
               {copiedKey === 'footer' ? (
-                <CheckIcon className="h-3.5 w-3.5 text-emerald-500" />
+                <CheckIcon className="h-3.5 w-3.5 text-gray-700" />
               ) : (
                 <CopyIcon className="h-3.5 w-3.5" />
               )}
@@ -794,7 +787,7 @@ export function AIChatPopup() {
             <button
               type="button"
               onClick={handleOpenInChat}
-              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold text-gray-600 transition-colors hover:bg-blue-50 hover:text-blue-700"
+              className="btn-ghost btn-xs"
             >
               <span>{t.ai_chat_popup_open_in_chat}</span>
               <ArrowRightIcon className="h-3 w-3" />
@@ -843,11 +836,11 @@ function CardActions({
         type="button"
         onClick={onCopy}
         disabled={copyDisabled}
-        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium text-gray-500 transition-colors hover:bg-white hover:text-gray-800 disabled:cursor-not-allowed disabled:text-gray-300 disabled:hover:bg-transparent"
+        className="btn-ghost btn-xs"
         title={copyLabel}
       >
         {isCopied ? (
-          <CheckIcon className="h-3 w-3 text-emerald-500" />
+          <CheckIcon className="h-3 w-3 text-gray-700" />
         ) : (
           <CopyIcon className="h-3 w-3" />
         )}
@@ -857,7 +850,7 @@ function CardActions({
         type="button"
         onClick={onRegenerate}
         disabled={!onRegenerate}
-        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium text-gray-500 transition-colors hover:bg-white hover:text-blue-600 disabled:cursor-not-allowed disabled:text-gray-300 disabled:hover:bg-transparent"
+        className="btn-ghost btn-xs"
         title={regenerateLabel}
       >
         <RefreshIcon className="h-3 w-3" />
@@ -894,14 +887,14 @@ function QAEntry({
       className={`titlebar-no-drag overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm shadow-gray-900/5
                   ${muted ? 'opacity-80' : ''}`}
     >
-      <div className="flex items-start gap-2 border-b border-gray-100 bg-gray-50/60 px-5 py-2.5 text-[12px] leading-5 text-gray-500">
-        <span className="mt-0.5 inline-flex h-4 items-center rounded-md bg-gray-100 px-1.5 font-semibold uppercase tracking-wider text-[10px] text-gray-500">
+      <div className="ui-caption flex items-start gap-2 border-b border-gray-100 bg-gray-50/60 px-5 py-2.5 leading-5">
+        <span className="ui-token-badge mt-0.5 h-4">
           Q
         </span>
         <p className="min-w-0 flex-1 select-text break-words">{question}</p>
       </div>
       <div className="px-5 py-4">
-        <MarkdownText text={answer} className="text-[15px] leading-7 text-gray-800" />
+        <MarkdownText text={answer} className="ui-reader-text leading-7 text-gray-800" />
       </div>
       <CardActions
         isCopied={isCopied}
@@ -954,8 +947,8 @@ function ActiveQACard({
 
   return (
     <div className="titlebar-no-drag flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm shadow-gray-900/5">
-      <div className="flex items-start gap-2 border-b border-gray-100 bg-gray-50/60 px-5 py-2.5 text-[12px] leading-5 text-gray-500">
-        <span className="mt-0.5 inline-flex h-4 items-center rounded-md bg-gray-100 px-1.5 font-semibold uppercase tracking-wider text-[10px] text-gray-500">
+      <div className="ui-caption flex items-start gap-2 border-b border-gray-100 bg-gray-50/60 px-5 py-2.5 leading-5">
+        <span className="ui-token-badge mt-0.5 h-4">
           Q
         </span>
         <p className="min-w-0 flex-1 select-text break-words">{question}</p>
@@ -963,8 +956,8 @@ function ActiveQACard({
 
       <div className="min-h-0 flex-1 px-5 py-4">
         {error ? (
-          <div className="rounded-lg border border-red-200 bg-red-50/80 px-3 py-2.5">
-            <p className="text-sm leading-6 text-red-700">{error}</p>
+          <div className="ui-error-box">
+            <p className="leading-6">{error}</p>
           </div>
         ) : isThinking ? (
           <div className="space-y-3">
@@ -985,7 +978,7 @@ function ActiveQACard({
             </div>
           </div>
         ) : response ? (
-          <MarkdownText text={response} className="text-[15px] leading-7 text-gray-800" />
+          <MarkdownText text={response} className="ui-reader-text leading-7 text-gray-800" />
         ) : null}
       </div>
 
@@ -1006,10 +999,8 @@ function ActiveQACard({
 
 /**
  * Smart Thinking pill — the elevated cousin of ThinkingLabel. Same pill shape
- * so the transition between "Thinking…" and "Smart Thinking…" is just a tone
- * shift; this variant adds an indigo→sky gradient with a slow shimmer sweep
- * to communicate that the AI escalated to web grounding. Error states fall
- * back to a calm red treatment without losing the pill silhouette.
+ * so the transition between "Thinking…" and "Smart Thinking…" stays calm.
+ * Error states use a red treatment without losing the pill silhouette.
  */
 function SmartThinkingStep({
   step,
@@ -1028,8 +1019,7 @@ function SmartThinkingStep({
   if (isError) {
     return (
       <span
-        className="inline-flex items-center gap-2 rounded-full border border-red-200/80 bg-red-50
-                   px-3 py-1 text-[12.5px] font-semibold text-red-700 shadow-sm shadow-red-900/[0.04] select-none"
+        className="thinking-state-pill thinking-state-pill-error"
         title={tooltip}
         role="status"
       >
@@ -1041,38 +1031,33 @@ function SmartThinkingStep({
 
   return (
     <span
-      className="relative inline-flex items-center gap-2 overflow-hidden rounded-full
-                 border border-indigo-200/70 bg-gradient-to-r from-indigo-50 via-sky-50 to-violet-50
-                 px-3 py-1 text-[12.5px] font-semibold text-indigo-700 shadow-sm shadow-indigo-900/[0.05] select-none"
+      className="thinking-state-pill thinking-state-pill-shimmer"
       title={tooltip}
       role="status"
       aria-live="polite"
     >
-      {/* Subtle shimmer wash — animated only while the step is running. */}
+      {/* Subtle wash — animated only while the step is running. */}
       {isRunning && (
         <span
-          className="thinking-shimmer pointer-events-none absolute inset-0 bg-gradient-to-r
-                     from-transparent via-white/55 to-transparent"
+          className="thinking-shimmer pointer-events-none absolute inset-0 bg-white/40 dark:bg-white/5"
           aria-hidden
         />
       )}
       <span className="relative inline-flex h-3.5 w-3.5 items-center justify-center">
         {isRunning && (
           <span
-            className="thinking-glow absolute inset-0 rounded-full bg-indigo-400/35 blur-[3px]"
+            className="thinking-glow absolute inset-0 rounded-full bg-gray-400/25 blur-[3px]"
             aria-hidden
           />
         )}
-        <SparklesIcon className="relative h-3.5 w-3.5 text-indigo-500" />
+        <SparklesIcon className="relative h-3.5 w-3.5 text-gray-500 dark:text-gray-300" />
       </span>
       <span className="relative tracking-[0.01em]">{badgeLabel}</span>
       {isRunning && (
         <span className="relative">
-          <BouncingDots tone="blue" />
+          <BouncingDots tone="gray" />
         </span>
       )}
     </span>
   )
 }
-
-

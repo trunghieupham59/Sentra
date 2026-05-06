@@ -4,10 +4,10 @@
  */
 ;(() => {
   const PROVIDER_META = Object.freeze({
-    gemini: { color: '#4285F4', rgb: '66,133,244' },
-    openai: { color: '#10A37F', rgb: '16,163,127' },
-    claude: { color: '#CC785C', rgb: '204,120,92' },
-    local:  { color: '#6B7280', rgb: '107,114,128' },
+    gemini: { color: '#4B5563', rgb: '75,85,99' },
+    openai: { color: '#4B5563', rgb: '75,85,99' },
+    claude: { color: '#4B5563', rgb: '75,85,99' },
+    local:  { color: '#4B5563', rgb: '75,85,99' },
   })
 
   function getProviderMeta (provider, options = {}) {

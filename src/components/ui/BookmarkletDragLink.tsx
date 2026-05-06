@@ -49,14 +49,14 @@ export function BookmarkletDragLink({ href, loadingText, label }: BookmarkletDra
       onClick={(e) => e.preventDefault()}
       draggable
       className="inline-flex items-center gap-2 px-4 py-2 rounded-lg
-                 bg-white dark:bg-gray-700 border-2 border-dashed border-blue-300 dark:border-blue-700
-                 text-sm font-medium text-blue-700 dark:text-blue-300
+                 bg-white dark:bg-gray-700 border-2 border-dashed border-gray-300 dark:border-gray-700
+                 text-sm font-medium text-gray-700 dark:text-gray-300
                  cursor-grab active:cursor-grabbing select-none
-                 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+                 hover:border-gray-400 hover:bg-gray-50 dark:hover:bg-gray-950/30 transition-colors"
     >
-      <LayersIcon className="w-4 h-4 text-blue-500" />
+      <LayersIcon className="w-4 h-4 text-gray-500" />
       {label}
-      <ArrowUpIcon className="w-3.5 h-3.5 text-blue-400" />
+      <ArrowUpIcon className="w-3.5 h-3.5 text-gray-400" />
     </a>
   )
 }

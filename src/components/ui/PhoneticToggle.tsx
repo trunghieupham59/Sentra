@@ -41,11 +41,8 @@ export function PhoneticToggle({
     <div className="relative">
       {/* Visible styled button */}
       <div className={[
-        'flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-full text-[13px] font-medium w-44',
-        'border pointer-events-none select-none whitespace-nowrap',
-        isActive
-          ? 'bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-950 dark:border-purple-800 dark:text-purple-400'
-          : 'bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400',
+        'btn-select w-44 pointer-events-none whitespace-nowrap',
+        isActive ? 'btn-select-active' : '',
       ].join(' ')}>
         <span>{currentLabel}</span>
         {isLoading
@@ -58,7 +55,7 @@ export function PhoneticToggle({
       <select
         value={phoneticMode}
         onChange={(e) => onChange(e.target.value as PhoneticMode)}
-        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-[13px]"
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-xs"
       >
         <option value="off">{labelOff}</option>
         <option value="standard">{labelStandard}</option>

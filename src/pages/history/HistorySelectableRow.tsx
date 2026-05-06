@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { CheckIcon, ChevronDownIcon } from '../../components/ui/icons'
 
-type HistoryRowTone = 'blue' | 'purple'
+type HistoryRowTone = 'neutral' | 'muted'
 
 const ROW_TONE_CLASSES: Record<HistoryRowTone, {
   selected: string
@@ -9,17 +9,17 @@ const ROW_TONE_CLASSES: Record<HistoryRowTone, {
   checked: string
   unchecked: string
 }> = {
-  blue: {
-    selected: 'border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/20',
-    idle: 'border-gray-100 bg-white hover:border-blue-100 hover:bg-blue-50/30 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-blue-950 dark:hover:bg-gray-800/50',
-    checked: 'bg-blue-500 border-blue-500',
-    unchecked: 'border-gray-300 dark:border-gray-600 hover:border-blue-400',
+  neutral: {
+    selected: 'border-gray-200 bg-gray-50 dark:border-gray-900 dark:bg-gray-950/20',
+    idle: 'border-gray-100 bg-white hover:border-gray-100 hover:bg-gray-50/30 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-950 dark:hover:bg-gray-800/50',
+    checked: 'bg-gray-500 border-gray-500',
+    unchecked: 'border-gray-300 dark:border-gray-600 hover:border-gray-400',
   },
-  purple: {
-    selected: 'border-purple-200 bg-purple-50 dark:border-purple-900 dark:bg-purple-950/20',
-    idle: 'border-gray-100 bg-white hover:border-purple-100 hover:bg-purple-50/30 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-purple-950 dark:hover:bg-gray-800/50',
-    checked: 'bg-purple-500 border-purple-500',
-    unchecked: 'border-gray-300 dark:border-gray-600 hover:border-purple-400',
+  muted: {
+    selected: 'border-gray-200 bg-gray-50 dark:border-gray-900 dark:bg-gray-950/20',
+    idle: 'border-gray-100 bg-white hover:border-gray-100 hover:bg-gray-50/30 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-950 dark:hover:bg-gray-800/50',
+    checked: 'bg-gray-500 border-gray-500',
+    unchecked: 'border-gray-300 dark:border-gray-600 hover:border-gray-400',
   },
 }
 
@@ -39,7 +39,7 @@ export function HistorySelectableRow({
   id,
   isSelected,
   isExpanded,
-  tone = 'blue',
+  tone = 'neutral',
   preview,
   meta,
   expandedContent,
@@ -62,7 +62,7 @@ export function HistorySelectableRow({
             event.stopPropagation()
             onToggleSelect(id)
           }}
-          className="mt-0.5 flex-shrink-0"
+          className="btn-icon btn-icon-xs mt-0.5 flex-shrink-0 border-transparent bg-transparent shadow-none"
         >
           <span className={[
             'w-4 h-4 rounded border-2 flex items-center justify-center transition-colors',
@@ -74,7 +74,7 @@ export function HistorySelectableRow({
 
         <button
           type="button"
-          className="flex-1 min-w-0 text-left"
+          className="btn-row-action"
           onClick={() => onToggleExpand(id)}
         >
           <div className="flex items-start justify-between gap-2">

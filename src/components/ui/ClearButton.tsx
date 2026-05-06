@@ -16,7 +16,7 @@ export function ClearButton({ onClick, label }: ClearButtonProps) {
       type="button"
       onClick={onClick}
       title={label}
-      className="btn-ghost py-1 px-2 text-xs flex items-center gap-1"
+      className="btn-ghost btn-xs"
     >
       <TrashIcon />
     </button>

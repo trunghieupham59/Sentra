@@ -173,7 +173,7 @@ export function DictionaryResultPanel({
               {result.partOfSpeech.map((item) => (
                 <span
                   key={item}
-                  className="inline-flex items-center rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-blue-700 dark:bg-blue-950/45 dark:text-blue-300"
+                  className="ui-token-badge"
                 >
                   {item}
                 </span>
@@ -187,7 +187,7 @@ export function DictionaryResultPanel({
               onClick={onFavorite}
               title={entry.favorite ? t.dictionary_unfavorite : t.dictionary_favorite}
               className={`toolbar-icon-button ${
-                entry.favorite ? 'toolbar-icon-button-active text-amber-500 dark:text-amber-300' : ''
+                entry.favorite ? 'toolbar-icon-button-active text-gray-500 dark:text-gray-300' : ''
               }`}
             >
               <StarIcon className="h-4 w-4" />
@@ -220,7 +220,7 @@ export function DictionaryResultPanel({
         {/* Meaning — primary highlight, large readable type */}
         <section>
           <h3 className="section-label mb-1.5">{t.dictionary_meaning}</h3>
-          <p className="border-l-2 border-blue-500 pl-3 text-[15px] leading-7 text-gray-800 select-text dark:border-blue-400 dark:text-gray-100">
+          <p className="ui-reader-text border-l-2 border-gray-500 pl-3 leading-7 select-text dark:border-gray-400 dark:text-gray-100">
             {result.meaning}
           </p>
         </section>
@@ -241,15 +241,15 @@ export function DictionaryResultPanel({
                     aria-pressed={isSelected}
                     aria-label={`${t.dictionary_translation_detail}: ${item.text} ${pronunciation}`}
                     onClick={() => setSelectedTranslation(isSelected ? null : { entryId: entry.id, key: translationKey })}
-                    className={`inline-flex flex-col rounded-md border px-2.5 py-1.5 text-left shadow-sm shadow-gray-900/5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-neutral-950 ${
+                    className={`btn-secondary btn-stack-option ${
                       isSelected
-                        ? 'border-blue-300 bg-blue-50 text-blue-900 dark:border-blue-700 dark:bg-blue-950/35 dark:text-blue-100'
-                        : 'border-gray-200 bg-white hover:border-blue-200 hover:bg-blue-50/60 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-blue-800 dark:hover:bg-blue-950/20'
+                        ? 'btn-active'
+                        : ''
                     }`}
                   >
                     <span className="text-sm font-medium text-gray-800 dark:text-gray-100">{item.text}</span>
                     {pronunciation && (
-                      <span className="mt-0.5 font-mono text-[11px] leading-none text-gray-400 dark:text-gray-500">
+                      <span className="ui-meta mt-0.5 font-mono leading-none">
                         {pronunciation}
                       </span>
                     )}
@@ -271,7 +271,7 @@ export function DictionaryResultPanel({
                   role="dialog"
                   aria-modal="true"
                   aria-label={t.dictionary_translation_detail}
-                  className="relative z-10 max-h-[82vh] w-full max-w-2xl overflow-hidden rounded-xl border border-blue-100 bg-white shadow-2xl shadow-blue-950/20 dark:border-blue-900/60 dark:bg-neutral-950 dark:shadow-black/45"
+                  className="relative z-10 max-h-[82vh] w-full max-w-2xl overflow-hidden rounded-xl border border-gray-100 bg-white shadow-2xl shadow-gray-950/20 dark:border-gray-900/60 dark:bg-neutral-950 dark:shadow-black/45"
                 >
                   <div className="flex items-start justify-between gap-4 border-b border-gray-200/90 px-5 py-4 dark:border-neutral-800">
                     <div className="min-w-0">
@@ -283,7 +283,7 @@ export function DictionaryResultPanel({
                           {formatPronunciation(activeTranslation.pronunciation)}
                         </span>
                         {activeTranslation.partOfSpeech && (
-                          <span className="inline-flex items-center rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-700 dark:bg-blue-950/45 dark:text-blue-300">
+                          <span className="ui-token-badge">
                             {activeTranslation.partOfSpeech}
                           </span>
                         )}
@@ -306,7 +306,7 @@ export function DictionaryResultPanel({
                   <div className="max-h-[calc(82vh-84px)] space-y-4 overflow-auto px-5 py-4 text-sm leading-6 text-gray-700 dark:text-gray-300">
                     <section>
                       <h5 className="section-label mb-1.5">{t.dictionary_meaning}</h5>
-                      <p className="border-l-2 border-blue-500 pl-3 text-[15px] leading-7 text-gray-800 select-text dark:border-blue-400 dark:text-gray-100">
+                      <p className="ui-reader-text border-l-2 border-gray-500 pl-3 leading-7 select-text dark:border-gray-400 dark:text-gray-100">
                         {activeTranslation.meaning || result.meaning}
                       </p>
                     </section>
@@ -343,7 +343,7 @@ export function DictionaryResultPanel({
                             <li key={`translation-example-${item}`} className="flex items-start gap-2.5 select-text">
                               <span
                                 aria-hidden
-                                className="mt-1 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-[10px] font-semibold tabular-nums text-blue-600 dark:bg-blue-950/40 dark:text-blue-300"
+                                className="ui-index-dot"
                               >
                                 {idx + 1}
                               </span>
@@ -384,7 +384,7 @@ export function DictionaryResultPanel({
                             <li key={`translation-note-${item}`} className="flex items-start gap-2.5 select-text">
                               <span
                                 aria-hidden
-                                className="mt-2 inline-block h-1 w-1 flex-shrink-0 rounded-full bg-amber-500 dark:bg-amber-400"
+                                className="mt-2 inline-block h-1 w-1 flex-shrink-0 rounded-full bg-gray-500 dark:bg-gray-400"
                               />
                               <span className="min-w-0 flex-1">{item}</span>
                             </li>
@@ -411,7 +411,7 @@ export function DictionaryResultPanel({
                 >
                   <span
                     aria-hidden
-                    className="mt-1 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-[10px] font-semibold tabular-nums text-blue-600 dark:bg-blue-950/40 dark:text-blue-300"
+                    className="ui-index-dot"
                   >
                     {idx + 1}
                   </span>
@@ -434,7 +434,7 @@ export function DictionaryResultPanel({
                 >
                   <span
                     aria-hidden
-                    className="mt-2 inline-block h-1 w-1 flex-shrink-0 rounded-full bg-amber-500 dark:bg-amber-400"
+                    className="mt-2 inline-block h-1 w-1 flex-shrink-0 rounded-full bg-gray-500 dark:bg-gray-400"
                   />
                   <span className="min-w-0 flex-1">{item}</span>
                 </li>
@@ -453,7 +453,7 @@ export function DictionaryResultPanel({
           onClick={() => {
             void runSelectionLookup()
           }}
-          className="fixed z-50 inline-flex h-9 w-9 items-center justify-center rounded-full border border-blue-200 bg-white text-blue-600 shadow-lg shadow-blue-950/15 transition hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-blue-800 dark:bg-neutral-950 dark:text-blue-300 dark:hover:bg-blue-950/40"
+          className="btn-icon btn-icon-lg fixed z-50"
           style={{ left: selectionAction.x, top: selectionAction.y }}
         >
           <SearchIcon className="h-4 w-4" />
@@ -473,7 +473,7 @@ export function DictionaryResultPanel({
             role="dialog"
             aria-modal="true"
             aria-label={t.dictionary_selection_lookup}
-            className="relative z-10 max-h-[82vh] w-full max-w-2xl overflow-hidden rounded-xl border border-blue-100 bg-white shadow-2xl shadow-blue-950/20 dark:border-blue-900/60 dark:bg-neutral-950 dark:shadow-black/45"
+            className="relative z-10 max-h-[82vh] w-full max-w-2xl overflow-hidden rounded-xl border border-gray-100 bg-white shadow-2xl shadow-gray-950/20 dark:border-gray-900/60 dark:bg-neutral-950 dark:shadow-black/45"
           >
             <div className="flex items-start justify-between gap-4 border-b border-gray-200/90 px-5 py-4 dark:border-neutral-800">
               <div className="min-w-0">
@@ -489,7 +489,7 @@ export function DictionaryResultPanel({
                   {selectionLookup.result?.partOfSpeech.map((item) => (
                     <span
                       key={`selection-pos-${item}`}
-                      className="inline-flex items-center rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-700 dark:bg-blue-950/45 dark:text-blue-300"
+                      className="ui-token-badge"
                     >
                       {item}
                     </span>
@@ -499,7 +499,7 @@ export function DictionaryResultPanel({
                   {selectionLookup.loading && (
                     <span
                       aria-hidden
-                      className="inline-flex h-2 w-2 flex-shrink-0 rounded-full bg-blue-500/80 dark:bg-blue-400/80"
+                      className="inline-flex h-2 w-2 flex-shrink-0 rounded-full bg-gray-500/80 dark:bg-gray-400/80"
                       style={{ animation: 'thinkingDot 1.2s ease-in-out infinite both' }}
                     />
                   )}
@@ -525,7 +525,7 @@ export function DictionaryResultPanel({
                   {/* Meaning skeleton — mirrors the real "border-l + paragraph" block */}
                   <section>
                     <div className="mb-2 h-3 w-16 rounded-full skeleton-shimmer" />
-                    <div className="space-y-2 border-l-2 border-blue-500/40 pl-3 dark:border-blue-400/40">
+                    <div className="space-y-2 border-l-2 border-gray-500/40 pl-3 dark:border-gray-400/40">
                       <div className="h-3 w-11/12 rounded-full skeleton-shimmer" />
                       <div className="h-3 w-3/4 rounded-full skeleton-shimmer" />
                     </div>
@@ -544,7 +544,7 @@ export function DictionaryResultPanel({
               )}
 
               {selectionLookup.error && (
-                <p className="skeleton-fade-in rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-300">
+                <p className="ui-error-box skeleton-fade-in">
                   {selectionLookup.error}
                 </p>
               )}
@@ -553,7 +553,7 @@ export function DictionaryResultPanel({
                 <div className="skeleton-fade-in space-y-5">
                   <section>
                     <h5 className="section-label mb-1.5">{t.dictionary_meaning}</h5>
-                    <p className="border-l-2 border-blue-500 pl-3 text-[15px] leading-7 text-gray-800 select-text dark:border-blue-400 dark:text-gray-100">
+                    <p className="ui-reader-text border-l-2 border-gray-500 pl-3 leading-7 select-text dark:border-gray-400 dark:text-gray-100">
                       {selectionLookup.result.meaning}
                     </p>
                   </section>
@@ -568,7 +568,7 @@ export function DictionaryResultPanel({
                             className="inline-flex flex-col rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-left shadow-sm shadow-gray-900/5 select-text dark:border-neutral-800 dark:bg-neutral-900"
                           >
                             <span className="text-sm font-medium text-gray-800 dark:text-gray-100">{item.text}</span>
-                            <span className="mt-0.5 font-mono text-[11px] leading-none text-gray-400 dark:text-gray-500">
+                            <span className="ui-meta mt-0.5 font-mono leading-none">
                               {formatPronunciation(item.pronunciation)}
                             </span>
                           </span>
@@ -585,7 +585,7 @@ export function DictionaryResultPanel({
                           <li key={`selection-example-${item}`} className="flex items-start gap-2.5 select-text">
                             <span
                               aria-hidden
-                              className="mt-1 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-[10px] font-semibold tabular-nums text-blue-600 dark:bg-blue-950/40 dark:text-blue-300"
+                              className="ui-index-dot"
                             >
                               {idx + 1}
                             </span>
@@ -604,7 +604,7 @@ export function DictionaryResultPanel({
                           <li key={`selection-note-${item}`} className="flex items-start gap-2.5 select-text">
                             <span
                               aria-hidden
-                              className="mt-2 inline-block h-1 w-1 flex-shrink-0 rounded-full bg-amber-500 dark:bg-amber-400"
+                              className="mt-2 inline-block h-1 w-1 flex-shrink-0 rounded-full bg-gray-500 dark:bg-gray-400"
                             />
                             <span className="min-w-0 flex-1">{item}</span>
                           </li>

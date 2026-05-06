@@ -13,7 +13,7 @@ const truncateModelName = (name: string, maxLen = 22): string =>
 /** Tiny section label used above provider and model dropdowns */
 function SectionLabel({ children }: { children: string }) {
   return (
-    <span className="text-[0.65rem] font-medium text-gray-400 whitespace-nowrap uppercase tracking-wide">
+    <span className="ui-kicker whitespace-nowrap">
       {children}
     </span>
   )
@@ -94,13 +94,11 @@ export function ModelSelector() {
         <SectionLabel>{t.settings_hotkey_provider}</SectionLabel>
         <div className="relative">
           {/* Visible styled label */}
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700
-                            bg-white dark:bg-gray-800 text-[13px] font-semibold pointer-events-none select-none w-36
-                            ${PROVIDER_COLORS[selectedProvider].text}`}>
+          <div className={`btn-select w-36 pointer-events-none font-semibold ${PROVIDER_COLORS[selectedProvider].text}`}>
             <ProviderIcon provider={selectedProvider} size={13} />
             <span className="flex-1 truncate">{PROVIDERS.find(p => p.id === selectedProvider)?.name}</span>
             {!hasKey && (
-              <span className="w-1.5 h-1.5 rounded-full bg-orange-400 flex-shrink-0" />
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
             )}
             <ChevronDownIcon className="w-3 h-3 text-gray-400 flex-shrink-0" />
           </div>
@@ -108,7 +106,7 @@ export function ModelSelector() {
           <select
             value={selectedProvider}
             onChange={(e) => setSelectedProvider(e.target.value as Provider)}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-[13px]"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-xs"
           >
             {PROVIDERS.map((p) => (
               <option key={p.id} value={p.id}>
@@ -127,17 +125,17 @@ export function ModelSelector() {
         <SectionLabel>{t.settings_hotkey_model}</SectionLabel>
         <div className="flex items-center gap-1 min-w-0">
           {isLoading ? (
-            <div className="flex items-center gap-1.5 px-2 py-1 text-[0.75rem] text-gray-400 whitespace-nowrap">
+            <div className="flex items-center gap-1.5 px-2 py-1 text-xs text-gray-400 whitespace-nowrap">
               <SpinnerIcon className="w-3.5 h-3.5 spinner flex-shrink-0" />
               {t.model_loading}
             </div>
           ) : error && displayModels.length === 0 ? (
             <div className="flex items-center gap-1.5">
-              <span className="text-[0.75rem] text-red-500">{t.model_load_error}</span>
+              <span className="ui-error-text text-xs">{t.model_load_error}</span>
               <button
                 type="button"
                 onClick={() => fetchModels(selectedProvider)}
-                className="text-[0.75rem] text-blue-500 hover:underline"
+                className="btn-link text-xs"
               >
                 {t.model_refresh}
               </button>
@@ -170,7 +168,7 @@ export function ModelSelector() {
               type="button"
               onClick={() => fetchModels(selectedProvider)}
               title={t.model_refresh}
-              className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="btn-icon btn-icon-sm flex-shrink-0 border-transparent bg-transparent text-gray-400 shadow-none dark:bg-transparent"
             >
               <RefreshIcon className="w-3.5 h-3.5" />
             </button>

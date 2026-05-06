@@ -35,9 +35,7 @@ export function ImagePreviewThumbnail({ src, alt, removeTitle, onRemove }: Image
           type="button"
           onClick={onRemove}
           title={removeTitle}
-          className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center
-                     rounded-full bg-gray-700/90 hover:bg-gray-900 text-white cursor-pointer shadow-md
-                     opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10"
+          className="btn-icon btn-icon-xs absolute -top-2 -right-2 z-10 border-gray-700 bg-gray-700/90 text-white shadow-md opacity-0 group-hover:opacity-100 hover:border-gray-900 hover:bg-gray-900 hover:text-white"
         >
           <XIcon className="w-3.5 h-3.5" />
         </button>

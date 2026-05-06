@@ -3,7 +3,7 @@
  * inside ApiKeyInput's CredentialCard `meta` slot.
  *
  * Shows the most useful at-a-glance numbers without dominating the row:
- *   - estimated cost  (headline pill, emerald)
+ *   - estimated cost  (headline pill)
  *   - request count   (subtle pill)
  *   - total tokens    (subtle pill)
  *   - last activity   (subtle pill)
@@ -51,7 +51,7 @@ export function ProviderCostStats({
 }: ProviderCostStatsProps) {
   if (!total || total.requestCount === 0) {
     return emptyHint ? (
-      <span className="text-[11px] italic text-gray-400 dark:text-gray-500">{emptyHint}</span>
+      <span className="ui-meta italic text-gray-400 dark:text-gray-500">{emptyHint}</span>
     ) : null
   }
 
@@ -60,7 +60,7 @@ export function ProviderCostStats({
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <span
-        className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-900/50"
+        className="ui-badge gap-1.5 text-xs ring-1 ring-gray-200 dark:ring-gray-700"
         title={`${costLabel} ~${formatUsageAmount(total.amountUsd, currency)}`}
       >
         <span className="opacity-80">{costLabel}</span>
@@ -91,7 +91,7 @@ export function ProviderCostStats({
         type="button"
         onClick={onReset}
         title={resetTitle}
-        className="ml-auto inline-flex h-5 items-center rounded-full border border-transparent px-2 text-[10px] font-medium text-gray-400 transition-colors hover:border-red-100 hover:bg-red-50 hover:text-red-600 dark:hover:border-red-900/50 dark:hover:bg-red-950/30 dark:hover:text-red-300"
+        className="btn-danger btn-xs ml-auto"
       >
         {t.settings_cost_reset_provider}
       </button>
@@ -110,7 +110,7 @@ function Pill({
 }) {
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+      className="ui-badge gap-1 text-xs font-medium text-gray-600"
       title={title}
     >
       <span className="text-gray-400 dark:text-gray-500">{icon}</span>

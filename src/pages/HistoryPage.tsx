@@ -49,9 +49,7 @@ export function HistoryPage() {
                 type="button"
                 onClick={() => setQuery('')}
                 title={t.history_search_clear}
-                className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6
-                           rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-200
-                           dark:text-gray-500 dark:hover:text-gray-200 dark:hover:bg-gray-800 transition-colors"
+                className="btn-icon btn-icon-xs absolute right-2 top-1/2 -translate-y-1/2 border-transparent bg-transparent text-gray-400 shadow-none dark:bg-transparent"
               >
                 <XIcon className="w-3 h-3" />
               </button>
@@ -68,19 +66,16 @@ export function HistoryPage() {
                 type="button"
                 onClick={() => setActiveTab(id)}
                 className={[
-                  'flex-1 min-w-0 flex items-center justify-center gap-2 h-9 rounded-md px-3',
-                  'text-xs font-medium transition-all duration-150 cursor-pointer',
-                  isActive
-                    ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-50 shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200',
+                  'btn-segment btn-segment-lg flex-1',
+                  isActive ? 'btn-segment-active' : '',
                 ].join(' ')}
               >
                 <Icon className="w-3.5 h-3.5 flex-shrink-0" />
                 <span className="truncate">{label}</span>
                 <span className={[
-                  'min-w-5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold leading-none',
+                  'ui-badge-xs min-w-5 justify-center',
                   isActive
-                    ? 'bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-300'
+                    ? 'bg-gray-100 text-gray-600 dark:bg-gray-950 dark:text-gray-300'
                     : 'bg-gray-200 text-gray-500 dark:bg-gray-800 dark:text-gray-500',
                 ].join(' ')}>
                   {count}

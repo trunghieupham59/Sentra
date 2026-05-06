@@ -129,10 +129,10 @@ export function TranslatePage() {
               onClick={handleSwapLanguages}
               disabled={!(translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL && !imageAttachment)}
               title={t.translate_swap}
-              className={`flex-shrink-0 flex items-center justify-center w-8 h-8 transition-all duration-200
+              className={`btn-icon flex-shrink-0 border-transparent bg-transparent shadow-none
                           ${!(translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL && !imageAttachment)
-                            ? 'text-gray-200 dark:text-gray-700 cursor-not-allowed'
-                            : 'cursor-pointer text-gray-400 hover:text-blue-500 dark:hover:text-blue-400'}`}
+                            ? 'text-gray-200 dark:text-gray-700'
+                            : 'text-gray-400 dark:bg-transparent'}`}
             >
               <SwapIcon className="w-5 h-5" />
             </button>
@@ -253,7 +253,7 @@ export function TranslatePage() {
                   value={sourceText}
                   onChange={(e) => handleSourceChange(e.target.value)}
                   placeholder={t.translate_placeholder}
-                  className={`flex-1 min-h-0 w-full bg-transparent outline-none resize-none text-[15px] leading-relaxed text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-600 ${isVoiceInterim ? 'opacity-50 italic' : ''}`}
+                  className={`textarea-field flex-1 min-h-0 ${isVoiceInterim ? 'opacity-50 italic' : ''}`}
                 />
               </div>
 
@@ -299,7 +299,7 @@ export function TranslatePage() {
                 <div className="flex items-center gap-3">
                   {!isVoiceActive && (
                     charCount > MAX_INPUT_CHARS ? (
-                      <span className="flex items-center gap-1 text-xs tabular-nums text-amber-500 font-medium" title={t.translate_limit}>
+                      <span className="flex items-center gap-1 text-xs tabular-nums text-gray-500 font-medium" title={t.translate_limit}>
                         <AlertTriangleIcon className="w-3 h-3 flex-shrink-0" />
                         {charCount.toLocaleString()} / {MAX_INPUT_CHARS.toLocaleString()}
                       </span>
@@ -328,7 +328,7 @@ export function TranslatePage() {
                 {isTranslating ? (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="flex flex-col items-center gap-3">
-                      <SpinnerIcon className="w-5 h-5 animate-spin text-blue-500" />
+                      <SpinnerIcon className="w-5 h-5 animate-spin text-gray-500" />
                       <span className="text-sm text-gray-400">{t.translate_btn_loading}</span>
                     </div>
                   </div>
@@ -359,7 +359,7 @@ export function TranslatePage() {
                       : <MarkdownText text={phoneticText} className="textarea-field fade-in" />
                     : <MarkdownText text={translatedText} className="textarea-field fade-in" />
                 ) : (
-                  <p className="text-[15px] text-gray-300 dark:text-gray-700 leading-relaxed select-none">
+                  <p className="ui-reader-muted select-none">
                     {t.translate_result_placeholder}
                   </p>
                 )}

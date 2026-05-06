@@ -24,10 +24,10 @@ interface CredentialStatusBadgeProps {
 export function CredentialStatusBadge({ hasSecret, isSuccess = false, isError = false, labels }: CredentialStatusBadgeProps) {
   if (isError) {
     return (
-      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 flex-shrink-0">
+      <span className="ui-badge ui-badge-danger flex-shrink-0">
         <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
+          <span className="ui-status-ping-danger animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" />
+          <span className="ui-status-dot ui-status-dot-danger relative inline-flex" />
         </span>
         {labels.invalid}
       </span>
@@ -36,13 +36,13 @@ export function CredentialStatusBadge({ hasSecret, isSuccess = false, isError = 
 
   if (isSuccess || hasSecret) {
     return (
-      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 flex-shrink-0">
+      <span className="ui-badge flex-shrink-0">
         <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
           <span className={[
-            'absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75',
+            'absolute inline-flex h-full w-full rounded-full bg-gray-400 opacity-75',
             isSuccess ? 'animate-ping' : 'animate-pulse',
           ].join(' ')} />
-          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+          <span className="ui-status-dot relative inline-flex bg-gray-500" />
         </span>
         {labels.saved}
       </span>
@@ -50,8 +50,8 @@ export function CredentialStatusBadge({ hasSecret, isSuccess = false, isError = 
   }
 
   return (
-    <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 flex-shrink-0">
-      <span className="w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
+    <span className="ui-badge ui-badge-muted flex-shrink-0">
+      <span className="ui-status-dot" />
       {labels.empty}
     </span>
   )
@@ -107,16 +107,14 @@ export function CredentialSecretInputRow({
           onKeyDown={(e) => { if (e.key === 'Enter' && !showMasked) onSubmit() }}
           placeholder={placeholder}
           className={[
-            'w-full px-3 py-2 border rounded-lg text-sm font-mono',
-            'focus:outline-none focus:ring-2 focus:ring-blue-500',
-            'text-gray-800 dark:text-gray-200 placeholder-gray-400 transition-colors',
+            'field-input field-input-mono',
             showMasked
-              ? 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 text-gray-400 cursor-pointer pr-9'
+              ? 'field-input-muted'
               : isSuccess
-                ? 'bg-white dark:bg-gray-700 border-green-400 dark:border-green-600'
+                ? 'field-input-success'
                 : isError
-                  ? 'bg-white dark:bg-gray-700 border-red-400 dark:border-red-600'
-                  : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600',
+                  ? 'field-input-error'
+                  : '',
           ].join(' ')}
           autoComplete="off"
           autoCorrect="off"
@@ -128,7 +126,7 @@ export function CredentialSecretInputRow({
             onClick={onDelete}
             disabled={isDeleting}
             title={labels.remove}
-            className="absolute right-2 inset-y-0 flex items-center text-gray-300 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
+            className="btn-icon btn-icon-sm btn-icon-danger absolute right-2 top-1/2 -translate-y-1/2"
           >
             {isDeleting ? (
               <SpinnerIcon className="w-4 h-4 animate-spin" />
@@ -145,13 +143,12 @@ export function CredentialSecretInputRow({
           onClick={onSubmit}
           disabled={!inputValue.trim() || isBusy}
           className={[
-            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
-            'whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed',
+            'whitespace-nowrap',
             isSuccess
-              ? 'bg-green-600 text-white hover:bg-green-700'
+              ? 'btn-primary'
               : isError
-                ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300'
-                : 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800',
+                ? 'btn-danger'
+                : 'btn-primary',
           ].join(' ')}
         >
           {isBusy ? (
@@ -188,10 +185,10 @@ export function CredentialStatusMessage({ message, tone }: CredentialStatusMessa
     <div className={[
       'px-3 py-2 rounded-lg text-xs font-medium',
       tone === 'success'
-        ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300 border border-green-200 dark:border-green-800'
+        ? 'bg-gray-50 text-gray-700 dark:bg-gray-900/20 dark:text-gray-300 border border-gray-200 dark:border-gray-700'
         : tone === 'warning'
-          ? 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-300 border border-yellow-200'
-          : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300 border border-red-200 dark:border-red-800',
+          ? 'bg-gray-50 text-gray-700 dark:bg-gray-900/20 dark:text-gray-300 border border-gray-200'
+          : 'ui-error-box text-xs font-medium',
     ].join(' ')}>
       {message}
     </div>
@@ -255,7 +252,7 @@ export function CredentialCard({
             <button
               type="button"
               onClick={onOpenDocs}
-              className="text-xs text-blue-500 hover:text-blue-700 hover:underline"
+              className="btn-link text-xs"
             >
               {docsLabel}
             </button>

@@ -21,16 +21,14 @@ export function TranslateError({
 }: TranslateErrorProps) {
   return (
     <div className="fade-in flex flex-col gap-2">
-      <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950/30
-                      border border-red-200 dark:border-red-900 rounded-lg">
-        <AlertTriangleIcon className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-        <p className="flex-1 text-sm text-red-700 dark:text-red-300 break-words">{error}</p>
+      <div className="ui-error-box flex items-start gap-2">
+        <AlertTriangleIcon className="ui-error-icon w-4 h-4 flex-shrink-0 mt-0.5" />
+        <p className="flex-1 break-words">{error}</p>
         <button
           type="button"
           onClick={onDismiss}
           title={labelDismiss}
-          className="flex-shrink-0 text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-300
-                     cursor-pointer transition-colors mt-0.5"
+          className="btn-icon btn-icon-sm btn-icon-danger mt-0.5 flex-shrink-0"
           aria-label={labelDismiss}
         >
           <XIcon className="w-3.5 h-3.5" />
@@ -41,12 +39,12 @@ export function TranslateError({
           type="button"
           onClick={onRetry}
           disabled={!canRetry}
-          className="btn-secondary text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+          className="btn-secondary btn-sm"
         >
           {labelRetry}
         </button>
         {isApiKeyError && (
-          <button type="button" onClick={onOpenSettings} className="btn-primary text-xs">
+          <button type="button" onClick={onOpenSettings} className="btn-primary btn-sm">
             {labelOpenSettings}
           </button>
         )}

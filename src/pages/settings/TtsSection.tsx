@@ -24,7 +24,7 @@ function ProviderLogoFrame({
       className={[
         'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border',
         selected
-          ? 'border-blue-200 bg-white text-gray-950 dark:border-blue-900 dark:bg-gray-950 dark:text-white'
+          ? 'border-gray-200 bg-white text-gray-950 dark:border-gray-900 dark:bg-gray-950 dark:text-white'
           : 'border-gray-200 bg-gray-50 text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100',
       ].join(' ')}
     >
@@ -115,13 +115,13 @@ export function TtsSection() {
                 mode: 'auto',
                 label: t.settings_tts_mode_auto,
                 desc: t.settings_tts_mode_auto_desc,
-                icon: <AutoModeIcon className="w-5 h-5 text-blue-600 dark:text-blue-300" />,
+                icon: <AutoModeIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />,
               },
               {
                 mode: 'premium',
                 label: t.settings_tts_mode_premium,
                 desc: t.settings_tts_mode_premium_desc,
-                icon: <PremiumModeIcon className="w-5 h-5 text-amber-600 dark:text-amber-300" />,
+                icon: <PremiumModeIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />,
               },
             ] as Array<{ mode: TtsMode; label: string; desc: string; icon: ReactNode }>).map(({ mode, label, desc, icon }) => {
               const active = ttsMode === mode
@@ -131,10 +131,10 @@ export function TtsSection() {
                   type="button"
                   onClick={() => setTtsMode(mode)}
                   className={[
-                    'text-left px-3 py-2.5 rounded-lg border transition-colors min-h-[76px]',
+                    'btn-secondary btn-choice-card min-h-[76px]',
                     active
-                      ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-blue-200 hover:bg-blue-50/50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:border-blue-900 dark:hover:bg-blue-950/20',
+                      ? 'btn-active'
+                      : '',
                   ].join(' ')}
                   aria-pressed={active}
                 >
@@ -146,7 +146,7 @@ export function TtsSection() {
                   </span>
                   <span className={[
                     'block text-xs mt-2 leading-snug',
-                    active ? 'text-blue-600 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400',
+                    active ? 'text-gray-600 dark:text-gray-300' : 'text-gray-500 dark:text-gray-400',
                   ].join(' ')}>
                     {desc}
                   </span>
@@ -182,7 +182,7 @@ export function TtsSection() {
                 <button
                   type="button"
                   onClick={() => window.api?.openExternal(ELEVENLABS_DOCS_URL)}
-                  className="text-xs text-blue-500 hover:text-blue-700 hover:underline"
+                  className="btn-link text-xs"
                 >
                   {t.settings_get_key}
                 </button>

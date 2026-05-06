@@ -1,10 +1,14 @@
 const $ = (id) => document.getElementById(id)
 const Bridge = window.ViezanLocalBridge
 const ExtensionOptions = window.ViezanExtensionOptions || Bridge
+const OPTIONS_COPY = {
+  tokenPlaceholder: 'Paste your API key here...',
+}
 
 ExtensionOptions.populateDocumentSelects(document, {
   targetLabelOverrides: { zh: 'Chinese (Simplified)' },
 })
+$('token').placeholder = OPTIONS_COPY.tokenPlaceholder
 
 // ── Show status ───────────────────────────────────────────────────────────────
 

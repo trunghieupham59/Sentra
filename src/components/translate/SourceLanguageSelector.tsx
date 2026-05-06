@@ -25,9 +25,9 @@ export function SourceLanguageSelector({
   const sourceIsOther = sourceLang !== 'auto' && !sourceTopLangs.includes(sourceLang)
 
   const pillBase =
-    'relative px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors duration-150 cursor-pointer select-none flex-shrink-0'
-  const pillActive = 'text-blue-600 dark:text-blue-400'
-  const pillInactive = 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+    'btn-language-tab relative flex-shrink-0 whitespace-nowrap'
+  const pillActive = 'text-gray-700 dark:text-gray-200'
+  const pillInactive = 'text-gray-500 dark:text-gray-400'
 
   const handleSourceChange = (lang: string) => {
     if (lang !== 'auto') recordLangUsage(lang)
@@ -52,7 +52,7 @@ export function SourceLanguageSelector({
             : t.lang_auto}
         </span>
         {sourceLang === 'auto' && (
-          <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-blue-600 dark:bg-blue-400 rounded-full" />
+          <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-600 dark:bg-gray-400 rounded-full" />
         )}
       </button>
 
@@ -66,7 +66,7 @@ export function SourceLanguageSelector({
         >
           {langNames[code] ?? code}
           {sourceLang === code && (
-            <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-blue-600 dark:bg-blue-400 rounded-full" />
+            <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-600 dark:bg-gray-400 rounded-full" />
           )}
         </button>
       ))}
@@ -78,7 +78,7 @@ export function SourceLanguageSelector({
       >
         <ChevronDownIcon className="w-4 h-4" />
         {sourceIsOther && (
-          <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-blue-600 dark:bg-blue-400 rounded-full" />
+          <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-600 dark:bg-gray-400 rounded-full" />
         )}
         <select
           value={sourceIsOther ? sourceLang : ''}

@@ -47,10 +47,10 @@ export function TranslateLanguageBar({
             onClick={onSwap}
             disabled={!canSwap}
             title={swapTitle}
-            className={`flex-shrink-0 flex items-center justify-center w-8 h-8 ml-2 mr-1 transition-all duration-200
+            className={`btn-icon ml-2 mr-1 flex-shrink-0 border-transparent bg-transparent shadow-none
                         ${!canSwap
-                          ? 'text-gray-200 dark:text-gray-700 cursor-not-allowed'
-                          : 'cursor-pointer text-gray-400 hover:text-blue-500 dark:hover:text-blue-400'}`}
+                          ? 'text-gray-200 dark:text-gray-700'
+                          : 'text-gray-400 dark:bg-transparent'}`}
           >
             <SwapIcon className="w-5 h-5" />
           </button>
