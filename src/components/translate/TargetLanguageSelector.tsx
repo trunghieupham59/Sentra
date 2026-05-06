@@ -31,21 +31,22 @@ export function TargetLanguageSelector({
 
   return (
     <div className="flex items-center flex-1 min-w-0">
-
-      {/* Smart top-3 target language pills */}
-      {targetTopLangs.map((code) => (
-        <button
-          key={code}
-          type="button"
-          onClick={() => handleTargetChange(code)}
-          className={`${pillBase} ${targetLang === code ? pillActive : pillInactive}`}
-        >
-          {langNames[code] ?? code}
-          {targetLang === code && (
-            <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-600 dark:bg-gray-400 rounded-full" />
-          )}
-        </button>
-      ))}
+      <div className="flex flex-1 min-w-0 items-center overflow-hidden">
+        {/* Smart top-3 target language pills */}
+        {targetTopLangs.map((code) => (
+          <button
+            key={code}
+            type="button"
+            onClick={() => handleTargetChange(code)}
+            className={`${pillBase} ${targetLang === code ? pillActive : pillInactive}`}
+          >
+            {langNames[code] ?? code}
+            {targetLang === code && (
+              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-600 dark:bg-gray-400 rounded-full" />
+            )}
+          </button>
+        ))}
+      </div>
 
       {/* ↓ overflow dropdown */}
       <div
