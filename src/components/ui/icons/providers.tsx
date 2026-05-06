@@ -4,13 +4,30 @@
  * SPLIT-ICON-01: Moved from ProviderIcon.tsx into the centralized icon registry
  * so all SVG definitions are managed in one place.
  *
- * Brand shapes are retained, but fills use currentColor so provider marks stay
- * visually consistent with the neutral Viezan UI palette.
+ * Brand shapes are retained and default to flat brand colors. No logo uses
+ * gradients; individual callers can still override color when needed.
  *
  * Usage:
  *   import { GeminiProviderIcon, ClaudeProviderIcon, OpenAIProviderIcon } from './ui/icons'
  *   import { GroqIcon, ElevenLabsIcon, MicrosoftEdgeIcon, TavilyIcon, BraveSearchIcon } from './ui/icons'
  */
+
+export const PROVIDER_BRAND_COLORS = {
+  local: '#6B7280',
+  gemini: '#4285F4',
+  claude: '#CC785C',
+  openai: '#10A37F',
+  groq: '#F55036',
+  elevenlabs: '#111827',
+  edge: '#0AA5FF',
+  tavily: '#20C997',
+  brave: '#FB542B',
+} as const
+
+interface ProviderBrandIconProps {
+  size?: number
+  color?: string
+}
 
 /**
  * Local AI — Custom mark designed to sit visually alongside the cloud-AI
@@ -21,9 +38,9 @@
  *
  * Color inherits from the parent so it reads consistently with provider marks.
  */
-export function LocalProviderIcon({ size = 20 }: { size?: number }) {
+export function LocalProviderIcon({ size = 20, color = PROVIDER_BRAND_COLORS.local }: ProviderBrandIconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ color }} xmlns="http://www.w3.org/2000/svg">
       <title>Local AI</title>
       {/* Soft chip body fill so the mark has presence at small sizes */}
       <rect x="4.5" y="4.5" width="15" height="15" rx="3.5" fill="currentColor" opacity="0.12" />
@@ -65,9 +82,9 @@ export function LocalProviderIcon({ size = 20 }: { size?: number }) {
  * Path matches simpleicons.org "googlegemini" (24×24 viewBox).
  * Uses currentColor for app-level visual consistency.
  */
-export function GeminiProviderIcon({ size = 20 }: { size?: number }) {
+export function GeminiProviderIcon({ size = 20, color = PROVIDER_BRAND_COLORS.gemini }: ProviderBrandIconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ color }} xmlns="http://www.w3.org/2000/svg">
       <title>Google Gemini</title>
       <path
         d="M12 24A14.304 14.304 0 0 0 0 12 14.304 14.304 0 0 0 12 0a14.304 14.304 0 0 0 12 12 14.304 14.304 0 0 0-12 12Z"
@@ -82,9 +99,9 @@ export function GeminiProviderIcon({ size = 20 }: { size?: number }) {
  * Path source: simpleicons.org "claudeai" (24×24 viewBox).
  * Uses currentColor for app-level visual consistency.
  */
-export function ClaudeProviderIcon({ size = 20 }: { size?: number }) {
+export function ClaudeProviderIcon({ size = 20, color = PROVIDER_BRAND_COLORS.claude }: ProviderBrandIconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ color }} xmlns="http://www.w3.org/2000/svg">
       <title>Anthropic Claude</title>
       <path d="M4.709 15.955l4.72-2.647.08-.23-.08-.128h-.23l-.79-.048-2.698-.073-2.339-.097-2.266-.122-.571-.121L0 11.784l.055-.352.48-.321.686.06 1.52.103 2.278.158 1.652.097 2.448.255h.389l.054-.158-.133-.097-.103-.097-2.339-1.585-2.533-1.677-1.328-.965-.717-.487-.36-.456-.155-.992.645-.71.866.06.219.06.879.673 1.88 1.452 2.448 1.798.358.298.144-.103.018-.072-.16-.272-1.346-2.428-1.43-2.466-.638-1.025-.17-.616a2.948 2.948 0 0 1-.105-.722L1.51.39 2.045 0l1.296.073.426.054.674.616.99 2.265 1.605 3.566.249.495.13.456.05.14h.082V7.43L7.25 1.04l.067-.298.534-.182.535.255.225.503-.225 1.476-1.825 8.844.011.49.146.054.342-.121 1.413-1.91 2.351-2.95 1.044-1.18 1.225-1.302.781-.617h1.483l1.105 1.62-.495 1.673-1.546 1.97-1.281 1.659-1.83 2.466-1.146 1.96.106.158.275-.03 4.196-.91 2.265-.412 2.703-.467.91.42.105.43-.359.879-2.156.526-2.529.51-3.766.892-.045.04.05.057 1.69.157.722.043h1.766l3.291.245.86.575.515.687-.085.527-1.32.682-1.78-.42-4.165-.998-1.43-.358h-.197v.121l1.193 1.166 2.181 1.971 2.732 2.532.139.625-.349.49-.367-.054-2.379-1.798-.917-.81-2.082-1.755h-.139v.182l.482.71 2.539 3.808.13 1.166-.18.388-.658.224-.722-.133-1.486-2.078-1.532-2.345-1.236-2.114-.146.085-.732 7.876-.343.4-.793.298-.66-.504-.353-.815.353-1.616.421-2.111.343-1.679.31-2.084.18-.69-.012-.048-.146.018-1.5 2.062-2.282 3.083-1.81 1.937-.435.176-.755-.387.07-.687.418-.61 2.495-3.165 1.5-1.962.972-1.137-.006-.158h-.054L4.262 18.62l-1.788.225-.768-.061-.473-.557.06-.376.281-.297 2.336-1.605"/>
     </svg>
@@ -96,9 +113,9 @@ export function ClaudeProviderIcon({ size = 20 }: { size?: number }) {
  * Path matches simpleicons.org "openai" (24×24 viewBox).
  * Uses currentColor for app-level visual consistency.
  */
-export function OpenAIProviderIcon({ size = 20 }: { size?: number }) {
+export function OpenAIProviderIcon({ size = 20, color = PROVIDER_BRAND_COLORS.openai }: ProviderBrandIconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ color }} xmlns="http://www.w3.org/2000/svg">
       <title>OpenAI</title>
       <path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.843-3.372L15.115 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08-4.774 2.758a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z" />
     </svg>
@@ -108,13 +125,14 @@ export function OpenAIProviderIcon({ size = 20 }: { size?: number }) {
 /**
  * Groq — public company wordmark.
  */
-export function GroqIcon({ size = 20 }: { size?: number }) {
+export function GroqIcon({ size = 20, color = PROVIDER_BRAND_COLORS.groq }: ProviderBrandIconProps) {
   return (
     <svg
       width={Math.round(size * 2.74)}
       height={size}
       viewBox="0 32.25 152 55.5"
       fill="currentColor"
+      style={{ color }}
       xmlns="http://www.w3.org/2000/svg"
     >
       <title>Groq</title>
@@ -130,9 +148,9 @@ export function GroqIcon({ size = 20 }: { size?: number }) {
 /**
  * ElevenLabs — official symbol.
  */
-export function ElevenLabsIcon({ size = 20 }: { size?: number }) {
+export function ElevenLabsIcon({ size = 20, color = PROVIDER_BRAND_COLORS.elevenlabs }: ProviderBrandIconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 876 876" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="0 0 876 876" fill="none" style={{ color }} xmlns="http://www.w3.org/2000/svg">
       <title>ElevenLabs</title>
       <path d="M468 292H528V584H468V292Z" fill="currentColor" />
       <path d="M348 292H408V584H348V292Z" fill="currentColor" />
@@ -143,9 +161,9 @@ export function ElevenLabsIcon({ size = 20 }: { size?: number }) {
 /**
  * Microsoft Edge — public Edge logo used since 2019.
  */
-export function MicrosoftEdgeIcon({ size = 20 }: { size?: number }) {
+export function MicrosoftEdgeIcon({ size = 20, color = PROVIDER_BRAND_COLORS.edge }: ProviderBrandIconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="0 0 256 256" fill="none" style={{ color }} xmlns="http://www.w3.org/2000/svg">
       <title>Microsoft Edge</title>
       <circle cx="128" cy="128" r="112" fill="currentColor" opacity="0.12" />
       <path
@@ -159,9 +177,9 @@ export function MicrosoftEdgeIcon({ size = 20 }: { size?: number }) {
 /**
  * Tavily — official mark from the public Tavily logo asset.
  */
-export function TavilyIcon({ size = 20 }: { size?: number }) {
+export function TavilyIcon({ size = 20, color = PROVIDER_BRAND_COLORS.tavily }: ProviderBrandIconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="0 0 56 56" fill="none" style={{ color }} xmlns="http://www.w3.org/2000/svg">
       <title>Tavily</title>
       <path
         d="M39.5137 0C45.2842 0 48.17 2.47984e-05 50.374 1.12305C52.3127 2.11089 53.8892 3.68731 54.877 5.62598C55.9998 7.82995 56 10.7153 56 16.4854V39.5146C56 45.2847 55.9998 48.17 54.877 50.374C53.8891 52.3127 52.3127 53.8891 50.374 54.877C48.17 56 45.2842 56 39.5137 56H16.4854C10.7148 56 7.82905 56 5.625 54.877C3.68646 53.8891 2.11082 52.3126 1.12305 50.374C4.91453e-05 48.17 5.27826e-10 45.2849 0 39.5146V16.4854C4.81286e-10 10.7151 4.80472e-05 7.82999 1.12305 5.62598C2.11082 3.68739 3.68646 2.11089 5.625 1.12305C7.82905 2.47984e-05 10.7148 0 16.4854 0H39.5137ZM23.8105 30.958C23.5077 30.9581 23.2076 31.0175 22.9277 31.1338C22.6478 31.2502 22.393 31.4216 22.1787 31.6367L17.7705 36.0625L16.5986 34.8867C15.7377 34.0228 14.2649 34.4498 13.9971 35.6426L12.3271 43.0713C12.2686 43.3267 12.2752 43.593 12.3477 43.8447C12.4199 44.0956 12.555 44.3246 12.7393 44.5088L12.7383 44.5107C12.922 44.6967 13.1498 44.8324 13.4004 44.9053C13.6513 44.9782 13.9173 44.9856 14.1719 44.9268L21.5713 43.25C22.7588 42.9812 23.1851 41.502 22.3242 40.6377L21.1523 39.4619L25.5615 35.0371C25.9943 34.6025 26.2373 34.012 26.2373 33.3975C26.2372 32.783 25.9942 32.1934 25.5615 31.7588L25.5029 31.6992L25.5049 31.6982L25.4434 31.6367C25.229 31.4215 24.9744 31.2503 24.6943 31.1338C24.4144 31.0174 24.1136 30.958 23.8105 30.958ZM39.7139 28.1689C38.6842 27.5158 37.3429 28.2597 37.3428 29.4824V31.1445H27.8955C28.2111 31.7502 28.3916 32.439 28.3916 33.1699C28.3915 34.2266 28.0177 35.196 27.3965 35.9521H37.3418V37.6143C37.342 38.837 38.6843 39.58 39.7139 38.9268L46.1279 34.8613C46.6077 34.5556 46.8476 34.0509 46.8477 33.5469C46.847 33.0436 46.6067 32.5399 46.126 32.2354L39.7139 28.1689ZM24.0391 10.4062C23.778 10.4051 23.5207 10.4712 23.292 10.5977C23.063 10.7243 22.869 10.9083 22.7305 11.1309L18.6807 17.5684H18.6787C18.028 18.602 18.7694 19.9499 19.9873 19.9502H21.6436V29.5137C22.3307 29.0592 23.1537 28.794 24.0381 28.7939C24.9228 28.794 25.7453 29.0599 26.4326 29.5146V19.9502H28.0898C29.3077 19.9501 30.047 18.6028 29.3975 17.5684L25.3457 11.1309C25.0415 10.6489 24.5406 10.4068 24.0391 10.4062Z"
@@ -174,9 +192,9 @@ export function TavilyIcon({ size = 20 }: { size?: number }) {
 /**
  * Brave Search — official Brave 2024 mark.
  */
-export function BraveSearchIcon({ size = 20 }: { size?: number }) {
+export function BraveSearchIcon({ size = 20, color = PROVIDER_BRAND_COLORS.brave }: ProviderBrandIconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 35 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="0 0 35 40" fill="none" style={{ color }} xmlns="http://www.w3.org/2000/svg">
       <title>Brave Search</title>
       <path
         fill="currentColor"

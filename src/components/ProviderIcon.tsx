@@ -1,5 +1,5 @@
 import type { Provider } from '../types'
-import { ClaudeProviderIcon, GeminiProviderIcon, LocalProviderIcon, OpenAIProviderIcon } from './ui/icons'
+import { ClaudeProviderIcon, GeminiProviderIcon, LocalProviderIcon, OpenAIProviderIcon, PROVIDER_BRAND_COLORS } from './ui/icons'
 
 // SPLIT-ICON-01: SVG icon definitions moved to src/components/ui/icons/providers.tsx
 // ProviderIcon.tsx now only holds the wrapper component and PROVIDER_COLORS map.
@@ -21,7 +21,7 @@ export function ProviderIcon({ provider, size = 20, className = '' }: ProviderIc
   )
 }
 
-// Provider color map (neutral app tone)
+// Provider UI metadata. Surfaces remain neutral; iconColor is the flat brand mark.
 export const PROVIDER_COLORS: Record<Provider, {
   bg: string
   bgActive: string
@@ -40,7 +40,7 @@ export const PROVIDER_COLORS: Record<Provider, {
     border: 'border-gray-200 dark:border-gray-700',
     borderActive: 'border-gray-400 dark:border-gray-500',
     dot: 'bg-gray-500',
-    iconColor: '#4B5563',
+    iconColor: PROVIDER_BRAND_COLORS.gemini,
   },
   claude: {
     bg: 'bg-gray-50 dark:bg-neutral-800/70',
@@ -50,7 +50,7 @@ export const PROVIDER_COLORS: Record<Provider, {
     border: 'border-gray-200 dark:border-gray-700',
     borderActive: 'border-gray-400 dark:border-gray-500',
     dot: 'bg-gray-500',
-    iconColor: '#4B5563',
+    iconColor: PROVIDER_BRAND_COLORS.claude,
   },
   openai: {
     bg: 'bg-gray-50 dark:bg-neutral-800/70',
@@ -60,7 +60,7 @@ export const PROVIDER_COLORS: Record<Provider, {
     border: 'border-gray-200 dark:border-gray-700',
     borderActive: 'border-gray-400 dark:border-gray-500',
     dot: 'bg-gray-500',
-    iconColor: '#4B5563',
+    iconColor: PROVIDER_BRAND_COLORS.openai,
   },
   local: {
     bg: 'bg-gray-50 dark:bg-gray-800/70',
@@ -70,6 +70,6 @@ export const PROVIDER_COLORS: Record<Provider, {
     border: 'border-gray-200 dark:border-gray-700',
     borderActive: 'border-gray-400 dark:border-gray-500',
     dot: 'bg-gray-500',
-    iconColor: '#4B5563',
+    iconColor: PROVIDER_BRAND_COLORS.local,
   },
 }

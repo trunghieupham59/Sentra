@@ -13,7 +13,7 @@ export function AppLogoIcon({ size = 64 }: { size?: number }) {
       aria-hidden="true"
       width={size}
       height={size}
-      style={{ objectFit: 'contain', filter: 'grayscale(1) contrast(1.08)' }}
+      style={{ objectFit: 'contain' }}
       draggable={false}
     />
   )

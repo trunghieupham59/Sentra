@@ -22,11 +22,7 @@ export function CurrencyPicker({ value, onChange, ariaLabel, className }: Curren
         onChange={(event) => onChange(event.target.value as UsageCurrency)}
         aria-label={ariaLabel}
         className={[
-          'h-7 appearance-none rounded-lg border border-gray-200 bg-white pl-2.5 pr-7',
-          'text-xs font-semibold text-gray-700 outline-none transition-colors',
-          'hover:border-gray-300 focus:border-gray-500 focus:ring-2 focus:ring-gray-200',
-          'dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200',
-          'dark:hover:border-gray-600 dark:focus:border-gray-400 dark:focus:ring-neutral-700',
+          'select-field w-auto min-w-[112px] pl-3 pr-8',
         ].join(' ')}
       >
         {USAGE_CURRENCY_OPTIONS.map((option) => (
@@ -35,7 +31,7 @@ export function CurrencyPicker({ value, onChange, ariaLabel, className }: Curren
           </option>
         ))}
       </select>
-      <ChevronDownIcon className="pointer-events-none absolute right-1.5 h-3 w-3 text-gray-400 dark:text-gray-500" />
+      <ChevronDownIcon className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
     </div>
   )
 }

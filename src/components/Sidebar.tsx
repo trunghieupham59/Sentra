@@ -57,7 +57,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className={`relative flex flex-col ${collapsed ? 'items-center w-[76px]' : 'items-stretch w-[188px]'} pt-3 pb-3 px-3 gap-2 flex-shrink-0
+    <aside className={`app-sidebar relative flex flex-col ${collapsed ? 'items-center w-[76px]' : 'items-stretch w-[188px]'} pt-3 pb-3 px-3 gap-2 flex-shrink-0
                       border-r border-white/70 bg-white/70 backdrop-blur dark:border-white/10 dark:bg-neutral-950/55
                       transition-[width] duration-200 ease-out`}>
 
@@ -95,7 +95,7 @@ export function Sidebar() {
       </div>
 
       {/* Divider */}
-      <div className={`${collapsed ? 'mx-auto w-8' : 'mx-0 w-full'} h-px bg-gray-200/80 dark:bg-white/10 mb-0.5`} />
+      <div className={`app-sidebar-divider ${collapsed ? 'mx-auto w-8' : 'mx-0 w-full'} h-px mb-0.5`} />
 
       {/* Chat with AI */}
       <SidebarItem
@@ -146,7 +146,7 @@ export function Sidebar() {
       <div className="flex-1" />
 
       {/* Divider */}
-      <div className={`${collapsed ? 'mx-auto w-8' : 'mx-0 w-full'} h-px bg-gray-200/80 dark:bg-white/10 mb-0.5`} />
+      <div className={`app-sidebar-divider ${collapsed ? 'mx-auto w-8' : 'mx-0 w-full'} h-px mb-0.5`} />
 
       {/* Settings */}
       <SidebarItem

@@ -542,18 +542,18 @@ export function AIChatPopup() {
 
   return (
     <div
-      className="titlebar-drag h-screen w-screen bg-transparent p-3 text-gray-900"
+      className="quick-chat-shell titlebar-drag h-screen w-screen bg-transparent p-3"
       onWheel={handleWheel}
     >
       <section
-        className="titlebar-drag relative flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white/95
+        className="quick-chat-panel titlebar-drag relative flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white/95
                    shadow-2xl shadow-gray-950/20 backdrop-blur-xl"
         aria-label={t.ai_chat_popup_title}
       >
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gray-200/80" />
+        <div className="quick-chat-top-edge pointer-events-none absolute inset-x-0 top-0 h-px" />
 
         {/* === Header / prompt bar ============================================ */}
-        <div className="titlebar-drag flex flex-shrink-0 items-center gap-2 border-b border-gray-100 bg-white/70 px-3 py-2.5">
+        <div className="quick-chat-header titlebar-drag flex flex-shrink-0 items-center gap-2 border-b px-3 py-2.5">
           <button
             type="button"
             onClick={hasContext ? handleNewConversation : undefined}
@@ -615,11 +615,11 @@ export function AIChatPopup() {
         {/* === Body — Q&A list ============================================== */}
         <div
           ref={scrollContainerRef}
-          className="titlebar-drag min-h-0 flex-1 overflow-y-auto bg-gray-50 px-4 py-4"
+          className="quick-chat-body titlebar-drag min-h-0 flex-1 overflow-y-auto px-4 py-4"
         >
           {!hasKey ? (
             <EmptyContainer>
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 ring-1 ring-gray-200">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100">
                 <AppLogoIcon size={32} />
               </div>
               <p className="max-w-sm text-sm leading-6 text-gray-700">{t.chat_error_no_key}</p>
@@ -640,7 +640,7 @@ export function AIChatPopup() {
             </EmptyContainer>
           ) : !activeQuestion && !isSending ? (
             <EmptyContainer>
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white ring-1 ring-gray-200 shadow-sm shadow-gray-900/5">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white">
                 <AppLogoIcon size={42} />
               </div>
               <div className="text-center">
@@ -734,7 +734,7 @@ export function AIChatPopup() {
         </div>
 
         {/* === Footer ========================================================= */}
-        <div className="titlebar-drag flex flex-shrink-0 items-center justify-between gap-3 border-t border-gray-100 bg-white/80 px-3 py-2 text-sm">
+        <div className="quick-chat-footer titlebar-drag flex flex-shrink-0 items-center justify-between gap-3 border-t px-3 py-2 text-sm">
           <button
             type="button"
             onClick={handleOpenSettings}
@@ -782,7 +782,7 @@ export function AIChatPopup() {
               <span>{copiedKey === 'footer' ? t.chat_copied : t.chat_copy}</span>
             </button>
 
-            <span className="mx-0.5 h-4 w-px bg-gray-200" aria-hidden />
+            <span className="quick-chat-divider mx-0.5 h-4 w-px" aria-hidden />
 
             <button
               type="button"
@@ -831,7 +831,7 @@ function CardActions({
   copyDisabled?: boolean
 }) {
   return (
-    <div className="titlebar-no-drag flex items-center justify-end gap-1 border-t border-gray-100 bg-gray-50/40 px-3 py-1.5">
+    <div className="quick-chat-card-actions titlebar-no-drag flex items-center justify-end gap-1 border-t px-3 py-1.5">
       <button
         type="button"
         onClick={onCopy}
@@ -884,10 +884,10 @@ function QAEntry({
 }) {
   return (
     <div
-      className={`titlebar-no-drag overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm shadow-gray-900/5
+      className={`quick-chat-answer-card titlebar-no-drag overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm shadow-gray-900/5
                   ${muted ? 'opacity-80' : ''}`}
     >
-      <div className="ui-caption flex items-start gap-2 border-b border-gray-100 bg-gray-50/60 px-5 py-2.5 leading-5">
+      <div className="quick-chat-question-row ui-caption flex items-start gap-2 border-b px-5 py-2.5 leading-5">
         <span className="ui-token-badge mt-0.5 h-4">
           Q
         </span>
@@ -946,8 +946,8 @@ function ActiveQACard({
   const showActions = Boolean(response.trim() || error) && !isSending
 
   return (
-    <div className="titlebar-no-drag flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm shadow-gray-900/5">
-      <div className="ui-caption flex items-start gap-2 border-b border-gray-100 bg-gray-50/60 px-5 py-2.5 leading-5">
+    <div className="quick-chat-answer-card titlebar-no-drag flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm shadow-gray-900/5">
+      <div className="quick-chat-question-row ui-caption flex items-start gap-2 border-b px-5 py-2.5 leading-5">
         <span className="ui-token-badge mt-0.5 h-4">
           Q
         </span>

@@ -56,7 +56,7 @@ export function UsageCostBadge({
   return (
     <span
       className={[
-        'ring-1',
+        'ring-1 whitespace-nowrap',
         SIZE_CLASSES[size],
         TONE_CLASSES[tone],
         className ?? '',

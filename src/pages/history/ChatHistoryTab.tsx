@@ -44,7 +44,7 @@ export function ChatHistoryTab({ query }: ChatHistoryTabProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto flex flex-col">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto">
       {sortedSessions.length === 0 ? (
         <HistoryEmptyState
           icon={<ChatBubbleIcon className="w-7 h-7 text-gray-300 dark:text-gray-600" />}

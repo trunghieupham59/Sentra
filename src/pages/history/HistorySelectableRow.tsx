@@ -55,7 +55,7 @@ export function HistorySelectableRow({
         isSelected ? classes.selected : classes.idle,
       ].join(' ')}
     >
-      <div className="flex items-start gap-3 px-4 py-3">
+      <div className="flex items-start gap-2.5 px-3 py-3">
         <button
           type="button"
           onClick={(event) => {
@@ -75,9 +75,10 @@ export function HistorySelectableRow({
         <button
           type="button"
           className="btn-row-action"
+          aria-expanded={isExpanded}
           onClick={() => onToggleExpand(id)}
         >
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex w-full items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               {preview}
             </div>
@@ -85,7 +86,7 @@ export function HistorySelectableRow({
               className={`flex-shrink-0 w-4 h-4 text-gray-300 dark:text-gray-600 transition-transform duration-200 mt-0.5 ${isExpanded ? 'rotate-180' : ''}`}
             />
           </div>
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
+          <div className="flex w-full items-center gap-x-2 gap-y-1.5 flex-wrap">
             {meta}
           </div>
         </button>

@@ -49,8 +49,8 @@ export function TargetLanguageSelector({
 
       {/* ↓ overflow dropdown */}
       <div
-        className={`relative flex items-center justify-center w-8 py-2 transition-colors duration-150 cursor-pointer select-none flex-shrink-0
-                    ${targetIsOther ? pillActive : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
+        className={`btn-icon relative flex-shrink-0 border-transparent bg-transparent shadow-none
+                    ${targetIsOther ? pillActive : 'text-gray-400 dark:bg-transparent dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
       >
         <ChevronDownIcon className="w-4 h-4" />
         {targetIsOther && (

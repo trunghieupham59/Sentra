@@ -2,6 +2,84 @@
 @config "../tailwind.config.mjs";
 
 @layer base {
+  :root {
+    --vzn-app-bg: linear-gradient(135deg, #f8fbfe 0%, #eef7fc 100%);
+    --vzn-bg: #f3f8fc;
+    --vzn-surface: #ffffff;
+    --vzn-surface-raised: rgba(255, 255, 255, 0.94);
+    --vzn-surface-muted: #f8fbfd;
+    --vzn-surface-subtle: #eef7fc;
+    --vzn-surface-hover: #e5f1f8;
+    --vzn-text: #18202b;
+    --vzn-text-strong: #0f1720;
+    --vzn-text-muted: #5e6a78;
+    --vzn-text-soft: #8a96a5;
+    --vzn-text-disabled: #a7b0bb;
+    --vzn-text-inverse: #ffffff;
+    --vzn-border: rgba(0, 74, 122, 0.12);
+    --vzn-border-strong: rgba(0, 74, 122, 0.22);
+    --vzn-divider: rgba(0, 74, 122, 0.10);
+    --vzn-accent: #0068ac;
+    --vzn-accent-hover: #005a96;
+    --vzn-accent-active: #004a7c;
+    --vzn-accent-soft: #e8f5fc;
+    --vzn-accent-border: #b8dcf0;
+    --vzn-success: #15803d;
+    --vzn-success-soft: #e8f6ee;
+    --vzn-success-border: #b7dfc3;
+    --vzn-warning: #b45309;
+    --vzn-warning-soft: #fff4df;
+    --vzn-warning-border: #f1c982;
+    --vzn-danger: #be123c;
+    --vzn-danger-hover: #9f1239;
+    --vzn-danger-soft: #fff1f2;
+    --vzn-danger-border: #fecdd3;
+    --vzn-focus-ring: rgba(0, 104, 172, 0.24);
+    --vzn-shadow-sm: 0 1px 2px rgba(0, 40, 70, 0.05), 0 1px 1px rgba(0, 40, 70, 0.03);
+    --vzn-shadow-md: 0 10px 28px rgba(0, 40, 70, 0.08), 0 2px 8px rgba(0, 40, 70, 0.04);
+    --vzn-shadow-lg: 0 22px 56px rgba(0, 40, 70, 0.13), 0 4px 14px rgba(0, 40, 70, 0.06);
+    --vzn-skeleton: rgba(0, 40, 70, 0.06);
+  }
+
+  html.dark {
+    --vzn-app-bg: linear-gradient(135deg, #07131e 0%, #082332 100%);
+    --vzn-bg: #07131e;
+    --vzn-surface: #101a24;
+    --vzn-surface-raised: rgba(16, 26, 36, 0.94);
+    --vzn-surface-muted: #142330;
+    --vzn-surface-subtle: #182a38;
+    --vzn-surface-hover: #1d3343;
+    --vzn-text: #e8edf2;
+    --vzn-text-strong: #f8fafc;
+    --vzn-text-muted: #a4afbb;
+    --vzn-text-soft: #798491;
+    --vzn-text-disabled: #5f6975;
+    --vzn-text-inverse: #0f1720;
+    --vzn-border: rgba(125, 211, 252, 0.14);
+    --vzn-border-strong: rgba(125, 211, 252, 0.26);
+    --vzn-divider: rgba(125, 211, 252, 0.12);
+    --vzn-accent: #38bdf8;
+    --vzn-accent-hover: #7dd3fc;
+    --vzn-accent-active: #bae6fd;
+    --vzn-accent-soft: rgba(56, 189, 248, 0.14);
+    --vzn-accent-border: rgba(56, 189, 248, 0.38);
+    --vzn-success: #4ade80;
+    --vzn-success-soft: #153522;
+    --vzn-success-border: #22623b;
+    --vzn-warning: #fbbf24;
+    --vzn-warning-soft: #3a2a11;
+    --vzn-warning-border: #7c5418;
+    --vzn-danger: #fb7185;
+    --vzn-danger-hover: #fda4af;
+    --vzn-danger-soft: #3c1720;
+    --vzn-danger-border: #7f2434;
+    --vzn-focus-ring: rgba(56, 189, 248, 0.26);
+    --vzn-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.24);
+    --vzn-shadow-md: 0 14px 32px rgba(0, 0, 0, 0.32), 0 2px 8px rgba(0, 0, 0, 0.20);
+    --vzn-shadow-lg: 0 28px 68px rgba(0, 0, 0, 0.46), 0 6px 16px rgba(0, 0, 0, 0.24);
+    --vzn-skeleton: rgba(255, 255, 255, 0.06);
+  }
+
   *, *::before, *::after {
     box-sizing: border-box;
   }
@@ -22,8 +100,8 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     user-select: none;
-    background-color: #f6f6f6;
-    color: #111827;
+    background-color: var(--vzn-bg);
+    color: var(--vzn-text);
   }
 
   html.quick-chat-window,
@@ -52,7 +130,7 @@
 @layer components {
   /* ── Buttons ───────────────────────────────
    * One neutral desktop language for app, modal, chat, and settings actions.
-   * Variants share radius, focus, disabled, and motion; only intent changes. */
+   * Variants share shape, focus, disabled, and motion; only intent changes. */
   .btn-primary,
   .btn-secondary,
   .btn-soft,
@@ -67,7 +145,7 @@
   }
 
   .btn-primary {
-    @apply min-h-9 border border-gray-950 bg-gray-950 px-3.5 py-2 text-sm text-white
+    @apply h-9 min-h-9 border border-gray-950 bg-gray-950 px-3.5 py-0 text-sm text-white
            shadow-sm shadow-gray-900/10 hover:border-gray-800 hover:bg-gray-800 active:bg-black
            disabled:border-gray-300 disabled:bg-gray-300 disabled:text-white disabled:shadow-none
            dark:border-gray-100 dark:bg-gray-100 dark:text-neutral-950
@@ -76,30 +154,30 @@
   }
 
   .btn-secondary {
-    @apply min-h-9 border border-gray-200 bg-white px-3.5 py-2 text-sm text-gray-700
+    @apply h-9 min-h-9 border border-gray-200 bg-white px-3.5 py-0 text-sm text-gray-700
            shadow-sm shadow-gray-900/5 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-950
-           dark:border-neutral-700 dark:bg-neutral-900 dark:text-gray-200
-           dark:hover:border-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-gray-100;
+           dark:border-transparent dark:bg-neutral-900 dark:text-gray-200
+           dark:hover:border-transparent dark:hover:bg-neutral-800 dark:hover:text-gray-100;
   }
 
   .btn-soft {
-    @apply min-h-9 border border-gray-200 bg-gray-50 px-3.5 py-2 text-sm text-gray-700
+    @apply h-9 min-h-9 border border-gray-200 bg-gray-50 px-3.5 py-0 text-sm text-gray-700
            hover:border-gray-300 hover:bg-gray-100 hover:text-gray-950
-           dark:border-neutral-700 dark:bg-neutral-800 dark:text-gray-200
-           dark:hover:border-neutral-500 dark:hover:bg-neutral-700 dark:hover:text-gray-100;
+           dark:border-transparent dark:bg-neutral-800 dark:text-gray-200
+           dark:hover:border-transparent dark:hover:bg-neutral-700 dark:hover:text-gray-100;
   }
 
   .btn-ghost {
-    @apply min-h-8 border border-transparent bg-transparent px-2.5 py-1.5 text-sm text-gray-500
+    @apply h-9 min-h-9 border border-transparent bg-transparent px-3.5 py-0 text-sm text-gray-500
            hover:bg-gray-100 hover:text-gray-800 active:bg-gray-200
            dark:text-gray-400 dark:hover:bg-neutral-800 dark:hover:text-gray-100;
   }
 
   .btn-danger {
-    @apply min-h-9 border border-red-200 bg-red-50 px-3.5 py-2 text-sm text-red-600
+    @apply h-9 min-h-9 border border-red-200 bg-red-50 px-3.5 py-0 text-sm text-red-600
            hover:border-red-300 hover:bg-red-100 hover:text-red-700
-           dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300
-           dark:hover:border-red-800 dark:hover:bg-red-950/50 dark:hover:text-red-200;
+           dark:border-transparent dark:bg-red-950/30 dark:text-red-300
+           dark:hover:border-transparent dark:hover:bg-red-950/50 dark:hover:text-red-200;
   }
 
   .btn-icon-danger {
@@ -116,8 +194,8 @@
   }
 
   .btn-language-tab {
-    @apply inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-transparent
-           bg-transparent px-3 py-2 text-sm font-medium text-gray-500 transition-colors duration-150 select-none
+    @apply inline-flex h-9 min-h-9 items-center justify-center gap-1.5 rounded-lg border border-transparent
+           bg-transparent px-3.5 py-0 text-sm font-medium text-gray-500 transition-colors duration-150 select-none
            hover:bg-gray-100 hover:text-gray-800
            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60
            disabled:cursor-not-allowed disabled:opacity-45
@@ -125,24 +203,24 @@
   }
 
   .btn-sm {
-    @apply min-h-8 px-3 py-1.5 text-xs;
+    @apply h-9 min-h-9 px-3.5 py-0 text-sm;
   }
 
   .btn-xs {
-    @apply min-h-6 px-2 py-1 text-xs;
+    @apply min-h-8 px-2.5 py-1 text-xs;
   }
 
   .btn-icon,
   .toolbar-icon-button {
-    @apply inline-flex h-8 w-8 items-center justify-center rounded-lg border
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-lg border
            border-gray-200 bg-white text-gray-500 shadow-sm shadow-gray-900/5
            transition-colors duration-150 select-none
            hover:border-gray-300 hover:bg-gray-100 hover:text-gray-950
            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60
-           disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-50 disabled:text-gray-300 disabled:shadow-none
-           dark:border-neutral-700 dark:bg-neutral-900 dark:text-gray-400
-           dark:hover:border-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-gray-100
-           dark:disabled:border-neutral-800 dark:disabled:bg-neutral-900 dark:disabled:text-neutral-700;
+           disabled:cursor-not-allowed disabled:border-transparent disabled:bg-gray-50 disabled:text-gray-300 disabled:shadow-none
+           dark:border-transparent dark:bg-neutral-900 dark:text-gray-400
+           dark:hover:border-transparent dark:hover:bg-neutral-800 dark:hover:text-gray-100
+           dark:disabled:border-transparent dark:disabled:bg-neutral-900 dark:disabled:text-neutral-700;
   }
 
   .btn-icon-sm {
@@ -169,14 +247,14 @@
   .btn-icon-active,
   .toolbar-icon-button-active {
     @apply border-gray-400 bg-gray-100 text-gray-950
-           dark:border-gray-500 dark:bg-neutral-800 dark:text-gray-100;
+           dark:border-transparent dark:bg-neutral-800 dark:text-gray-100;
   }
 
   .toolbar-pill-button {
-    @apply min-h-8 border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-600
+    @apply h-9 min-h-9 border border-gray-200 bg-white px-3.5 py-0 text-sm text-gray-600
            shadow-sm shadow-gray-900/5 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-950
-           dark:border-neutral-700 dark:bg-neutral-900 dark:text-gray-400
-           dark:hover:border-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-gray-100;
+           dark:border-transparent dark:bg-neutral-900 dark:text-gray-400
+           dark:hover:border-transparent dark:hover:bg-neutral-800 dark:hover:text-gray-100;
   }
 
   .toolbar-pill-danger {
@@ -185,8 +263,8 @@
   }
 
   .btn-segment {
-    @apply inline-flex min-h-8 min-w-0 items-center justify-center gap-2 rounded-md px-3 py-1.5
-           text-xs font-medium text-gray-500 transition-colors duration-150
+    @apply inline-flex h-9 min-h-9 min-w-0 items-center justify-center gap-2 rounded-md px-3.5 py-0
+           text-sm font-medium text-gray-500 transition-colors duration-150
            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60
            disabled:cursor-not-allowed disabled:opacity-45
            hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200;
@@ -231,13 +309,13 @@
   }
 
   .btn-row-action {
-    @apply inline-flex min-h-0 flex-1 items-start justify-start rounded-none border border-transparent
+    @apply inline-flex min-h-0 w-full min-w-0 flex-1 flex-col items-start justify-start gap-2 rounded-none border border-transparent
            bg-transparent p-0 text-left text-sm font-normal text-inherit transition-colors duration-150
            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60;
   }
 
   .btn-nav-item {
-    @apply min-h-10 w-full justify-start gap-3 px-3 py-2 text-left text-sm shadow-none;
+    @apply min-h-10 w-full justify-start gap-3 px-3 py-2 text-left text-sm leading-snug shadow-none;
   }
 
   .btn-nav-item-collapsed {
@@ -246,20 +324,20 @@
 
   /* ── Select ──────────────────────────────── */
   .btn-select {
-    @apply inline-flex h-8 items-center justify-between gap-1.5 rounded-lg border
-           border-gray-200 bg-gray-100 px-2.5 text-xs font-medium text-gray-500
+    @apply inline-flex h-9 min-h-9 items-center justify-between gap-1.5 rounded-lg border
+           border-gray-200 bg-white px-3.5 text-sm font-semibold text-gray-700
            shadow-sm shadow-gray-900/5 transition-colors duration-150 select-none
-           dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400;
+           dark:border-transparent dark:bg-gray-800 dark:text-gray-200;
   }
 
   .btn-select-active {
     @apply border-gray-300 bg-gray-100 text-gray-900
-           dark:border-neutral-600 dark:bg-neutral-800 dark:text-gray-100;
+           dark:border-transparent dark:bg-neutral-800 dark:text-gray-100;
   }
 
   .select-field {
-    @apply block min-h-8 w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg
-           text-xs font-medium text-gray-700 appearance-none cursor-pointer
+    @apply block h-9 min-h-9 w-full px-3.5 py-0 bg-white border border-gray-200 rounded-lg
+           text-sm font-semibold text-gray-700 appearance-none cursor-pointer
            focus:outline-none focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500
            transition-colors duration-100
            dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200
@@ -548,8 +626,8 @@
   }
 
   .segmented-control {
-    @apply flex items-center gap-1 rounded-lg border border-gray-200/80 bg-white/70 p-1 shadow-sm shadow-gray-900/5
-           dark:border-neutral-800 dark:bg-neutral-900/70;
+    @apply flex items-center gap-1 rounded-lg border border-transparent bg-gray-50/80 p-1 shadow-none
+           dark:border-transparent dark:bg-neutral-900/70;
   }
 
   .settings-shell {
@@ -617,7 +695,7 @@
  * and we can tweak the look in one place. Keeps ChatPage / MessageBubble
  * declarative and noise-free.                                           */
 @layer components {
-  /* Composer — the rounded card that wraps the textarea + action toolbar */
+  /* Composer — wraps the textarea + action toolbar */
   .chat-composer {
     @apply flex flex-col rounded-2xl border border-gray-200/90 bg-white/95
            shadow-sm shadow-gray-900/[0.04] transition-all duration-150
@@ -655,15 +733,15 @@
            hover:border-gray-200 hover:bg-gray-100 hover:text-gray-950
            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60
            disabled:cursor-not-allowed disabled:opacity-45
-           dark:text-gray-400 dark:hover:border-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-gray-100;
+           dark:text-gray-400 dark:hover:border-transparent dark:hover:bg-neutral-800 dark:hover:text-gray-100;
   }
   .chat-action-button-active-neutral {
-    @apply !border-gray-300 !bg-gray-100 !text-gray-950
-           dark:!border-neutral-600 dark:!bg-neutral-800 dark:!text-gray-100;
+    @apply !border-transparent !bg-gray-100 !text-gray-950
+           dark:!border-transparent dark:!bg-neutral-800 dark:!text-gray-100;
   }
   .chat-action-button-active-muted {
-    @apply !border-gray-300 !bg-gray-100 !text-gray-950
-           dark:!border-neutral-600 dark:!bg-neutral-800 dark:!text-gray-100;
+    @apply !border-transparent !bg-gray-100 !text-gray-950
+           dark:!border-transparent dark:!bg-neutral-800 dark:!text-gray-100;
   }
 
   /* Send / Stop / Resume primary action.
@@ -674,13 +752,13 @@
   .chat-send-button,
   .chat-stop-button,
   .chat-resume-button {
-    @apply inline-flex h-10 shrink-0 items-center justify-center rounded-lg
+    @apply inline-flex h-9 min-h-9 shrink-0 items-center justify-center rounded-lg
            border text-sm font-semibold leading-none transition-colors duration-150
            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60 disabled:cursor-not-allowed
            disabled:opacity-55;
   }
   .chat-send-button {
-    @apply w-10 border-gray-950 bg-gray-950 text-white shadow-sm shadow-gray-900/15
+    @apply w-9 border-gray-950 bg-gray-950 text-white shadow-sm shadow-gray-900/15
            hover:border-gray-800 hover:bg-gray-800 active:bg-black
            focus-visible:ring-gray-300
            disabled:border-gray-300 disabled:bg-gray-300 disabled:text-white disabled:shadow-none
@@ -688,19 +766,19 @@
            dark:disabled:border-neutral-700 dark:disabled:bg-neutral-700;
   }
   .chat-stop-button {
-    @apply w-10 border-red-200 bg-white text-red-600 shadow-sm shadow-red-900/10
+    @apply w-9 border-red-200 bg-white text-red-600 shadow-sm shadow-red-900/10
            hover:border-red-300 hover:bg-red-50 active:bg-red-100
            focus-visible:ring-red-300
-           dark:border-red-900/60 dark:bg-neutral-950 dark:text-red-300
-           dark:hover:border-red-700 dark:hover:bg-red-950/40;
+           dark:border-transparent dark:bg-neutral-950 dark:text-red-300
+           dark:hover:border-transparent dark:hover:bg-red-950/40;
   }
   .chat-resume-button {
     @apply gap-1.5 border-gray-300 bg-gray-50 px-3 text-gray-800
            shadow-sm shadow-gray-900/10
            hover:border-gray-400 hover:bg-gray-100 active:bg-gray-200
            focus-visible:ring-gray-300
-           dark:border-neutral-600 dark:bg-neutral-800 dark:text-gray-100
-           dark:hover:border-neutral-500 dark:hover:bg-neutral-700;
+           dark:border-transparent dark:bg-neutral-800 dark:text-gray-100
+           dark:hover:border-transparent dark:hover:bg-neutral-700;
   }
   .chat-primary-action-label {
     @apply max-w-[6rem] overflow-hidden text-ellipsis whitespace-nowrap text-xs;
@@ -882,18 +960,396 @@
   }
 }
 
+@layer components {
+  /* Semantic color contract: layout remains in Tailwind, color comes from tokens. */
+  .btn-primary,
+  .chat-send-button {
+    border-color: var(--vzn-accent);
+    background: var(--vzn-accent);
+    color: var(--vzn-text-inverse);
+    box-shadow: none;
+  }
+  .btn-primary:hover,
+  .chat-send-button:hover {
+    border-color: var(--vzn-accent-hover);
+    background: var(--vzn-accent-hover);
+  }
+  .btn-primary:active,
+  .chat-send-button:active {
+    border-color: var(--vzn-accent-active);
+    background: var(--vzn-accent-active);
+  }
+  .btn-primary:disabled,
+  .chat-send-button:disabled {
+    border-color: transparent;
+    background: var(--vzn-surface-subtle);
+    color: var(--vzn-text-disabled);
+    box-shadow: none;
+  }
+
+  .btn-secondary,
+  .btn-soft,
+  .btn-icon,
+  .toolbar-icon-button,
+  .toolbar-pill-button,
+  .chat-model-badge,
+  .keyboard-key,
+  .card,
+  .floating-panel,
+  .modal-surface {
+    border-color: transparent;
+    background: var(--vzn-surface-raised);
+    color: var(--vzn-text-muted);
+    box-shadow: none;
+  }
+  .btn-secondary:hover,
+  .btn-soft:hover,
+  .btn-icon:hover,
+  .toolbar-icon-button:hover,
+  .toolbar-pill-button:hover,
+  .chat-model-badge:hover {
+    border-color: transparent;
+    background: var(--vzn-surface-hover);
+    color: var(--vzn-text-strong);
+  }
+  .btn-ghost,
+  .btn-link,
+  .btn-language-tab,
+  .btn-menu-item,
+  .btn-segment,
+  .chat-action-button {
+    color: var(--vzn-text-muted);
+  }
+  .btn-ghost:hover,
+  .btn-language-tab:hover,
+  .btn-menu-item:hover,
+  .btn-segment:hover,
+  .chat-action-button:hover {
+    border-color: transparent;
+    background: var(--vzn-surface-hover);
+    color: var(--vzn-text-strong);
+  }
+  .btn-link:hover {
+    color: var(--vzn-text-strong);
+  }
+  .btn-active,
+  .btn-icon-active,
+  .toolbar-icon-button-active,
+  .btn-select-active,
+  .btn-segment-active,
+  .chat-action-button-active-neutral,
+  .chat-action-button-active-muted {
+    border-color: transparent;
+    background: var(--vzn-accent-soft);
+    color: var(--vzn-accent);
+  }
+  .btn-select,
+  .select-field,
+  .field-input,
+  .field-textarea,
+  .inline-pill-input,
+  .search-field,
+  .segmented-control {
+    border-color: var(--vzn-border);
+    background: var(--vzn-surface-raised);
+    color: var(--vzn-text);
+    box-shadow: var(--vzn-shadow-sm);
+  }
+  .segmented-control {
+    border-color: transparent;
+    background: var(--vzn-surface-subtle);
+    box-shadow: none;
+  }
+  .field-input::placeholder,
+  .field-textarea::placeholder,
+  .search-field::placeholder,
+  .textarea-field::placeholder,
+  .chat-input-field::placeholder,
+  .quick-chat-input-field::placeholder {
+    color: var(--vzn-text-soft);
+  }
+  .field-input:focus,
+  .field-textarea:focus,
+  .inline-pill-input:focus,
+  .search-field:focus,
+  .select-field:focus {
+    border-color: var(--vzn-accent);
+    box-shadow: 0 0 0 3px var(--vzn-focus-ring);
+  }
+  .field-input:disabled,
+  .field-textarea:disabled,
+  .field-input-muted {
+    background: var(--vzn-surface-subtle);
+    color: var(--vzn-text-disabled);
+  }
+
+  .toggle-switch-track {
+    box-shadow: inset 0 0 0 1px var(--vzn-border);
+  }
+  .toggle-switch-track-on {
+    background: var(--vzn-accent);
+    box-shadow: inset 0 0 0 1px var(--vzn-accent);
+  }
+  .toggle-switch-track-off {
+    background: var(--vzn-surface-hover);
+  }
+  .toggle-switch-thumb {
+    background: var(--vzn-surface);
+    box-shadow: var(--vzn-shadow-sm);
+  }
+  .toggle-switch-track:focus-visible {
+    box-shadow: 0 0 0 3px var(--vzn-focus-ring), inset 0 0 0 1px var(--vzn-accent);
+  }
+
+  .btn-primary:focus-visible,
+  .btn-secondary:focus-visible,
+  .btn-soft:focus-visible,
+  .btn-ghost:focus-visible,
+  .btn-danger:focus-visible,
+  .btn-link:focus-visible,
+  .btn-icon:focus-visible,
+  .toolbar-icon-button:focus-visible,
+  .toolbar-pill-button:focus-visible,
+  .btn-language-tab:focus-visible,
+  .btn-menu-item:focus-visible,
+  .btn-row-action:focus-visible,
+  .btn-segment:focus-visible,
+  .chat-action-button:focus-visible,
+  .chat-send-button:focus-visible,
+  .chat-stop-button:focus-visible,
+  .chat-resume-button:focus-visible {
+    box-shadow: 0 0 0 3px var(--vzn-focus-ring);
+  }
+
+  .btn-danger,
+  .chat-stop-button {
+    border-color: transparent;
+    background: var(--vzn-danger-soft);
+    color: var(--vzn-danger);
+    box-shadow: none;
+  }
+  .btn-danger:hover,
+  .chat-stop-button:hover {
+    border-color: transparent;
+    background: var(--vzn-danger-soft);
+    color: var(--vzn-danger-hover);
+  }
+  .btn-icon-danger:hover,
+  .toolbar-pill-danger:hover {
+    border-color: transparent !important;
+    background: var(--vzn-danger-soft) !important;
+    color: var(--vzn-danger) !important;
+  }
+  .ui-error-text,
+  .ui-error-icon,
+  .voice-recording-text {
+    color: var(--vzn-danger);
+  }
+  .ui-error-box,
+  .ui-error-banner,
+  .thinking-state-pill-error,
+  .voice-recording-panel {
+    border-color: var(--vzn-danger-border);
+    background: var(--vzn-danger-soft);
+    color: var(--vzn-danger);
+  }
+  .ui-alert-toast {
+    background: var(--vzn-danger);
+    color: var(--vzn-text-inverse);
+    box-shadow: var(--vzn-shadow-md);
+  }
+  .ui-status-dot-danger,
+  .ui-status-ping-danger,
+  .voice-recording-bar,
+  .voice-recording-core {
+    background: var(--vzn-danger);
+  }
+  .voice-ripple-soft,
+  .voice-ripple-medium,
+  .voice-ripple-strong {
+    background: var(--vzn-danger-soft);
+  }
+
+  .app-shell {
+    background: var(--vzn-app-bg);
+    color: var(--vzn-text);
+  }
+  .app-titlebar-drag,
+  .app-sidebar,
+  .modal-header {
+    border-color: var(--vzn-border);
+    background: var(--vzn-surface-raised);
+    color: var(--vzn-text);
+  }
+  .app-titlebar-divider,
+  .app-sidebar-divider {
+    border-color: var(--vzn-divider);
+    background: var(--vzn-divider);
+  }
+  .modal-backdrop {
+    background: rgba(15, 23, 32, 0.36);
+  }
+  .app-page {
+    background: transparent;
+  }
+  .app-shell :where(
+    .border-gray-100,
+    .border-gray-200,
+    .border-gray-200\/80,
+    .border-gray-200\/90,
+    .border-neutral-800,
+    .border-neutral-800\/60,
+    .border-neutral-800\/70,
+    .border-neutral-800\/80,
+    .border-white\/10,
+    .border-white\/70
+  ) {
+    border-color: var(--vzn-divider);
+  }
+  .app-shell :where(
+    .divide-gray-100,
+    .divide-gray-200,
+    .divide-neutral-800\/70
+  ) > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--vzn-divider);
+  }
+  .app-topbar,
+  .surface-panel,
+  .chat-composer,
+  .chat-research-final {
+    border-color: var(--vzn-border);
+    background: var(--vzn-surface-raised);
+    color: var(--vzn-text);
+    box-shadow: var(--vzn-shadow-sm);
+  }
+  .surface-panel-focus:focus-within,
+  .chat-composer:focus-within {
+    border-color: var(--vzn-accent);
+    box-shadow: 0 0 0 3px var(--vzn-focus-ring), var(--vzn-shadow-sm);
+  }
+  .surface-panel-drop,
+  .chat-composer-drop {
+    border-color: var(--vzn-accent);
+    background: var(--vzn-accent-soft);
+    box-shadow: inset 0 0 0 1px var(--vzn-accent-border), var(--vzn-shadow-sm);
+  }
+  .surface-footer,
+  .chat-research-info-popover-header,
+  .chat-research-final-header {
+    border-color: var(--vzn-border);
+    background: var(--vzn-surface-muted);
+  }
+  .chat-research-step,
+  .chat-research-panel,
+  .chat-suggest-chip,
+  .chat-research-info-popover {
+    border-color: var(--vzn-border);
+    background: var(--vzn-surface-muted);
+    color: var(--vzn-text);
+    box-shadow: var(--vzn-shadow-sm);
+  }
+  .chat-suggest-chip:hover,
+  .chat-research-pill-info:hover,
+  .chat-research-pill-info-active {
+    border-color: transparent;
+    background: var(--vzn-surface-hover);
+    color: var(--vzn-text-strong);
+  }
+  .chat-research-step-list,
+  .chat-research-step-row,
+  .chat-research-pill-list,
+  .chat-research-pill-row,
+  .chat-research-info-popover-item {
+    border-color: var(--vzn-border);
+  }
+
+  .ui-micro,
+  .ui-meta,
+  .ui-caption,
+  .ui-kicker,
+  .section-label,
+  .popover-title,
+  .thinking-inline-label,
+  .chat-research-pill-info {
+    color: var(--vzn-text-soft);
+  }
+  .ui-reader-text,
+  .textarea-field,
+  .chat-input-field,
+  .quick-chat-input-field,
+  .chat-bubble-assistant,
+  .chat-research-pill-title {
+    color: var(--vzn-text);
+  }
+  .ui-reader-muted {
+    color: var(--vzn-text-disabled);
+  }
+  .ui-badge,
+  .ui-badge-muted,
+  .ui-badge-xs,
+  .ui-token-badge,
+  .ui-index-dot,
+  .chat-pill-neutral,
+  .chat-pill-muted,
+  .chat-pill-subtle,
+  .thinking-state-pill,
+  .chat-resume-button {
+    border-color: var(--vzn-border);
+    background: var(--vzn-surface-subtle);
+    color: var(--vzn-text-muted);
+    box-shadow: var(--vzn-shadow-sm);
+  }
+  .ui-badge-danger {
+    background: var(--vzn-danger-soft);
+    color: var(--vzn-danger);
+  }
+  .ui-status-dot {
+    background: var(--vzn-text-soft);
+  }
+  .chat-bubble-user {
+    background: var(--vzn-accent);
+    color: var(--vzn-text-inverse);
+    box-shadow: var(--vzn-shadow-sm);
+  }
+
+  .quick-chat-shell {
+    color: var(--vzn-text);
+  }
+  .quick-chat-panel,
+  .quick-chat-answer-card {
+    border-color: var(--vzn-border);
+    background: var(--vzn-surface-raised);
+    color: var(--vzn-text);
+    box-shadow: var(--vzn-shadow-lg);
+  }
+  .quick-chat-top-edge,
+  .quick-chat-divider {
+    background: var(--vzn-divider);
+  }
+  .quick-chat-header,
+  .quick-chat-footer,
+  .quick-chat-card-actions,
+  .quick-chat-question-row {
+    border-color: var(--vzn-border);
+    background: var(--vzn-surface-muted);
+  }
+  .quick-chat-body {
+    background: var(--vzn-surface-subtle);
+  }
+}
+
 /* ── Skeleton loading placeholders ─ */
 @keyframes skeletonPulse {
   0%, 100% { opacity: 0.62; }
   50%      { opacity: 1; }
 }
 .skeleton-shimmer {
-  background-color: rgba(15, 23, 42, 0.06);
+  background-color: var(--vzn-skeleton);
   animation: skeletonPulse 1.6s ease-in-out infinite;
 }
 .dark .skeleton-shimmer,
 html.dark .skeleton-shimmer {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: var(--vzn-skeleton);
 }
 
 /* ── Content fade-in when skeleton swaps to real data ─────────────────── */

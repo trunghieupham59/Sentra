@@ -5,40 +5,40 @@
 }
 
 :root {
-  --vzn-bg: rgb(246 246 246);
+  --vzn-bg: rgb(243 248 252);
   --vzn-surface: rgb(255 255 255);
-  --vzn-surface-muted: rgb(248 250 252);
-  --vzn-panel-source: rgb(250 250 250);
-  --vzn-ink: rgb(17 24 39);
-  --vzn-ink-strong: rgb(15 23 42);
-  --vzn-ink-soft: rgb(31 41 55);
-  --vzn-control: rgb(51 65 85);
-  --vzn-muted: rgb(100 116 139);
-  --vzn-soft: rgb(148 163 184);
-  --vzn-line: rgb(219 227 239);
-  --vzn-line-strong: rgb(203 213 225);
-  --vzn-accent: rgb(17 24 39);
-  --vzn-accent-strong: rgb(31 41 55);
-  --vzn-accent-deep: rgb(17 24 39);
-  --vzn-accent-dark: rgb(17 24 39);
-  --vzn-accent-soft: rgb(243 244 246);
-  --vzn-accent-muted: rgb(229 231 235);
-  --vzn-accent-border: rgb(209 213 219);
-  --vzn-success: rgb(75 85 99);
-  --vzn-success-strong: rgb(55 65 81);
-  --vzn-success-soft: rgb(243 244 246);
-  --vzn-success-border: rgb(209 213 219);
-  --vzn-warning: rgb(75 85 99);
-  --vzn-warning-strong: rgb(55 65 81);
-  --vzn-warning-soft: rgb(249 250 251);
+  --vzn-surface-muted: rgb(248 251 253);
+  --vzn-panel-source: rgb(238 247 252);
+  --vzn-ink: rgb(24 32 43);
+  --vzn-ink-strong: rgb(15 23 32);
+  --vzn-ink-soft: rgb(58 68 80);
+  --vzn-control: rgb(82 94 108);
+  --vzn-muted: rgb(94 106 120);
+  --vzn-soft: rgb(138 150 165);
+  --vzn-line: rgba(0, 74, 122, 0.12);
+  --vzn-line-strong: rgba(0, 74, 122, 0.22);
+  --vzn-accent: rgb(0 104 172);
+  --vzn-accent-strong: rgb(0 90 150);
+  --vzn-accent-deep: rgb(0 74 124);
+  --vzn-accent-dark: rgb(0 41 108);
+  --vzn-accent-soft: rgb(232 245 252);
+  --vzn-accent-muted: rgb(213 236 248);
+  --vzn-accent-border: rgb(184 220 240);
+  --vzn-success: rgb(21 128 61);
+  --vzn-success-strong: rgb(22 101 52);
+  --vzn-success-soft: rgb(232 246 238);
+  --vzn-success-border: rgb(183 223 195);
+  --vzn-warning: rgb(180 83 9);
+  --vzn-warning-strong: rgb(146 64 14);
+  --vzn-warning-soft: rgb(255 244 223);
   --vzn-danger: rgb(190 18 60);
   --vzn-danger-soft: rgb(255 241 242);
   --vzn-danger-border: rgb(254 205 211);
-  --vzn-provider: rgb(75 85 99);
-  --vzn-provider-soft: rgb(243 244 246);
-  --vzn-provider-border: rgb(209 213 219);
-  --vzn-focus: 0 0 0 3px rgba(17, 24, 39, 0.14);
-  --vzn-shadow: 0 18px 44px rgba(15, 23, 42, 0.10), 0 2px 8px rgba(15, 23, 42, 0.06);
+  --vzn-provider: rgb(94 106 120);
+  --vzn-provider-soft: rgb(238 247 252);
+  --vzn-provider-border: rgba(0, 74, 122, 0.12);
+  --vzn-focus: 0 0 0 3px rgba(0, 104, 172, 0.24);
+  --vzn-shadow: 0 18px 44px rgba(0, 40, 70, 0.08), 0 2px 8px rgba(0, 40, 70, 0.04);
 }
 
 body {
@@ -118,12 +118,12 @@ button:focus-visible {
 
 .status-dot {
   background: var(--vzn-success);
-  box-shadow: 0 0 0 3px rgba(75, 85, 99, 0.12);
+  box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.12);
 }
 
 .status-dot.loading {
   background: var(--vzn-warning-strong);
-  box-shadow: 0 0 0 3px rgba(75, 85, 99, 0.14);
+  box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.14);
   animation: vzn-pulse 1s ease-in-out infinite;
 }
 
@@ -199,7 +199,7 @@ button:focus-visible {
   border-color: var(--vzn-accent);
   background: var(--vzn-accent);
   color: var(--vzn-surface);
-  box-shadow: 0 8px 18px rgba(17, 24, 39, 0.18);
+  box-shadow: 0 8px 18px rgba(0, 104, 172, 0.18);
 }
 
 .button-primary:hover {
@@ -221,7 +221,7 @@ button:focus-visible {
   border-color: var(--vzn-accent);
   background: var(--vzn-accent);
   color: var(--vzn-surface);
-  box-shadow: 0 8px 18px rgba(17, 24, 39, 0.18);
+  box-shadow: 0 8px 18px rgba(0, 104, 172, 0.18);
 }
 
 .button-success:hover {
@@ -581,7 +581,7 @@ button:focus-visible {
   width: 48px;
   height: 48px;
   border-radius: 10px;
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.10);
+  box-shadow: var(--vzn-shadow);
 }
 
 .options-header h1 {
@@ -607,7 +607,7 @@ button:focus-visible {
   border: 1px solid var(--vzn-line);
   border-radius: 10px;
   background: var(--vzn-surface);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--vzn-shadow);
 }
 
 .settings-card-header {

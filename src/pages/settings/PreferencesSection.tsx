@@ -59,7 +59,7 @@ export function PreferencesSection() {
             <select
               value={locale}
               onChange={(e) => setLocale(e.target.value as AppLocale)}
-              className="select-field py-1.5 pl-3 pr-8 text-xs min-w-[130px]"
+              className="select-field min-w-[130px] pl-3 pr-8"
             >
               {(Object.entries(LOCALE_NAMES) as [AppLocale, string][]).map(([code, name]) => (
                 <option key={code} value={code}>{name}</option>

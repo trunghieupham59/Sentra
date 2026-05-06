@@ -18,6 +18,18 @@ function buildIndicatorHtml(): string {
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
   <style>
     * { box-sizing: border-box; }
+    :root {
+      --vzn-surface: rgba(255, 255, 255, 0.94);
+      --vzn-text: #18202b;
+      --vzn-text-muted: #5e6a78;
+      --vzn-border: rgba(216, 224, 232, 0.92);
+      --vzn-accent: #0f766e;
+      --vzn-accent-soft: rgba(15, 118, 110, 0.20);
+      --vzn-success: #15803d;
+      --vzn-warning: #b45309;
+      --vzn-danger: #be123c;
+      --vzn-shadow: 0 16px 44px rgba(15, 23, 32, 0.22), 0 2px 8px rgba(15, 23, 32, 0.10);
+    }
     html, body {
       width: 100%;
       height: 100%;
@@ -42,11 +54,11 @@ function buildIndicatorHtml(): string {
       align-items: center;
       gap: 12px;
       padding: 12px 16px;
-      color: #172033;
-      background: rgba(255, 255, 255, 0.94);
-      border: 1px solid rgba(45, 83, 173, 0.16);
+      color: var(--vzn-text);
+      background: var(--vzn-surface);
+      border: 1px solid var(--vzn-border);
       border-radius: 8px;
-      box-shadow: 0 16px 44px rgba(15, 23, 42, 0.22), 0 2px 8px rgba(15, 23, 42, 0.10);
+      box-shadow: var(--vzn-shadow);
       transform: translateY(8px) scale(0.98);
       opacity: 0;
       animation: enter 160ms ease-out forwards;
@@ -60,7 +72,7 @@ function buildIndicatorHtml(): string {
       display: grid;
       place-items: center;
       color: #fff;
-      background: linear-gradient(135deg, #1769e6, #10b981);
+      background: var(--vzn-accent);
       border-radius: 8px;
       font-size: 14px;
       font-weight: 800;
@@ -70,7 +82,7 @@ function buildIndicatorHtml(): string {
       content: "";
       position: absolute;
       inset: -4px;
-      border: 2px solid rgba(23, 105, 230, 0.34);
+      border: 2px solid var(--vzn-accent-soft);
       border-radius: 11px;
       animation: pulse 900ms ease-out infinite;
     }
@@ -94,13 +106,13 @@ function buildIndicatorHtml(): string {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      color: #64748b;
+      color: var(--vzn-text-muted);
       font-size: 12px;
       line-height: 1.25;
     }
 
     body[data-state="done"] .mark {
-      background: linear-gradient(135deg, #0f9f6e, #14b8a6);
+      background: var(--vzn-success);
     }
 
     body[data-state="done"] .mark::after,
@@ -111,11 +123,11 @@ function buildIndicatorHtml(): string {
     }
 
     body[data-state="warning"] .mark {
-      background: linear-gradient(135deg, #d97706, #f59e0b);
+      background: var(--vzn-warning);
     }
 
     body[data-state="error"] .mark {
-      background: linear-gradient(135deg, #dc2626, #f43f5e);
+      background: var(--vzn-danger);
     }
 
     @keyframes enter {
@@ -137,15 +149,28 @@ function buildIndicatorHtml(): string {
     }
 
     @media (prefers-color-scheme: dark) {
+      :root {
+        --vzn-surface: rgba(24, 27, 33, 0.94);
+        --vzn-text: #e8edf2;
+        --vzn-text-muted: #a4afbb;
+        --vzn-border: rgba(72, 81, 95, 0.70);
+        --vzn-accent: #2dd4bf;
+        --vzn-accent-soft: rgba(45, 212, 191, 0.22);
+        --vzn-success: #4ade80;
+        --vzn-warning: #fbbf24;
+        --vzn-danger: #fb7185;
+        --vzn-shadow: 0 16px 44px rgba(0, 0, 0, 0.34), 0 2px 8px rgba(0, 0, 0, 0.18);
+      }
+
       .pill {
-        color: #f8fafc;
-        background: rgba(15, 23, 42, 0.92);
-        border-color: rgba(148, 163, 184, 0.22);
-        box-shadow: 0 16px 44px rgba(0, 0, 0, 0.34), 0 2px 8px rgba(0, 0, 0, 0.18);
+        color: var(--vzn-text);
+        background: var(--vzn-surface);
+        border-color: var(--vzn-border);
+        box-shadow: var(--vzn-shadow);
       }
 
       .message {
-        color: #cbd5e1;
+        color: var(--vzn-text-muted);
       }
     }
 

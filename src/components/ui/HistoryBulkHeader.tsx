@@ -25,14 +25,14 @@ export function HistoryBulkHeader({
   const isIndeterminate = selectedCount > 0 && selectedCount < totalCount
 
   return (
-    <div className="flex-shrink-0 flex items-center justify-between gap-3 h-[49px] px-4
-                    border-b border-gray-100 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-900">
+    <div className="flex-shrink-0 flex min-h-11 items-center justify-between gap-3 px-3
+                    border-b border-gray-100 bg-white/95 dark:border-gray-800 dark:bg-neutral-900">
       <div className="min-w-0 flex items-center gap-3">
         <button
           type="button"
           onClick={onSelectAll}
           disabled={totalCount === 0}
-          className="btn-ghost btn-xs"
+          className="btn-ghost btn-xs -ml-1"
         >
           <span className={[
             'w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors',
@@ -43,26 +43,25 @@ export function HistoryBulkHeader({
             {isAllSelected && <CheckIcon className="w-2.5 h-2.5 text-white" />}
             {isIndeterminate && !isAllSelected && <span className="w-2 h-0.5 bg-white rounded-full block" />}
           </span>
-          {selectedCount > 0 ? labelSelected : labelSelectAll}
+          {labelSelectAll}
         </button>
 
-        <span className="h-4 w-px bg-gray-200 dark:bg-gray-800" />
-
-        <span className="truncate text-xs font-medium text-gray-500 dark:text-gray-400">
-          {countLabel}
+        <span className="truncate text-xs font-semibold text-gray-500 dark:text-gray-400">
+          {selectedCount > 0 ? labelSelected : countLabel}
         </span>
       </div>
 
       <div className="flex-shrink-0 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onDeleteSelected}
-          disabled={selectedCount === 0}
-          className="btn-danger btn-xs disabled:invisible"
-        >
-          <TrashIcon className="w-3.5 h-3.5" />
-          {labelDeleteSelected}
-        </button>
+        {selectedCount > 0 && (
+          <button
+            type="button"
+            onClick={onDeleteSelected}
+            className="btn-danger btn-xs"
+          >
+            <TrashIcon className="w-3.5 h-3.5" />
+            {labelDeleteSelected}
+          </button>
+        )}
       </div>
     </div>
   )

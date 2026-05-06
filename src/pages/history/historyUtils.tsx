@@ -43,7 +43,7 @@ export function ProviderBadge({ provider }: { provider: string }) {
   const p = PROVIDERS.find((x) => x.id === provider)
   const isKnown = KNOWN_PROVIDERS.includes(provider as Provider)
   return (
-    <span className="ui-badge-xs gap-1 rounded-md font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+    <span className="ui-badge-xs gap-1 rounded-md font-medium text-gray-500 whitespace-nowrap dark:bg-gray-800 dark:text-gray-400">
       {isKnown
         ? <ProviderIcon provider={provider as Provider} size={12} />
         : <BotIcon className="w-3 h-3" />

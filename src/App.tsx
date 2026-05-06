@@ -146,9 +146,9 @@ function App() {
       {/* Full-width macOS traffic light drag region — only on macOS */}
       {isMac && (
         <>
-          <div className="titlebar-drag flex-shrink-0 w-full bg-white/75 dark:bg-neutral-950/80" style={{ height: `${MACOS_TITLEBAR_HEIGHT_PX}px` }} />
+          <div className="titlebar-drag app-titlebar-drag flex-shrink-0 w-full" style={{ height: `${MACOS_TITLEBAR_HEIGHT_PX}px` }} />
           {/* Divider below traffic light buttons */}
-          <div className="flex-shrink-0 w-full border-b border-white/70 dark:border-white/10" />
+          <div className="app-titlebar-divider flex-shrink-0 w-full border-b" />
         </>
       )}
 

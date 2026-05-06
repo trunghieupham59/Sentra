@@ -9,28 +9,28 @@
 #Viezan-btn,
 #tre-result-tooltip {
   --tre-surface: rgb(255 255 255);
-  --tre-surface-muted: rgb(248 250 252);
-  --tre-panel-source: rgb(250 250 250);
-  --tre-ink: rgb(17 24 39);
-  --tre-ink-soft: rgb(31 41 55);
-  --tre-control: rgb(51 65 85);
-  --tre-muted: rgb(100 116 139);
-  --tre-soft: rgb(148 163 184);
-  --tre-line: rgb(219 227 239);
-  --tre-line-strong: rgb(203 213 225);
-  --tre-accent: rgb(17 24 39);
-  --tre-accent-strong: rgb(31 41 55);
-  --tre-accent-soft: rgb(243 244 246);
-  --tre-accent-border: rgb(209 213 219);
-  --tre-success: rgb(75 85 99);
-  --tre-success-strong: rgb(55 65 81);
-  --tre-success-soft: rgb(243 244 246);
-  --tre-success-border: rgb(209 213 219);
-  --tre-warning: rgb(75 85 99);
+  --tre-surface-muted: rgb(248 251 253);
+  --tre-panel-source: rgb(238 247 252);
+  --tre-ink: rgb(24 32 43);
+  --tre-ink-soft: rgb(58 68 80);
+  --tre-control: rgb(82 94 108);
+  --tre-muted: rgb(94 106 120);
+  --tre-soft: rgb(138 150 165);
+  --tre-line: rgba(0, 74, 122, 0.12);
+  --tre-line-strong: rgba(0, 74, 122, 0.22);
+  --tre-accent: rgb(0 104 172);
+  --tre-accent-strong: rgb(0 90 150);
+  --tre-accent-soft: rgb(232 245 252);
+  --tre-accent-border: rgb(184 220 240);
+  --tre-success: rgb(21 128 61);
+  --tre-success-strong: rgb(22 101 52);
+  --tre-success-soft: rgb(232 246 238);
+  --tre-success-border: rgb(183 223 195);
+  --tre-warning: rgb(180 83 9);
   --tre-danger: rgb(190 18 60);
-  --tre-provider: rgb(75 85 99);
-  --tre-provider-soft: rgb(243 244 246);
-  --tre-provider-border: rgb(209 213 219);
+  --tre-provider: rgb(94 106 120);
+  --tre-provider-soft: rgb(238 247 252);
+  --tre-provider-border: rgba(0, 74, 122, 0.12);
 }
 
 #Viezan-btn {
@@ -42,10 +42,10 @@
   width: 36px;
   height: 36px;
   padding: 0;
-  border: 1px solid rgba(203, 213, 225, 0.88);
+  border: 1px solid var(--tre-line);
   border-radius: 999px;
   background: var(--tre-surface);
-  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.18), 0 2px 8px rgba(15, 23, 42, 0.10);
+  box-shadow: 0 10px 26px rgba(0, 40, 70, 0.16), 0 2px 8px rgba(0, 40, 70, 0.08);
   cursor: pointer;
   pointer-events: auto;
   user-select: none;
@@ -55,17 +55,17 @@
 #Viezan-btn:focus-visible,
 #tre-result-tooltip button:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.14);
+  box-shadow: 0 0 0 3px rgba(0, 104, 172, 0.24);
 }
 
 #Viezan-btn:hover {
-  border-color: rgba(17, 24, 39, 0.28);
-  box-shadow: 0 14px 32px rgba(17, 24, 39, 0.18), 0 4px 10px rgba(15, 23, 42, 0.10);
+  border-color: var(--tre-accent-border);
+  box-shadow: 0 14px 32px rgba(0, 40, 70, 0.16), 0 4px 10px rgba(0, 40, 70, 0.08);
   transform: translateY(-1px);
 }
 
 #Viezan-btn.tre-loading {
-  border-color: rgba(17, 24, 39, 0.24);
+  border-color: var(--tre-accent-border);
   background: var(--tre-accent-soft);
   pointer-events: none;
 }
@@ -73,7 +73,7 @@
 #Viezan-btn .tre-inline-spinner {
   width: 18px;
   height: 18px;
-  border: 2px solid rgba(17, 24, 39, 0.18);
+  border: 2px solid var(--tre-accent-border);
   border-top-color: var(--tre-accent);
   border-radius: 999px;
   animation: tre-spin 0.75s linear infinite;
@@ -97,11 +97,11 @@
   max-width: min(680px, calc(100vw - 16px));
   max-height: calc(100vh - 16px);
   overflow: hidden;
-  border: 1px solid rgba(203, 213, 225, 0.92);
+  border: 1px solid var(--tre-line);
   border-radius: 10px;
   background: var(--tre-surface);
   color: var(--tre-ink);
-  box-shadow: 0 22px 54px rgba(15, 23, 42, 0.18), 0 4px 12px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 22px 54px rgba(0, 40, 70, 0.16), 0 4px 12px rgba(0, 40, 70, 0.07);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
   font-size: 13px;
   line-height: 1.58;
@@ -160,13 +160,13 @@
 
 #tre-result-tooltip .tre-status-loading {
   background: var(--tre-warning);
-  box-shadow: 0 0 0 3px rgba(75, 85, 99, 0.14);
+  box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.14);
   animation: tre-pulse 1s ease-in-out infinite;
 }
 
 #tre-result-tooltip .tre-status-active {
   background: var(--tre-success);
-  box-shadow: 0 0 0 3px rgba(75, 85, 99, 0.12);
+  box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.12);
 }
 
 #tre-result-tooltip .tre-status-error {
@@ -302,7 +302,7 @@
 #tre-result-tooltip .tre-lang-select:focus,
 #tre-result-tooltip .tre-style-select:focus {
   border-color: var(--tre-accent);
-  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.14);
+  box-shadow: 0 0 0 3px rgba(0, 104, 172, 0.24);
 }
 
 #tre-result-tooltip .tre-tooltip-body {

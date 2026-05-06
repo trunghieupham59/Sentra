@@ -65,7 +65,7 @@ export function TranslateToolbar({
             <select
               value={translationStyle}
               onChange={(e) => onStyleChange(e.target.value as TranslationStyle)}
-              className={`select-field h-8 w-36 py-1.5 pl-2.5 pr-7
+              className={`select-field w-36 pl-3 pr-8
                           ${translationStyle !== 'general'
                             ? 'bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-400'
                             : 'bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'
