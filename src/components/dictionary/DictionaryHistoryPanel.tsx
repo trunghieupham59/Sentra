@@ -82,17 +82,21 @@ export function DictionaryHistoryPanel({
     <div className="surface-panel min-h-0 h-full">
       {/* ── Tabs + filter (mirrors HistoryPage) ─────────────────────────── */}
       <div className="flex-shrink-0 space-y-2 border-b border-gray-200/90 p-3 dark:border-neutral-800">
-        <div className="segmented-control">
+        <div className="grid grid-cols-2 gap-2" role="tablist">
           {tabs.map(({ id, label, count }) => {
             const isActive = activeTab === id
             return (
               <button
                 key={id}
                 type="button"
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => onTabChange(id)}
                 className={[
-                  'btn-segment flex-1',
-                  isActive ? 'btn-segment-active' : '',
+                  'btn-segment min-h-10 rounded-lg border border-transparent px-2 shadow-none',
+                  isActive
+                    ? 'btn-segment-active border-[var(--vzn-accent-border)]'
+                    : 'bg-transparent hover:bg-[var(--vzn-surface-hover)]',
                 ].join(' ')}
               >
                 <span className="truncate">{label}</span>

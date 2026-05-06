@@ -64,12 +64,14 @@ export function SourcePanelActions({
         onRecordingChange={onVoiceRecordingChange}
         titleRecord={labelVoiceRecord}
         titleStop={labelVoiceStop}
+        buttonClassName="btn-ghost btn-xs relative text-gray-500"
         labelTranscribing={labelVoiceTranscribing}
         labelRecording={labelVoiceRecording}
       />
       <ImageTranslateButton
         onClick={onImageButtonClick}
         title={labelImageTranslate}
+        className="btn-ghost btn-xs text-gray-500"
       />
       {hasContent && (
         <>

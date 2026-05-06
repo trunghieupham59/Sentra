@@ -60,6 +60,7 @@ interface VoiceRecorderProps {
   disabled?: boolean
   titleRecord?: string
   titleStop?: string
+  buttonClassName?: string
   /**
    * When true: force MediaRecorder + IPC path regardless of the store's sttProvider.
    * Use this for Live Translate where the pipeline specifically requires audio data.
@@ -79,6 +80,7 @@ export function VoiceRecorder({
   disabled,
   titleRecord = 'Record voice',
   titleStop = 'Stop recording',
+  buttonClassName,
   useWhisper = false,
   labelTranscribing = 'Transcribing…',
   labelRecording = 'Recording…',
@@ -350,6 +352,9 @@ export function VoiceRecorder({
 
   const isTranscribing = state === 'transcribing'
   const isRecording = state === 'recording'
+  const resolvedButtonClassName = (isRecording || isTranscribing)
+    ? 'btn-icon relative'
+    : (buttonClassName ?? 'btn-icon relative')
 
   return (
     <div className="relative flex items-center gap-1.5">
@@ -359,7 +364,7 @@ export function VoiceRecorder({
         disabled={disabled || isTranscribing}
         title={isRecording ? titleStop : titleRecord}
         className={[
-          'btn-icon relative',
+          resolvedButtonClassName,
           isRecording
             ? 'btn-danger'
             : isTranscribing

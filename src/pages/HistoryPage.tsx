@@ -59,7 +59,7 @@ export function HistoryPage() {
             </div>
 
             <div className="px-3 pb-3">
-              <div className="grid grid-cols-3 gap-1 rounded-lg bg-gray-100 p-1 dark:bg-neutral-950/60" role="tablist">
+              <div className="grid grid-cols-3 gap-2" role="tablist">
                 {tabs.map(({ id, label, count, icon: Icon }) => {
                   const isActive = activeTab === id
                   return (
@@ -70,10 +70,10 @@ export function HistoryPage() {
                       aria-selected={isActive}
                       onClick={() => setActiveTab(id)}
                       className={[
-                        'btn-segment btn-segment-lg min-h-10 px-2 sm:px-3',
+                        'btn-segment btn-segment-lg min-h-10 rounded-lg border border-transparent px-2 shadow-none sm:px-3',
                         isActive
-                          ? 'btn-segment-active'
-                          : 'hover:bg-white/60 dark:hover:bg-neutral-800/60',
+                          ? 'btn-segment-active border-[var(--vzn-accent-border)]'
+                          : 'bg-transparent hover:bg-[var(--vzn-surface-hover)]',
                       ].join(' ')}
                     >
                       <Icon className="h-3.5 w-3.5 flex-shrink-0" />

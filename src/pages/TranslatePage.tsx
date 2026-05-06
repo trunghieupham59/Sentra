@@ -154,14 +154,14 @@ export function TranslatePage() {
                   type="button"
                   onClick={() => setShowAIConfig((v) => !v)}
                   title={t.translate_ai_config_title}
-                  className={`toolbar-icon-button cursor-pointer ${showAIConfig ? 'toolbar-icon-button-active' : ''}`}
+                  className={`toolbar-icon-button ai-config-button cursor-pointer ${showAIConfig ? 'toolbar-icon-button-active' : ''}`}
                 >
                   <GearIcon className="w-3.5 h-3.5" />
                 </button>
 
                 {/* Settings popup */}
                 {showAIConfig && (
-                  <div className="floating-panel absolute top-full right-0 mt-2 z-50 w-[520px] p-4 flex flex-col gap-4">
+                  <div className="floating-panel ai-config-panel absolute top-full right-0 mt-2 z-50 w-[520px] p-4 flex flex-col gap-4">
                     <h2 className="popover-title">
                       {t.translate_ai_config_title}
                     </h2>

@@ -131,21 +131,21 @@ export function TtsSection() {
                   type="button"
                   onClick={() => setTtsMode(mode)}
                   className={[
-                    'btn-secondary btn-choice-card min-h-[76px]',
+                    'btn-secondary btn-choice-card w-full min-h-[116px] gap-2',
                     active
                       ? 'btn-active'
                       : '',
                   ].join(' ')}
                   aria-pressed={active}
                 >
-                  <span className="flex items-start gap-2">
+                  <span className="flex min-w-0 items-start gap-2">
                     <ProviderLogoFrame selected={active}>
                       {icon}
                     </ProviderLogoFrame>
                     <span className="block min-w-0 text-sm font-semibold leading-snug pt-0.5">{label}</span>
                   </span>
                   <span className={[
-                    'block text-xs mt-2 leading-snug',
+                    'block min-w-0 text-xs leading-snug',
                     active ? 'text-gray-600 dark:text-gray-300' : 'text-gray-500 dark:text-gray-400',
                   ].join(' ')}>
                     {desc}

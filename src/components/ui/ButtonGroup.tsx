@@ -1,7 +1,7 @@
 /**
  * ButtonGroup — generic "pick one from a set" button row.
  *
- * Renders a row of bordered buttons where the selected value is highlighted
+ * Renders a row of buttons where the selected value is highlighted
  * with the neutral app accent. Used by FontSizePicker and TokenTtlPicker (and any future
  * single-selection option group).
  *
@@ -37,15 +37,17 @@ export function ButtonGroup<T extends string | number>({
   containerClassName = '',
 }: ButtonGroupProps<T>) {
   return (
-    <div className={`segmented-control ${containerClassName}`}>
+    <div className={`inline-flex items-center gap-2 ${containerClassName}`}>
       {options.map((opt) => (
         <button
           key={opt.value}
           type="button"
           onClick={() => onChange(opt.value)}
           className={[
-            'btn-segment',
-            value === opt.value ? 'btn-segment-active' : '',
+            'btn-segment min-h-10 rounded-lg border border-transparent px-4 shadow-none',
+            value === opt.value
+              ? 'btn-segment-active border-[var(--vzn-accent-border)]'
+              : 'bg-transparent hover:bg-[var(--vzn-surface-hover)]',
           ].join(' ')}
         >
           {opt.label}

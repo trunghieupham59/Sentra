@@ -240,13 +240,13 @@ export function LiveTranslatePage() {
                 type="button"
                 onClick={() => setShowAIConfig((v) => !v)}
                 title={t.translate_ai_config_title}
-                className={`toolbar-icon-button cursor-pointer ${showAIConfig ? 'toolbar-icon-button-active' : ''}`}
+                className={`toolbar-icon-button ai-config-button cursor-pointer ${showAIConfig ? 'toolbar-icon-button-active' : ''}`}
               >
                 <GearIcon className="w-3.5 h-3.5" />
               </button>
 
               {showAIConfig && (
-                <div className="floating-panel absolute top-full right-0 mt-2 z-50 w-[380px] p-4 flex flex-col gap-4">
+                <div className="floating-panel ai-config-panel absolute top-full right-0 mt-2 z-50 w-[440px] max-w-[calc(100vw-2rem)] p-4 flex flex-col gap-4">
                   <h2 className="popover-title">
                     {t.translate_ai_config_title}
                   </h2>
@@ -262,13 +262,15 @@ export function LiveTranslatePage() {
                     <span className="ui-kicker">
                       {t.live_audio_source_label}
                     </span>
-                    <div className="segmented-control w-fit">
+                    <div className="inline-flex w-fit items-center gap-2">
                       <button
                         type="button" disabled={isActive} onClick={() => setAudioMode('mic')}
                         title={t.live_audio_mode_mic_title}
                         className={[
-                          'btn-segment',
-                          audioMode === 'mic' ? 'btn-segment-active' : '',
+                          'btn-segment min-h-10 rounded-lg border border-transparent px-3 shadow-none',
+                          audioMode === 'mic'
+                            ? 'btn-segment-active border-[var(--vzn-accent-border)]'
+                            : 'bg-transparent hover:bg-[var(--vzn-surface-hover)]',
                           isActive ? 'opacity-50' : '',
                         ].join(' ')}
                       >
@@ -279,8 +281,10 @@ export function LiveTranslatePage() {
                         type="button" disabled={isActive} onClick={() => setAudioMode('system')}
                         title={t.live_audio_mode_system_title}
                         className={[
-                          'btn-segment',
-                          audioMode === 'system' ? 'btn-segment-active' : '',
+                          'btn-segment min-h-10 rounded-lg border border-transparent px-3 shadow-none',
+                          audioMode === 'system'
+                            ? 'btn-segment-active border-[var(--vzn-accent-border)]'
+                            : 'bg-transparent hover:bg-[var(--vzn-surface-hover)]',
                           isActive ? 'opacity-50' : '',
                         ].join(' ')}
                       >
@@ -291,8 +295,10 @@ export function LiveTranslatePage() {
                         type="button" disabled={isActive} onClick={() => setAudioMode('both')}
                         title={t.live_audio_mode_both_title}
                         className={[
-                          'btn-segment',
-                          audioMode === 'both' ? 'btn-segment-active' : '',
+                          'btn-segment min-h-10 rounded-lg border border-transparent px-3 shadow-none',
+                          audioMode === 'both'
+                            ? 'btn-segment-active border-[var(--vzn-accent-border)]'
+                            : 'bg-transparent hover:bg-[var(--vzn-surface-hover)]',
                           isActive ? 'opacity-50' : '',
                         ].join(' ')}
                       >

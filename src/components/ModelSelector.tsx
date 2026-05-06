@@ -87,7 +87,7 @@ export function ModelSelector() {
   const selectedModel = selectedModels[selectedProvider] ?? displayModels[0]?.id ?? ''
 
   return (
-    <div className="flex items-end gap-3 min-w-0 overflow-hidden">
+    <div className="flex w-full min-w-0 items-end gap-3 overflow-hidden">
 
       {/* ── Provider dropdown ── */}
       <div className="flex flex-col items-start gap-1 flex-shrink-0">
@@ -121,9 +121,9 @@ export function ModelSelector() {
       <span className="text-gray-200 dark:text-gray-700 text-base font-thin select-none flex-shrink-0 pb-1">|</span>
 
       {/* ── Model dropdown ── */}
-      <div className="flex flex-col items-start gap-1 min-w-0 flex-1">
+      <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
         <SectionLabel>{t.settings_hotkey_model}</SectionLabel>
-        <div className="flex items-center gap-1 min-w-0">
+        <div className="flex w-full min-w-0 items-center gap-1">
           {isLoading ? (
             <div className="flex items-center gap-1.5 px-2 py-1 text-xs text-gray-400 whitespace-nowrap">
               <SpinnerIcon className="w-3.5 h-3.5 spinner flex-shrink-0" />
@@ -141,11 +141,11 @@ export function ModelSelector() {
               </button>
             </div>
           ) : (
-            <div className="relative inline-block">
+            <div className="relative min-w-0 flex-1">
               <select
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(selectedProvider, e.target.value)}
-                className="select-field pl-2.5 pr-7 w-[140px] lg:w-[190px] xl:w-[230px]"
+                className="select-field w-full min-w-[128px] pl-2.5 pr-7"
               >
                 {displayModels.map((m) => (
                   // Show only the short pretty name. Descriptors like "Fast"

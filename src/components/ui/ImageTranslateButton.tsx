@@ -8,15 +8,16 @@ interface ImageTranslateButtonProps {
   onClick: () => void
   /** Tooltip text, e.g. t.image_translate_title */
   title: string
+  className?: string
 }
 
-export function ImageTranslateButton({ onClick, title }: ImageTranslateButtonProps) {
+export function ImageTranslateButton({ onClick, title, className = 'btn-icon' }: ImageTranslateButtonProps) {
   return (
     <button
       type="button"
       onClick={onClick}
       title={title}
-      className="btn-icon"
+      className={className}
     >
       <ImageIcon />
     </button>

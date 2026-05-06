@@ -284,7 +284,7 @@
   }
 
   .btn-choice-card {
-    @apply flex-col items-start justify-start px-3 py-2.5 text-left;
+    @apply h-auto flex-col items-start justify-start px-3 py-2.5 text-left;
   }
 
   .btn-swatch {
@@ -365,9 +365,9 @@
   }
 
   .app-topbar {
-    @apply relative z-30 flex items-center flex-shrink-0 min-h-11 overflow-visible rounded-lg border border-white/80 bg-white/80 px-3 py-2
-           shadow-sm shadow-gray-900/5
-           dark:border-white/10 dark:bg-neutral-900/80 dark:shadow-black/20;
+    @apply relative z-30 flex items-center flex-shrink-0 min-h-11 overflow-visible rounded-lg border-0 bg-white/80 px-3 py-2
+           shadow-none
+           dark:bg-neutral-900/80 dark:shadow-none;
   }
 
   .app-panel-grid {
@@ -1043,6 +1043,22 @@
     background: var(--vzn-accent-soft);
     color: var(--vzn-accent);
   }
+  .ai-config-button {
+    border-width: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .ai-config-button:hover {
+    background: var(--vzn-surface-hover);
+  }
+  .ai-config-button.toolbar-icon-button-active {
+    background: var(--vzn-accent-soft);
+    color: var(--vzn-accent);
+  }
+  .ai-config-panel {
+    border-color: var(--vzn-border-strong);
+    box-shadow: 0 0 0 1px var(--vzn-border), var(--vzn-shadow-md);
+  }
   .btn-select,
   .select-field,
   .field-input,
@@ -1213,7 +1229,6 @@
   ) > :not([hidden]) ~ :not([hidden]) {
     border-color: var(--vzn-divider);
   }
-  .app-topbar,
   .surface-panel,
   .chat-composer,
   .chat-research-final {
@@ -1221,6 +1236,12 @@
     background: var(--vzn-surface-raised);
     color: var(--vzn-text);
     box-shadow: var(--vzn-shadow-sm);
+  }
+  .app-topbar {
+    border-color: transparent;
+    background: var(--vzn-surface-raised);
+    color: var(--vzn-text);
+    box-shadow: none;
   }
   .surface-panel-focus:focus-within,
   .chat-composer:focus-within {
