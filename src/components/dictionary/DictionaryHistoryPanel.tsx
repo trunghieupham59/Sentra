@@ -19,11 +19,6 @@ interface DictionaryHistoryPanelProps {
   t: Translations
 }
 
-/**
- * Format a timestamp as a relative time string in Vietnamese-friendly
- * shorthand (e.g. "vừa xong", "5p", "2g", "3n").  Stays locale-neutral by
- * using single-character suffixes.
- */
 function formatRelativeTime(ts: number): string {
   const diff = Date.now() - ts
   const sec = Math.floor(diff / 1000)
@@ -79,10 +74,21 @@ export function DictionaryHistoryPanel({
   ]
 
   return (
-    <div className="surface-panel min-h-0 h-full">
-      {/* ── Tabs + filter (mirrors HistoryPage) ─────────────────────────── */}
-      <div className="flex-shrink-0 space-y-2 border-b border-gray-200/90 p-3 dark:border-neutral-800">
-        <div className="grid grid-cols-2 gap-2" role="tablist">
+    <div
+      className="flex flex-col min-h-0 h-full rounded-xl overflow-hidden"
+      style={{
+        background: 'var(--apple-bg-primary)',
+        border: '1px solid var(--apple-separator)',
+        boxShadow: 'var(--apple-shadow-sm)',
+      }}
+    >
+      {/* ── Tabs + filter ── */}
+      <div
+        className="flex-shrink-0 space-y-2 p-3"
+        style={{ borderBottom: '1px solid var(--apple-separator)' }}
+      >
+        {/* Apple segmented control style tabs */}
+        <div className="grid grid-cols-2 gap-1.5 p-1 rounded-lg" style={{ background: 'var(--apple-fill-quaternary)' }} role="tablist">
           {tabs.map(({ id, label, count }) => {
             const isActive = activeTab === id
             return (
@@ -93,19 +99,22 @@ export function DictionaryHistoryPanel({
                 aria-selected={isActive}
                 onClick={() => onTabChange(id)}
                 className={[
-                  'btn-segment min-h-10 rounded-lg border border-transparent px-2 shadow-none',
+                  'flex items-center justify-center gap-1.5 h-7 px-2 rounded-md',
+                  'text-[12px] font-medium transition-all duration-150 select-none',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007AFF]',
                   isActive
-                    ? 'btn-segment-active border-[var(--vzn-accent-border)]'
-                    : 'bg-transparent hover:bg-[var(--vzn-surface-hover)]',
+                    ? 'bg-[#007AFF] dark:bg-[#0A84FF] text-white shadow-sm'
+                    : 'text-[var(--apple-label-secondary)] hover:text-[var(--apple-label-primary)]',
                 ].join(' ')}
               >
                 <span className="truncate">{label}</span>
                 <span
                   className={[
-                    'ui-badge-xs min-w-[18px] justify-center px-1 tabular-nums',
+                    'inline-flex items-center justify-center rounded-full min-w-[16px] h-4 px-1',
+                    'text-[10px] tabular-nums',
                     isActive
-                      ? 'bg-gray-100 text-gray-600 dark:bg-gray-950 dark:text-gray-300'
-                      : 'bg-gray-200 text-gray-500 dark:bg-gray-800 dark:text-gray-500',
+                      ? 'bg-white/20 text-white'
+                      : 'bg-[var(--apple-fill-secondary)] text-[var(--apple-label-secondary)]',
                   ].join(' ')}
                 >
                   {count}
@@ -115,22 +124,34 @@ export function DictionaryHistoryPanel({
           })}
         </div>
 
-        {/* Filter input — only shown when there is enough data */}
+        {/* Filter input */}
         {recentCount > 4 && (
           <div className="relative">
-            <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-300 dark:text-gray-600" />
+            <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-[var(--apple-label-tertiary)]" />
             <input
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               placeholder={t.history_search_placeholder}
-              className="h-7 w-full rounded-md border border-gray-200 bg-gray-50/60 pl-7 pr-7 text-xs text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-500/15 dark:border-neutral-800 dark:bg-neutral-950/45 dark:text-gray-200 dark:placeholder:text-gray-600 dark:focus:bg-neutral-900"
+              className={[
+                'h-7 w-full rounded-lg pl-7 pr-7 text-[12px]',
+                'bg-[var(--apple-fill-quaternary)] text-[var(--apple-label-primary)]',
+                'placeholder:text-[var(--apple-label-tertiary)] outline-none',
+                'focus:bg-[var(--apple-fill-tertiary)]',
+                'transition-colors duration-150',
+              ].join(' ')}
             />
             {filter && (
               <button
                 type="button"
                 onClick={() => setFilter('')}
                 title={t.history_search_clear}
-                className="btn-icon btn-icon-xs absolute right-1 top-1/2 -translate-y-1/2 border-transparent bg-transparent text-gray-400 shadow-none dark:bg-transparent"
+                aria-label={t.history_search_clear}
+                className={[
+                  'absolute right-1.5 top-1/2 -translate-y-1/2',
+                  'flex items-center justify-center w-4 h-4 rounded-full',
+                  'bg-[var(--apple-fill-secondary)] text-[var(--apple-label-secondary)]',
+                  'hover:bg-[var(--apple-fill-primary)] transition-colors duration-150',
+                ].join(' ')}
               >
                 <XIcon className="h-2.5 w-2.5" />
               </button>
@@ -139,14 +160,17 @@ export function DictionaryHistoryPanel({
         )}
       </div>
 
-      {/* ── List ────────────────────────────────────────────────────────── */}
+      {/* ── List ── */}
       <div className="flex-1 overflow-auto">
         {visibleEntries.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-2 px-4 py-10 text-center text-xs text-gray-400 dark:text-gray-500">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-300 dark:bg-neutral-800 dark:text-gray-600">
+          <div className="flex h-full flex-col items-center justify-center gap-2 px-4 py-10 text-center">
+            <div
+              className="flex h-10 w-10 items-center justify-center rounded-full"
+              style={{ background: 'var(--apple-fill-tertiary)', color: 'var(--apple-label-tertiary)' }}
+            >
               <BookIcon className="h-4 w-4" />
             </div>
-            <span>
+            <span className="text-[12px]" style={{ color: 'var(--apple-label-tertiary)' }}>
               {filter
                 ? t.dictionary_no_matches
                 : activeTab === 'favorites'
@@ -155,57 +179,63 @@ export function DictionaryHistoryPanel({
             </span>
           </div>
         ) : (
-          <ul className="divide-y divide-gray-100 dark:divide-neutral-800/70">
+          <ul className="divide-y" style={{ '--tw-divide-opacity': 1 } as React.CSSProperties}>
             {visibleEntries.map((entry) => {
               const isSelected = selectedEntry?.id === entry.id
               return (
-                <li key={entry.id}>
+                <li
+                  key={entry.id}
+                  style={{ borderColor: 'var(--apple-separator)' }}
+                >
                   <div
                     className={[
-                      'group relative flex cursor-pointer items-start gap-2.5 px-3 py-2.5 transition-colors',
+                      'group relative flex cursor-pointer items-start gap-2.5 px-3 py-2.5 transition-colors duration-150',
                       isSelected
-                        ? 'bg-gray-50 dark:bg-gray-950/35'
-                        : 'hover:bg-gray-50 dark:hover:bg-neutral-950/40',
+                        ? 'bg-[var(--apple-fill-quaternary)]'
+                        : 'hover:bg-[var(--apple-fill-quaternary)]',
                     ].join(' ')}
                   >
-                    {/* Active indicator bar */}
+                    {/* Active indicator — Apple accent color */}
                     <span
                       aria-hidden
-                      className={[
-                        'absolute left-0 top-2 bottom-2 w-0.5 rounded-r',
-                        isSelected ? 'bg-gray-500' : 'bg-transparent',
-                      ].join(' ')}
+                      className="absolute left-0 top-2 bottom-2 w-0.5 rounded-r transition-colors"
+                      style={{ background: isSelected ? 'var(--apple-accent)' : 'transparent' }}
                     />
 
                     <button
                       type="button"
                       onClick={() => onSelect(entry.id)}
-                      className="min-w-0 flex-1 text-left"
+                      className="min-w-0 flex-1 text-left focus-visible:outline-none"
                     >
                       <div className="flex items-baseline gap-2">
                         <span
-                          className={[
-                            'truncate text-sm font-semibold',
-                            isSelected
-                              ? 'text-gray-950 dark:text-gray-100'
-                              : 'text-gray-900 dark:text-gray-100',
-                          ].join(' ')}
+                          className="truncate text-[13px] font-semibold"
+                          style={{ color: 'var(--apple-label-primary)' }}
                         >
                           {entry.result.headword}
                         </span>
                         {entry.result.pronunciation && (
-                          <span className="ui-meta truncate font-mono">
+                          <span
+                            className="truncate text-[11px] font-mono"
+                            style={{ color: 'var(--apple-label-secondary)' }}
+                          >
                             /{entry.result.pronunciation.replace(/^\/|\/$/g, '')}/
                           </span>
                         )}
-                        <span className="ui-micro ml-auto flex-shrink-0 tabular-nums">
+                        <span
+                          className="text-[10px] ml-auto flex-shrink-0 tabular-nums"
+                          style={{ color: 'var(--apple-label-tertiary)' }}
+                        >
                           {formatRelativeTime(entry.createdAt)}
                         </span>
                       </div>
                       <div className="mt-1">
                         <UsageCostBadge cost={entry.cost} currency={costCurrency} />
                       </div>
-                      <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                      <p
+                        className="mt-0.5 line-clamp-2 text-[12px] leading-5"
+                        style={{ color: 'var(--apple-label-secondary)' }}
+                      >
                         {entry.result.meaning}
                       </p>
                     </button>
@@ -218,10 +248,12 @@ export function DictionaryHistoryPanel({
                       }}
                       aria-label={entry.favorite ? t.dictionary_unfavorite : t.dictionary_favorite}
                       className={[
-                        'btn-icon btn-icon-xs flex-shrink-0 border-transparent bg-transparent shadow-none dark:bg-transparent',
+                        'flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-md',
+                        'transition-colors duration-150',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007AFF]',
                         entry.favorite
-                          ? 'btn-active opacity-100'
-                          : 'text-gray-300 opacity-0 group-hover:opacity-100 dark:text-gray-600',
+                          ? 'text-[#FF9500] dark:text-[#FF9F0A] opacity-100'
+                          : 'text-[var(--apple-label-quaternary)] opacity-0 group-hover:opacity-100',
                       ].join(' ')}
                     >
                       <StarIcon className="h-3.5 w-3.5" />
@@ -234,14 +266,23 @@ export function DictionaryHistoryPanel({
         )}
       </div>
 
-      {/* ── Footer ──────────────────────────────────────────────────────── */}
+      {/* ── Footer ── */}
       {entries.length > 0 && (
-        <div className="surface-footer">
+        <div
+          className="flex-shrink-0 flex items-center justify-between px-3 h-11"
+          style={{ borderTop: '1px solid var(--apple-separator)' }}
+        >
           <button
             type="button"
             onClick={onClearHistory}
             disabled={!entries.some((entry) => !entry.favorite)}
-            className="btn-ghost btn-xs"
+            className={[
+              'flex items-center gap-1.5 h-7 px-2 rounded-lg text-[12px]',
+              'transition-colors duration-150',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007AFF]',
+              'text-[var(--apple-label-secondary)] hover:bg-[var(--apple-fill-tertiary)]',
+              'disabled:opacity-40 disabled:cursor-not-allowed',
+            ].join(' ')}
             title={t.dictionary_clear_history}
           >
             <TrashIcon className="h-3.5 w-3.5" />
@@ -251,7 +292,13 @@ export function DictionaryHistoryPanel({
             <button
               type="button"
               onClick={onDeleteSelected}
-              className="btn-danger btn-xs"
+              className={[
+                'flex items-center gap-1.5 h-7 px-2 rounded-lg text-[12px]',
+                'transition-colors duration-150',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF3B30]',
+                'text-[#FF3B30] dark:text-[#FF453A]',
+                'hover:bg-[#FF3B30]/10 dark:hover:bg-[#FF453A]/15',
+              ].join(' ')}
               title={t.dictionary_delete}
             >
               <TrashIcon className="h-3.5 w-3.5" />

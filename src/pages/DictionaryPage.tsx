@@ -104,7 +104,7 @@ export function DictionaryPage() {
   const [copied, setCopied] = useState(false)
   const lookupRequestRef = useRef(0)
 
-  /** Controls visibility of the AI config popup — mirrors TranslatePage. */
+  /** Controls visibility of the AI config popup */
   const [showAIConfig, setShowAIConfig] = useState(false)
   const aiConfigRef = useRef<HTMLDivElement>(null)
 
@@ -297,39 +297,70 @@ export function DictionaryPage() {
   }
 
   return (
-    <div className="app-page">
-      <div className="app-workspace">
-        {/* ── Topbar: title + AI config gear (popup with ModelSelector) ── */}
-        <div className="app-topbar justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="text-base font-semibold text-gray-900 dark:text-gray-50">
-              {t.dictionary_title}
-            </h1>
-            <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
-              {t.dictionary_subtitle}
-            </p>
-          </div>
-
-          <div className="relative flex-shrink-0" ref={aiConfigRef}>
-            <button
-              type="button"
-              onClick={() => setShowAIConfig((v) => !v)}
-              title={t.translate_ai_config_title}
-              className={`toolbar-icon-button ai-config-button cursor-pointer ${showAIConfig ? 'toolbar-icon-button-active' : ''}`}
-            >
-              <GearIcon className="h-3.5 w-3.5" />
-            </button>
-
-            {showAIConfig && (
-              <div className="floating-panel ai-config-panel absolute top-full right-0 mt-2 z-50 w-[480px] p-4 flex flex-col gap-3">
-                <h2 className="popover-title">{t.translate_ai_config_title}</h2>
-                <ModelSelector />
-              </div>
-            )}
-          </div>
+    <div
+      className="flex flex-col h-full"
+      style={{ background: 'var(--apple-bg-primary)' }}
+    >
+      {/* ── Apple-style translucent toolbar ── */}
+      <div
+        className="apple-toolbar flex-shrink-0 flex items-center justify-between px-4 gap-3"
+        style={{ height: '52px', zIndex: 20 }}
+      >
+        <div className="min-w-0">
+          <h1
+            className="text-[15px] font-semibold leading-[20px]"
+            style={{ color: 'var(--apple-label-primary)' }}
+          >
+            {t.dictionary_title}
+          </h1>
+          <p
+            className="text-[12px] leading-[16px] mt-0.5"
+            style={{ color: 'var(--apple-label-secondary)' }}
+          >
+            {t.dictionary_subtitle}
+          </p>
         </div>
 
-        {/* ── Search command bar ────────────────────────────────────────── */}
+        {/* Gear / AI config */}
+        <div className="relative flex-shrink-0" ref={aiConfigRef}>
+          <button
+            type="button"
+            onClick={() => setShowAIConfig((v) => !v)}
+            title={t.translate_ai_config_title}
+            aria-label={t.translate_ai_config_title}
+            className={[
+              'flex items-center justify-center w-7 h-7 rounded-lg',
+              'transition-colors duration-150',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007AFF]',
+              showAIConfig
+                ? 'bg-[#007AFF]/10 dark:bg-[#0A84FF]/15 text-[#007AFF] dark:text-[#0A84FF]'
+                : 'text-[var(--apple-label-secondary)] hover:bg-[var(--apple-fill-tertiary)] hover:text-[var(--apple-label-primary)]',
+            ].join(' ')}
+          >
+            <GearIcon className="h-3.5 w-3.5" />
+          </button>
+
+          {showAIConfig && (
+            <div
+              className="absolute top-full right-0 mt-2 z-50 w-[480px] p-4 flex flex-col gap-3 rounded-xl"
+              style={{
+                background: 'var(--apple-bg-elevated)',
+                boxShadow: 'var(--apple-shadow-lg)',
+                border: '1px solid var(--apple-separator)',
+              }}
+            >
+              <h2 className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--apple-label-secondary)' }}>
+                {t.translate_ai_config_title}
+              </h2>
+              <ModelSelector />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Search bar + panels ── */}
+      <div className="flex flex-col flex-1 min-h-0 px-4 pb-4 gap-3 pt-3">
+        {/* Search command bar */}
         <DictionarySearchPanel
           term={term}
           onTermChange={setTerm}
@@ -344,21 +375,25 @@ export function DictionaryPage() {
           error={error}
           maxTermChars={MAX_DICTIONARY_TERM_CHARS}
           maxContextChars={MAX_DICTIONARY_CONTEXT_CHARS}
-          onSubmit={() => {
-            void runLookup()
-          }}
+          onSubmit={() => { void runLookup() }}
           t={t}
         />
 
-        {/* ── Result + History (responsive: stacked on small screens) ──── */}
+        {/* Result + History grid */}
         <div className="grid flex-1 min-h-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_300px]">
-          <div className="surface-panel min-h-0 order-2 lg:order-1">
+          {/* Result panel */}
+          <div
+            className="min-h-0 order-2 lg:order-1 rounded-xl overflow-hidden flex flex-col"
+            style={{
+              background: 'var(--apple-bg-primary)',
+              border: '1px solid var(--apple-separator)',
+              boxShadow: 'var(--apple-shadow-sm)',
+            }}
+          >
             <DictionaryResultPanel
               entry={selectedEntry}
               copied={copied}
-              onCopy={() => {
-                void handleCopy()
-              }}
+              onCopy={() => { void handleCopy() }}
               onFavorite={() => {
                 if (selectedEntry) toggleDictionaryFavorite(selectedEntry.id)
               }}
@@ -367,6 +402,7 @@ export function DictionaryPage() {
             />
           </div>
 
+          {/* History panel */}
           <div className="order-1 min-h-0 lg:order-2 lg:flex lg:flex-col">
             <DictionaryHistoryPanel
               entries={dictionaryEntries}

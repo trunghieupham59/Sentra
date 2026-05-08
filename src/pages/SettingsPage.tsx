@@ -38,6 +38,7 @@ interface SettingsSection {
   description: string
   Icon: ElementType<{ className?: string }>
   Component: ElementType
+  iconBg: string
 }
 
 const MemoPreferencesSection = memo(PreferencesSection)
@@ -80,6 +81,7 @@ export function SettingsPage() {
       description: t.settings_translate_mode_desc,
       Icon: GearIcon,
       Component: MemoPreferencesSection,
+      iconBg: '#8E8E93',
     },
     {
       id: 'api',
@@ -87,6 +89,7 @@ export function SettingsPage() {
       description: t.settings_subtitle,
       Icon: KeyIcon,
       Component: MemoApiKeysSection,
+      iconBg: '#FF9500',
     },
     {
       id: 'stt',
@@ -94,6 +97,7 @@ export function SettingsPage() {
       description: t.settings_stt_provider_desc,
       Icon: MicrophoneIcon,
       Component: MemoSttSection,
+      iconBg: '#FF3B30',
     },
     {
       id: 'tts',
@@ -101,6 +105,7 @@ export function SettingsPage() {
       description: t.settings_tts_priority_desc,
       Icon: SpeakerIcon,
       Component: MemoTtsSection,
+      iconBg: '#5856D6',
     },
     {
       id: 'chat',
@@ -108,6 +113,7 @@ export function SettingsPage() {
       description: t.settings_chat_section_desc,
       Icon: ChatBubbleIcon,
       Component: MemoChatPresetsSection,
+      iconBg: '#34C759',
     },
     {
       id: 'hotkeys',
@@ -115,6 +121,7 @@ export function SettingsPage() {
       description: t.settings_hotkey_section_desc,
       Icon: UploadIcon,
       Component: MemoHotkeySection,
+      iconBg: '#007AFF',
     },
     {
       id: 'browser',
@@ -122,6 +129,7 @@ export function SettingsPage() {
       description: t.settings_extension_section_desc,
       Icon: MonitorIcon,
       Component: MemoBrowserIntegrationSection,
+      iconBg: '#AF52DE',
     },
     {
       id: 'updates',
@@ -129,6 +137,7 @@ export function SettingsPage() {
       description: t.settings_update_section_desc,
       Icon: RefreshIcon,
       Component: MemoUpdaterSection,
+      iconBg: '#30D158',
     },
     {
       id: 'about',
@@ -136,6 +145,7 @@ export function SettingsPage() {
       description: t.settings_about_footer,
       Icon: InfoCircleIcon,
       Component: MemoAboutSection,
+      iconBg: '#64D2FF',
     },
   ]), [t])
 
@@ -170,11 +180,26 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="settings-shell">
-      <aside className="hidden md:flex min-h-0 flex-col border-r border-gray-200/80 bg-white/65 dark:border-white/10 dark:bg-neutral-950/50">
-        <nav className="flex-1 overflow-auto p-2" aria-label={t.settings_title}>
-          <div className="space-y-1">
-            {sections.map(({ id, label, description, Icon }) => {
+    <div
+      className="flex h-full min-h-0"
+      style={{ background: 'var(--apple-bg-secondary)' }}
+    >
+      {/* ── Apple macOS Settings-style Sidebar ── */}
+      <aside
+        className="hidden md:flex flex-col flex-shrink-0 w-[220px]"
+        style={{
+          background: 'var(--apple-vibrancy-sidebar)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+          borderRight: '1px solid var(--apple-separator)',
+        }}
+      >
+        <nav
+          className="flex-1 overflow-auto p-2 py-3"
+          aria-label={t.settings_title}
+        >
+          <div className="flex flex-col gap-0.5">
+            {sections.map(({ id, label, description, Icon, iconBg }) => {
               const active = activeSection === id
               return (
                 <button
@@ -182,16 +207,30 @@ export function SettingsPage() {
                   type="button"
                   onClick={() => scrollToSection(id)}
                   title={description}
-                  className={[
-                    'btn-secondary btn-nav-item',
-                    active
-                      ? 'btn-active'
-                      : 'border-transparent bg-transparent text-gray-600 dark:bg-transparent dark:text-gray-400 dark:hover:bg-white/5',
-                  ].join(' ')}
                   aria-current={active ? 'true' : undefined}
+                  className={[
+                    'flex items-center gap-2.5 w-full h-8 px-2 rounded-lg',
+                    'transition-colors duration-150 ease-out select-none',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007AFF] focus-visible:ring-offset-1',
+                    active
+                      ? 'bg-[#007AFF] dark:bg-[#0A84FF] text-white shadow-sm'
+                      : 'text-[var(--apple-label-secondary)] hover:bg-black/[0.06] dark:hover:bg-white/[0.08] hover:text-[var(--apple-label-primary)]',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
                 >
-                  <Icon className="w-4 h-4 flex-shrink-0" />
-                  <span className="min-w-0 truncate">{label}</span>
+                  {/* Colored icon background */}
+                  <span
+                    className="flex-shrink-0 flex items-center justify-center w-[22px] h-[22px] rounded-[5px]"
+                    style={{
+                      background: active ? 'rgba(255,255,255,0.2)' : iconBg,
+                    }}
+                  >
+                    <Icon className="w-3 h-3 text-white" />
+                  </span>
+                  <span className="min-w-0 truncate text-[13px] font-medium">
+                    {label}
+                  </span>
                 </button>
               )
             })}
@@ -199,11 +238,18 @@ export function SettingsPage() {
         </nav>
       </aside>
 
-      <div className="flex min-h-0 flex-col">
-        <div className="md:hidden border-b border-gray-200 bg-white/90 dark:border-white/10 dark:bg-neutral-950/90">
+      {/* ── Mobile horizontal nav (< md) ── */}
+      <div
+        className="flex flex-col flex-1 min-w-0 min-h-0"
+        style={{ background: 'var(--apple-bg-primary)' }}
+      >
+        <div
+          className="md:hidden flex-shrink-0"
+          style={{ borderBottom: '1px solid var(--apple-separator)' }}
+        >
           <nav className="overflow-x-auto px-3 py-2" aria-label={t.settings_title}>
             <div className="flex gap-1">
-              {sections.map(({ id, label, description, Icon }) => {
+              {sections.map(({ id, label, description, Icon, iconBg }) => {
                 const active = activeSection === id
                 return (
                   <button
@@ -211,15 +257,24 @@ export function SettingsPage() {
                     type="button"
                     onClick={() => scrollToSection(id)}
                     title={description}
-                    className={[
-                      'btn-secondary btn-sm whitespace-nowrap shadow-none',
-                      active
-                        ? 'btn-active'
-                        : 'border-transparent bg-transparent text-gray-500 dark:bg-transparent dark:text-gray-400 dark:hover:bg-white/5',
-                    ].join(' ')}
                     aria-current={active ? 'true' : undefined}
+                    className={[
+                      'flex items-center gap-1.5 whitespace-nowrap px-3 h-8 rounded-lg text-[13px] font-medium',
+                      'transition-colors duration-150 select-none',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007AFF]',
+                      active
+                        ? 'bg-[#007AFF] dark:bg-[#0A84FF] text-white'
+                        : 'text-[var(--apple-label-secondary)] hover:bg-[var(--apple-fill-tertiary)] hover:text-[var(--apple-label-primary)]',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
                   >
-                    <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span
+                      className="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-[4px]"
+                      style={{ background: active ? 'rgba(255,255,255,0.2)' : iconBg }}
+                    >
+                      <Icon className="w-3 h-3 text-white" />
+                    </span>
                     {label}
                   </button>
                 )
@@ -228,8 +283,12 @@ export function SettingsPage() {
           </nav>
         </div>
 
-        <div ref={scrollRef} className="settings-scroll-viewport flex-1 min-h-0 overflow-auto">
-          <div className="max-w-3xl mx-auto px-4 py-5 md:px-6 md:py-6 space-y-8">
+        {/* ── Scrollable content area ── */}
+        <div
+          ref={scrollRef}
+          className="settings-scroll-viewport flex-1 min-h-0 overflow-auto"
+        >
+          <div className="max-w-3xl mx-auto px-5 py-6 md:px-8 md:py-8 space-y-8">
             {sections.map(({ id, Component }) => (
               <div
                 key={id}

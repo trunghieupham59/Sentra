@@ -168,15 +168,20 @@ export function LiveTranslatePage() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="app-page relative">
+    <div
+      className="flex flex-col h-full relative"
+      style={{ background: 'var(--apple-bg-primary)' }}
+    >
 
-      {/* ── Main scrollable area ── */}
-      <div className="flex-1 flex flex-col min-h-0">
-        <div className="app-workspace">
+      {/* ── Main layout ── */}
+      <div className="flex flex-1 min-h-0 flex-col">
+        <div className="flex flex-col flex-1 min-h-0 gap-3 px-4 pb-4">
 
-          {/* Row 1: source, target, start/stop, settings */}
-          <div className="app-topbar">
-
+          {/* Row 1: Toolbar */}
+          <div
+            className="apple-toolbar flex-shrink-0 flex items-center px-0 gap-3 -mx-4"
+            style={{ height: '52px', zIndex: 20 }}
+          >
             {/* Source language — always auto-detect */}
             <div className="flex-1 min-w-0 overflow-hidden">
               <LiveSourceLangBar
@@ -487,10 +492,10 @@ export function LiveTranslatePage() {
 
 
           {/* ── Two panels: Nguyên Bản | Bản Dịch ── */}
-          <div className="app-panel-grid">
+          <div className="flex flex-1 min-h-0 gap-px rounded-xl overflow-hidden" style={{ background: 'var(--apple-separator)' }}>
 
             {/* Left: Nguyên Bản */}
-            <div className="surface-panel h-full">
+            <div className="flex flex-col flex-1 min-w-0" style={{ background: 'var(--apple-bg-primary)' }}>
               {/* Status indicator bar (only when active) */}
               {isActive && (
                 <div className="flex-shrink-0 flex items-center px-4 pt-2 pb-1">
@@ -574,7 +579,10 @@ export function LiveTranslatePage() {
               </div>
 
               {/* Left panel footer — Copy icon + word count */}
-              <div className="surface-footer">
+              <div
+                className="flex-shrink-0 flex items-center justify-between px-4 h-12"
+                style={{ borderTop: '1px solid var(--apple-separator)' }}
+              >
                 <button
                   type="button"
                   disabled={!rawTranscript}
@@ -596,7 +604,7 @@ export function LiveTranslatePage() {
             </div>
 
             {/* Right: Bản Dịch */}
-            <div className="surface-panel h-full">
+            <div className="flex flex-col flex-1 min-w-0" style={{ background: 'var(--apple-bg-secondary)' }}>
               {/* STT provider badge — top-right, only when active */}
               {isActive && (
                 <div className="flex-shrink-0 flex items-center justify-end px-4 pt-2 pb-1">
@@ -657,7 +665,10 @@ export function LiveTranslatePage() {
               </div>
 
               {/* Right panel footer — Copy icon + Tổng hợp nội dung button */}
-              <div className="surface-footer">
+              <div
+                className="flex-shrink-0 flex items-center justify-between px-4 h-12"
+                style={{ borderTop: '1px solid var(--apple-separator)' }}
+              >
                 <button
                   type="button"
                   disabled={!translation}

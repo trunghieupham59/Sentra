@@ -3,6 +3,68 @@
 
 @layer base {
   :root {
+    /* ════════════════════════════════════════════════════
+     * APPLE DESIGN LANGUAGE TOKENS (Phase 3)
+     * Based on Apple HIG – macOS/iOS System Colors
+     * ════════════════════════════════════════════════════ */
+
+    /* Accent */
+    --apple-accent:              #007AFF;
+    --apple-accent-hover:        #0066CC;
+    --apple-accent-pressed:      #0055AB;
+
+    /* Backgrounds */
+    --apple-bg-primary:          #FFFFFF;
+    --apple-bg-secondary:        #F2F2F7;
+    --apple-bg-tertiary:         #FFFFFF;
+    --apple-bg-grouped:          #F2F2F7;
+    --apple-bg-elevated:         #FFFFFF;
+
+    /* Vibrancy (frosted glass) */
+    --apple-vibrancy-bg:         rgba(246, 246, 246, 0.85);
+    --apple-vibrancy-sidebar:    rgba(242, 242, 247, 0.90);
+
+    /* Labels / Text */
+    --apple-label-primary:       rgba(0, 0, 0, 1.0);
+    --apple-label-secondary:     rgba(60, 60, 67, 0.6);
+    --apple-label-tertiary:      rgba(60, 60, 67, 0.3);
+    --apple-label-quaternary:    rgba(60, 60, 67, 0.18);
+
+    /* Separators */
+    --apple-separator:           rgba(60, 60, 67, 0.29);
+    --apple-separator-opaque:    #C6C6C8;
+
+    /* Fill Colors */
+    --apple-fill-primary:        rgba(120, 120, 128, 0.20);
+    --apple-fill-secondary:      rgba(120, 120, 128, 0.16);
+    --apple-fill-tertiary:       rgba(118, 118, 128, 0.12);
+    --apple-fill-quaternary:     rgba(116, 116, 128, 0.08);
+
+    /* System Colors – Light */
+    --apple-red:                 #FF3B30;
+    --apple-orange:              #FF9500;
+    --apple-yellow:              #FFCC00;
+    --apple-green:               #34C759;
+    --apple-teal:                #5AC8FA;
+    --apple-blue:                #007AFF;
+    --apple-indigo:              #5856D6;
+    --apple-purple:              #AF52DE;
+    --apple-pink:                #FF2D55;
+    --apple-brown:               #A2845E;
+    --apple-gray:                #8E8E93;
+
+    /* Shadows */
+    --apple-shadow-sm:           0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
+    --apple-shadow-md:           0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.10);
+    --apple-shadow-lg:           0 10px 30px rgba(0,0,0,0.20), 0 4px 10px rgba(0,0,0,0.12);
+    --apple-shadow-panel:        0 0 0 1px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.12);
+    --apple-shadow-focus:        0 0 0 3px rgba(0, 122, 255, 0.35);
+
+    /* Transitions */
+    --apple-transition-fast:     150ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --apple-transition-normal:   250ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --apple-transition-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
+
     --vzn-app-bg: linear-gradient(135deg, #f8fbfe 0%, #eef7fc 100%);
     --vzn-bg: #f3f8fc;
     --vzn-surface: #ffffff;
@@ -42,6 +104,62 @@
   }
 
   html.dark {
+    /* ════════════════════════════════════════════════════
+     * APPLE DESIGN LANGUAGE TOKENS – Dark Mode overrides
+     * ════════════════════════════════════════════════════ */
+
+    /* Accent */
+    --apple-accent:              #0A84FF;
+    --apple-accent-hover:        #409CFF;
+    --apple-accent-pressed:      #6BB2FF;
+
+    /* Backgrounds */
+    --apple-bg-primary:          #1C1C1E;
+    --apple-bg-secondary:        #2C2C2E;
+    --apple-bg-tertiary:         #3A3A3C;
+    --apple-bg-grouped:          #000000;
+    --apple-bg-elevated:         #2C2C2E;
+
+    /* Vibrancy (frosted glass) */
+    --apple-vibrancy-bg:         rgba(30, 30, 30, 0.85);
+    --apple-vibrancy-sidebar:    rgba(44, 44, 46, 0.90);
+
+    /* Labels / Text */
+    --apple-label-primary:       rgba(255, 255, 255, 1.0);
+    --apple-label-secondary:     rgba(235, 235, 245, 0.6);
+    --apple-label-tertiary:      rgba(235, 235, 245, 0.3);
+    --apple-label-quaternary:    rgba(235, 235, 245, 0.18);
+
+    /* Separators */
+    --apple-separator:           rgba(84, 84, 88, 0.65);
+    --apple-separator-opaque:    #38383A;
+
+    /* Fill Colors */
+    --apple-fill-primary:        rgba(120, 120, 128, 0.36);
+    --apple-fill-secondary:      rgba(120, 120, 128, 0.32);
+    --apple-fill-tertiary:       rgba(118, 118, 128, 0.24);
+    --apple-fill-quaternary:     rgba(116, 116, 128, 0.18);
+
+    /* System Colors – Dark */
+    --apple-red:                 #FF453A;
+    --apple-orange:              #FF9F0A;
+    --apple-yellow:              #FFD60A;
+    --apple-green:               #30D158;
+    --apple-teal:                #64D2FF;
+    --apple-blue:                #0A84FF;
+    --apple-indigo:              #5E5CE6;
+    --apple-purple:              #BF5AF2;
+    --apple-pink:                #FF375F;
+    --apple-brown:               #AC8E68;
+    --apple-gray:                #98989D;
+
+    /* Shadows (darker in dark mode) */
+    --apple-shadow-sm:           0 1px 3px rgba(0,0,0,0.30), 0 1px 2px rgba(0,0,0,0.20);
+    --apple-shadow-md:           0 4px 12px rgba(0,0,0,0.40), 0 2px 4px rgba(0,0,0,0.25);
+    --apple-shadow-lg:           0 10px 30px rgba(0,0,0,0.50), 0 4px 10px rgba(0,0,0,0.30);
+    --apple-shadow-panel:        0 0 0 1px rgba(255,255,255,0.06), 0 2px 8px rgba(0,0,0,0.40);
+    --apple-shadow-focus:        0 0 0 3px rgba(10, 132, 255, 0.45);
+
     --vzn-app-bg: linear-gradient(135deg, #07131e 0%, #082332 100%);
     --vzn-bg: #07131e;
     --vzn-surface: #101a24;
@@ -566,8 +684,12 @@
 
   /* ── Section label ───────────────────────── */
   .section-label {
-    @apply text-xs font-semibold text-gray-400 uppercase tracking-widest
-           dark:text-gray-500;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--apple-label-secondary);
+    padding-left: 4px;
   }
 
   /* ── Form controls ───────────────────────── */
@@ -994,13 +1116,36 @@
   .toolbar-pill-button,
   .chat-model-badge,
   .keyboard-key,
-  .card,
   .floating-panel,
   .modal-surface {
     border-color: transparent;
     background: var(--vzn-surface-raised);
     color: var(--vzn-text-muted);
     box-shadow: none;
+  }
+
+  /* Apple-style card — uses Apple bg-primary + separator border */
+  .card {
+    background: var(--apple-bg-primary);
+    border-color: var(--apple-separator);
+    border-radius: 12px;
+    box-shadow: var(--apple-shadow-sm);
+    color: var(--apple-label-primary);
+  }
+
+  /* Card dividers use Apple separator */
+  .card.divide-y > :not([hidden]) ~ :not([hidden]),
+  .card > .divide-y > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--apple-separator);
+  }
+
+  /* Settings row text — Apple typography */
+  .card .text-sm.font-medium {
+    color: var(--apple-label-primary);
+  }
+  .card .text-xs.text-gray-500,
+  .card .text-xs.text-gray-400 {
+    color: var(--apple-label-secondary);
   }
   .btn-secondary:hover,
   .btn-soft:hover,
@@ -1288,7 +1433,6 @@
   .ui-meta,
   .ui-caption,
   .ui-kicker,
-  .section-label,
   .popover-title,
   .thinking-inline-label,
   .chat-research-pill-info {
@@ -1380,4 +1524,127 @@ html.dark .skeleton-shimmer {
 }
 .skeleton-fade-in {
   animation: skeletonFadeIn 0.24s ease-out both;
+}
+
+/* ════════════════════════════════════════════════════════════
+ * APPLE TYPOGRAPHY UTILITIES (Phase 3)
+ * SF Pro type scale – use these classes instead of raw text-*
+ * ════════════════════════════════════════════════════════════ */
+@layer utilities {
+  .text-apple-large-title  { font-size: 34px; line-height: 41px; font-weight: 700; }
+  .text-apple-title1       { font-size: 28px; line-height: 34px; font-weight: 700; }
+  .text-apple-title2       { font-size: 22px; line-height: 28px; font-weight: 700; }
+  .text-apple-title3       { font-size: 20px; line-height: 25px; font-weight: 600; }
+  .text-apple-headline     { font-size: 17px; line-height: 22px; font-weight: 600; }
+  .text-apple-body         { font-size: 17px; line-height: 22px; font-weight: 400; }
+  .text-apple-callout      { font-size: 16px; line-height: 21px; font-weight: 400; }
+  .text-apple-subhead      { font-size: 15px; line-height: 20px; font-weight: 400; }
+  .text-apple-footnote     { font-size: 13px; line-height: 18px; font-weight: 400; }
+  .text-apple-caption1     { font-size: 12px; line-height: 16px; font-weight: 400; }
+  .text-apple-caption2     { font-size: 11px; line-height: 13px; font-weight: 400; }
+}
+
+/* ════════════════════════════════════════════════════════════
+ * APPLE COMPONENT UTILITIES (Phase 3)
+ * Reusable surface patterns following Apple HIG
+ * ════════════════════════════════════════════════════════════ */
+@layer utilities {
+  /* Frosted glass / vibrancy surface */
+  .apple-vibrancy {
+    background: var(--apple-vibrancy-bg);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+
+  /* macOS sidebar vibrancy */
+  .apple-sidebar {
+    background: var(--apple-vibrancy-sidebar);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-right: 1px solid var(--apple-separator);
+  }
+
+  /* Toolbar translucent */
+  .apple-toolbar {
+    background: var(--apple-vibrancy-bg);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid var(--apple-separator);
+    height: 52px;
+  }
+
+  /* Apple-style separator */
+  .apple-divider {
+    border-color: var(--apple-separator);
+  }
+
+  /* Inset separator (for list rows) */
+  .apple-inset-divider {
+    border-color: var(--apple-separator);
+    margin-left: 60px;
+  }
+
+  /* Focus ring using Apple accent */
+  .apple-focus-ring {
+    outline: none;
+    box-shadow: var(--apple-shadow-focus);
+  }
+
+  /* Standard card surface */
+  .apple-card {
+    background: var(--apple-bg-tertiary);
+    border-radius: 12px;
+    box-shadow: var(--apple-shadow-sm);
+  }
+
+  /* Grouped list background */
+  .apple-grouped-bg {
+    background: var(--apple-bg-grouped);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+ * APPLE ANIMATIONS (Phase 3)
+ * ════════════════════════════════════════════════════════════ */
+
+/* Record button pulse animation */
+@keyframes record-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.4); }
+  70%  { box-shadow: 0 0 0 20px rgba(255, 59, 48, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
+}
+.apple-record-pulse {
+  animation: record-pulse 1.5s ease-out infinite;
+}
+
+/* Waveform idle animation */
+@keyframes idle-wave {
+  0%, 100% { transform: scaleY(1); }
+  50%       { transform: scaleY(0.4); }
+}
+
+/* Skeleton pulse (Apple style) */
+@keyframes apple-skeleton {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1.0; }
+}
+.apple-skeleton {
+  background: var(--apple-fill-tertiary);
+  animation: apple-skeleton 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+/* ════════════════════════════════════════════════════════════
+ * ACCESSIBILITY – Reduced Motion
+ * All animations disabled for users who prefer reduced motion
+ * ════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

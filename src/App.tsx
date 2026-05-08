@@ -142,22 +142,33 @@ function App() {
   const isMac = window.api?.platform === 'darwin'
 
   return (
-    <div className="app-shell">
+    <div
+      className="flex flex-col h-screen overflow-hidden"
+      style={{ background: 'var(--apple-bg-secondary)', color: 'var(--apple-label-primary)' }}
+    >
       {/* Full-width macOS traffic light drag region — only on macOS */}
       {isMac && (
-        <>
-          <div className="titlebar-drag app-titlebar-drag flex-shrink-0 w-full" style={{ height: `${MACOS_TITLEBAR_HEIGHT_PX}px` }} />
-          {/* Divider below traffic light buttons */}
-          <div className="app-titlebar-divider flex-shrink-0 w-full border-b" />
-        </>
+        <div
+          className="titlebar-drag flex-shrink-0 w-full"
+          style={{
+            height: `${MACOS_TITLEBAR_HEIGHT_PX}px`,
+            borderBottom: '1px solid var(--apple-separator)',
+            background: 'var(--apple-vibrancy-bg)',
+            backdropFilter: 'blur(20px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+          }}
+        />
       )}
 
       {/* Body: sidebar + main content */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         <Sidebar />
 
-        {/* Main content */}
-        <main className="flex-1 overflow-hidden">
+        {/* Main content area */}
+        <main
+          className="flex-1 overflow-hidden"
+          style={{ background: 'var(--apple-bg-primary)' }}
+        >
           <Suspense fallback={<PageFallback />}>
             {activePage === 'translate' ? (
               <TranslatePage />
@@ -176,7 +187,6 @@ function App() {
 
       {/* Settings popup modal */}
       <SettingsModal />
-
     </div>
   )
 }

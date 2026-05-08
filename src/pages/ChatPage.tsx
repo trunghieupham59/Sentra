@@ -1198,7 +1198,8 @@ export function ChatPage() {
     <div
       role="application"
       aria-label={t.chat_attach_image}
-      className="app-page relative"
+      className="flex flex-col h-full relative"
+      style={{ background: 'var(--apple-bg-primary)' }}
       onDragOver={(e) => { e.preventDefault(); setIsDraggingOver(true) }}
       onDragLeave={handleDragLeave}
       onDrop={handleFileDrop}
@@ -1208,211 +1209,239 @@ export function ChatPage() {
         <DragOverlay label={t.chat_attach_image} zIndex="z-50" showRing />
       )}
 
-      {/* ── Main area ── */}
-      <div className="flex-1 flex flex-col min-h-0">
-        <div className="app-workspace">
+      {/* ── Apple-style translucent toolbar ── */}
+      <div
+        className="apple-toolbar flex-shrink-0 flex items-center px-4 gap-2"
+        style={{ height: '52px', position: 'relative', zIndex: 20 }}
+      >
+        {/* Model badge — clicking opens settings popup */}
+        <button
+          type="button"
+          onClick={() => setShowAIConfig((v) => !v)}
+          title={t.translate_ai_config_title}
+          className={[
+            'flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-[13px] font-medium',
+            'transition-colors duration-150 select-none',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007AFF]',
+            showAIConfig
+              ? 'bg-[#007AFF]/10 dark:bg-[#0A84FF]/15 text-[#007AFF] dark:text-[#0A84FF]'
+              : 'bg-[var(--apple-fill-tertiary)] text-[var(--apple-label-primary)] hover:bg-[var(--apple-fill-secondary)]',
+          ].join(' ')}
+        >
+          <ProviderIcon provider={selectedProvider} size={13} />
+          <span className="max-w-[160px] truncate">{currentModelLabel}</span>
+          <ChevronDownIcon className="w-3 h-3 opacity-60" />
+        </button>
 
-          {/* ── Top action bar: model badge + actions + settings icon ── */}
-          <div className="app-topbar gap-1.5">
-            {/* Model badge — quick visual feedback of current AI; clicking opens settings popup */}
-            <button
-              type="button"
-              onClick={() => setShowAIConfig((v) => !v)}
-              title={t.translate_ai_config_title}
-              className="chat-model-badge"
+        {/* Turn count */}
+        {messages.length > 0 && (
+          <span
+            className="text-[12px] hidden font-medium md:inline"
+            style={{ color: 'var(--apple-label-tertiary)' }}
+          >
+            · {messages.filter((m) => m.role === 'user').length} {t.history_chat_messages}
+          </span>
+        )}
+
+        <div className="flex-1" />
+
+        {/* New chat button */}
+        <button
+          type="button"
+          onClick={handleNewChat}
+          title={newChatShortcutLabel ? `${t.chat_new_session} (${newChatShortcutLabel})` : t.chat_new_session}
+          className={[
+            'flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-[13px] font-medium',
+            'transition-colors duration-150 whitespace-nowrap select-none',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007AFF]',
+            'bg-[var(--apple-fill-tertiary)] text-[var(--apple-label-primary)] hover:bg-[var(--apple-fill-secondary)]',
+          ].join(' ')}
+        >
+          <PlusIcon />
+          <span>{t.chat_new_session}</span>
+        </button>
+
+        {/* Clear button — only when there are messages */}
+        {messages.length > 0 && (
+          <button
+            type="button"
+            onClick={handleClear}
+            title={t.chat_clear}
+            className={[
+              'flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-[13px] font-medium',
+              'transition-colors duration-150 whitespace-nowrap select-none',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007AFF]',
+              'bg-[#FF3B30]/10 dark:bg-[#FF453A]/15 text-[#FF3B30] dark:text-[#FF453A]',
+              'hover:bg-[#FF3B30]/15 dark:hover:bg-[#FF453A]/20',
+            ].join(' ')}
+          >
+            <TrashIcon />
+            <span>{t.chat_clear}</span>
+          </button>
+        )}
+
+        {/* Gear button + popup */}
+        <div className="relative" ref={aiConfigRef}>
+          <button
+            type="button"
+            onClick={() => setShowAIConfig((v) => !v)}
+            title={t.translate_ai_config_title}
+            aria-label={t.translate_ai_config_title}
+            className={[
+              'flex items-center justify-center w-7 h-7 rounded-lg',
+              'transition-colors duration-150',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007AFF]',
+              showAIConfig
+                ? 'bg-[#007AFF]/10 dark:bg-[#0A84FF]/15 text-[#007AFF] dark:text-[#0A84FF]'
+                : 'text-[var(--apple-label-secondary)] hover:bg-[var(--apple-fill-tertiary)] hover:text-[var(--apple-label-primary)]',
+            ].join(' ')}
+          >
+            <GearIcon className="w-3.5 h-3.5" />
+          </button>
+
+          {/* AI Config popup — Apple floating panel */}
+          {showAIConfig && (
+            <div
+              className="absolute top-full right-0 mt-2 z-50 w-[440px] p-4 flex flex-col gap-4 rounded-xl fade-in"
+              style={{
+                background: 'var(--apple-bg-elevated)',
+                boxShadow: 'var(--apple-shadow-lg)',
+                border: '1px solid var(--apple-separator)',
+              }}
             >
-              <ProviderIcon provider={selectedProvider} size={14} />
-              <span className="max-w-[160px] truncate">{currentModelLabel}</span>
-              <ChevronDownIcon className="w-3 h-3 opacity-60" />
-            </button>
-
-            {/* Active session turn count — subtle informational text */}
-            {messages.length > 0 && (
-              <span className="ui-meta ml-1 hidden font-medium md:inline">
-                · {messages.filter((m) => m.role === 'user').length} {t.history_chat_messages}
-              </span>
-            )}
-
-            <div className="flex-1" />
-
-            {/* New chat */}
-            <button
-              type="button"
-              onClick={handleNewChat}
-              title={newChatShortcutLabel ? `${t.chat_new_session} (${newChatShortcutLabel})` : t.chat_new_session}
-              className="toolbar-pill-button cursor-pointer whitespace-nowrap"
-            >
-              <PlusIcon />
-              <span>{t.chat_new_session}</span>
-            </button>
-
-            {/* Clear — only when there are messages */}
-            {messages.length > 0 && (
-              <button
-                type="button"
-                onClick={handleClear}
-                title={t.chat_clear}
-                className="toolbar-pill-button toolbar-pill-danger cursor-pointer whitespace-nowrap"
-              >
-                <TrashIcon />
-                <span>{t.chat_clear}</span>
-              </button>
-            )}
-
-            {/* AI Config settings icon + popup */}
-            <div className="relative" ref={aiConfigRef}>
-              <button
-                type="button"
-                onClick={() => setShowAIConfig((v) => !v)}
-                title={t.translate_ai_config_title}
-                className={`toolbar-icon-button ai-config-button cursor-pointer ${showAIConfig ? 'toolbar-icon-button-active' : ''}`}
-              >
-                <GearIcon className="w-3.5 h-3.5" />
-              </button>
-
-              {/* Settings popup */}
-              {showAIConfig && (
-                <div className="floating-panel ai-config-panel absolute top-full right-0 mt-2 z-50 w-[440px] p-4 flex flex-col gap-4 fade-in">
-                  <h2 className="popover-title">
-                    {t.translate_ai_config_title}
-                  </h2>
-                  <div className="flex flex-col gap-3">
-                    <ModelSelector />
-                    <SystemPromptDropdown
-                      chatSystemPrompt={chatSystemPrompt}
-                      systemPromptPresets={systemPromptPresets}
-                      activePreset={activePreset}
-                      onSetChatSystemPrompt={setChatSystemPrompt}
-                      onNavigateSettings={() => { openSettings(); setShowAIConfig(false) }}
-                      onAddPreset={addSystemPromptPreset}
-                      t={t}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {messages.length === 0 ? (
-            /* ── Empty state: centered layout (ChatGPT-style) ── */
-            <div className="flex-1 flex flex-col items-center justify-center gap-10 px-4 pb-8 overflow-y-auto">
-              {/* Logo + description — generous breathing room */}
-              <div className="flex flex-col items-center gap-5 text-center select-none">
-                <div className="relative">
-                  <AppLogoIcon size={84} />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <h2 className="text-2xl font-semibold tracking-tight text-gray-800 dark:text-gray-100">
-                    {t.chat_empty_title}
-                  </h2>
-                  <p className="ui-caption mx-auto max-w-[360px] leading-relaxed">
-                    {t.chat_empty_desc}
-                  </p>
-                </div>
-                {!hasKey && (
-                  <div className="flex flex-col items-center gap-2 mt-1">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.chat_error_no_key}</p>
-                    <button
-                      type="button"
-                      onClick={() => openSettings()}
-                      className="btn-primary btn-sm"
-                    >
-                      {t.chat_error_open_settings}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Composer + keyboard hints — column flex so the hints sit
-                   right under the input without a separate gap stop. */}
-              <div className="flex w-full max-w-2xl flex-col items-center gap-3">
-                <div className={`chat-composer w-full ${isDraggingOver ? 'chat-composer-drop' : ''}`}>
-                  {inputArea}
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* ── With messages: card layout ── */
-            <div className={`surface-panel flex-1 min-h-0 transition-colors duration-150 ${
-              isDraggingOver ? 'surface-panel-drop' : ''
-            }`}>
-
-              {/* Messages list — consecutive research-step messages are
-               *  collapsed into a single ResearchStepsPanel so a Deep Research
-               *  reply with 6–10 internal phases shows up as ONE tidy
-               *  "Đã suy nghĩ · 8 bước" card rather than a wall of nested UI.
-               *  See ResearchStepsPanel.tsx for the rationale and behaviour. */}
-              <div className="flex-1 overflow-y-auto">
-                <div className="px-4 py-5 space-y-4">
-                  {(() => {
-                    const lastAssistantIdx = messages.reduce(
-                      (acc, m, i) => (m.role === 'assistant' ? i : acc), -1
-                    )
-
-                    // Walk the messages list and emit either a single bubble
-                    // or a grouped panel for each consecutive run of research
-                    // steps. We keep the order stable so React keys remain
-                    // unique (we use the first step id as the panel's key).
-                    const rendered: React.ReactNode[] = []
-                    let i = 0
-                    while (i < messages.length) {
-                      const msg = messages[i]
-                      if (msg.isResearchStep) {
-                        // Collect every consecutive research-step message.
-                        const group: ChatMessage[] = []
-                        while (i < messages.length && messages[i].isResearchStep) {
-                          group.push(messages[i])
-                          i++
-                        }
-                        rendered.push(
-                          <ResearchStepsPanel
-                            key={`rsp-${group[0].id}`}
-                            steps={group}
-                          />
-                        )
-                        continue
-
-                      }
-                      rendered.push(
-                        <MessageBubble
-                          key={msg.id}
-                          message={msg}
-                          onCopy={handleCopy}
-                          onCopyImage={handleCopyImage}
-                          onDownloadImage={handleDownloadImage}
-                          onRegenerate={i === lastAssistantIdx ? handleRegenerate : undefined}
-                          isLastAssistant={i === lastAssistantIdx}
-                          isSending={isSending}
-                          copyLabel={t.translate_copy}
-                          downloadImageLabel={t.chat_download_image}
-                          regenerateLabel={t.chat_regenerate}
-                        />
-                      )
-                      i++
-                    }
-                    return rendered
-                  })()}
-                  <div ref={messagesEndRef} />
-                </div>
-              </div>
-
-              {/* Input — panel footer, wrapped as composer card */}
-              <div className="flex-shrink-0 px-3 pb-3 pt-1 border-t border-gray-200/80 dark:border-neutral-800
-                              bg-gray-50/70 dark:bg-neutral-950/40">
-                <div className="chat-composer">
-                  {inputArea}
-                </div>
+              <h2 className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--apple-label-secondary)' }}>
+                {t.translate_ai_config_title}
+              </h2>
+              <div className="flex flex-col gap-3">
+                <ModelSelector />
+                <SystemPromptDropdown
+                  chatSystemPrompt={chatSystemPrompt}
+                  systemPromptPresets={systemPromptPresets}
+                  activePreset={activePreset}
+                  onSetChatSystemPrompt={setChatSystemPrompt}
+                  onNavigateSettings={() => { openSettings(); setShowAIConfig(false) }}
+                  onAddPreset={addSystemPromptPreset}
+                  t={t}
+                />
               </div>
             </div>
           )}
-
         </div>
+      </div>
+
+      {/* ── Main chat area ── */}
+      <div className="flex flex-col flex-1 min-h-0 px-4 pb-4">
+        {messages.length === 0 ? (
+          /* ── Empty state ── */
+          <div className="flex-1 flex flex-col items-center justify-center gap-10 pb-8 overflow-y-auto">
+            <div className="flex flex-col items-center gap-5 text-center select-none">
+              <AppLogoIcon size={84} />
+              <div className="flex flex-col gap-2">
+                <h2 className="text-[22px] font-bold tracking-tight" style={{ color: 'var(--apple-label-primary)' }}>
+                  {t.chat_empty_title}
+                </h2>
+                <p className="text-[15px]" style={{ color: 'var(--apple-label-secondary)', maxWidth: '360px' }}>
+                  {t.chat_empty_desc}
+                </p>
+              </div>
+              {!hasKey && (
+                <div className="flex flex-col items-center gap-2 mt-1">
+                  <p className="text-[13px]" style={{ color: 'var(--apple-label-secondary)' }}>{t.chat_error_no_key}</p>
+                  <button
+                    type="button"
+                    onClick={() => openSettings()}
+                    className="h-8 px-4 rounded-lg text-[13px] font-medium bg-[#007AFF] dark:bg-[#0A84FF] text-white hover:brightness-90 transition-all duration-150"
+                  >
+                    {t.chat_error_open_settings}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="flex w-full max-w-2xl flex-col items-center gap-3">
+              <div className={`chat-composer w-full ${isDraggingOver ? 'chat-composer-drop' : ''}`}>
+                {inputArea}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* ── With messages layout ── */
+          <div
+            className={`flex flex-col flex-1 min-h-0 rounded-xl overflow-hidden transition-colors duration-150 ${isDraggingOver ? 'ring-2 ring-inset ring-[#007AFF]' : ''}`}
+            style={{
+              background: 'var(--apple-bg-primary)',
+              boxShadow: 'var(--apple-shadow-panel)',
+              border: '1px solid var(--apple-separator)',
+            }}
+          >
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="px-4 py-5 space-y-4">
+                {(() => {
+                  const lastAssistantIdx = messages.reduce(
+                    (acc, m, i) => (m.role === 'assistant' ? i : acc), -1
+                  )
+
+                  const rendered: React.ReactNode[] = []
+                  let i = 0
+                  while (i < messages.length) {
+                    const msg = messages[i]
+                    if (msg.isResearchStep) {
+                      const group: ChatMessage[] = []
+                      while (i < messages.length && messages[i].isResearchStep) {
+                        group.push(messages[i])
+                        i++
+                      }
+                      rendered.push(
+                        <ResearchStepsPanel
+                          key={`rsp-${group[0].id}`}
+                          steps={group}
+                        />
+                      )
+                      continue
+                    }
+                    rendered.push(
+                      <MessageBubble
+                        key={msg.id}
+                        message={msg}
+                        onCopy={handleCopy}
+                        onCopyImage={handleCopyImage}
+                        onDownloadImage={handleDownloadImage}
+                        onRegenerate={i === lastAssistantIdx ? handleRegenerate : undefined}
+                        isLastAssistant={i === lastAssistantIdx}
+                        isSending={isSending}
+                        copyLabel={t.translate_copy}
+                        downloadImageLabel={t.chat_download_image}
+                        regenerateLabel={t.chat_regenerate}
+                      />
+                    )
+                    i++
+                  }
+                  return rendered
+                })()}
+                <div ref={messagesEndRef} />
+              </div>
+            </div>
+
+            {/* Composer footer */}
+            <div
+              className="flex-shrink-0 px-3 pb-3 pt-1"
+              style={{ borderTop: '1px solid var(--apple-separator)', background: 'var(--apple-bg-secondary)' }}
+            >
+              <div className="chat-composer">
+                {inputArea}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Copied toast ── */}
       {copiedId && (
-        <div className="pointer-events-none fixed bottom-20 left-1/2 -translate-x-1/2
-                        bg-gray-800 text-white text-xs px-3 py-1.5 rounded-full shadow-lg fade-in z-50">
+        <div
+          className="pointer-events-none fixed bottom-20 left-1/2 -translate-x-1/2 fade-in z-50 px-3 py-1.5 rounded-full text-[12px] text-white shadow-lg"
+          style={{ background: 'rgba(50,50,50,0.92)' }}
+        >
           {t.chat_copied}
         </div>
       )}

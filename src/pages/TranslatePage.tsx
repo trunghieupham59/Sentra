@@ -103,297 +103,352 @@ export function TranslatePage() {
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [showAIConfig])
 
+  const canSwap = !!(translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL && !imageAttachment)
+
   return (
-    <div className="app-page">
+    <div className="flex flex-col h-full" style={{ background: 'var(--apple-bg-primary)' }}>
 
-      {/* Centered content — fills remaining height */}
-      <div className="flex-1 flex flex-col min-h-0">
-        <div className="app-workspace">
+      {/* ── Apple-style translucent toolbar ── */}
+      <div
+        className="apple-toolbar flex-shrink-0 flex items-center px-4 gap-3 z-20"
+        style={{ height: '52px' }}
+      >
+        {/* Source language selector */}
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <SourceLanguageSelector
+            sourceLang={sourceLang}
+            onSourceLangChange={setSourceLang}
+            detectedSourceLang={detectedSourceLang}
+            isDetectingLang={isDetectingLang}
+            langNames={t.lang_names}
+          />
+        </div>
 
-          {/* ── Top action bar: Language selectors + settings icon ── */}
-          <div className="app-topbar">
-            {/* Source language selector — left half, overflow-hidden prevents pills from bleeding right */}
-            <div className="flex-1 min-w-0 overflow-hidden">
-              <SourceLanguageSelector
-                sourceLang={sourceLang}
-                onSourceLangChange={setSourceLang}
-                detectedSourceLang={detectedSourceLang}
-                isDetectingLang={isDetectingLang}
-                langNames={t.lang_names}
+        {/* Swap button — Apple style */}
+        <button
+          type="button"
+          onClick={handleSwapLanguages}
+          disabled={!canSwap}
+          title={t.translate_swap}
+          aria-label={t.translate_swap}
+          className={[
+            'flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-full',
+            'transition-all duration-150',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007AFF]',
+            canSwap
+              ? 'text-[#007AFF] dark:text-[#0A84FF] hover:bg-[#007AFF]/10 dark:hover:bg-[#0A84FF]/15 cursor-pointer'
+              : 'text-[var(--apple-label-quaternary)] cursor-not-allowed',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
+          <SwapIcon className="w-4 h-4" />
+        </button>
+
+        {/* Target language selector */}
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <TargetLanguageSelector
+            targetLang={targetLang}
+            onTargetLangChange={setTargetLang}
+            langNames={t.lang_names}
+          />
+        </div>
+
+        {/* AI config gear button */}
+        <div className="relative flex-shrink-0" ref={aiConfigRef}>
+          <button
+            type="button"
+            onClick={() => setShowAIConfig((v) => !v)}
+            title={t.translate_ai_config_title}
+            aria-label={t.translate_ai_config_title}
+            className={[
+              'flex items-center justify-center w-7 h-7 rounded-lg',
+              'transition-colors duration-150',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007AFF]',
+              showAIConfig
+                ? 'bg-[#007AFF]/10 dark:bg-[#0A84FF]/15 text-[#007AFF] dark:text-[#0A84FF]'
+                : 'text-[var(--apple-label-secondary)] hover:bg-[var(--apple-fill-tertiary)] hover:text-[var(--apple-label-primary)]',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          >
+            <GearIcon className="w-3.5 h-3.5" />
+          </button>
+
+          {/* AI Config popup — Apple floating panel style */}
+          {showAIConfig && (
+            <div
+              className="absolute top-full right-0 mt-2 z-50 w-[520px] p-4 flex flex-col gap-4 rounded-xl"
+              style={{
+                background: 'var(--apple-bg-elevated)',
+                boxShadow: 'var(--apple-shadow-lg)',
+                border: '1px solid var(--apple-separator)',
+              }}
+            >
+              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--apple-label-secondary)]">
+                {t.translate_ai_config_title}
+              </h2>
+              <ModelSelector />
+              <div
+                className="h-px"
+                style={{ background: 'var(--apple-separator)' }}
+              />
+              <TranslateToolbar
+                hideModelSelector
+                translationStyle={translationStyle}
+                onStyleChange={setTranslationStyle}
+                autoTranslate={autoTranslate}
+                onAutoTranslateChange={setAutoTranslate}
+                phoneticMode={phoneticMode}
+                onPhoneticModeChange={setPhoneticMode}
+                isPhoneticLoading={
+                  phoneticMode !== 'off' &&
+                  !phoneticText &&
+                  (isTranslating || (!!translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL))
+                }
+                labelStyleLabel={t.translate_style_label}
+                labelStyleGeneral={t.translate_style_general}
+                labelStyleFormal={t.translate_style_formal}
+                labelStyleCasual={t.translate_style_casual}
+                labelStyleBusiness={t.translate_style_business}
+                labelStyleTechnical={t.translate_style_technical}
+                labelStyleNatural={t.translate_style_natural}
+                labelPhoneticSection={t.translate_phonetic}
+                labelPhoneticOff={t.translate_phonetic_off}
+                labelPhoneticStandard={t.translate_phonetic_standard}
+                labelPhoneticTranscription={t.translate_phonetic_transcription}
+                labelAutoSection={t.settings_auto_translate}
+                titleAutoMode={t.translate_mode_auto_title}
+                titleManualMode={t.translate_mode_manual_title}
+                labelAutoMode={t.translate_mode_auto}
+                labelManualMode={t.translate_mode_manual}
               />
             </div>
+          )}
+        </div>
+      </div>
 
-            {/* Swap button — inline between the two selectors */}
-            <button
-              type="button"
-              onClick={handleSwapLanguages}
-              disabled={!(translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL && !imageAttachment)}
-              title={t.translate_swap}
-              className={`btn-icon flex-shrink-0 border-transparent bg-transparent shadow-none
-                          ${!(translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL && !imageAttachment)
-                            ? 'text-gray-200 dark:text-gray-700'
-                            : 'text-gray-400 dark:bg-transparent'}`}
-            >
-              <SwapIcon className="w-5 h-5" />
-            </button>
+      {/* ── Two-panel layout ── */}
+      <div className="flex flex-1 min-h-0 gap-px" style={{ background: 'var(--apple-separator)' }}>
 
-            {/* Target language selector + settings icon — right half */}
-            <div className="flex-1 min-w-0 flex items-center gap-3">
-              {/* overflow-hidden only on selector, NOT the whole div (gear popup must not be clipped) */}
-              <div className="flex-1 min-w-0 overflow-hidden">
-                <TargetLanguageSelector
-                  targetLang={targetLang}
-                  onTargetLangChange={setTargetLang}
-                  langNames={t.lang_names}
-                />
-              </div>
+        {/* SOURCE PANEL */}
+        <section
+          aria-label={t.image_translate_title}
+          className={[
+            'flex flex-col flex-1 min-w-0 relative transition-colors duration-150',
+            isDraggingOver
+              ? 'ring-2 ring-inset ring-[#007AFF]'
+              : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          style={{ background: 'var(--apple-bg-primary)' }}
+          onDragOver={handleSourcePanelDragOver}
+          onDragLeave={handleSourcePanelDragLeave}
+          onDrop={handleSourcePanelDrop}
+          onPaste={handleSourcePanelPaste}
+        >
+          {/* Drop indicator overlay */}
+          {isDraggingOver && (
+            <DragOverlay label={t.image_translate_upload_hint.split('\n')[0]} zIndex="z-30" />
+          )}
 
-              {/* AI Config settings icon + popup */}
-              <div className="relative flex-shrink-0" ref={aiConfigRef}>
-                <button
-                  type="button"
-                  onClick={() => setShowAIConfig((v) => !v)}
-                  title={t.translate_ai_config_title}
-                  className={`toolbar-icon-button ai-config-button cursor-pointer ${showAIConfig ? 'toolbar-icon-button-active' : ''}`}
-                >
-                  <GearIcon className="w-3.5 h-3.5" />
-                </button>
+          {/* Voice listening overlay */}
+          <VoiceOverlay
+            isVoiceActive={isVoiceActive}
+            isVoiceInterim={isVoiceInterim}
+            sourceText={sourceText}
+            listeningLabel={t.voice_listening}
+            recordLabel={t.voice_record}
+          />
 
-                {/* Settings popup */}
-                {showAIConfig && (
-                  <div className="floating-panel ai-config-panel absolute top-full right-0 mt-2 z-50 w-[520px] p-4 flex flex-col gap-4">
-                    <h2 className="popover-title">
-                      {t.translate_ai_config_title}
-                    </h2>
-                    {/* Row 1: Provider + Model selector */}
-                    <ModelSelector />
+          {/* Image attachment preview */}
+          {imageAttachment && !isVoiceActive && (
+            <ImageAttachmentPreview
+              imageAttachment={imageAttachment}
+              onRemove={handleRemoveImage}
+            />
+          )}
 
-                    {/* Divider */}
-                    <div className="border-t border-gray-100 dark:border-gray-800" />
-
-                    {/* Row 2: Style + Phonetic + Auto-translate */}
-                    <TranslateToolbar
-                      hideModelSelector
-                      translationStyle={translationStyle}
-                      onStyleChange={setTranslationStyle}
-                      autoTranslate={autoTranslate}
-                      onAutoTranslateChange={setAutoTranslate}
-                      phoneticMode={phoneticMode}
-                      onPhoneticModeChange={setPhoneticMode}
-                      isPhoneticLoading={
-                        phoneticMode !== 'off' &&
-                        !phoneticText &&
-                        (isTranslating || (!!translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL))
-                      }
-                      labelStyleLabel={t.translate_style_label}
-                      labelStyleGeneral={t.translate_style_general}
-                      labelStyleFormal={t.translate_style_formal}
-                      labelStyleCasual={t.translate_style_casual}
-                      labelStyleBusiness={t.translate_style_business}
-                      labelStyleTechnical={t.translate_style_technical}
-                      labelStyleNatural={t.translate_style_natural}
-                      labelPhoneticSection={t.translate_phonetic}
-                      labelPhoneticOff={t.translate_phonetic_off}
-                      labelPhoneticStandard={t.translate_phonetic_standard}
-                      labelPhoneticTranscription={t.translate_phonetic_transcription}
-                      labelAutoSection={t.settings_auto_translate}
-                      titleAutoMode={t.translate_mode_auto_title}
-                      titleManualMode={t.translate_mode_manual_title}
-                      labelAutoMode={t.translate_mode_auto}
-                      labelManualMode={t.translate_mode_manual}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
+          {/* Text input area */}
+          <div
+            ref={sourceScrollRef}
+            className="flex-1 min-h-0 overflow-auto"
+          >
+            <textarea
+              value={sourceText}
+              onChange={(e) => handleSourceChange(e.target.value)}
+              placeholder={t.translate_placeholder}
+              className={[
+                'w-full h-full min-h-full resize-none bg-transparent',
+                'px-5 py-4',
+                'text-[var(--apple-label-primary)] text-[17px] leading-[22px]',
+                'placeholder:text-[var(--apple-label-tertiary)]',
+                'focus:outline-none select-text',
+                isVoiceInterim ? 'opacity-50 italic' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            />
           </div>
 
-          {/* Text panels */}
-          <div className="app-panel-grid">
+          {/* Source panel footer */}
+          <div
+            className="flex-shrink-0 flex items-center justify-between px-4 h-12"
+            style={{ borderTop: '1px solid var(--apple-separator)' }}
+          >
+            {/* LEFT: action icons */}
+            <SourcePanelActions
+              isVoiceActive={isVoiceActive}
+              isVoiceInterim={isVoiceInterim}
+              isRewriting={isRewriting}
+              sourceText={sourceText}
+              sourceLang={sourceLang}
+              hasImage={!!imageAttachment}
+              speakingPanel={speakingPanel}
+              speakLoading={speakLoading}
+              onVoiceTranscript={handleVoiceTranscript}
+              onVoiceRecordingChange={handleVoiceRecordingChange}
+              onImageButtonClick={() => fileInputRef.current?.click()}
+              onSpeak={handleSpeak}
+              onRewrite={handleRewrite}
+              onClear={handleClearSource}
+              labelVoiceRecord={t.voice_record}
+              labelVoiceStop={t.voice_stop}
+              labelVoiceTranscribing={t.voice_transcribing}
+              labelVoiceRecording={t.voice_whisper_mode}
+              labelImageTranslate={t.image_translate_title}
+              labelSpeak={t.translate_speak}
+              labelSpeakStop={t.translate_speak_stop}
+              labelRewrite={t.translate_rewrite}
+              labelRewriting={t.translate_rewriting}
+              labelClear={t.translate_clear}
+            />
 
-            {/* ── Source panel card ── */}
-            <section
-              aria-label={t.image_translate_title}
-              className={`surface-panel h-full relative transition-colors duration-150 ${
-                isDraggingOver ? 'surface-panel-drop' : 'surface-panel-focus'
-              }`}
-              onDragOver={handleSourcePanelDragOver}
-              onDragLeave={handleSourcePanelDragLeave}
-              onDrop={handleSourcePanelDrop}
-              onPaste={handleSourcePanelPaste}
-            >
-              {/* Drop indicator overlay */}
-              {isDraggingOver && (
-                <DragOverlay label={t.image_translate_upload_hint.split('\n')[0]} zIndex="z-30" />
-              )}
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ACCEPTED_IMAGE_MIME_TYPES}
+              className="hidden"
+              onChange={handleFileInputChange}
+            />
 
-              {/* Listening overlay */}
-              <VoiceOverlay
-                isVoiceActive={isVoiceActive}
-                isVoiceInterim={isVoiceInterim}
-                sourceText={sourceText}
-                listeningLabel={t.voice_listening}
-                recordLabel={t.voice_record}
-              />
-
-              {/* Image attachment preview */}
-              {imageAttachment && !isVoiceActive && (
-                <ImageAttachmentPreview
-                  imageAttachment={imageAttachment}
-                  onRemove={handleRemoveImage}
-                />
-              )}
-
-              {/* Plain text input */}
-              <div
-                ref={sourceScrollRef}
-                className="flex-1 min-h-0 overflow-auto p-4 flex flex-col"
-              >
-                <textarea
-                  value={sourceText}
-                  onChange={(e) => handleSourceChange(e.target.value)}
-                  placeholder={t.translate_placeholder}
-                  className={`textarea-field flex-1 min-h-0 ${isVoiceInterim ? 'opacity-50 italic' : ''}`}
-                />
-              </div>
-
-              {/* Source panel footer — LEFT: icons | RIGHT: char count + translate button */}
-              <div className="surface-footer relative z-20">
-                {/* LEFT: mic, image, (clear, rewrite, speak when content present) */}
-                <SourcePanelActions
-                  isVoiceActive={isVoiceActive}
-                  isVoiceInterim={isVoiceInterim}
-                  isRewriting={isRewriting}
-                  sourceText={sourceText}
-                  sourceLang={sourceLang}
-                  hasImage={!!imageAttachment}
-                  speakingPanel={speakingPanel}
-                  speakLoading={speakLoading}
-                  onVoiceTranscript={handleVoiceTranscript}
-                  onVoiceRecordingChange={handleVoiceRecordingChange}
-                  onImageButtonClick={() => fileInputRef.current?.click()}
-                  onSpeak={handleSpeak}
-                  onRewrite={handleRewrite}
-                  onClear={handleClearSource}
-                  labelVoiceRecord={t.voice_record}
-                  labelVoiceStop={t.voice_stop}
-                  labelVoiceTranscribing={t.voice_transcribing}
-                  labelVoiceRecording={t.voice_whisper_mode}
-                  labelImageTranslate={t.image_translate_title}
-                  labelSpeak={t.translate_speak}
-                  labelSpeakStop={t.translate_speak_stop}
-                  labelRewrite={t.translate_rewrite}
-                  labelRewriting={t.translate_rewriting}
-                  labelClear={t.translate_clear}
-                />
-                {/* Hidden file input */}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept={ACCEPTED_IMAGE_MIME_TYPES}
-                  className="hidden"
-                  onChange={handleFileInputChange}
-                />
-
-                {/* RIGHT: char count + translate button */}
-                <div className="flex items-center gap-3">
-                  {!isVoiceActive && (
-                    charCount > MAX_INPUT_CHARS ? (
-                      <span className="flex items-center gap-1 text-xs tabular-nums text-gray-500 font-medium" title={t.translate_limit}>
-                        <AlertTriangleIcon className="w-3 h-3 flex-shrink-0" />
-                        {charCount.toLocaleString()} / {MAX_INPUT_CHARS.toLocaleString()}
-                      </span>
-                    ) : (
-                      <span className="text-xs tabular-nums text-gray-400">
-                        {charCount.toLocaleString()} {t.translate_chars}
-                      </span>
-                    )
-                  )}
-                  {!autoTranslate && (
-                    <TranslateButton
-                      isTranslating={isTranslating}
-                      disabled={!sourceText.trim() && !imageAttachment}
-                      onClick={handleTranslate}
-                      labelTranslate={t.translate_btn}
-                      labelLoading={t.translate_btn_loading}
-                    />
-                  )}
-                </div>
-              </div>
-            </section>
-
-            {/* ── Result panel card ── */}
-            <div className="surface-panel h-full">
-              <div ref={translatedScrollRef} className="flex-1 min-h-0 overflow-auto p-4 relative">
-                {isTranslating ? (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <SpinnerIcon className="w-5 h-5 animate-spin text-gray-500" />
-                      <span className="text-sm text-gray-400">{t.translate_btn_loading}</span>
-                    </div>
-                  </div>
-                ) : translateError ? (
-                  <TranslateError
-                    error={translateError}
-                    isApiKeyError={isApiKeyError}
-                    canRetry={!!(sourceText.trim() || imageAttachment)}
-                    onRetry={handleTranslate}
-                    onDismiss={handleDismissError}
-                    onOpenSettings={() => openSettings()}
-                    labelRetry={t.translate_error_retry}
-                    labelOpenSettings={t.translate_error_open_settings}
-                    labelDismiss={t.translate_error_dismiss}
-                  />
-                ) : editedImageUrl ? (
-                  <img
-                    src={editedImageUrl}
-                    alt={t.image_translate_title}
-                    className="max-w-full rounded-lg fade-in"
-                  />
-                ) : translatedText ? (
-                  phoneticMode !== 'off' && phoneticText
-                    ? phoneticMode === 'standard'
-                      // Standard mode: show {word|reading} ruby annotations over original script
-                      ? <FuriganaText text={phoneticText} className="textarea-field fade-in" />
-                      // Phonetic mode: replace original script with pure phonetics (hiragana/pinyin/romanization/IPA)
-                      : <MarkdownText text={phoneticText} className="textarea-field fade-in" />
-                    : <MarkdownText text={translatedText} className="textarea-field fade-in" />
+            {/* RIGHT: char count + translate button */}
+            <div className="flex items-center gap-3">
+              {!isVoiceActive && (
+                charCount > MAX_INPUT_CHARS ? (
+                  <span
+                    className="flex items-center gap-1 text-[12px] tabular-nums font-medium"
+                    style={{ color: 'var(--apple-red)' }}
+                    title={t.translate_limit}
+                  >
+                    <AlertTriangleIcon className="w-3 h-3 flex-shrink-0" />
+                    {charCount.toLocaleString()} / {MAX_INPUT_CHARS.toLocaleString()}
+                  </span>
                 ) : (
-                  <p className="ui-reader-muted select-none">
-                    {t.translate_result_placeholder}
-                  </p>
-                )}
-              </div>
-
-              {/* Result panel footer */}
-              <div className="surface-footer">
-                <ResultPanelActions
-                  translatedText={translatedText}
-                  targetLang={targetLang}
-                  editedImageUrl={editedImageUrl}
-                  hasImageRegions={!!imageRegions}
-                  hasImageAttachment={!!imageAttachment}
-                  copied={copied}
-                  isRewriting={isRewriting}
-                  speakingPanel={speakingPanel}
-                  speakLoading={speakLoading}
-                  onSpeak={handleSpeak}
-                  onDownloadEdited={handleDownloadEditedImage}
-                  onDownloadTranslated={handleDownloadTranslatedImage}
-                  onRewrite={handleRewrite}
-                  onCopy={handleCopy}
-                  labelChars={t.translate_chars}
-                  labelSpeak={t.translate_speak}
-                  labelSpeakStop={t.translate_speak_stop}
-                  labelDownload={t.image_translate_download}
-                  labelRewrite={t.translate_rewrite}
-                  labelRewriting={t.translate_rewriting}
-                  labelCopy={t.translate_copy}
-                  labelCopied={t.translate_copied}
+                  <span
+                    className="text-[12px] tabular-nums"
+                    style={{ color: 'var(--apple-label-tertiary)' }}
+                  >
+                    {charCount.toLocaleString()} {t.translate_chars}
+                  </span>
+                )
+              )}
+              {!autoTranslate && (
+                <TranslateButton
+                  isTranslating={isTranslating}
+                  disabled={!sourceText.trim() && !imageAttachment}
+                  onClick={handleTranslate}
+                  labelTranslate={t.translate_btn}
+                  labelLoading={t.translate_btn_loading}
                 />
-              </div>
+              )}
             </div>
+          </div>
+        </section>
 
+        {/* RESULT PANEL */}
+        <div
+          className="flex flex-col flex-1 min-w-0"
+          style={{ background: 'var(--apple-bg-secondary)' }}
+        >
+          {/* Result content area */}
+          <div
+            ref={translatedScrollRef}
+            className="flex-1 min-h-0 overflow-auto px-5 py-4 relative"
+          >
+            {isTranslating ? (
+              /* Loading state — Apple skeleton style */
+              <div className="flex flex-col gap-3 pt-2">
+                <div className="apple-skeleton h-4 w-3/4" />
+                <div className="apple-skeleton h-4 w-full" />
+                <div className="apple-skeleton h-4 w-5/6" />
+                <div className="apple-skeleton h-4 w-2/3 mt-1" />
+                <div className="apple-skeleton h-4 w-full" />
+                <div className="apple-skeleton h-4 w-4/5" />
+              </div>
+            ) : translateError ? (
+              <TranslateError
+                error={translateError}
+                isApiKeyError={isApiKeyError}
+                canRetry={!!(sourceText.trim() || imageAttachment)}
+                onRetry={handleTranslate}
+                onDismiss={handleDismissError}
+                onOpenSettings={() => openSettings()}
+                labelRetry={t.translate_error_retry}
+                labelOpenSettings={t.translate_error_open_settings}
+                labelDismiss={t.translate_error_dismiss}
+              />
+            ) : editedImageUrl ? (
+              <img
+                src={editedImageUrl}
+                alt={t.image_translate_title}
+                className="max-w-full rounded-xl fade-in"
+              />
+            ) : translatedText ? (
+              phoneticMode !== 'off' && phoneticText
+                ? phoneticMode === 'standard'
+                  ? <FuriganaText text={phoneticText} className="text-[17px] leading-[22px] text-[var(--apple-label-primary)] select-text fade-in" />
+                  : <MarkdownText text={phoneticText} className="text-[17px] leading-[22px] text-[var(--apple-label-primary)] select-text fade-in" />
+                : <MarkdownText text={translatedText} className="text-[17px] leading-[22px] text-[var(--apple-label-primary)] select-text fade-in" />
+            ) : (
+              /* Empty state */
+              <p className="text-[17px] leading-[22px] text-[var(--apple-label-tertiary)] select-none">
+                {t.translate_result_placeholder}
+              </p>
+            )}
+          </div>
+
+          {/* Result panel footer */}
+          <div
+            className="flex-shrink-0 flex items-center justify-between px-4 h-12"
+            style={{ borderTop: '1px solid var(--apple-separator)' }}
+          >
+            <ResultPanelActions
+              translatedText={translatedText}
+              targetLang={targetLang}
+              editedImageUrl={editedImageUrl}
+              hasImageRegions={!!imageRegions}
+              hasImageAttachment={!!imageAttachment}
+              copied={copied}
+              isRewriting={isRewriting}
+              speakingPanel={speakingPanel}
+              speakLoading={speakLoading}
+              onSpeak={handleSpeak}
+              onDownloadEdited={handleDownloadEditedImage}
+              onDownloadTranslated={handleDownloadTranslatedImage}
+              onRewrite={handleRewrite}
+              onCopy={handleCopy}
+              labelChars={t.translate_chars}
+              labelSpeak={t.translate_speak}
+              labelSpeakStop={t.translate_speak_stop}
+              labelDownload={t.image_translate_download}
+              labelRewrite={t.translate_rewrite}
+              labelRewriting={t.translate_rewriting}
+              labelCopy={t.translate_copy}
+              labelCopied={t.translate_copied}
+            />
           </div>
         </div>
       </div>
