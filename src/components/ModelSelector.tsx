@@ -1,181 +1,184 @@
-import { useEffect, useMemo } from 'react'
-import { PROVIDERS } from '../constants/providers'
-import { useAppStore, useT } from '../store/useAppStore'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useProviderModelRefresh } from '../hooks/useProviderModelRefresh'
+import { useAppStore } from '../store/useAppStore'
 import type { Provider } from '../types'
-import { dedupeModelsByFamily, formatModelName } from '../utils/modelDisplay'
-import { PROVIDER_COLORS, ProviderIcon } from './ProviderIcon'
-import { ChevronDownIcon, RefreshIcon, SpinnerIcon } from './ui/icons'
+import { formatModelName } from '../utils/modelDisplay'
+import { buildProviderModelOptions } from '../utils/modelSelection'
+import { IconCheck, IconChevronDown } from './icons/AppIcons'
+import ProviderIcon from './ProviderIcon'
 
-// Truncate model name if too long
-const truncateModelName = (name: string, maxLen = 22): string =>
-  name.length > maxLen ? `${name.slice(0, maxLen)}…` : name
-
-/** Tiny section label used above provider and model dropdowns */
-function SectionLabel({ children }: { children: string }) {
-  return (
-    <span className="ui-kicker whitespace-nowrap">
-      {children}
-    </span>
-  )
+const PROVIDER_LABELS: Record<Provider, string> = {
+  gemini: 'Gemini',
+  claude: 'Claude',
+  openai: 'OpenAI',
+  local:  'Local',
 }
 
-export function ModelSelector() {
-  const {
-    selectedProvider, selectedModels, keyStatus,
-    dynamicModels, modelsLoading, modelsError,
-    setSelectedProvider, setSelectedModel,
-    setDynamicModels, setModelsLoading, setModelsError,
-  } = useAppStore()
-  const t = useT()
+const ALL_PROVIDERS: Provider[] = ['gemini', 'claude', 'openai', 'local']
 
-  const currentDynamic = dynamicModels[selectedProvider]
-  const isLoading = modelsLoading[selectedProvider]
-  const error = modelsError[selectedProvider]
-  const currentProviderConfig = PROVIDERS.find((p) => p.id === selectedProvider)
-  const providerRequiresKey = currentProviderConfig?.requiresApiKey !== false
-  const hasKey = !providerRequiresKey || keyStatus[selectedProvider]
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function getModelDisplayName(
+  provider: Provider,
+  modelId: string,
+  models: Array<{ id: string; name: string }>,
+): string {
+  const fallbackName = models.find((model) => model.id === modelId)?.name
+  return formatModelName(provider, modelId, fallbackName)
+}
 
-  const fetchModels = async (provider: Provider, forceRecommended = false) => {
-    const requiresKey = PROVIDERS.find((p) => p.id === provider)?.requiresApiKey !== false
-    if ((requiresKey && !keyStatus[provider]) || !window.api) return
-    setModelsLoading(provider, true)
-    setModelsError(provider, null)
-    try {
-      const result = await window.api.fetchModels(provider)
-      if (result.success && result.models.length > 0) {
-        setDynamicModels(provider, result.models)
-        const ids = result.models.map((m) => m.id)
-        const currentSelection = selectedModels[provider]
-        const currentInList = Boolean(currentSelection) && ids.includes(currentSelection)
-        // Only override the user's saved model when:
-        //   1. caller explicitly asks for the recommended model (forceRecommended), OR
-        //   2. the user's selection is no longer valid (not in the freshly fetched list).
-        // Previously we also overrode when the local `dynamicModels` cache was
-        // empty — but that cache is NOT persisted, so it is empty on every app
-        // start / settings re-open / key reload, which silently wiped the user's
-        // chosen model back to "recommended" each time.
-        if (forceRecommended || !currentInList) {
-          const target = result.recommendedModel ?? result.models[0].id
-          setSelectedModel(provider, target)
-        }
-      } else {
-        setModelsError(provider, result.error || t.model_load_error)
-      }
-    } catch (err) {
-      setModelsError(provider, err instanceof Error ? err.message : t.settings_hotkey_status_error)
-    } finally {
-      setModelsLoading(provider, false)
-    }
-  }
+interface ModelSelectorProps {
+  className?: string
+}
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: selectedProvider and hasKey are the intended triggers; fetchModels is stable
+export default function ModelSelector({ className }: ModelSelectorProps) {
+  const selectedProvider  = useAppStore((s) => s.selectedProvider)
+  const selectedModels    = useAppStore((s) => s.selectedModels)
+  const setSelectedProvider = useAppStore((s) => s.setSelectedProvider)
+  const setSelectedModel  = useAppStore((s) => s.setSelectedModel)
+  const dynamicModels     = useAppStore((s) => s.dynamicModels)
+  const modelsLoading     = useAppStore((s) => s.modelsLoading)
+  const modelsError       = useAppStore((s) => s.modelsError)
+  const keyStatus         = useAppStore((s) => s.keyStatus)
+  const addRecentlyUsedModel = useAppStore((s) => s.addRecentlyUsedModel)
+
+  const [open, setOpen]               = useState(false)
+  const [activeTab, setActiveTab]     = useState<Provider>(selectedProvider)
+  const dropdownRef                   = useRef<HTMLDivElement>(null)
+  const triggerRef                    = useRef<HTMLButtonElement>(null)
+
+  useProviderModelRefresh(activeTab, {
+    enabled: open,
+    refreshKey: keyStatus[activeTab],
+  })
+
+  // Keep tab in sync when provider changes externally
+  useEffect(() => { setActiveTab(selectedProvider) }, [selectedProvider])
+
+  // Close on outside click
   useEffect(() => {
-    if (hasKey && currentDynamic.length === 0 && !isLoading) {
-      fetchModels(selectedProvider)
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (
+        dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
+        triggerRef.current && !triggerRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false)
+      }
     }
-  }, [selectedProvider, hasKey])
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
 
-  const staticModels = currentProviderConfig?.models ?? []
-  const rawModels = currentDynamic.length > 0 ? currentDynamic : staticModels
-  // Collapse date-stamped + `-latest` snapshots into one entry per family so
-  // the dropdown shows e.g. one "GPT-5 Mini" instead of five.  Local AI is
-  // exempt — see dedupeModelsByFamily.
-  const displayModels = useMemo(
-    () => dedupeModelsByFamily(selectedProvider, rawModels),
-    [selectedProvider, rawModels],
+  const currentModelId = selectedModels[selectedProvider] ?? ''
+  const currentProviderModels = buildProviderModelOptions(
+    selectedProvider,
+    dynamicModels[selectedProvider] ?? [],
   )
-  const selectedModel = selectedModels[selectedProvider] ?? displayModels[0]?.id ?? ''
+  const displayName = getModelDisplayName(selectedProvider, currentModelId, currentProviderModels)
+
+  // Models for the active tab — prefer dynamic, fall back to static
+  const tabModels = buildProviderModelOptions(activeTab, dynamicModels[activeTab] ?? [])
+
+  const isLoading = modelsLoading[activeTab]
+  const hasError  = modelsError[activeTab]
+
+  const handleSelectModel = useCallback((provider: Provider, modelId: string) => {
+    setSelectedProvider(provider)
+    setSelectedModel(provider, modelId)
+    addRecentlyUsedModel(provider, modelId)
+    setOpen(false)
+  }, [addRecentlyUsedModel, setSelectedProvider, setSelectedModel])
 
   return (
-    <div className="flex w-full min-w-0 items-end gap-3 overflow-hidden">
+    <div style={{ position: 'relative', display: 'inline-block' }} className={className}>
+      {/* Trigger button */}
+      <button
+        type="button"
+        ref={triggerRef}
+        className="btn btn-glass"
+        onClick={() => setOpen((v) => !v)}
+        style={{ gap: 6, paddingLeft: 8, paddingRight: 10 }}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <ProviderIcon provider={selectedProvider} size={18} />
+        <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 }}>
+          {displayName || PROVIDER_LABELS[selectedProvider]}
+        </span>
+        <IconChevronDown size={12} />
+      </button>
 
-      {/* ── Provider dropdown ── */}
-      <div className="flex flex-col items-start gap-1 flex-shrink-0">
-        <SectionLabel>{t.settings_hotkey_provider}</SectionLabel>
-        <div className="relative">
-          {/* Visible styled label */}
-          <div className={`btn-select w-36 pointer-events-none font-semibold ${PROVIDER_COLORS[selectedProvider].text}`}>
-            <ProviderIcon provider={selectedProvider} size={13} />
-            <span className="flex-1 truncate">{PROVIDERS.find(p => p.id === selectedProvider)?.name}</span>
-            {!hasKey && (
-              <span className="w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
-            )}
-            <ChevronDownIcon className="w-3 h-3 text-gray-400 flex-shrink-0" />
-          </div>
-          {/* Native select overlaid */}
-          <select
-            value={selectedProvider}
-            onChange={(e) => setSelectedProvider(e.target.value as Provider)}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-xs"
-          >
-            {PROVIDERS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}{p.requiresApiKey !== false && !keyStatus[p.id as Provider] ? ` (${t.model_no_key})` : ''}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Separator */}
-      <span className="text-gray-200 dark:text-gray-700 text-base font-thin select-none flex-shrink-0 pb-1">|</span>
-
-      {/* ── Model dropdown ── */}
-      <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
-        <SectionLabel>{t.settings_hotkey_model}</SectionLabel>
-        <div className="flex w-full min-w-0 items-center gap-1">
-          {isLoading ? (
-            <div className="flex items-center gap-1.5 px-2 py-1 text-xs text-gray-400 whitespace-nowrap">
-              <SpinnerIcon className="w-3.5 h-3.5 spinner flex-shrink-0" />
-              {t.model_loading}
-            </div>
-          ) : error && displayModels.length === 0 ? (
-            <div className="flex items-center gap-1.5">
-              <span className="ui-error-text text-xs">{t.model_load_error}</span>
+      {/* Dropdown */}
+      {open && (
+        <div
+          ref={dropdownRef}
+          className="glass-strong"
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
+            left: 0,
+            zIndex: 200,
+            borderRadius: 14,
+            minWidth: 260,
+            padding: '10px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            animation: 'slideUp 0.18s ease-out',
+          }}
+          role="listbox"
+          aria-label="Select provider and model"
+        >
+          {/* Provider tab bar */}
+          <div className="tab-bar">
+            {ALL_PROVIDERS.map((p) => (
               <button
                 type="button"
-                onClick={() => fetchModels(selectedProvider)}
-                className="btn-link text-xs"
+                key={p}
+                className={`tab-item${activeTab === p ? ' active' : ''}`}
+                onClick={() => setActiveTab(p)}
+                style={{ display: 'flex', alignItems: 'center', gap: 5, border: 'none' }}
               >
-                {t.model_refresh}
+                <ProviderIcon provider={p} size={14} />
+                <span>{PROVIDER_LABELS[p]}</span>
               </button>
-            </div>
-          ) : (
-            <div className="relative min-w-0 flex-1">
-              <select
-                value={selectedModel}
-                onChange={(e) => setSelectedModel(selectedProvider, e.target.value)}
-                className="select-field w-full min-w-[128px] pl-2.5 pr-7"
-              >
-                {displayModels.map((m) => (
-                  // Show only the short pretty name. Descriptors like "Fast"
-                  // / "Powerful" come from the provider list and just clutter
-                  // the dropdown — they have no UX value here.
-                  <option key={m.id} value={m.id}>
-                    {truncateModelName(formatModelName(selectedProvider, m.id, m.name))}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute right-2 inset-y-0 flex items-center">
-                <ChevronDownIcon className="w-3 h-3 text-gray-400" />
+            ))}
+          </div>
+
+          {/* Model list */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {isLoading && (
+              <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center' }}>
+                Loading models…
               </div>
-            </div>
-          )}
-
-          {/* Refresh button */}
-          {!isLoading && currentDynamic.length > 0 && hasKey && (
-            <button
-              type="button"
-              onClick={() => fetchModels(selectedProvider)}
-              title={t.model_refresh}
-              className="btn-icon btn-icon-sm flex-shrink-0 border-transparent bg-transparent text-gray-400 shadow-none dark:bg-transparent"
-            >
-              <RefreshIcon className="w-3.5 h-3.5" />
-            </button>
-          )}
+            )}
+            {!isLoading && hasError && (
+              <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--danger)' }}>
+                {hasError}
+              </div>
+            )}
+            {!isLoading && tabModels.map((model) => {
+              const isSelected = activeTab === selectedProvider && selectedModels[activeTab] === model.id
+              return (
+                <button
+                  type="button"
+                  key={model.id}
+                  role="option"
+                  aria-selected={isSelected}
+                  className={isSelected ? 'nav-item active' : 'nav-item'}
+                  onClick={() => handleSelectModel(activeTab, model.id)}
+                  style={{ border: 'none', width: '100%', textAlign: 'left', fontSize: 12 }}
+                >
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {getModelDisplayName(activeTab, model.id, tabModels)}
+                  </span>
+                  {isSelected && <IconCheck size={13} />}
+                </button>
+              )
+            })}
+          </div>
         </div>
-      </div>
-
+      )}
     </div>
   )
 }

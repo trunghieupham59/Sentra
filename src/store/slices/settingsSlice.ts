@@ -16,6 +16,8 @@ export interface SettingsSlice {
   locale: AppLocale
   /** When true, locale is automatically set from system language on startup */
   localeAuto: boolean
+  theme: 'system' | 'dark' | 'light'
+  setTheme: (theme: 'system' | 'dark' | 'light') => void
 
   // UI preferences
   autoTranslate: boolean
@@ -83,11 +85,16 @@ export interface SettingsSlice {
   setModelsError: (provider: Provider, error: string | null) => void
   setHasTavilyKey: (v: boolean) => void
   setHasBraveKey: (v: boolean) => void
+
+  /** Ordered list of recently used provider:modelId pairs (most recent first, max 5) */
+  recentlyUsedModels: string[]
+  addRecentlyUsedModel: (provider: Provider, modelId: string) => void
 }
 
 export const createSettingsSlice = (set: SliceSet): SettingsSlice => ({
   locale: 'en' as AppLocale,
   localeAuto: true,
+  theme: 'system' as const,
   autoTranslate: DEFAULT_SETTINGS.autoTranslate,
   autoTranslateDelay: DEFAULT_SETTINGS.autoTranslateDelay,
   phoneticMode: 'off' as PhoneticMode,
@@ -107,12 +114,14 @@ export const createSettingsSlice = (set: SliceSet): SettingsSlice => ({
   modelsError: Object.fromEntries(PROVIDERS.map((p): [string, string | null] => [p.id, null])) as Record<Provider, string | null>,
   hasTavilyKey: false,
   hasBraveKey: false,
+  recentlyUsedModels: [],
 
   // Locale — explicit user choice turns off auto-follow
   setLocale: (locale) => set({ locale, localeAuto: false }),
   // System detection — does NOT change localeAuto flag
   setLocaleFromSystem: (locale) => set({ locale }),
   setLocaleAuto: (v) => set({ localeAuto: v }),
+  setTheme: (theme) => set({ theme }),
 
   setAutoTranslate: (v) => set({ autoTranslate: v }),
   setAutoTranslateDelay: (ms) => set({ autoTranslateDelay: ms }),
@@ -137,4 +146,10 @@ export const createSettingsSlice = (set: SliceSet): SettingsSlice => ({
     set((state: SettingsSlice) => ({ modelsError: { ...state.modelsError, [provider]: error } })),
   setHasTavilyKey: (v) => set({ hasTavilyKey: v }),
   setHasBraveKey: (v) => set({ hasBraveKey: v }),
+  addRecentlyUsedModel: (provider, modelId) =>
+    set((state: SettingsSlice) => {
+      const entry = `${provider}:${modelId}`
+      const filtered = state.recentlyUsedModels.filter((m) => m !== entry)
+      return { recentlyUsedModels: [entry, ...filtered].slice(0, 5) }
+    }),
 })

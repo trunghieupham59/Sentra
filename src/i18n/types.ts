@@ -141,6 +141,77 @@ export interface Translations {
   // Settings page
   settings_title: string
   settings_subtitle: string
+  // Settings — section nav labels
+  settings_nav_general: string
+  settings_nav_translation: string
+  settings_nav_apikeys: string
+  settings_nav_tts: string
+  settings_nav_stt: string
+  settings_nav_chat: string
+  settings_nav_cost: string
+  settings_nav_about: string
+  // Settings — General section rows
+  settings_sidebar_collapsed: string
+  settings_sidebar_collapsed_desc: string
+  settings_app_language_auto_hint: string
+  settings_theme: string
+  settings_theme_system: string
+  settings_theme_dark: string
+  settings_theme_light: string
+  // Settings — Translation section
+  settings_translation_style_label: string
+  // Settings — TTS section
+  settings_tts_mode_free_label: string
+  settings_tts_mode_premium_label: string
+  settings_tts_voice_hint: string
+  // Settings — STT section
+  settings_stt_auto_note: string
+  settings_stt_whisper_note: string
+  settings_stt_gemini_note: string
+  settings_stt_groq_note: string
+  // Settings — Chat section
+  settings_chat_system_preview: string
+  settings_chat_no_prompt: string
+  // Settings — Cost section
+  settings_cost_display_currency: string
+  settings_cost_currency_hint: string
+  settings_cost_note: string
+  // Settings — About section
+  settings_about_version_label: string
+  settings_about_app_name: string
+  settings_about_github: string
+  settings_about_description: string
+  // Settings — API Keys
+  settings_keys_encrypted: string
+  // TranslatePage
+  translate_phonetic_no: string
+  translate_phonetic_ipa: string
+  // HistoryPage
+  history_translation_label: string
+  history_chat_untitled: string
+  history_summary_badge: string
+  history_no_transcript: string
+  history_confirm: string
+  history_cancel: string
+  history_clear_all: string
+  // DictionaryPage
+  dictionary_look_up_word: string
+  dictionary_no_lookups: string
+  dictionary_confirm_clear: string
+  dictionary_cancel: string
+  dictionary_clear_btn: string
+  // LivePage
+  live_transcript_header: string
+  live_start_recording_hint: string
+  live_translation_empty: string
+  live_no_key_warning: string
+  live_post_session: string
+  live_summarize_btn: string
+  live_analyze_btn: string
+  live_generating: string
+  live_system_audio_macos: string
+  live_audio_mic: string
+  live_audio_system: string
   settings_security_title: string
   settings_security_desc: string
   settings_security_macos: string

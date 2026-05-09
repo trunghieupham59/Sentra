@@ -1,1650 +1,830 @@
-@import "tailwindcss";
-@config "../tailwind.config.mjs";
+@import 'tailwindcss';
 
-@layer base {
-  :root {
-    /* ════════════════════════════════════════════════════
-     * APPLE DESIGN LANGUAGE TOKENS (Phase 3)
-     * Based on Apple HIG – macOS/iOS System Colors
-     * ════════════════════════════════════════════════════ */
+/* ─── Design Tokens ──────────────────────────────────────────────────── */
+:root {
+  /* Glass surfaces */
+  --glass-bg: rgba(255, 255, 255, 0.07);
+  --glass-bg-hover: rgba(255, 255, 255, 0.11);
+  --glass-bg-active: rgba(255, 255, 255, 0.16);
+  --glass-bg-strong: rgba(255, 255, 255, 0.13);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-border-strong: rgba(255, 255, 255, 0.22);
+  --glass-specular: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 
-    /* Accent */
-    --apple-accent:              #007AFF;
-    --apple-accent-hover:        #0066CC;
-    --apple-accent-pressed:      #0055AB;
+  /* Backdrop — keep radius modest; saturate() adds a full extra compositing pass */
+  --blur: blur(20px);
+  --blur-sm: blur(12px);
 
-    /* Backgrounds */
-    --apple-bg-primary:          #FFFFFF;
-    --apple-bg-secondary:        #F2F2F7;
-    --apple-bg-tertiary:         #FFFFFF;
-    --apple-bg-grouped:          #F2F2F7;
-    --apple-bg-elevated:         #FFFFFF;
+  /* Accent (Apple System Blue — dark mode) */
+  --accent: #0A84FF;
+  --accent-hover: #409CFF;
+  --accent-muted: rgba(10, 132, 255, 0.15);
+  --accent-muted-hover: rgba(10, 132, 255, 0.25);
+  --accent-shadow: 0 0 18px rgba(10, 132, 255, 0.35);
 
-    /* Vibrancy (frosted glass) */
-    --apple-vibrancy-bg:         rgba(246, 246, 246, 0.85);
-    --apple-vibrancy-sidebar:    rgba(242, 242, 247, 0.90);
+  /* Text */
+  --text-primary: rgba(255, 255, 255, 0.92);
+  --text-secondary: rgba(255, 255, 255, 0.55);
+  --text-tertiary: rgba(255, 255, 255, 0.32);
+  --text-accent: #0A84FF;
 
-    /* Labels / Text */
-    --apple-label-primary:       rgba(0, 0, 0, 1.0);
-    --apple-label-secondary:     rgba(60, 60, 67, 0.6);
-    --apple-label-tertiary:      rgba(60, 60, 67, 0.3);
-    --apple-label-quaternary:    rgba(60, 60, 67, 0.18);
+  /* Background */
+  --bg: #080811;
+  --bg-elevated: rgba(255, 255, 255, 0.04);
+  --surface-sidebar: rgba(8, 8, 17, 0.75);
+  --surface-modal: rgba(18, 18, 30, 0.95);
+  --surface-elevated: rgba(16, 16, 26, 0.99);
+  --surface-float: rgba(22, 22, 36, 0.97);
 
-    /* Separators */
-    --apple-separator:           rgba(60, 60, 67, 0.29);
-    --apple-separator-opaque:    #C6C6C8;
-
-    /* Fill Colors */
-    --apple-fill-primary:        rgba(120, 120, 128, 0.20);
-    --apple-fill-secondary:      rgba(120, 120, 128, 0.16);
-    --apple-fill-tertiary:       rgba(118, 118, 128, 0.12);
-    --apple-fill-quaternary:     rgba(116, 116, 128, 0.08);
-
-    /* System Colors – Light */
-    --apple-red:                 #FF3B30;
-    --apple-orange:              #FF9500;
-    --apple-yellow:              #FFCC00;
-    --apple-green:               #34C759;
-    --apple-teal:                #5AC8FA;
-    --apple-blue:                #007AFF;
-    --apple-indigo:              #5856D6;
-    --apple-purple:              #AF52DE;
-    --apple-pink:                #FF2D55;
-    --apple-brown:               #A2845E;
-    --apple-gray:                #8E8E93;
-
-    /* Shadows */
-    --apple-shadow-sm:           0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
-    --apple-shadow-md:           0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.10);
-    --apple-shadow-lg:           0 10px 30px rgba(0,0,0,0.20), 0 4px 10px rgba(0,0,0,0.12);
-    --apple-shadow-panel:        0 0 0 1px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.12);
-    --apple-shadow-focus:        0 0 0 3px rgba(0, 122, 255, 0.35);
-
-    /* Transitions */
-    --apple-transition-fast:     150ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    --apple-transition-normal:   250ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    --apple-transition-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
-
-    --vzn-app-bg: linear-gradient(135deg, #f8fbfe 0%, #eef7fc 100%);
-    --vzn-bg: #f3f8fc;
-    --vzn-surface: #ffffff;
-    --vzn-surface-raised: rgba(255, 255, 255, 0.94);
-    --vzn-surface-muted: #f8fbfd;
-    --vzn-surface-subtle: #eef7fc;
-    --vzn-surface-hover: #e5f1f8;
-    --vzn-text: #18202b;
-    --vzn-text-strong: #0f1720;
-    --vzn-text-muted: #5e6a78;
-    --vzn-text-soft: #8a96a5;
-    --vzn-text-disabled: #a7b0bb;
-    --vzn-text-inverse: #ffffff;
-    --vzn-border: rgba(0, 74, 122, 0.12);
-    --vzn-border-strong: rgba(0, 74, 122, 0.22);
-    --vzn-divider: rgba(0, 74, 122, 0.10);
-    --vzn-accent: #0068ac;
-    --vzn-accent-hover: #005a96;
-    --vzn-accent-active: #004a7c;
-    --vzn-accent-soft: #e8f5fc;
-    --vzn-accent-border: #b8dcf0;
-    --vzn-success: #15803d;
-    --vzn-success-soft: #e8f6ee;
-    --vzn-success-border: #b7dfc3;
-    --vzn-warning: #b45309;
-    --vzn-warning-soft: #fff4df;
-    --vzn-warning-border: #f1c982;
-    --vzn-danger: #be123c;
-    --vzn-danger-hover: #9f1239;
-    --vzn-danger-soft: #fff1f2;
-    --vzn-danger-border: #fecdd3;
-    --vzn-focus-ring: rgba(0, 104, 172, 0.24);
-    --vzn-shadow-sm: 0 1px 2px rgba(0, 40, 70, 0.05), 0 1px 1px rgba(0, 40, 70, 0.03);
-    --vzn-shadow-md: 0 10px 28px rgba(0, 40, 70, 0.08), 0 2px 8px rgba(0, 40, 70, 0.04);
-    --vzn-shadow-lg: 0 22px 56px rgba(0, 40, 70, 0.13), 0 4px 14px rgba(0, 40, 70, 0.06);
-    --vzn-skeleton: rgba(0, 40, 70, 0.06);
-  }
-
-  html.dark {
-    /* ════════════════════════════════════════════════════
-     * APPLE DESIGN LANGUAGE TOKENS – Dark Mode overrides
-     * ════════════════════════════════════════════════════ */
-
-    /* Accent */
-    --apple-accent:              #0A84FF;
-    --apple-accent-hover:        #409CFF;
-    --apple-accent-pressed:      #6BB2FF;
-
-    /* Backgrounds */
-    --apple-bg-primary:          #1C1C1E;
-    --apple-bg-secondary:        #2C2C2E;
-    --apple-bg-tertiary:         #3A3A3C;
-    --apple-bg-grouped:          #000000;
-    --apple-bg-elevated:         #2C2C2E;
-
-    /* Vibrancy (frosted glass) */
-    --apple-vibrancy-bg:         rgba(30, 30, 30, 0.85);
-    --apple-vibrancy-sidebar:    rgba(44, 44, 46, 0.90);
-
-    /* Labels / Text */
-    --apple-label-primary:       rgba(255, 255, 255, 1.0);
-    --apple-label-secondary:     rgba(235, 235, 245, 0.6);
-    --apple-label-tertiary:      rgba(235, 235, 245, 0.3);
-    --apple-label-quaternary:    rgba(235, 235, 245, 0.18);
-
-    /* Separators */
-    --apple-separator:           rgba(84, 84, 88, 0.65);
-    --apple-separator-opaque:    #38383A;
-
-    /* Fill Colors */
-    --apple-fill-primary:        rgba(120, 120, 128, 0.36);
-    --apple-fill-secondary:      rgba(120, 120, 128, 0.32);
-    --apple-fill-tertiary:       rgba(118, 118, 128, 0.24);
-    --apple-fill-quaternary:     rgba(116, 116, 128, 0.18);
-
-    /* System Colors – Dark */
-    --apple-red:                 #FF453A;
-    --apple-orange:              #FF9F0A;
-    --apple-yellow:              #FFD60A;
-    --apple-green:               #30D158;
-    --apple-teal:                #64D2FF;
-    --apple-blue:                #0A84FF;
-    --apple-indigo:              #5E5CE6;
-    --apple-purple:              #BF5AF2;
-    --apple-pink:                #FF375F;
-    --apple-brown:               #AC8E68;
-    --apple-gray:                #98989D;
-
-    /* Shadows (darker in dark mode) */
-    --apple-shadow-sm:           0 1px 3px rgba(0,0,0,0.30), 0 1px 2px rgba(0,0,0,0.20);
-    --apple-shadow-md:           0 4px 12px rgba(0,0,0,0.40), 0 2px 4px rgba(0,0,0,0.25);
-    --apple-shadow-lg:           0 10px 30px rgba(0,0,0,0.50), 0 4px 10px rgba(0,0,0,0.30);
-    --apple-shadow-panel:        0 0 0 1px rgba(255,255,255,0.06), 0 2px 8px rgba(0,0,0,0.40);
-    --apple-shadow-focus:        0 0 0 3px rgba(10, 132, 255, 0.45);
-
-    --vzn-app-bg: linear-gradient(135deg, #07131e 0%, #082332 100%);
-    --vzn-bg: #07131e;
-    --vzn-surface: #101a24;
-    --vzn-surface-raised: rgba(16, 26, 36, 0.94);
-    --vzn-surface-muted: #142330;
-    --vzn-surface-subtle: #182a38;
-    --vzn-surface-hover: #1d3343;
-    --vzn-text: #e8edf2;
-    --vzn-text-strong: #f8fafc;
-    --vzn-text-muted: #a4afbb;
-    --vzn-text-soft: #798491;
-    --vzn-text-disabled: #5f6975;
-    --vzn-text-inverse: #0f1720;
-    --vzn-border: rgba(125, 211, 252, 0.14);
-    --vzn-border-strong: rgba(125, 211, 252, 0.26);
-    --vzn-divider: rgba(125, 211, 252, 0.12);
-    --vzn-accent: #38bdf8;
-    --vzn-accent-hover: #7dd3fc;
-    --vzn-accent-active: #bae6fd;
-    --vzn-accent-soft: rgba(56, 189, 248, 0.14);
-    --vzn-accent-border: rgba(56, 189, 248, 0.38);
-    --vzn-success: #4ade80;
-    --vzn-success-soft: #153522;
-    --vzn-success-border: #22623b;
-    --vzn-warning: #fbbf24;
-    --vzn-warning-soft: #3a2a11;
-    --vzn-warning-border: #7c5418;
-    --vzn-danger: #fb7185;
-    --vzn-danger-hover: #fda4af;
-    --vzn-danger-soft: #3c1720;
-    --vzn-danger-border: #7f2434;
-    --vzn-focus-ring: rgba(56, 189, 248, 0.26);
-    --vzn-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.24);
-    --vzn-shadow-md: 0 14px 32px rgba(0, 0, 0, 0.32), 0 2px 8px rgba(0, 0, 0, 0.20);
-    --vzn-shadow-lg: 0 28px 68px rgba(0, 0, 0, 0.46), 0 6px 16px rgba(0, 0, 0, 0.24);
-    --vzn-skeleton: rgba(255, 255, 255, 0.06);
-  }
-
-  *, *::before, *::after {
-    box-sizing: border-box;
-  }
-
-  html, body, #root {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-  }
-
-  body {
-    /* System font stack — tự động dùng font native của từng OS */
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-                 Helvetica, Arial, sans-serif,
-                 "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-    font-size: 14px;   /* "Con số vàng" cho Desktop App (macOS ~13pt, Windows 14px, Linux 14-15px) */
-    line-height: 1.5;  /* Khoảng cách dòng chuẩn cho body text Desktop */
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    user-select: none;
-    background-color: var(--vzn-bg);
-    color: var(--vzn-text);
-  }
-
-  html.quick-chat-window,
-  html.quick-chat-window body,
-  html.quick-chat-window #root {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background: transparent;
-  }
-
-  textarea, input, [contenteditable] {
-    user-select: text;
-  }
-
-  /* macOS titlebar drag region */
-  .titlebar-drag {
-    -webkit-app-region: drag;
-  }
-
-  .titlebar-no-drag {
-    -webkit-app-region: no-drag;
-  }
+  /* Status */
+  --success: #30D158;
+  --warning: #FF9F0A;
+  --danger: #FF453A;
+  --info: #0A84FF;
 }
 
-@layer components {
-  /* ── Buttons ───────────────────────────────
-   * One neutral desktop language for app, modal, chat, and settings actions.
-   * Variants share shape, focus, disabled, and motion; only intent changes. */
-  .btn-primary,
-  .btn-secondary,
-  .btn-soft,
-  .btn-ghost,
-  .btn-danger,
-  .btn-link,
-  .toolbar-pill-button {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-lg
-           font-semibold leading-none transition-colors duration-150 select-none
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60
-           disabled:cursor-not-allowed disabled:opacity-45;
-  }
-
-  .btn-primary {
-    @apply h-9 min-h-9 border border-gray-950 bg-gray-950 px-3.5 py-0 text-sm text-white
-           shadow-sm shadow-gray-900/10 hover:border-gray-800 hover:bg-gray-800 active:bg-black
-           disabled:border-gray-300 disabled:bg-gray-300 disabled:text-white disabled:shadow-none
-           dark:border-gray-100 dark:bg-gray-100 dark:text-neutral-950
-           dark:hover:border-white dark:hover:bg-white
-           dark:disabled:border-neutral-700 dark:disabled:bg-neutral-700 dark:disabled:text-neutral-400;
-  }
-
-  .btn-secondary {
-    @apply h-9 min-h-9 border border-gray-200 bg-white px-3.5 py-0 text-sm text-gray-700
-           shadow-sm shadow-gray-900/5 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-950
-           dark:border-transparent dark:bg-neutral-900 dark:text-gray-200
-           dark:hover:border-transparent dark:hover:bg-neutral-800 dark:hover:text-gray-100;
-  }
-
-  .btn-soft {
-    @apply h-9 min-h-9 border border-gray-200 bg-gray-50 px-3.5 py-0 text-sm text-gray-700
-           hover:border-gray-300 hover:bg-gray-100 hover:text-gray-950
-           dark:border-transparent dark:bg-neutral-800 dark:text-gray-200
-           dark:hover:border-transparent dark:hover:bg-neutral-700 dark:hover:text-gray-100;
-  }
-
-  .btn-ghost {
-    @apply h-9 min-h-9 border border-transparent bg-transparent px-3.5 py-0 text-sm text-gray-500
-           hover:bg-gray-100 hover:text-gray-800 active:bg-gray-200
-           dark:text-gray-400 dark:hover:bg-neutral-800 dark:hover:text-gray-100;
-  }
-
-  .btn-danger {
-    @apply h-9 min-h-9 border border-red-200 bg-red-50 px-3.5 py-0 text-sm text-red-600
-           hover:border-red-300 hover:bg-red-100 hover:text-red-700
-           dark:border-transparent dark:bg-red-950/30 dark:text-red-300
-           dark:hover:border-transparent dark:hover:bg-red-950/50 dark:hover:text-red-200;
-  }
-
-  .btn-icon-danger {
-    @apply border-transparent bg-transparent text-gray-400 shadow-none
-           hover:border-red-200 hover:bg-red-50 hover:text-red-500
-           dark:bg-transparent dark:text-gray-500
-           dark:hover:bg-red-950/40 dark:hover:text-red-300;
-  }
-
-  .btn-link {
-    @apply rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm text-gray-600
-           underline-offset-2 hover:text-gray-950 hover:underline
-           dark:text-gray-300 dark:hover:text-gray-100;
-  }
-
-  .btn-language-tab {
-    @apply inline-flex h-9 min-h-9 items-center justify-center gap-1.5 rounded-lg border border-transparent
-           bg-transparent px-3.5 py-0 text-sm font-medium text-gray-500 transition-colors duration-150 select-none
-           hover:bg-gray-100 hover:text-gray-800
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60
-           disabled:cursor-not-allowed disabled:opacity-45
-           dark:text-gray-400 dark:hover:bg-neutral-800 dark:hover:text-gray-100;
-  }
-
-  .btn-sm {
-    @apply h-9 min-h-9 px-3.5 py-0 text-sm;
-  }
-
-  .btn-xs {
-    @apply min-h-8 px-2.5 py-1 text-xs;
-  }
-
-  .btn-icon,
-  .toolbar-icon-button {
-    @apply inline-flex h-9 w-9 items-center justify-center rounded-lg border
-           border-gray-200 bg-white text-gray-500 shadow-sm shadow-gray-900/5
-           transition-colors duration-150 select-none
-           hover:border-gray-300 hover:bg-gray-100 hover:text-gray-950
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60
-           disabled:cursor-not-allowed disabled:border-transparent disabled:bg-gray-50 disabled:text-gray-300 disabled:shadow-none
-           dark:border-transparent dark:bg-neutral-900 dark:text-gray-400
-           dark:hover:border-transparent dark:hover:bg-neutral-800 dark:hover:text-gray-100
-           dark:disabled:border-transparent dark:disabled:bg-neutral-900 dark:disabled:text-neutral-700;
-  }
-
-  .btn-icon-sm {
-    @apply h-7 w-7;
-  }
-
-  .btn-icon-xs {
-    @apply h-6 w-6;
-  }
-
-  .btn-icon-lg {
-    @apply h-9 w-9;
-  }
-
-  .btn-icon-xl {
-    @apply h-10 w-10;
-  }
-
-  .btn-icon-2xl {
-    @apply h-12 w-12;
-  }
-
-  .btn-active,
-  .btn-icon-active,
-  .toolbar-icon-button-active {
-    @apply border-gray-400 bg-gray-100 text-gray-950
-           dark:border-transparent dark:bg-neutral-800 dark:text-gray-100;
-  }
-
-  .toolbar-pill-button {
-    @apply h-9 min-h-9 border border-gray-200 bg-white px-3.5 py-0 text-sm text-gray-600
-           shadow-sm shadow-gray-900/5 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-950
-           dark:border-transparent dark:bg-neutral-900 dark:text-gray-400
-           dark:hover:border-transparent dark:hover:bg-neutral-800 dark:hover:text-gray-100;
-  }
-
-  .toolbar-pill-danger {
-    @apply hover:!border-red-200 hover:!bg-red-50 hover:!text-red-600
-           dark:hover:!bg-red-950/50 dark:hover:!text-red-400;
-  }
-
-  .btn-segment {
-    @apply inline-flex h-9 min-h-9 min-w-0 items-center justify-center gap-2 rounded-md px-3.5 py-0
-           text-sm font-medium text-gray-500 transition-colors duration-150
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60
-           disabled:cursor-not-allowed disabled:opacity-45
-           hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200;
-  }
-
-  .btn-segment-active {
-    @apply bg-white text-gray-950 shadow-sm shadow-gray-900/5
-           dark:bg-neutral-800 dark:text-gray-100;
-  }
-
-  .btn-segment-lg {
-    @apply min-h-9;
-  }
-
-  .btn-stack-option {
-    @apply flex-col items-start px-2.5 py-1.5 text-left;
-  }
-
-  .btn-choice-card {
-    @apply h-auto flex-col items-start justify-start px-3 py-2.5 text-left;
-  }
-
-  .btn-swatch {
-    @apply h-6 w-6 rounded-lg border-2 border-gray-200 shadow-sm shadow-gray-900/5
-           transition-transform duration-150 hover:scale-105
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60
-           dark:border-neutral-700;
-  }
-
-  .btn-swatch-active {
-    @apply border-gray-600 ring-2 ring-gray-300
-           dark:border-gray-300 dark:ring-neutral-600;
-  }
-
-  .btn-menu-item {
-    @apply inline-flex min-h-9 w-full items-center gap-1.5 rounded-none border border-transparent
-           bg-transparent px-3 py-2 text-sm font-semibold text-gray-600 transition-colors duration-150 select-none
-           hover:bg-gray-100 hover:text-gray-800 active:bg-gray-200
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60
-           disabled:cursor-not-allowed disabled:opacity-45
-           dark:text-gray-300 dark:hover:bg-neutral-800 dark:hover:text-gray-100;
-  }
-
-  .btn-row-action {
-    @apply inline-flex min-h-0 w-full min-w-0 flex-1 flex-col items-start justify-start gap-2 rounded-none border border-transparent
-           bg-transparent p-0 text-left text-sm font-normal text-inherit transition-colors duration-150
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60;
-  }
-
-  .btn-nav-item {
-    @apply min-h-10 w-full justify-start gap-3 px-3 py-2 text-left text-sm leading-snug shadow-none;
-  }
-
-  .btn-nav-item-collapsed {
-    @apply justify-center px-0;
-  }
-
-  /* ── Select ──────────────────────────────── */
-  .btn-select {
-    @apply inline-flex h-9 min-h-9 items-center justify-between gap-1.5 rounded-lg border
-           border-gray-200 bg-white px-3.5 text-sm font-semibold text-gray-700
-           shadow-sm shadow-gray-900/5 transition-colors duration-150 select-none
-           dark:border-transparent dark:bg-gray-800 dark:text-gray-200;
-  }
-
-  .btn-select-active {
-    @apply border-gray-300 bg-gray-100 text-gray-900
-           dark:border-transparent dark:bg-neutral-800 dark:text-gray-100;
-  }
-
-  .select-field {
-    @apply block h-9 min-h-9 w-full px-3.5 py-0 bg-white border border-gray-200 rounded-lg
-           text-sm font-semibold text-gray-700 appearance-none cursor-pointer
-           focus:outline-none focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500
-           transition-colors duration-100
-           dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200
-           dark:focus:border-gray-400;
-  }
-
-  /* ── Cards ───────────────────────────────── */
-  .card {
-    @apply bg-white border border-gray-200 rounded-lg shadow-sm shadow-gray-900/5
-           dark:bg-neutral-900 dark:border-neutral-800 dark:shadow-black/20;
-  }
-
-  /* ── App surfaces ────────────────────────── */
-  .app-shell {
-    @apply flex flex-col h-screen overflow-hidden bg-gray-100 text-gray-950
-           dark:bg-neutral-950 dark:text-gray-50;
-  }
-
-  .app-page {
-    @apply flex flex-col h-full bg-transparent;
-  }
-
-  .app-workspace {
-    @apply px-5 pt-4 pb-4 flex flex-col gap-3 flex-1 min-h-0 min-w-0;
-  }
-
-  .app-topbar {
-    @apply relative z-30 flex items-center flex-shrink-0 min-h-11 overflow-visible rounded-lg border-0 bg-white/80 px-3 py-2
-           shadow-none
-           dark:bg-neutral-900/80 dark:shadow-none;
-  }
-
-  .app-panel-grid {
-    @apply relative z-0 grid grid-cols-1 grid-rows-2 lg:grid-cols-2 lg:grid-rows-1 gap-4 flex-1 min-h-0;
-  }
-
-  .surface-panel {
-    @apply flex flex-col rounded-lg border border-gray-200/90 bg-white/95 shadow-sm shadow-gray-900/5 overflow-hidden
-           dark:border-neutral-800 dark:bg-neutral-900/95 dark:shadow-black/25;
-  }
-
-  .surface-panel-focus {
-    @apply focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-500/15
-           dark:focus-within:border-gray-500 dark:focus-within:ring-gray-400/15;
-  }
-
-  .surface-panel-drop {
-    @apply border-gray-400 bg-gray-50/95 ring-2 ring-inset ring-gray-300
-           dark:border-gray-500 dark:bg-neutral-900/70 dark:ring-gray-600;
-  }
-
-  .surface-footer {
-    @apply flex-shrink-0 flex items-center justify-between px-4 h-12
-           border-t border-gray-200/90 bg-gray-50/80
-           dark:border-neutral-800 dark:bg-neutral-950/55;
-  }
-
-  .floating-panel {
-    @apply rounded-lg border border-gray-200 bg-white shadow-xl shadow-gray-900/10
-           dark:border-neutral-700 dark:bg-neutral-900 dark:shadow-black/40;
-  }
-
-  .modal-surface {
-    @apply rounded-lg border border-gray-200 bg-white shadow-2xl shadow-gray-950/15
-           dark:border-neutral-800 dark:bg-neutral-950 dark:shadow-black/60;
-  }
-
-  .popover-title {
-    @apply text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest;
-  }
-
-  /* ── Typography tokens ───────────────────── */
-  .ui-micro {
-    @apply text-[10px] text-gray-400 dark:text-gray-600;
-  }
-
-  .ui-meta {
-    @apply text-[11px] text-gray-500 dark:text-gray-400;
-  }
-
-  .ui-caption {
-    @apply text-xs text-gray-500 dark:text-gray-400;
-  }
-
-  .ui-kicker {
-    @apply text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500;
-  }
-
-  .ui-reader-text {
-    @apply text-[15px] leading-relaxed text-gray-700 dark:text-gray-200;
-  }
-
-  .ui-reader-muted {
-    @apply text-[15px] leading-relaxed text-gray-300 dark:text-gray-700;
-  }
-
-  .ui-badge {
-    @apply inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2 py-0.5
-           text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300;
-  }
-
-  .ui-badge-danger {
-    @apply bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300;
-  }
-
-  .ui-badge-muted {
-    @apply bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400;
-  }
-
-  .ui-badge-xs {
-    @apply inline-flex items-center rounded-full bg-gray-100 px-1.5 py-0.5
-           text-[10px] font-semibold leading-none text-gray-700 dark:bg-gray-950 dark:text-gray-300;
-  }
-
-  .ui-token-badge {
-    @apply inline-flex items-center rounded-md bg-gray-50 px-1.5 py-0.5
-           text-[10px] font-semibold uppercase tracking-wide text-gray-700
-           dark:bg-gray-950/45 dark:text-gray-300;
-  }
-
-  .ui-index-dot {
-    @apply mt-1 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-gray-50
-           text-[10px] font-semibold tabular-nums text-gray-600
-           dark:bg-gray-950/40 dark:text-gray-300;
-  }
-
-  .ui-status-dot {
-    @apply h-1.5 w-1.5 flex-shrink-0 rounded-full bg-gray-400;
-  }
-
-  .ui-status-dot-danger {
-    @apply bg-red-500;
-  }
-
-  .ui-status-ping-danger {
-    @apply bg-red-400;
-  }
-
-  .ui-error-text {
-    @apply text-red-600 dark:text-red-400;
-  }
-
-  .ui-error-icon {
-    @apply text-red-500 dark:text-red-400;
-  }
-
-  .ui-error-box {
-    @apply rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700
-           dark:border-red-900/70 dark:bg-red-950/35 dark:text-red-300;
-  }
-
-  .ui-error-banner {
-    @apply rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600
-           dark:border-red-900 dark:bg-red-950/30 dark:text-red-400;
-  }
-
-  .ui-error-divider-top {
-    @apply border-t border-red-100 dark:border-red-900/30;
-  }
-
-  .ui-alert-toast {
-    @apply rounded-lg bg-red-600 px-4 py-3 text-white shadow-lg shadow-red-900/20
-           dark:bg-red-700;
-  }
-
-  .thinking-state-pill-error {
-    @apply border-red-200/80 bg-red-50 text-red-700 shadow-red-900/[0.04]
-           dark:border-red-900/70 dark:bg-red-950/35 dark:text-red-300;
-  }
-
-  .voice-recording-panel {
-    @apply rounded-lg border border-red-100 bg-red-50
-           dark:border-red-900/50 dark:bg-red-950/20;
-  }
-
-  .voice-recording-text {
-    @apply text-red-500 dark:text-red-400;
-  }
-
-  .voice-recording-bar {
-    @apply w-1 rounded-full bg-red-400 animate-bounce dark:bg-red-500;
-  }
-
-  .voice-recording-core {
-    @apply bg-red-500 dark:bg-red-600;
-  }
-
-  .voice-ripple-soft {
-    @apply bg-red-100 dark:bg-red-900/20;
-  }
-
-  .voice-ripple-medium {
-    @apply bg-red-200 dark:bg-red-900/30;
-  }
-
-  .voice-ripple-strong {
-    @apply bg-red-300 dark:bg-red-900/50;
-  }
-
-  .keyboard-key {
-    @apply inline-flex h-5 min-w-[20px] items-center justify-center rounded-md border
-           border-gray-200 bg-white px-1 text-[11px] font-medium text-gray-500
-           shadow-sm shadow-gray-900/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:text-gray-400;
-  }
-
-  /* ── Text areas ──────────────────────────── */
-  .textarea-field {
-    @apply w-full h-full resize-none bg-transparent
-           text-gray-800 dark:text-gray-100
-           text-[15px] leading-relaxed
-           placeholder-gray-300 dark:placeholder-gray-600
-           focus:outline-none select-text;
-  }
-
-  .chat-input-field {
-    @apply w-full resize-none bg-transparent px-2 py-1.5 text-sm leading-relaxed
-           text-gray-900 placeholder:text-gray-400 focus:outline-none disabled:opacity-60
-           dark:text-gray-100 dark:placeholder:text-gray-600;
-  }
-
-  .quick-chat-input-field {
-    @apply min-h-9 w-full resize-none rounded-lg bg-transparent px-2 py-2 pr-9
-           text-lg font-medium leading-snug text-gray-900 placeholder:text-gray-400
-           outline-none disabled:opacity-60;
-  }
-
-  /* ── Section label ───────────────────────── */
-  .section-label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--apple-label-secondary);
-    padding-left: 4px;
-  }
-
-  /* ── Form controls ───────────────────────── */
-  .field-input,
-  .field-textarea {
-    @apply w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm
-           text-gray-800 placeholder:text-gray-400 shadow-sm shadow-gray-900/5
-           transition-colors select-text
-           focus:outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-500/20
-           disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400 disabled:opacity-70
-           dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500
-           dark:focus:border-gray-400 dark:focus:ring-gray-400/15
-           dark:disabled:bg-neutral-900 dark:disabled:text-gray-600;
-  }
-
-  .field-input-sm,
-  .field-textarea-sm {
-    @apply px-2.5 py-1.5 text-xs;
-  }
-
-  .field-textarea {
-    @apply resize-none leading-relaxed;
-  }
-
-  .field-input-mono {
-    @apply font-mono;
-  }
-
-  .field-input-muted {
-    @apply bg-gray-50 text-gray-400 cursor-pointer pr-9
-           dark:bg-gray-700/50 dark:text-gray-500;
-  }
-
-  .field-input-success {
-    @apply border-gray-400 dark:border-gray-500;
-  }
-
-  .field-input-error {
-    @apply border-red-400 focus:border-red-500 focus:ring-red-500/20
-           dark:border-red-600 dark:focus:border-red-500 dark:focus:ring-red-500/15;
-  }
-
-  .inline-pill-input {
-    @apply rounded-full border border-gray-300 bg-white px-1.5 py-0.5 text-xs
-           text-gray-700 transition-colors select-text
-           focus:outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-500/15
-           dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:focus:border-gray-500;
-  }
-
-  .search-field {
-    @apply w-full h-9 rounded-lg border border-gray-200 bg-white pl-9 pr-9 text-sm text-gray-800
-           shadow-sm shadow-gray-900/5 placeholder:text-gray-400
-           focus:outline-none focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500
-           transition-colors select-text
-           dark:border-neutral-800 dark:bg-neutral-900 dark:text-gray-100 dark:placeholder:text-gray-600;
-  }
-
-  .segmented-control {
-    @apply flex items-center gap-1 rounded-lg border border-transparent bg-gray-50/80 p-1 shadow-none
-           dark:border-transparent dark:bg-neutral-900/70;
-  }
-
-  .settings-shell {
-    @apply h-full min-h-0 bg-transparent md:grid md:grid-cols-[240px_minmax(0,1fr)];
-  }
-
-  .settings-scroll-viewport {
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-    will-change: scroll-position;
-  }
+/* ─── Light Mode ─────────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-bg-hover: rgba(0, 0, 0, 0.04);
+  --glass-bg-active: rgba(0, 0, 0, 0.08);
+  --glass-bg-strong: rgba(255, 255, 255, 0.88);
+  --glass-border: rgba(0, 0, 0, 0.09);
+  --glass-border-strong: rgba(0, 0, 0, 0.18);
+  --glass-specular: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --accent: #007AFF;
+  --accent-hover: #0060D0;
+  --accent-muted: rgba(0, 122, 255, 0.1);
+  --accent-muted-hover: rgba(0, 122, 255, 0.18);
+  --accent-shadow: 0 0 12px rgba(0, 122, 255, 0.2);
+  --text-primary: rgba(0, 0, 0, 0.88);
+  --text-secondary: rgba(0, 0, 0, 0.56);
+  --text-tertiary: rgba(0, 0, 0, 0.38);
+  --text-accent: #007AFF;
+  --bg: #F2F2F7;
+  --bg-elevated: rgba(0, 0, 0, 0.03);
+  --success: #34C759;
+  --warning: #FF9500;
+  --danger: #FF3B30;
+  --info: #007AFF;
+  --surface-sidebar: rgba(235, 235, 242, 0.95);
+  --surface-modal: rgba(255, 255, 255, 0.97);
+  --surface-elevated: rgba(255, 255, 255, 0.99);
+  --surface-float: rgba(255, 255, 255, 0.97);
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.18); }
+[data-theme="light"] .app-root::before,
+[data-theme="light"] .app-root::after { opacity: 0.04; }
+[data-theme="light"] .modal-backdrop { background: rgba(0, 0, 0, 0.35); }
+
+/* ─── Reset & Base ───────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 14px; /* default — JS overrides via document.documentElement.style.fontSize */
+}
+html, body, #root {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Scrollbar — completely hidden, scroll still works ── */
-* { scrollbar-width: none; }          /* Firefox */
-::-webkit-scrollbar { display: none; } /* Chrome / Safari / Electron */
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
 
-/* ── Spinner ────────────────────────────────── */
-@keyframes spin { to { transform: rotate(360deg); } }
-.spinner { animation: spin 0.75s linear infinite; }
+/* Selection */
+::selection { background: rgba(10,132,255,0.35); color: #fff; }
 
-/* ── Fade in ────────────────────────────────── */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.fade-in { animation: fadeIn 0.15s ease-out; }
-
-/* ── Fade + slide in (for popups / modals) ───── */
-@keyframes fadeSlideIn {
-  from { opacity: 0; transform: translateY(-8px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+/* ─── Glass Utility ──────────────────────────────────────────────────── */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), var(--glass-specular);
+  will-change: transform;
 }
 
-/* ── Thinking dot bounce — three dots staggered up/down ─────────────── */
-@keyframes thinkingDot {
-  0%, 80%, 100% { transform: translateY(0); opacity: 0.45; }
-  40%           { transform: translateY(-3px); opacity: 1; }
+.glass-sm {
+  background: var(--glass-bg);
+  backdrop-filter: var(--blur-sm);
+  -webkit-backdrop-filter: var(--blur-sm);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15);
+  will-change: transform;
+}
+
+.glass-strong {
+  background: var(--glass-bg-strong);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border-strong);
+  box-shadow: var(--glass-shadow), var(--glass-specular);
+  will-change: transform;
+}
+
+.glass-hover:hover {
+  background: var(--glass-bg-hover);
+}
+
+.glass-active:active, .glass-active.active {
+  background: var(--glass-bg-active);
+}
+
+/* ─── App Shell ──────────────────────────────────────────────────────── */
+.app-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+  background: var(--bg);
+}
+
+/* ─── App Header (full-width titlebar row) ───────────────────────── */
+.app-header {
+  display: flex;
+  flex-shrink: 0;
+  height: 40px;
+  -webkit-app-region: drag;
+  position: relative;
+  z-index: 11;
+}
+.app-header * { -webkit-app-region: no-drag; }
+
+/* Sidebar-coloured portion — just the traffic-light zone, no interactive content */
+.app-header-sidebar {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: var(--surface-sidebar);
+  border-right: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+/* Content-area portion — fully draggable */
+.app-header-content {
+  flex: 1;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+/* Body row: sidebar nav + content area */
+.app-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Ambient background orbs */
+.app-root::before,
+.app-root::after {
+  content: '';
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(48px);
+  opacity: 0.06;
+}
+.app-root::before {
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, #0A84FF 0%, transparent 70%);
+  top: -200px; left: -150px;
+}
+.app-root::after {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, #5E5CE6 0%, transparent 70%);
+  bottom: -150px; right: -100px;
+}
+
+/* macOS drag region */
+.titlebar-drag {
+  -webkit-app-region: drag;
+  height: 40px;
+  flex-shrink: 0;
+}
+.titlebar-drag * { -webkit-app-region: no-drag; }
+
+/* ─── Sidebar ────────────────────────────────────────────────────────── */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border-right: 1px solid var(--glass-border);
+  background: var(--surface-sidebar);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  position: relative;
+  z-index: 10;
+}
+
+.sidebar-expanded { width: 240px; }
+.sidebar-collapsed { width: 64px; }
+
+/* ─── Sidebar header (logo + name + toggle) ─────────────────────────── */
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 12px;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+}
+.sidebar-brand {
+  font-size: 1.214rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.sidebar-separator {
+  height: 1px;
+  background: var(--glass-border);
+  margin: 0 16px 8px;
+  flex-shrink: 0;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+  position: relative;
+  white-space: nowrap;
+  overflow: hidden;
+  -webkit-app-region: no-drag;
+}
+.nav-item:hover { background: var(--glass-bg-hover); color: var(--text-primary); }
+.nav-item.active {
+  background: var(--accent-muted);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ─── Content Area ───────────────────────────────────────────────────── */
+.content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+.page-container {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+}
+
+/* ─── Glass Panels (two-column) ──────────────────────────────────────── */
+.panel-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ─── Buttons ────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 0.929rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 0 0 var(--accent);
+}
+.btn-primary:hover {
+  background: var(--accent-hover);
+  box-shadow: var(--accent-shadow);
+}
+.btn-primary:active { transform: scale(0.97); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.btn-ghost:hover { background: var(--glass-bg-hover); color: var(--text-primary); }
+.btn-ghost:active { background: var(--glass-bg-active); }
+.btn-ghost:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.btn-glass {
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+}
+.btn-glass:hover { background: var(--glass-bg-hover); border-color: var(--glass-border-strong); }
+.btn-glass:active { background: var(--glass-bg-active); transform: scale(0.97); }
+.btn-glass:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-danger {
+  background: rgba(255,69,58,0.15);
+  color: var(--danger);
+  border: 1px solid rgba(255,69,58,0.2);
+}
+.btn-danger:hover { background: rgba(255,69,58,0.25); }
+.btn-danger:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-icon {
+  padding: 7px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.btn-icon:hover { background: var(--glass-bg-hover); color: var(--text-primary); }
+.btn-icon:active { background: var(--glass-bg-active); transform: scale(0.9); }
+.btn-icon:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ─── Inputs ─────────────────────────────────────────────────────────── */
+.field-input, .field-textarea, .field-select {
+  width: 100%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 9px 12px;
+  color: var(--text-primary);
+  font-size: 0.929rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.field-input:focus, .field-textarea:focus, .field-select:focus {
+  border-color: rgba(10,132,255,0.5);
+  box-shadow: 0 0 0 3px rgba(10,132,255,0.12);
+}
+.field-input::placeholder, .field-textarea::placeholder { color: var(--text-tertiary); }
+.field-textarea { resize: none; }
+.field-select { cursor: pointer; appearance: none; }
+
+.search-input {
+  width: 100%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 8px 14px 8px 36px;
+  color: var(--text-primary);
+  font-size: 0.929rem;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.15s;
+}
+.search-input:focus {
+  border-color: rgba(10,132,255,0.4);
+  box-shadow: 0 0 0 3px rgba(10,132,255,0.1);
+  background: rgba(255,255,255,0.09);
+}
+
+/* ─── Toggle ─────────────────────────────────────────────────────────── */
+.toggle-track {
+  width: 36px; height: 20px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.toggle-track.on { background: var(--accent); }
+.toggle-thumb {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 16px; height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.toggle-track.on .toggle-thumb { transform: translateX(16px); }
+
+/* ─── Tabs ────────────────────────────────────────────────────────────── */
+.tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 10px;
+  padding: 3px;
+}
+.tab-item {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.857rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tab-item.active {
+  background: var(--glass-bg-strong);
+  color: var(--text-primary);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.12);
+}
+.tab-item:not(.active):hover { color: var(--text-primary); }
+
+/* ─── Badges ─────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 0.786rem;
+  font-weight: 600;
+  line-height: 1;
+}
+.badge-accent { background: var(--accent); color: #fff; }
+.badge-glass { background: var(--glass-bg-strong); color: var(--text-secondary); border: 1px solid var(--glass-border); }
+.badge-success { background: rgba(48,209,88,0.15); color: var(--success); }
+.badge-danger { background: rgba(255,69,58,0.15); color: var(--danger); }
+.badge-warning { background: rgba(255,159,10,0.15); color: var(--warning); }
+
+/* ─── Card ───────────────────────────────────────────────────────────── */
+.card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.card:hover { background: var(--glass-bg-hover); border-color: var(--glass-border-strong); }
+
+/* ─── Modal ──────────────────────────────────────────────────────────── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  /* No backdrop-filter here — full-screen blur during animation is the
+     single biggest GPU bottleneck. The dark overlay is enough. */
+  background: rgba(0,0,0,0.55);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.15s ease-out;
+}
+.modal-panel {
+  /* backdrop-filter removed: panel is rgba(18,18,30,0.95) — 95% opaque,
+     blur was invisible and caused a compositing pass on every animation frame. */
+  background: var(--surface-modal);
+  border: 1px solid var(--glass-border-strong);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.7), var(--glass-specular);
+  border-radius: 20px;
+  animation: slideUp 0.18s ease-out;
+}
+
+/* ─── Chat ───────────────────────────────────────────────────────────── */
+.message-bubble-user {
+  background: var(--accent);
+  color: #fff;
+  border-radius: 18px 18px 4px 18px;
+  padding: 10px 14px;
+  font-size: 0.964rem;
+  max-width: 72%;
+  align-self: flex-end;
+  box-shadow: 0 2px 12px rgba(10,132,255,0.3);
+}
+.message-bubble-assistant {
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: 18px 18px 18px 4px;
+  padding: 10px 14px;
+  font-size: 0.964rem;
+  max-width: 88%;
+  align-self: flex-start;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+}
+
+.chat-composer {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px 8px 8px 14px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.chat-composer:focus-within {
+  border-color: rgba(10,132,255,0.4);
+  box-shadow: 0 0 0 3px rgba(10,132,255,0.08);
+}
+.chat-composer-textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 0.964rem;
+  font-family: inherit;
+  resize: none;
+  max-height: 180px;
+  line-height: 1.5;
+}
+.chat-composer-textarea::placeholder { color: var(--text-tertiary); }
+
+/* ─── Thinking pill ──────────────────────────────────────────────────── */
+.thinking-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(90,86,255,0.12);
+  border: 1px solid rgba(90,86,255,0.25);
+  color: rgba(120,118,255,0.9);
+  font-size: 0.857rem;
+  font-weight: 500;
 }
 .thinking-dot {
-  animation: thinkingDot 1.2s ease-in-out infinite both;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: dotBounce 1.4s ease-in-out infinite;
+}
+.thinking-dot:nth-child(2) { animation-delay: 0.2s; }
+.thinking-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* ─── Research pill ──────────────────────────────────────────────────── */
+.research-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(48,209,88,0.1);
+  border: 1px solid rgba(48,209,88,0.2);
+  color: var(--success);
+  font-size: 0.821rem;
+  font-weight: 500;
 }
 
-/* ── Shimmer sweep — used on Smart Thinking pill ────────────────────── */
-@keyframes thinkingShimmer {
-  0%   { background-position: -200% 0; }
+/* ─── Skeleton ───────────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, var(--glass-bg) 25%, rgba(255,255,255,0.12) 50%, var(--glass-bg) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite;
+  border-radius: 6px;
+}
+
+/* ─── Divider ────────────────────────────────────────────────────────── */
+.divider { height: 1px; background: var(--glass-border); }
+
+/* ─── Empty State ─────────────────────────────────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text-tertiary);
+  text-align: center;
+  padding: 32px;
+}
+
+/* ─── Scrollable areas ───────────────────────────────────────────────── */
+.scroll-area {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ─── Language pill ──────────────────────────────────────────────────── */
+.lang-pill {
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.857rem;
+  font-weight: 500;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.lang-pill:hover { background: var(--glass-bg-hover); color: var(--text-primary); }
+.lang-pill.active {
+  background: var(--accent-muted);
+  border-color: rgba(10,132,255,0.3);
+  color: var(--accent);
+}
+
+/* ─── Settings layout ────────────────────────────────────────────────── */
+.settings-layout {
+  display: flex;
+  gap: 20px;
+  height: 100%;
+  overflow: hidden;
+}
+.settings-nav {
+  width: 180px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.settings-nav-item {
+  padding: 8px 12px;
+  border-radius: 9px;
+  font-size: 0.929rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.settings-nav-item:hover { background: var(--glass-bg-hover); color: var(--text-primary); }
+.settings-nav-item.active { background: var(--accent-muted); color: var(--accent); }
+
+.settings-section { display: flex; flex-direction: column; gap: 12px; }
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--glass-border);
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-label { font-size: 0.929rem; color: var(--text-primary); font-weight: 500; }
+.settings-hint { font-size: 0.857rem; color: var(--text-secondary); margin-top: 2px; }
+
+/* ─── Voice animation ────────────────────────────────────────────────── */
+.voice-wave {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+}
+.voice-bar {
+  width: 3px;
+  border-radius: 999px;
+  background: var(--accent);
+  animation: voiceBar 1s ease-in-out infinite;
+}
+.voice-bar:nth-child(1) { animation-delay: 0s; height: 40%; }
+.voice-bar:nth-child(2) { animation-delay: 0.1s; height: 70%; }
+.voice-bar:nth-child(3) { animation-delay: 0.2s; height: 100%; }
+.voice-bar:nth-child(4) { animation-delay: 0.3s; height: 70%; }
+.voice-bar:nth-child(5) { animation-delay: 0.4s; height: 40%; }
+
+@keyframes voiceBar {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
+}
+
+/* ─── Animations ─────────────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
-.thinking-shimmer {
-  background-size: 200% 100%;
-  animation: thinkingShimmer 2.4s linear infinite;
+@keyframes dotBounce {
+  0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
-/* ── Soft glow pulse — sparkles icon halo on Smart Thinking ─────────── */
-@keyframes thinkingGlow {
-  0%, 100% { opacity: 0.55; transform: scale(1);   }
-  50%      { opacity: 1;    transform: scale(1.15); }
+/* ─── Markdown ───────────────────────────────────────────────────────── */
+.prose-glass {
+  color: var(--text-primary);
+  font-size: 0.964rem;
+  line-height: 1.65;
 }
-.thinking-glow {
-  animation: thinkingGlow 1.6s ease-in-out infinite;
+.prose-glass h1, .prose-glass h2, .prose-glass h3 {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 1em 0 0.5em;
 }
-
-/* ── Chat composer & bubbles — refreshed UI tokens (2026-05) ───────────
- * Centralised so every chat surface uses the same spacing/borders/colours
- * and we can tweak the look in one place. Keeps ChatPage / MessageBubble
- * declarative and noise-free.                                           */
-@layer components {
-  /* Composer — wraps the textarea + action toolbar */
-  .chat-composer {
-    @apply flex flex-col rounded-2xl border border-gray-200/90 bg-white/95
-           shadow-sm shadow-gray-900/[0.04] transition-all duration-150
-           focus-within:border-gray-400 focus-within:shadow-md focus-within:shadow-gray-900/[0.06]
-           dark:border-neutral-800 dark:bg-neutral-900/80 dark:shadow-black/30
-           dark:focus-within:border-gray-500 dark:focus-within:shadow-black/40;
-  }
-  .chat-composer-drop {
-    @apply !border-gray-400 !ring-2 !ring-inset !ring-gray-300
-           dark:!border-gray-500 dark:!ring-gray-700;
-  }
-
-  /* Mode pills — used for Deep Research / Careful Reasoning / Smart Thinking */
-  .chat-pill {
-    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5
-           text-[11px] font-semibold tracking-tight select-none;
-  }
-  .chat-pill-neutral {
-    @apply border-gray-200/80 bg-gray-50 text-gray-700
-           dark:border-neutral-700 dark:bg-neutral-800 dark:text-gray-200;
-  }
-  .chat-pill-muted {
-    @apply border-gray-200/80 bg-gray-50 text-gray-700
-           dark:border-neutral-700 dark:bg-neutral-800 dark:text-gray-200;
-  }
-  .chat-pill-subtle {
-    @apply border-gray-200/80 bg-gray-50 text-gray-700
-           dark:border-neutral-700 dark:bg-neutral-800 dark:text-gray-200;
-  }
-
-  /* Composer action buttons — for mic / image / DR toggle / Careful toggle */
-  .chat-action-button {
-    @apply inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent
-           bg-transparent text-gray-500 transition-colors duration-150
-           hover:border-gray-200 hover:bg-gray-100 hover:text-gray-950
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60
-           disabled:cursor-not-allowed disabled:opacity-45
-           dark:text-gray-400 dark:hover:border-transparent dark:hover:bg-neutral-800 dark:hover:text-gray-100;
-  }
-  .chat-action-button-active-neutral {
-    @apply !border-transparent !bg-gray-100 !text-gray-950
-           dark:!border-transparent dark:!bg-neutral-800 dark:!text-gray-100;
-  }
-  .chat-action-button-active-muted {
-    @apply !border-transparent !bg-gray-100 !text-gray-950
-           dark:!border-transparent dark:!bg-neutral-800 dark:!text-gray-100;
-  }
-
-  /* Send / Stop / Resume primary action.
-   *
-   * Send and Stop stay icon-only because their symbols are standard composer
-   * actions. Resume is a compact pill with a short label so a checkpoint is
-   * explicit instead of being hidden behind a decorative sparkle icon. */
-  .chat-send-button,
-  .chat-stop-button,
-  .chat-resume-button {
-    @apply inline-flex h-9 min-h-9 shrink-0 items-center justify-center rounded-lg
-           border text-sm font-semibold leading-none transition-colors duration-150
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/60 disabled:cursor-not-allowed
-           disabled:opacity-55;
-  }
-  .chat-send-button {
-    @apply w-9 border-gray-950 bg-gray-950 text-white shadow-sm shadow-gray-900/15
-           hover:border-gray-800 hover:bg-gray-800 active:bg-black
-           focus-visible:ring-gray-300
-           disabled:border-gray-300 disabled:bg-gray-300 disabled:text-white disabled:shadow-none
-           dark:border-gray-100 dark:bg-gray-100 dark:text-neutral-950 dark:hover:border-white dark:hover:bg-white
-           dark:disabled:border-neutral-700 dark:disabled:bg-neutral-700;
-  }
-  .chat-stop-button {
-    @apply w-9 border-red-200 bg-white text-red-600 shadow-sm shadow-red-900/10
-           hover:border-red-300 hover:bg-red-50 active:bg-red-100
-           focus-visible:ring-red-300
-           dark:border-transparent dark:bg-neutral-950 dark:text-red-300
-           dark:hover:border-transparent dark:hover:bg-red-950/40;
-  }
-  .chat-resume-button {
-    @apply gap-1.5 border-gray-300 bg-gray-50 px-3 text-gray-800
-           shadow-sm shadow-gray-900/10
-           hover:border-gray-400 hover:bg-gray-100 active:bg-gray-200
-           focus-visible:ring-gray-300
-           dark:border-transparent dark:bg-neutral-800 dark:text-gray-100
-           dark:hover:border-transparent dark:hover:bg-neutral-700;
-  }
-  .chat-primary-action-label {
-    @apply max-w-[6rem] overflow-hidden text-ellipsis whitespace-nowrap text-xs;
-  }
-
-  .thinking-inline-label {
-    @apply inline-flex items-center gap-2 text-xs font-medium text-gray-500 select-none
-           dark:text-gray-400;
-  }
-
-  .thinking-state-pill {
-    @apply inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50
-           px-3 py-1 text-xs font-semibold text-gray-700 shadow-sm shadow-gray-900/[0.04]
-           select-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-gray-200 dark:shadow-black/30;
-  }
-
-  .thinking-state-pill-shimmer {
-    @apply relative overflow-hidden shadow-gray-900/[0.05];
-  }
-
-  /* Bubbles — soft user bubble + clean assistant body */
-  .chat-bubble-user {
-    @apply rounded-2xl rounded-br-md bg-gray-950 px-4 py-3 text-white shadow-sm shadow-gray-900/10
-           dark:bg-gray-100 dark:text-neutral-950;
-  }
-  .chat-bubble-assistant {
-    @apply px-1 py-1 text-gray-900 dark:text-gray-100;
-  }
-
-  /* Suggested-prompt chips on empty state — apply `group` directly on the
-   * <button> in JSX (Tailwind v4 no longer allows `group` inside @apply). */
-  .chat-suggest-chip {
-    @apply flex items-start gap-3 rounded-xl border border-gray-200 bg-white/80 px-4 py-3 text-left
-           shadow-sm shadow-gray-900/[0.03] transition-all duration-150 cursor-pointer
-           hover:-translate-y-0.5 hover:border-gray-300 hover:bg-white hover:shadow-md hover:shadow-gray-900/[0.06]
-           dark:border-neutral-800 dark:bg-neutral-900/70
-           dark:hover:border-neutral-600 dark:hover:bg-neutral-900;
-  }
-
-
-  /* Model badge in top toolbar */
-  .chat-model-badge {
-    @apply inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5
-           text-[12px] font-semibold text-gray-700 shadow-sm shadow-gray-900/[0.04] transition-colors duration-150 cursor-pointer
-           hover:border-gray-300 hover:bg-gray-100 hover:text-gray-950
-           dark:border-neutral-800 dark:bg-neutral-900 dark:text-gray-200
-           dark:hover:border-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-gray-100;
-  }
-
-  /* Hover-only message actions (timestamp + copy/regen/download) */
-  .chat-message-actions {
-    @apply opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100;
-  }
-  .chat-message-actions-pinned {
-    @apply opacity-100;
-  }
-
-  /* Legacy single-step card (kept for back-compat with any older messages
-   * already in store that still render via MessageBubble). New replies use
-   * .chat-research-panel below to group every step into one card. */
-  .chat-research-step {
-    @apply rounded-xl border border-gray-200/80 bg-gray-50
-           text-xs shadow-sm shadow-gray-900/[0.03] overflow-hidden
-           dark:border-neutral-800 dark:bg-neutral-900/80;
-  }
-
-  /* Grouped research-steps panel — replaces N separate step cards with a
-   * single tidy "thinking" block, matching the Cursor / Claude tool-call
-   * pattern. The container surface stays muted gray so the user's eye flows
-   * straight to the final answer card below it. */
-  .chat-research-panel {
-    @apply rounded-xl border border-gray-200/80 bg-gray-50
-           text-xs shadow-sm shadow-gray-900/[0.03] overflow-hidden
-           dark:border-neutral-800 dark:bg-neutral-900/80;
-  }
-  /* Step rows — left vertical timeline bar + per-row marker dots
-   * (kept for back-compat with the legacy flat step list; the new
-   * grouped-pill layout uses .chat-research-pill-* below). */
-  .chat-research-step-list {
-    @apply m-0 flex flex-col gap-0
-           border-t border-gray-200/60 dark:border-neutral-800/80;
-  }
-  .chat-research-step-row {
-    @apply flex items-start gap-2.5 px-3 py-1.5
-           border-t border-gray-100/70 first:border-t-0
-           dark:border-neutral-800/60;
-  }
-  .chat-research-step-marker {
-    @apply mt-1 inline-flex w-3.5 h-3.5 items-center justify-center flex-shrink-0;
-  }
-
-  /* ── Grouped phase-pill rows (Cursor / ChatGPT-style "tool-call" UI) ──
-   *
-   * These classes drive the new ResearchStepsPanel layout: each phase row
-   * is a compact pill with a phase icon on the left, a short title, and an
-   * info ⓘ button + status indicator (✓/spinner/dot) on the right. The
-   * info button opens a portal popover with the per-aspect content.
-   *
-   * Subtle borders + tiny padding keep the rows visually quiet so the eye
-   * still flows down to the final answer card below. */
-  .chat-research-pill-list {
-    @apply m-0 flex flex-col gap-0
-           border-t border-gray-200/60 dark:border-neutral-800/80;
-  }
-  .chat-research-pill-row {
-    @apply flex items-center gap-2 px-3 py-1.5
-           border-t border-gray-100/70 first:border-t-0
-           dark:border-neutral-800/60;
-  }
-  .chat-research-pill-icon {
-    @apply inline-flex items-center justify-center flex-shrink-0;
-  }
-  .chat-research-pill-title {
-    @apply flex-1 min-w-0 truncate
-           text-[12px] text-gray-700 dark:text-gray-200;
-  }
-  .chat-research-pill-actions {
-    @apply flex items-center gap-1.5 flex-shrink-0;
-  }
-  .chat-research-pill-info {
-    @apply inline-flex items-center justify-center
-           h-5 w-5 rounded-md
-           text-gray-400 hover:text-gray-950
-           hover:bg-gray-100
-           dark:text-gray-500 dark:hover:text-gray-100
-           dark:hover:bg-neutral-800
-           transition-colors duration-150 cursor-pointer;
-  }
-  .chat-research-pill-info-active {
-    @apply text-gray-950 bg-gray-100
-           dark:text-gray-100 dark:bg-neutral-800;
-  }
-  .chat-research-pill-status {
-    @apply inline-flex items-center justify-center w-4 h-4 flex-shrink-0;
-  }
-
-  /* ── Hover info popover ───────────────────────────────────────────────
-   *
-   * Rendered into document.body via a portal so the popover can escape
-   * the chat scroll container's `overflow:hidden`. Width fixed at 380px
-   * and max-height capped at 60vh — long aspect content scrolls inside
-   * the body section while the header stays pinned. */
-  .chat-research-info-popover {
-    @apply fixed z-[60] w-[380px]
-           rounded-xl border border-gray-200/80 bg-white
-           shadow-xl shadow-gray-900/[0.10]
-           dark:border-neutral-700/80 dark:bg-neutral-900
-           dark:shadow-black/40
-           overflow-hidden flex flex-col;
-    max-height: min(60vh, 480px);
-    animation: fadeInPopover 120ms ease-out;
-  }
-  .chat-research-info-popover-header {
-    @apply flex items-center gap-2 px-3 py-2
-           border-b border-gray-100 dark:border-neutral-800
-           bg-gray-50 dark:bg-neutral-900;
-  }
-  .chat-research-info-popover-body {
-    @apply flex-1 min-h-0 overflow-y-auto px-3 py-2 flex flex-col gap-3;
-  }
-  .chat-research-info-popover-item {
-    @apply pb-2.5 border-b border-gray-100/80 last:border-b-0 last:pb-0
-           dark:border-neutral-800/60;
-  }
-
-  @keyframes fadeInPopover {
-    from { opacity: 0; transform: translateY(-2px); }
-    to   { opacity: 1; transform: translateY(0);    }
-  }
-
-  /* Research-final highlight card */
-  .chat-research-final {
-    @apply rounded-2xl overflow-hidden border border-gray-200/80 bg-white shadow-md shadow-gray-900/[0.06]
-           dark:border-neutral-800 dark:bg-neutral-900 dark:shadow-black/40;
-  }
-  .chat-research-final-header {
-    @apply flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50
-           dark:border-neutral-800 dark:bg-neutral-900;
-  }
-}
-
-@layer components {
-  /* Semantic color contract: layout remains in Tailwind, color comes from tokens. */
-  .btn-primary,
-  .chat-send-button {
-    border-color: var(--vzn-accent);
-    background: var(--vzn-accent);
-    color: var(--vzn-text-inverse);
-    box-shadow: none;
-  }
-  .btn-primary:hover,
-  .chat-send-button:hover {
-    border-color: var(--vzn-accent-hover);
-    background: var(--vzn-accent-hover);
-  }
-  .btn-primary:active,
-  .chat-send-button:active {
-    border-color: var(--vzn-accent-active);
-    background: var(--vzn-accent-active);
-  }
-  .btn-primary:disabled,
-  .chat-send-button:disabled {
-    border-color: transparent;
-    background: var(--vzn-surface-subtle);
-    color: var(--vzn-text-disabled);
-    box-shadow: none;
-  }
-
-  .btn-secondary,
-  .btn-soft,
-  .btn-icon,
-  .toolbar-icon-button,
-  .toolbar-pill-button,
-  .chat-model-badge,
-  .keyboard-key,
-  .floating-panel,
-  .modal-surface {
-    border-color: transparent;
-    background: var(--vzn-surface-raised);
-    color: var(--vzn-text-muted);
-    box-shadow: none;
-  }
-
-  /* Apple-style card — uses Apple bg-primary + separator border */
-  .card {
-    background: var(--apple-bg-primary);
-    border-color: var(--apple-separator);
-    border-radius: 12px;
-    box-shadow: var(--apple-shadow-sm);
-    color: var(--apple-label-primary);
-  }
-
-  /* Card dividers use Apple separator */
-  .card.divide-y > :not([hidden]) ~ :not([hidden]),
-  .card > .divide-y > :not([hidden]) ~ :not([hidden]) {
-    border-color: var(--apple-separator);
-  }
-
-  /* Settings row text — Apple typography */
-  .card .text-sm.font-medium {
-    color: var(--apple-label-primary);
-  }
-  .card .text-xs.text-gray-500,
-  .card .text-xs.text-gray-400 {
-    color: var(--apple-label-secondary);
-  }
-  .btn-secondary:hover,
-  .btn-soft:hover,
-  .btn-icon:hover,
-  .toolbar-icon-button:hover,
-  .toolbar-pill-button:hover,
-  .chat-model-badge:hover {
-    border-color: transparent;
-    background: var(--vzn-surface-hover);
-    color: var(--vzn-text-strong);
-  }
-  .btn-ghost,
-  .btn-link,
-  .btn-language-tab,
-  .btn-menu-item,
-  .btn-segment,
-  .chat-action-button {
-    color: var(--vzn-text-muted);
-  }
-  .btn-ghost:hover,
-  .btn-language-tab:hover,
-  .btn-menu-item:hover,
-  .btn-segment:hover,
-  .chat-action-button:hover {
-    border-color: transparent;
-    background: var(--vzn-surface-hover);
-    color: var(--vzn-text-strong);
-  }
-  .btn-link:hover {
-    color: var(--vzn-text-strong);
-  }
-  .btn-active,
-  .btn-icon-active,
-  .toolbar-icon-button-active,
-  .btn-select-active,
-  .btn-segment-active,
-  .chat-action-button-active-neutral,
-  .chat-action-button-active-muted {
-    border-color: transparent;
-    background: var(--vzn-accent-soft);
-    color: var(--vzn-accent);
-  }
-  .ai-config-button {
-    border-width: 0;
-    background: transparent;
-    box-shadow: none;
-  }
-  .ai-config-button:hover {
-    background: var(--vzn-surface-hover);
-  }
-  .ai-config-button.toolbar-icon-button-active {
-    background: var(--vzn-accent-soft);
-    color: var(--vzn-accent);
-  }
-  .ai-config-panel {
-    border-color: var(--vzn-border-strong);
-    box-shadow: 0 0 0 1px var(--vzn-border), var(--vzn-shadow-md);
-  }
-  .btn-select,
-  .select-field,
-  .field-input,
-  .field-textarea,
-  .inline-pill-input,
-  .search-field,
-  .segmented-control {
-    border-color: var(--vzn-border);
-    background: var(--vzn-surface-raised);
-    color: var(--vzn-text);
-    box-shadow: var(--vzn-shadow-sm);
-  }
-  .segmented-control {
-    border-color: transparent;
-    background: var(--vzn-surface-subtle);
-    box-shadow: none;
-  }
-  .field-input::placeholder,
-  .field-textarea::placeholder,
-  .search-field::placeholder,
-  .textarea-field::placeholder,
-  .chat-input-field::placeholder,
-  .quick-chat-input-field::placeholder {
-    color: var(--vzn-text-soft);
-  }
-  .field-input:focus,
-  .field-textarea:focus,
-  .inline-pill-input:focus,
-  .search-field:focus,
-  .select-field:focus {
-    border-color: var(--vzn-accent);
-    box-shadow: 0 0 0 3px var(--vzn-focus-ring);
-  }
-  .field-input:disabled,
-  .field-textarea:disabled,
-  .field-input-muted {
-    background: var(--vzn-surface-subtle);
-    color: var(--vzn-text-disabled);
-  }
-
-  .toggle-switch-track {
-    box-shadow: inset 0 0 0 1px var(--vzn-border);
-  }
-  .toggle-switch-track-on {
-    background: var(--vzn-accent);
-    box-shadow: inset 0 0 0 1px var(--vzn-accent);
-  }
-  .toggle-switch-track-off {
-    background: var(--vzn-surface-hover);
-  }
-  .toggle-switch-thumb {
-    background: var(--vzn-surface);
-    box-shadow: var(--vzn-shadow-sm);
-  }
-  .toggle-switch-track:focus-visible {
-    box-shadow: 0 0 0 3px var(--vzn-focus-ring), inset 0 0 0 1px var(--vzn-accent);
-  }
-
-  .btn-primary:focus-visible,
-  .btn-secondary:focus-visible,
-  .btn-soft:focus-visible,
-  .btn-ghost:focus-visible,
-  .btn-danger:focus-visible,
-  .btn-link:focus-visible,
-  .btn-icon:focus-visible,
-  .toolbar-icon-button:focus-visible,
-  .toolbar-pill-button:focus-visible,
-  .btn-language-tab:focus-visible,
-  .btn-menu-item:focus-visible,
-  .btn-row-action:focus-visible,
-  .btn-segment:focus-visible,
-  .chat-action-button:focus-visible,
-  .chat-send-button:focus-visible,
-  .chat-stop-button:focus-visible,
-  .chat-resume-button:focus-visible {
-    box-shadow: 0 0 0 3px var(--vzn-focus-ring);
-  }
-
-  .btn-danger,
-  .chat-stop-button {
-    border-color: transparent;
-    background: var(--vzn-danger-soft);
-    color: var(--vzn-danger);
-    box-shadow: none;
-  }
-  .btn-danger:hover,
-  .chat-stop-button:hover {
-    border-color: transparent;
-    background: var(--vzn-danger-soft);
-    color: var(--vzn-danger-hover);
-  }
-  .btn-icon-danger:hover,
-  .toolbar-pill-danger:hover {
-    border-color: transparent !important;
-    background: var(--vzn-danger-soft) !important;
-    color: var(--vzn-danger) !important;
-  }
-  .ui-error-text,
-  .ui-error-icon,
-  .voice-recording-text {
-    color: var(--vzn-danger);
-  }
-  .ui-error-box,
-  .ui-error-banner,
-  .thinking-state-pill-error,
-  .voice-recording-panel {
-    border-color: var(--vzn-danger-border);
-    background: var(--vzn-danger-soft);
-    color: var(--vzn-danger);
-  }
-  .ui-alert-toast {
-    background: var(--vzn-danger);
-    color: var(--vzn-text-inverse);
-    box-shadow: var(--vzn-shadow-md);
-  }
-  .ui-status-dot-danger,
-  .ui-status-ping-danger,
-  .voice-recording-bar,
-  .voice-recording-core {
-    background: var(--vzn-danger);
-  }
-  .voice-ripple-soft,
-  .voice-ripple-medium,
-  .voice-ripple-strong {
-    background: var(--vzn-danger-soft);
-  }
-
-  .app-shell {
-    background: var(--vzn-app-bg);
-    color: var(--vzn-text);
-  }
-  .app-titlebar-drag,
-  .app-sidebar,
-  .modal-header {
-    border-color: var(--vzn-border);
-    background: var(--vzn-surface-raised);
-    color: var(--vzn-text);
-  }
-  .app-titlebar-divider,
-  .app-sidebar-divider {
-    border-color: var(--vzn-divider);
-    background: var(--vzn-divider);
-  }
-  .modal-backdrop {
-    background: rgba(15, 23, 32, 0.36);
-  }
-  .app-page {
-    background: transparent;
-  }
-  .app-shell :where(
-    .border-gray-100,
-    .border-gray-200,
-    .border-gray-200\/80,
-    .border-gray-200\/90,
-    .border-neutral-800,
-    .border-neutral-800\/60,
-    .border-neutral-800\/70,
-    .border-neutral-800\/80,
-    .border-white\/10,
-    .border-white\/70
-  ) {
-    border-color: var(--vzn-divider);
-  }
-  .app-shell :where(
-    .divide-gray-100,
-    .divide-gray-200,
-    .divide-neutral-800\/70
-  ) > :not([hidden]) ~ :not([hidden]) {
-    border-color: var(--vzn-divider);
-  }
-  .surface-panel,
-  .chat-composer,
-  .chat-research-final {
-    border-color: var(--vzn-border);
-    background: var(--vzn-surface-raised);
-    color: var(--vzn-text);
-    box-shadow: var(--vzn-shadow-sm);
-  }
-  .app-topbar {
-    border-color: transparent;
-    background: var(--vzn-surface-raised);
-    color: var(--vzn-text);
-    box-shadow: none;
-  }
-  .surface-panel-focus:focus-within,
-  .chat-composer:focus-within {
-    border-color: var(--vzn-accent);
-    box-shadow: 0 0 0 3px var(--vzn-focus-ring), var(--vzn-shadow-sm);
-  }
-  .surface-panel-drop,
-  .chat-composer-drop {
-    border-color: var(--vzn-accent);
-    background: var(--vzn-accent-soft);
-    box-shadow: inset 0 0 0 1px var(--vzn-accent-border), var(--vzn-shadow-sm);
-  }
-  .surface-footer,
-  .chat-research-info-popover-header,
-  .chat-research-final-header {
-    border-color: var(--vzn-border);
-    background: var(--vzn-surface-muted);
-  }
-  .chat-research-step,
-  .chat-research-panel,
-  .chat-suggest-chip,
-  .chat-research-info-popover {
-    border-color: var(--vzn-border);
-    background: var(--vzn-surface-muted);
-    color: var(--vzn-text);
-    box-shadow: var(--vzn-shadow-sm);
-  }
-  .chat-suggest-chip:hover,
-  .chat-research-pill-info:hover,
-  .chat-research-pill-info-active {
-    border-color: transparent;
-    background: var(--vzn-surface-hover);
-    color: var(--vzn-text-strong);
-  }
-  .chat-research-step-list,
-  .chat-research-step-row,
-  .chat-research-pill-list,
-  .chat-research-pill-row,
-  .chat-research-info-popover-item {
-    border-color: var(--vzn-border);
-  }
-
-  .ui-micro,
-  .ui-meta,
-  .ui-caption,
-  .ui-kicker,
-  .popover-title,
-  .thinking-inline-label,
-  .chat-research-pill-info {
-    color: var(--vzn-text-soft);
-  }
-  .ui-reader-text,
-  .textarea-field,
-  .chat-input-field,
-  .quick-chat-input-field,
-  .chat-bubble-assistant,
-  .chat-research-pill-title {
-    color: var(--vzn-text);
-  }
-  .ui-reader-muted {
-    color: var(--vzn-text-disabled);
-  }
-  .ui-badge,
-  .ui-badge-muted,
-  .ui-badge-xs,
-  .ui-token-badge,
-  .ui-index-dot,
-  .chat-pill-neutral,
-  .chat-pill-muted,
-  .chat-pill-subtle,
-  .thinking-state-pill,
-  .chat-resume-button {
-    border-color: var(--vzn-border);
-    background: var(--vzn-surface-subtle);
-    color: var(--vzn-text-muted);
-    box-shadow: var(--vzn-shadow-sm);
-  }
-  .ui-badge-danger {
-    background: var(--vzn-danger-soft);
-    color: var(--vzn-danger);
-  }
-  .ui-status-dot {
-    background: var(--vzn-text-soft);
-  }
-  .chat-bubble-user {
-    background: var(--vzn-accent);
-    color: var(--vzn-text-inverse);
-    box-shadow: var(--vzn-shadow-sm);
-  }
-
-  .quick-chat-shell {
-    color: var(--vzn-text);
-  }
-  .quick-chat-panel,
-  .quick-chat-answer-card {
-    border-color: var(--vzn-border);
-    background: var(--vzn-surface-raised);
-    color: var(--vzn-text);
-    box-shadow: var(--vzn-shadow-lg);
-  }
-  .quick-chat-top-edge,
-  .quick-chat-divider {
-    background: var(--vzn-divider);
-  }
-  .quick-chat-header,
-  .quick-chat-footer,
-  .quick-chat-card-actions,
-  .quick-chat-question-row {
-    border-color: var(--vzn-border);
-    background: var(--vzn-surface-muted);
-  }
-  .quick-chat-body {
-    background: var(--vzn-surface-subtle);
-  }
-}
-
-/* ── Skeleton loading placeholders ─ */
-@keyframes skeletonPulse {
-  0%, 100% { opacity: 0.62; }
-  50%      { opacity: 1; }
-}
-.skeleton-shimmer {
-  background-color: var(--vzn-skeleton);
-  animation: skeletonPulse 1.6s ease-in-out infinite;
-}
-.dark .skeleton-shimmer,
-html.dark .skeleton-shimmer {
-  background-color: var(--vzn-skeleton);
-}
-
-/* ── Content fade-in when skeleton swaps to real data ─────────────────── */
-@keyframes skeletonFadeIn {
-  from { opacity: 0; transform: translateY(2px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.skeleton-fade-in {
-  animation: skeletonFadeIn 0.24s ease-out both;
-}
-
-/* ════════════════════════════════════════════════════════════
- * APPLE TYPOGRAPHY UTILITIES (Phase 3)
- * SF Pro type scale – use these classes instead of raw text-*
- * ════════════════════════════════════════════════════════════ */
-@layer utilities {
-  .text-apple-large-title  { font-size: 34px; line-height: 41px; font-weight: 700; }
-  .text-apple-title1       { font-size: 28px; line-height: 34px; font-weight: 700; }
-  .text-apple-title2       { font-size: 22px; line-height: 28px; font-weight: 700; }
-  .text-apple-title3       { font-size: 20px; line-height: 25px; font-weight: 600; }
-  .text-apple-headline     { font-size: 17px; line-height: 22px; font-weight: 600; }
-  .text-apple-body         { font-size: 17px; line-height: 22px; font-weight: 400; }
-  .text-apple-callout      { font-size: 16px; line-height: 21px; font-weight: 400; }
-  .text-apple-subhead      { font-size: 15px; line-height: 20px; font-weight: 400; }
-  .text-apple-footnote     { font-size: 13px; line-height: 18px; font-weight: 400; }
-  .text-apple-caption1     { font-size: 12px; line-height: 16px; font-weight: 400; }
-  .text-apple-caption2     { font-size: 11px; line-height: 13px; font-weight: 400; }
-}
-
-/* ════════════════════════════════════════════════════════════
- * APPLE COMPONENT UTILITIES (Phase 3)
- * Reusable surface patterns following Apple HIG
- * ════════════════════════════════════════════════════════════ */
-@layer utilities {
-  /* Frosted glass / vibrancy surface */
-  .apple-vibrancy {
-    background: var(--apple-vibrancy-bg);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-  }
-
-  /* macOS sidebar vibrancy */
-  .apple-sidebar {
-    background: var(--apple-vibrancy-sidebar);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-right: 1px solid var(--apple-separator);
-  }
-
-  /* Toolbar translucent */
-  .apple-toolbar {
-    background: var(--apple-vibrancy-bg);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-bottom: 1px solid var(--apple-separator);
-    height: 52px;
-  }
-
-  /* Apple-style separator */
-  .apple-divider {
-    border-color: var(--apple-separator);
-  }
-
-  /* Inset separator (for list rows) */
-  .apple-inset-divider {
-    border-color: var(--apple-separator);
-    margin-left: 60px;
-  }
-
-  /* Focus ring using Apple accent */
-  .apple-focus-ring {
-    outline: none;
-    box-shadow: var(--apple-shadow-focus);
-  }
-
-  /* Standard card surface */
-  .apple-card {
-    background: var(--apple-bg-tertiary);
-    border-radius: 12px;
-    box-shadow: var(--apple-shadow-sm);
-  }
-
-  /* Grouped list background */
-  .apple-grouped-bg {
-    background: var(--apple-bg-grouped);
-  }
-}
-
-/* ════════════════════════════════════════════════════════════
- * APPLE ANIMATIONS (Phase 3)
- * ════════════════════════════════════════════════════════════ */
-
-/* Record button pulse animation */
-@keyframes record-pulse {
-  0%   { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.4); }
-  70%  { box-shadow: 0 0 0 20px rgba(255, 59, 48, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
-}
-.apple-record-pulse {
-  animation: record-pulse 1.5s ease-out infinite;
-}
-
-/* Waveform idle animation */
-@keyframes idle-wave {
-  0%, 100% { transform: scaleY(1); }
-  50%       { transform: scaleY(0.4); }
-}
-
-/* Skeleton pulse (Apple style) */
-@keyframes apple-skeleton {
-  0%, 100% { opacity: 0.5; }
-  50%       { opacity: 1.0; }
-}
-.apple-skeleton {
-  background: var(--apple-fill-tertiary);
-  animation: apple-skeleton 1.5s ease-in-out infinite;
+.prose-glass h1 { font-size: 1.4em; }
+.prose-glass h2 { font-size: 1.2em; }
+.prose-glass h3 { font-size: 1.05em; }
+.prose-glass p { margin: 0.5em 0; }
+.prose-glass ul, .prose-glass ol { padding-left: 1.5em; margin: 0.5em 0; }
+.prose-glass li { margin: 0.25em 0; }
+.prose-glass code {
+  background: rgba(255,255,255,0.1);
   border-radius: 4px;
+  padding: 1px 5px;
+  font-family: 'SF Mono', ui-monospace, monospace;
+  font-size: 0.875em;
+}
+.prose-glass pre {
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 12px;
+  overflow-x: auto;
+  margin: 0.75em 0;
+}
+.prose-glass pre code { background: transparent; padding: 0; }
+.prose-glass blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 12px;
+  color: var(--text-secondary);
+  margin: 0.5em 0;
+}
+.prose-glass a { color: var(--accent); text-decoration: none; }
+.prose-glass a:hover { text-decoration: underline; }
+.prose-glass strong { font-weight: 600; color: var(--text-primary); }
+.prose-glass table { width: 100%; border-collapse: collapse; font-size: 0.929rem; margin: 0.75em 0; }
+.prose-glass th, .prose-glass td { padding: 6px 12px; border: 1px solid var(--glass-border); text-align: left; }
+.prose-glass th { background: var(--glass-bg); font-weight: 600; }
+.prose-glass hr { border: none; border-top: 1px solid var(--glass-border); margin: 1em 0; }
+
+/* ─── Tooltip ─────────────────────────────────────────────────────────── */
+[data-tooltip] { position: relative; }
+[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20,20,35,0.95);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  font-size: 0.821rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 100;
+  backdrop-filter: var(--blur-sm);
 }
 
-/* ════════════════════════════════════════════════════════════
- * ACCESSIBILITY – Reduced Motion
- * All animations disabled for users who prefer reduced motion
- * ════════════════════════════════════════════════════════════ */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
+/* ─── Misc ────────────────────────────────────────────────────────────── */
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-tertiary { color: var(--text-tertiary); }
+.text-accent { color: var(--accent); }
+.text-success { color: var(--success); }
+.text-warning { color: var(--warning); }
+.text-danger { color: var(--danger); }
+
+.bg-glass { background: var(--glass-bg); }
+.border-glass { border-color: var(--glass-border); }
+
+/* ─── Provider icon colors ───────────────────────────────────────────── */
+.provider-gemini { color: #8B5CF6; }
+.provider-claude { color: #D97706; }
+.provider-openai { color: #10B981; }
+.provider-local { color: #60A5FA; }

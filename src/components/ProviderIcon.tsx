@@ -1,75 +1,50 @@
-import type { Provider } from '../types'
-import { ClaudeProviderIcon, GeminiProviderIcon, LocalProviderIcon, OpenAIProviderIcon, PROVIDER_BRAND_COLORS } from './ui/icons'
-
-// SPLIT-ICON-01: SVG icon definitions moved to src/components/ui/icons/providers.tsx
-// ProviderIcon.tsx now only holds the wrapper component and PROVIDER_COLORS map.
+import React from 'react'
+import {
+  IconBrandClaude,
+  IconBrandGemini,
+  IconBrandGroq,
+  IconBrandOpenAI,
+} from './icons/AppIcons'
 
 interface ProviderIconProps {
-  provider: Provider
+  provider: string
   size?: number
-  className?: string
 }
 
-export function ProviderIcon({ provider, size = 20, className = '' }: ProviderIconProps) {
+type BrandIconComponent = React.ComponentType<{ size?: number; style?: React.CSSProperties }>
+
+const PROVIDER_META: Record<string, { bg: string; color: string; Icon?: BrandIconComponent; label?: string }> = {
+  gemini: { bg: 'rgba(66,133,244,0.25)',   color: '#4285F4', Icon: IconBrandGemini },
+  claude: { bg: 'rgba(217,119,87,0.25)',   color: '#D97757', Icon: IconBrandClaude },
+  openai: { bg: 'rgba(16,163,127,0.25)',   color: '#10A37F', Icon: IconBrandOpenAI },
+  groq:   { bg: 'rgba(248,160,0,0.25)',    color: '#F8A000', Icon: IconBrandGroq },
+  local:  { bg: 'rgba(96,165,250,0.25)',   color: '#60A5FA', label: 'L' },
+}
+
+export default function ProviderIcon({ provider, size = 20 }: ProviderIconProps) {
+  const meta = PROVIDER_META[provider] ?? { bg: 'rgba(107,114,128,0.25)', color: '#9CA3AF', label: '?' }
+  const iconSize = Math.round(size * 0.62)
+
   return (
-    <span className={`inline-flex items-center justify-center flex-shrink-0 ${className}`}>
-      {provider === 'gemini' && <GeminiProviderIcon size={size} />}
-      {provider === 'claude' && <ClaudeProviderIcon size={size} />}
-      {provider === 'openai' && <OpenAIProviderIcon size={size} />}
-      {provider === 'local' && <LocalProviderIcon size={size} />}
+    <span style={{
+      width: size,
+      height: size,
+      borderRadius: '50%',
+      background: meta.bg,
+      border: `1px solid ${meta.color}35`,
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+      color: meta.color,
+      boxShadow: `0 0 0 1px rgba(255,255,255,0.08), 0 2px 6px rgba(0,0,0,0.25)`,
+    }}>
+      {meta.Icon
+        ? <meta.Icon size={iconSize} style={{ color: meta.color }} />
+        : <span style={{ fontSize: Math.max(7, Math.round(size * 0.42)), fontWeight: 700, letterSpacing: '-0.02em', color: meta.color }}>
+            {meta.label}
+          </span>
+      }
     </span>
   )
-}
-
-// Provider UI metadata. Surfaces remain neutral; iconColor is the flat brand mark.
-export const PROVIDER_COLORS: Record<Provider, {
-  bg: string
-  bgActive: string
-  text: string
-  textActive: string
-  border: string
-  borderActive: string
-  dot: string
-  iconColor: string
-}> = {
-  gemini: {
-    bg: 'bg-gray-50 dark:bg-neutral-800/70',
-    bgActive: 'bg-gray-100 dark:bg-neutral-700/80',
-    text: 'text-gray-700 dark:text-gray-300',
-    textActive: 'text-gray-900 dark:text-gray-100',
-    border: 'border-gray-200 dark:border-gray-700',
-    borderActive: 'border-gray-400 dark:border-gray-500',
-    dot: 'bg-gray-500',
-    iconColor: PROVIDER_BRAND_COLORS.gemini,
-  },
-  claude: {
-    bg: 'bg-gray-50 dark:bg-neutral-800/70',
-    bgActive: 'bg-gray-100 dark:bg-neutral-700/80',
-    text: 'text-gray-700 dark:text-gray-300',
-    textActive: 'text-gray-900 dark:text-gray-100',
-    border: 'border-gray-200 dark:border-gray-700',
-    borderActive: 'border-gray-400 dark:border-gray-500',
-    dot: 'bg-gray-500',
-    iconColor: PROVIDER_BRAND_COLORS.claude,
-  },
-  openai: {
-    bg: 'bg-gray-50 dark:bg-neutral-800/70',
-    bgActive: 'bg-gray-100 dark:bg-neutral-700/80',
-    text: 'text-gray-700 dark:text-gray-300',
-    textActive: 'text-gray-900 dark:text-gray-100',
-    border: 'border-gray-200 dark:border-gray-700',
-    borderActive: 'border-gray-400 dark:border-gray-500',
-    dot: 'bg-gray-500',
-    iconColor: PROVIDER_BRAND_COLORS.openai,
-  },
-  local: {
-    bg: 'bg-gray-50 dark:bg-gray-800/70',
-    bgActive: 'bg-gray-100 dark:bg-gray-700/80',
-    text: 'text-gray-700 dark:text-gray-300',
-    textActive: 'text-gray-900 dark:text-gray-100',
-    border: 'border-gray-200 dark:border-gray-700',
-    borderActive: 'border-gray-400 dark:border-gray-500',
-    dot: 'bg-gray-500',
-    iconColor: PROVIDER_BRAND_COLORS.local,
-  },
 }

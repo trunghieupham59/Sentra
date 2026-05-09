@@ -10,9 +10,9 @@ export const PROVIDERS: ProviderConfig[] = [
     requiresApiKey: false,
     localEngines: ['ollama', 'lmstudio', 'llamacpp'],
     models: [
-      { id: 'local-auto', name: 'Auto local model', description: 'Best running local model', tag: 'recommended' },
-      { id: 'qwen3:4b', name: 'Qwen3 4B', description: 'Balanced local model', tag: 'balanced' },
-      { id: 'gemma3:4b', name: 'Gemma 3 4B', description: 'Vision-capable local model', tag: 'powerful' },
+      { id: 'local-auto', name: 'Auto local model', description: 'Best running local model', tag: 'recommended', recommendedFor: 'Chat' },
+      { id: 'qwen3:4b', name: 'Qwen3 4B', description: 'Balanced local model', tag: 'balanced', speed: 5, intelligence: 4, recommendedFor: 'Chat' },
+      { id: 'gemma3:4b', name: 'Gemma 3 4B', description: 'Vision-capable local model', tag: 'powerful', speed: 5, intelligence: 4, capabilities: ['vision'], recommendedFor: 'Chat' },
     ],
   },
   {
@@ -23,10 +23,10 @@ export const PROVIDERS: ProviderConfig[] = [
     docsUrl: 'https://platform.openai.com/api-keys',
     requiresApiKey: true,
     models: [
-      // ★ When adding a new OpenAI model, mark the fastest/best translation model as tag:'recommended'
-      { id: 'gpt-5-mini', name: 'GPT-5 Mini', description: 'Fast & efficient', tag: 'recommended' },
-      { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini', description: 'Balanced performance', tag: 'balanced' },
-      { id: 'gpt-5.2', name: 'GPT-5.2', description: 'Most capable', tag: 'powerful' },
+      // Static fallback only. Runtime model refresh uses the provider API.
+      { id: 'gpt-5-mini', name: 'GPT-5 Mini', description: 'Fast, efficient model for everyday tasks', tag: 'recommended', speed: 7, intelligence: 5, contextK: 128, capabilities: ['vision', 'reasoning'], recommendedFor: 'Chat, Translation' },
+      { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini', description: 'Balanced performance with large context', tag: 'balanced', speed: 6, intelligence: 5, contextK: 1000, capabilities: ['vision'], recommendedFor: 'Chat' },
+      { id: 'gpt-5.2', name: 'GPT-5.2', description: 'Most capable OpenAI model for complex reasoning', tag: 'powerful', speed: 4, intelligence: 8, contextK: 128, capabilities: ['vision', 'reasoning', 'image-gen'], recommendedFor: 'Chat' },
     ],
   },
   {
@@ -37,10 +37,10 @@ export const PROVIDERS: ProviderConfig[] = [
     docsUrl: 'https://console.anthropic.com',
     requiresApiKey: true,
     models: [
-      // ★ When adding a new Claude model, mark the fastest/best translation model as tag:'recommended'
-      { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4', description: 'Balanced performance', tag: 'recommended' },
-      { id: 'claude-opus-4-20250514', name: 'Claude Opus 4', description: 'Most capable', tag: 'balanced' },
-      { id: 'claude-opus-4-1-20250805', name: 'Claude Opus 4.1', description: 'Highest capability', tag: 'powerful' },
+      // Static fallback only. Runtime model refresh uses the provider API.
+      { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4', description: 'Balanced performance with strong reasoning', tag: 'recommended', speed: 6, intelligence: 7, contextK: 200, capabilities: ['vision', 'reasoning'], recommendedFor: 'Chat, Translation' },
+      { id: 'claude-opus-4-20250514', name: 'Claude Opus 4', description: 'Highest capability for complex tasks', tag: 'balanced', speed: 4, intelligence: 8, contextK: 200, capabilities: ['vision', 'reasoning'], recommendedFor: 'Chat' },
+      { id: 'claude-opus-4-1-20250805', name: 'Claude Opus 4.1', description: 'Latest flagship with advanced reasoning', tag: 'powerful', speed: 3, intelligence: 8, contextK: 200, capabilities: ['vision', 'reasoning'], recommendedFor: 'Chat' },
     ],
   },
   {
@@ -51,23 +51,18 @@ export const PROVIDERS: ProviderConfig[] = [
     docsUrl: 'https://aistudio.google.com/apikey',
     requiresApiKey: true,
     models: [
-      // ★ When adding a new Gemini model, mark the fastest/best translation model as tag:'recommended'
-      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Best price-performance', tag: 'recommended' },
-      { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite', description: 'Fast & efficient', tag: 'balanced' },
-      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Most capable', tag: 'powerful' },
+      // Static fallback only. Runtime model refresh uses the provider API.
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Best price-performance with long context', tag: 'recommended', speed: 8, intelligence: 6, contextK: 1000, capabilities: ['vision', 'web-search'], recommendedFor: 'Chat, Translation' },
+      { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite', description: 'Fastest and most cost-efficient Gemini', tag: 'balanced', speed: 8, intelligence: 5, contextK: 1000, capabilities: ['vision'], recommendedFor: 'Translation' },
+      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Most capable Gemini with deep reasoning', tag: 'powerful', speed: 5, intelligence: 8, contextK: 1000, capabilities: ['vision', 'reasoning', 'web-search'], recommendedFor: 'Chat' },
     ],
   },
 ]
 
 /**
- * Returns the ID of the recommended translation model for a given provider.
- * Falls back to the first model in the list if none is tagged 'recommended'.
- *
- * MAINTENANCE: When a provider releases a new, faster/better translation model,
- * update the PROVIDERS array above:
- *   1. Set the new model's tag to 'recommended'
- *   2. Change the previous recommended model's tag to 'balanced' or 'powerful'
- * This function will automatically pick up the new default.
+ * Returns the bundled fallback model for a given provider.
+ * Runtime model refresh fetches the provider list through IPC and updates the
+ * selected model when a newer provider-recommended model is available.
  */
 export function getRecommendedModel(providerId: Provider): string {
   const provider = PROVIDERS.find((p) => p.id === providerId)
@@ -134,7 +129,7 @@ export const DEFAULT_SETTINGS = {
   defaultProvider: 'local' as const,
   defaultSourceLang: 'auto',
   defaultTargetLang: 'vi',
-  /** Auto-resolved from PROVIDERS using tag:'recommended' — update tags to change defaults */
+  /** Bundled fallback defaults. Provider API refresh updates selected cloud models at runtime. */
   defaultModels: {
     local: getRecommendedModel('local'),
     gemini: getRecommendedModel('gemini'),

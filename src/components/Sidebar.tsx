@@ -1,218 +1,117 @@
-import type { ReactNode } from 'react'
-import { PROVIDERS } from '../constants/providers'
+import React from 'react'
 import { useAppStore, useT } from '../store/useAppStore'
-import type { Provider } from '../types'
-import { AppLogoIcon } from './AppLogo'
+import type { AppPage } from '../types'
 import {
-  BookIcon,
-  ChatBubbleIcon,
-  ChevronLeftIcon,
-  ClockIcon,
-  GearIcon,
-  MicrophoneIcon,
-  TranslateIcon,
-} from './ui/icons'
+  IconChat,
+  IconChevronLeft,
+  IconChevronRight,
+  IconDictionary,
+  IconHistory,
+  IconLive,
+  IconLogo,
+  IconSettings,
+  IconTranslate,
+} from './icons/AppIcons'
 
-interface SidebarItemProps {
-  icon: ReactNode
-  label: string
-  active?: boolean
-  badge?: boolean
-  collapsed?: boolean
-  onClick: () => void
+interface NavEntry {
+  page: AppPage
+  labelKey: 'nav_chat' | 'nav_translate' | 'nav_live_translate' | 'nav_dictionary' | 'nav_history'
+  icon: React.ReactNode
 }
 
-function SidebarItem({ icon, label, active, badge, collapsed, onClick }: SidebarItemProps) {
-  return (
-    <div className="relative w-full px-1">
-      <button
-        type="button"
-        onClick={onClick}
-        aria-label={label}
-        aria-current={active ? 'page' : undefined}
-        title={collapsed ? label : undefined}
-        className={[
-          'relative flex items-center w-full rounded-lg',
-          'transition-colors duration-150 ease-out select-none',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007AFF] focus-visible:ring-offset-1',
-          collapsed ? 'h-8 w-8 mx-auto justify-center' : 'h-8 gap-2 px-2',
-          active
-            ? 'bg-[#007AFF] dark:bg-[#0A84FF] text-white shadow-sm'
-            : 'text-[var(--apple-label-secondary)] hover:bg-black/[0.06] dark:hover:bg-white/[0.08] hover:text-[var(--apple-label-primary)]',
-        ]
-          .filter(Boolean)
-          .join(' ')}
-      >
-        {/* Icon */}
-        <span
-          className={[
-            'flex-shrink-0 flex items-center justify-center',
-            collapsed ? '' : '',
-          ].join(' ')}
-        >
-          {icon}
-        </span>
+// Reference order: Chat, Translate, Dictionary, Live, History
+const NAV_ITEMS: NavEntry[] = [
+  { page: 'chat',       labelKey: 'nav_chat',           icon: <IconChat size={20} /> },
+  { page: 'translate',  labelKey: 'nav_translate',      icon: <IconTranslate size={20} /> },
+  { page: 'dictionary', labelKey: 'nav_dictionary',     icon: <IconDictionary size={20} /> },
+  { page: 'live',       labelKey: 'nav_live_translate', icon: <IconLive size={20} /> },
+  { page: 'history',    labelKey: 'nav_history',        icon: <IconHistory size={20} /> },
+]
 
-        {/* Label */}
-        {!collapsed && (
-          <span className="min-w-0 truncate text-[13px] font-medium">{label}</span>
-        )}
+export default function Sidebar() {
+  const t                = useT()
+  const activePage       = useAppStore((s) => s.activePage)
+  const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed)
+  const toggleSidebar    = useAppStore((s) => s.toggleSidebar)
+  const setActivePage    = useAppStore((s) => s.setActivePage)
+  const openSettings     = useAppStore((s) => s.openSettings)
 
-        {/* Badge indicator */}
-        {badge && (
-          <span
-            className={[
-              'absolute w-2 h-2 rounded-full border-2',
-              'bg-[#FF9500] dark:bg-[#FF9F0A]',
-              active ? 'border-[#007AFF]' : 'border-[var(--apple-vibrancy-sidebar)]',
-              collapsed ? 'top-1 right-1' : 'top-1.5 right-2',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-          />
-        )}
-      </button>
-    </div>
-  )
-}
-
-export function Sidebar() {
-  const {
-    activePage,
-    setActivePage,
-    clearTranslation,
-    keyStatus,
-    openSettings,
-    sidebarCollapsed,
-    toggleSidebar,
-  } = useAppStore()
-  const t = useT()
-
-  const hasAnyKey = PROVIDERS.some((p) => keyStatus[p.id as Provider])
   const collapsed = sidebarCollapsed
 
-  const handleNewTranslate = () => {
-    clearTranslation()
-    setActivePage('translate')
-  }
-
   return (
-    <aside
-      className={[
-        'apple-sidebar relative flex flex-col flex-shrink-0',
-        'transition-[width] duration-200 ease-out',
-        'pt-2 pb-3',
-        collapsed ? 'items-center w-[60px] px-0' : 'items-stretch w-[200px] px-1',
-      ]
-        .filter(Boolean)
-        .join(' ')}
-    >
-      {/* Header: App logo + collapse toggle */}
-      <div
-        className={[
-          'mb-2 flex h-10 items-center',
-          collapsed ? 'justify-center px-1' : 'justify-between pl-3 pr-2',
-        ]
-          .filter(Boolean)
-          .join(' ')}
-      >
-        {collapsed ? (
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            aria-label={t.nav_expand_sidebar}
-            title={t.nav_expand_sidebar}
-            className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-black/[0.06] dark:hover:bg-white/[0.08] transition-colors duration-150"
-          >
-            <AppLogoIcon size={28} />
-          </button>
-        ) : (
+    <aside className={`sidebar ${collapsed ? 'sidebar-collapsed' : 'sidebar-expanded'}`}>
+      {/* ── Sidebar header: logo + brand name + collapse toggle ── */}
+      <div className="sidebar-header">
+        <IconLogo size={26} style={{ flexShrink: 0 }} />
+
+        {!collapsed && (
           <>
-            <div className="flex items-center gap-2.5 min-w-0">
-              <AppLogoIcon size={28} />
-              <div className="min-w-0">
-                <div className="truncate text-[13px] font-bold text-[var(--apple-label-primary)]">
-                  Viezan
-                </div>
-              </div>
-            </div>
+            <span className="sidebar-brand">{collapsed ? '' : 'Viezan'}</span>
             <button
               type="button"
+              className="btn-icon"
               onClick={toggleSidebar}
+              data-tooltip={t.nav_collapse_sidebar}
               aria-label={t.nav_collapse_sidebar}
-              title={t.nav_collapse_sidebar}
-              className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-md hover:bg-black/[0.06] dark:hover:bg-white/[0.08] transition-colors duration-150 text-[var(--apple-label-tertiary)] hover:text-[var(--apple-label-secondary)]"
+              style={{ flexShrink: 0 }}
             >
-              <ChevronLeftIcon className="w-3.5 h-3.5" />
+              <IconChevronLeft size={14} />
             </button>
           </>
+        )}
+
+        {collapsed && (
+          <button
+            type="button"
+            className="btn-icon"
+            onClick={toggleSidebar}
+            data-tooltip={t.nav_expand_sidebar}
+            aria-label={t.nav_expand_sidebar}
+            style={{ flexShrink: 0 }}
+          >
+            <IconChevronRight size={14} />
+          </button>
         )}
       </div>
 
       {/* Separator */}
-      <div className="h-px bg-[var(--apple-separator)] mx-2 mb-2" />
+      {!collapsed && <div className="sidebar-separator" />}
 
-      {/* Navigation items */}
-      <div className="flex flex-col gap-0.5">
-        {/* Chat */}
-        <SidebarItem
-          label={t.nav_chat}
-          active={activePage === 'chat'}
-          collapsed={collapsed}
-          onClick={() => setActivePage('chat')}
-          icon={<ChatBubbleIcon className="w-4 h-4" />}
-        />
+      {/* ── Nav items ── */}
+      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, padding: '4px 10px', overflow: 'hidden' }}>
+        {NAV_ITEMS.map(({ page, labelKey, icon }) => {
+          const label = t[labelKey]
+          return (
+            <button
+              key={page}
+              type="button"
+              className={`nav-item${activePage === page ? ' active' : ''}`}
+              onClick={() => setActivePage(page)}
+              data-tooltip={collapsed ? label : undefined}
+              aria-label={label}
+              style={{ justifyContent: collapsed ? 'center' : 'flex-start', border: 'none', width: '100%', textAlign: 'left' }}
+            >
+              <span style={{ flexShrink: 0, display: 'flex' }}>{icon}</span>
+              {!collapsed && <span>{label}</span>}
+            </button>
+          )
+        })}
+      </nav>
 
-        {/* Translate */}
-        <SidebarItem
-          label={t.nav_translate}
-          active={activePage === 'translate'}
-          collapsed={collapsed}
-          onClick={handleNewTranslate}
-          icon={<TranslateIcon className="w-4 h-4" />}
-        />
-
-        {/* Dictionary */}
-        <SidebarItem
-          label={t.nav_dictionary}
-          active={activePage === 'dictionary'}
-          collapsed={collapsed}
-          onClick={() => setActivePage('dictionary')}
-          icon={<BookIcon className="w-4 h-4" />}
-        />
-
-        {/* Live Translate */}
-        <SidebarItem
-          label={t.nav_live_translate}
-          active={activePage === 'live'}
-          collapsed={collapsed}
-          onClick={() => setActivePage('live')}
-          icon={<MicrophoneIcon className="w-4 h-4" />}
-        />
-
-        {/* History */}
-        <SidebarItem
-          label={t.nav_history}
-          active={activePage === 'history'}
-          collapsed={collapsed}
-          onClick={() => setActivePage('history')}
-          icon={<ClockIcon className="w-4 h-4" />}
-        />
+      {/* ── Settings ── */}
+      <div style={{ padding: '8px 10px 16px' }}>
+        <button
+          type="button"
+          className="nav-item"
+          onClick={openSettings}
+          data-tooltip={collapsed ? t.nav_settings : undefined}
+          aria-label={t.nav_settings}
+          style={{ justifyContent: collapsed ? 'center' : 'flex-start', border: 'none', width: '100%', textAlign: 'left' }}
+        >
+          <span style={{ flexShrink: 0, display: 'flex' }}><IconSettings size={20} /></span>
+          {!collapsed && <span>{t.nav_settings}</span>}
+        </button>
       </div>
-
-      {/* Spacer */}
-      <div className="flex-1" />
-
-      {/* Bottom separator + Settings */}
-      <div className="h-px bg-[var(--apple-separator)] mx-2 mb-2" />
-
-      <SidebarItem
-        label={t.nav_settings}
-        badge={!hasAnyKey}
-        collapsed={collapsed}
-        onClick={openSettings}
-        icon={<GearIcon className="w-4 h-4" />}
-      />
     </aside>
   )
 }

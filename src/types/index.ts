@@ -98,6 +98,8 @@ export interface ProviderConfig {
   localEngines?: LocalAiEngine[]
 }
 
+export type ModelCapability = 'vision' | 'reasoning' | 'web-search' | 'image-gen'
+
 export interface ModelConfig {
   id: string
   name: string
@@ -108,6 +110,16 @@ export interface ModelConfig {
    * 'powerful'    = highest quality, slower/costlier
    */
   tag?: 'recommended' | 'balanced' | 'powerful'
+  /** Speed rating 1–8 (filled bar segments in the model picker) */
+  speed?: number
+  /** Intelligence/capability rating 1–8 */
+  intelligence?: number
+  /** Context window size in thousands of tokens (e.g. 200 for 200k) */
+  contextK?: number
+  /** Feature capabilities of this model */
+  capabilities?: ModelCapability[]
+  /** Short label for what this model is best used for, e.g. "Chat, Translation" */
+  recommendedFor?: string
 }
 
 export interface Language {

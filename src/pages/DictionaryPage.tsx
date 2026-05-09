@@ -1,425 +1,272 @@
-import { useEffect, useRef, useState } from 'react'
-import { DictionaryHistoryPanel, type DictionaryListTab } from '../components/dictionary/DictionaryHistoryPanel'
-import { DictionaryResultPanel } from '../components/dictionary/DictionaryResultPanel'
-import { DictionarySearchPanel } from '../components/dictionary/DictionarySearchPanel'
-import { ModelSelector } from '../components/ModelSelector'
-import { GearIcon } from '../components/ui/icons'
-import {
-  dictionaryService,
-  MAX_DICTIONARY_CONTEXT_CHARS,
-  MAX_DICTIONARY_TERM_CHARS,
-  normalizeDictionaryTerm,
-} from '../services/dictionaryService'
+import React, { useState, useCallback, useRef, memo } from 'react'
 import { useAppStore, useT } from '../store/useAppStore'
-import type {
-  DictionaryEntry,
-  DictionaryLookupParams,
-  DictionaryLookupResult,
-  DictionaryResult,
-  DictionaryTranslation,
-} from '../types'
+import type { Translations } from '../i18n'
+import { dictionaryService, normalizeDictionaryTerm } from '../services/dictionaryService'
+import type { DictionaryEntry } from '../types'
 import { createClientId } from '../utils/id'
-import { combineUsageCosts, estimateUsageCost } from '../utils/usageCost'
+import {
+  IconSearch, IconStar, IconStarFilled, IconTrash, IconSpinner,
+  IconChevronLeft,
+} from '../components/icons/AppIcons'
+import ProviderIcon from '../components/ProviderIcon'
 
-function createDictionaryEntryId(): string {
-  return createClientId('dict')
+const COMMON_SOURCE_LANGS = ['auto', 'en', 'ja', 'ko', 'zh', 'vi']
+const COMMON_TARGET_LANGS = ['vi', 'en', 'ja', 'ko', 'zh']
+
+const LANG_LABELS: Record<string, string> = {
+  auto: 'Auto', en: 'EN', ja: 'JA', ko: 'KO', zh: 'ZH', vi: 'VI',
+  fr: 'FR', de: 'DE', es: 'ES', pt: 'PT', ru: 'RU', ar: 'AR',
+  th: 'TH', id: 'ID', ms: 'MS', it: 'IT',
 }
 
-function formatDictionaryEntry(entry: DictionaryEntry): string {
-  const translations = entry.result.translations
-    .map((item: DictionaryTranslation | string) => {
-      if (typeof item === 'string') return item
-      return item.pronunciation ? `${item.text} /${item.pronunciation.replace(/^\/|\/$/g, '')}/` : item.text
-    })
-    .join(', ')
-  const lines = [
-    entry.result.headword,
-    entry.result.pronunciation ? `${entry.result.pronunciation}` : '',
-    entry.result.meaning,
-    translations,
-    ...entry.result.examples,
-    ...entry.result.notes,
-  ]
-  return lines.filter(Boolean).join('\n')
+function formatDate(ts: number) {
+  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-function sameDictionaryLookup(
-  entry: DictionaryEntry,
-  normalizedTerm: string,
-  sourceLang: string,
-  targetLang: string,
-  context: string,
-): boolean {
+// t passed as prop — no per-component store subscription
+const DictionaryResultView = memo(function DictionaryResultView({ entry, onBack, t }: { entry: DictionaryEntry; onBack: () => void; t: Translations }) {
+  const { result } = entry
   return (
-    entry.normalizedTerm === normalizedTerm &&
-    entry.sourceLang === sourceLang &&
-    entry.targetLang === targetLang &&
-    (entry.context?.trim() ?? '') === context
-  )
-}
-
-function hasDictionaryDetails(entry: DictionaryEntry): boolean {
-  return entry.result.translations.some((item) => {
-    if (typeof item === 'string') return false
-    return Boolean(
-      item.meaning ||
-        item.usage ||
-        item.nuance ||
-        item.examples?.length ||
-        item.collocations?.length ||
-        item.notes?.length,
-    )
-  })
-}
-
-export function DictionaryPage() {
-  const t = useT()
-  const {
-    dictionaryEntries,
-    addDictionaryEntry,
-    toggleDictionaryFavorite,
-    deleteDictionaryEntry,
-    clearDictionaryHistory,
-    sourceLang,
-    targetLang,
-    setSourceLang,
-    setTargetLang,
-    selectedProvider,
-    selectedModels,
-    setSourceText,
-    setTranslatedText,
-    setPhoneticText,
-    setActivePage,
-    recordUsageCost,
-  } = useAppStore()
-
-  const [term, setTerm] = useState('')
-  const [context, setContext] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(
-    dictionaryEntries[0]?.id ?? null,
-  )
-  const [activeListTab, setActiveListTab] = useState<DictionaryListTab>('recent')
-  const [copied, setCopied] = useState(false)
-  const lookupRequestRef = useRef(0)
-
-  /** Controls visibility of the AI config popup */
-  const [showAIConfig, setShowAIConfig] = useState(false)
-  const aiConfigRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!showAIConfig) return
-    const handleOutside = (e: MouseEvent) => {
-      if (aiConfigRef.current && !aiConfigRef.current.contains(e.target as Node)) {
-        setShowAIConfig(false)
-      }
-    }
-    document.addEventListener('mousedown', handleOutside)
-    return () => document.removeEventListener('mousedown', handleOutside)
-  }, [showAIConfig])
-
-  useEffect(() => {
-    const cleanTerm = term.trim()
-    if (!cleanTerm) return
-    const matchedEntry = dictionaryEntries.find((entry) =>
-      sameDictionaryLookup(
-        entry,
-        normalizeDictionaryTerm(cleanTerm),
-        sourceLang,
-        targetLang,
-        context.trim(),
-      ),
-    )
-    if (matchedEntry) setSelectedEntryId(matchedEntry.id)
-  }, [context, dictionaryEntries, sourceLang, targetLang, term])
-
-  const selectedEntry =
-    dictionaryEntries.find((entry) => entry.id === selectedEntryId) ?? dictionaryEntries[0] ?? null
-  const model = selectedModels[selectedProvider] ?? ''
-
-  const localizeError = (code?: string, fallback?: string) => {
-    if (code === 'INVALID_RESPONSE') return t.dictionary_error_invalid_response
-    if (code === 'NO_API_KEY') return t.translate_error_no_key
-    return fallback || t.dictionary_error_failed
-  }
-
-  const createLookupEntry = ({
-    id,
-    favorite,
-    result,
-    normalizedTerm,
-    cleanTerm,
-    cleanContext,
-  }: {
-    id: string
-    favorite: boolean
-    result: DictionaryResult
-    normalizedTerm: string
-    cleanTerm: string
-    cleanContext: string
-  }): DictionaryEntry => ({
-    id,
-    term: cleanTerm,
-    normalizedTerm,
-    context: cleanContext || undefined,
-    sourceLang,
-    targetLang,
-    provider: selectedProvider,
-    model,
-    createdAt: Date.now(),
-    favorite,
-    result,
-  })
-
-  const runLookup = async () => {
-    const cleanTerm = term.trim()
-    const cleanContext = context.trim()
-    if (!cleanTerm) {
-      setError(t.dictionary_error_required)
-      return
-    }
-    if (cleanTerm.length > MAX_DICTIONARY_TERM_CHARS) {
-      setError(t.dictionary_error_too_long)
-      return
-    }
-    if (cleanContext.length > MAX_DICTIONARY_CONTEXT_CHARS) {
-      setError(t.dictionary_error_context_too_long)
-      return
-    }
-
-    const requestId = lookupRequestRef.current + 1
-    lookupRequestRef.current = requestId
-    const normalizedTerm = normalizeDictionaryTerm(cleanTerm)
-    const cachedEntry = dictionaryEntries.find((entry) =>
-      sameDictionaryLookup(entry, normalizedTerm, sourceLang, targetLang, cleanContext),
-    )
-
-    setError(null)
-    if (cachedEntry) {
-      setSelectedEntryId(cachedEntry.id)
-      setActiveListTab('recent')
-      if (hasDictionaryDetails(cachedEntry)) {
-        setIsLoading(false)
-        return
-      }
-    }
-
-    setIsLoading(true)
-    try {
-      const lookupParams: DictionaryLookupParams = {
-        term: cleanTerm,
-        context: cleanContext,
-        sourceLang,
-        targetLang,
-        provider: selectedProvider,
-        model,
-      }
-      const preview: DictionaryLookupResult = cachedEntry
-        ? { success: true as const, result: cachedEntry.result }
-        : await dictionaryService.lookupPreview(lookupParams)
-
-      if (requestId !== lookupRequestRef.current) return
-
-      if (!preview.success || !preview.result) {
-        setError(localizeError(preview.errorCode, preview.error))
-        return
-      }
-
-      const entryId = cachedEntry?.id ?? createDictionaryEntryId()
-      const favorite = cachedEntry?.favorite ?? false
-      const previewEntry = createLookupEntry({
-        id: entryId,
-        favorite,
-        result: preview.result,
-        normalizedTerm,
-        cleanTerm,
-        cleanContext,
-      })
-      const previewCost = cachedEntry?.cost ?? estimateUsageCost({
-        feature: 'dictionary',
-        provider: selectedProvider,
-        model,
-        inputText: `${cleanTerm}\n${cleanContext}`,
-        outputText: formatDictionaryEntry(previewEntry),
-      })
-      if (!cachedEntry) recordUsageCost(previewCost)
-      previewEntry.cost = previewCost
-
-      addDictionaryEntry(previewEntry)
-      setSelectedEntryId(previewEntry.id)
-      setActiveListTab('recent')
-      setIsLoading(false)
-
-      const detailed = await dictionaryService.lookupDetails(lookupParams, preview.result)
-      if (requestId !== lookupRequestRef.current || !detailed.success || !detailed.result) return
-      const detailedEntry = createLookupEntry({
-        id: entryId,
-        favorite,
-        result: detailed.result,
-        normalizedTerm,
-        cleanTerm,
-        cleanContext,
-      })
-      const detailedCost = estimateUsageCost({
-        feature: 'dictionary',
-        provider: selectedProvider,
-        model,
-        inputText: `${cleanTerm}\n${cleanContext}\n${formatDictionaryEntry(previewEntry)}`,
-        outputText: formatDictionaryEntry(detailedEntry),
-      })
-      recordUsageCost(detailedCost)
-      detailedEntry.cost = combineUsageCosts([previewCost, detailedCost], 'dictionary')
-
-      addDictionaryEntry(detailedEntry)
-    } finally {
-      if (requestId === lookupRequestRef.current) {
-        setIsLoading(false)
-      }
-    }
-  }
-
-  const handleCopy = async () => {
-    if (!selectedEntry) return
-    await navigator.clipboard?.writeText?.(formatDictionaryEntry(selectedEntry))
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), 1200)
-  }
-
-  const handleReuse = () => {
-    if (!selectedEntry) return
-    setSourceLang(selectedEntry.sourceLang)
-    setTargetLang(selectedEntry.targetLang)
-    setSourceText(selectedEntry.term)
-    setTranslatedText('')
-    setPhoneticText('')
-    setActivePage('translate')
-  }
-
-  return (
-    <div
-      className="flex flex-col h-full"
-      style={{ background: 'var(--apple-bg-primary)' }}
-    >
-      {/* ── Apple-style translucent toolbar ── */}
-      <div
-        className="apple-toolbar flex-shrink-0 flex items-center justify-between px-4 gap-3"
-        style={{ height: '52px', zIndex: 20 }}
-      >
-        <div className="min-w-0">
-          <h1
-            className="text-[15px] font-semibold leading-[20px]"
-            style={{ color: 'var(--apple-label-primary)' }}
-          >
-            {t.dictionary_title}
-          </h1>
-          <p
-            className="text-[12px] leading-[16px] mt-0.5"
-            style={{ color: 'var(--apple-label-secondary)' }}
-          >
-            {t.dictionary_subtitle}
-          </p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flexShrink: 0 }}>
+        <button type="button" className="btn-icon" onClick={onBack} style={{ marginTop: 2 }}>
+          <IconChevronLeft size={16} />
+        </button>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>{result.headword}</span>
+            {result.pronunciation && <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>{result.pronunciation}</span>}
+          </div>
+          <div style={{ display: 'flex', gap: 6, marginTop: 5, flexWrap: 'wrap' }}>
+            {result.partOfSpeech.map((pos) => <span key={pos} className="badge badge-glass" style={{ fontSize: 10.5 }}>{pos}</span>)}
+            <span className="badge badge-glass" style={{ fontSize: 10.5 }}>{entry.sourceLang.toUpperCase()} → {entry.targetLang.toUpperCase()}</span>
+          </div>
         </div>
+      </div>
 
-        {/* Gear / AI config */}
-        <div className="relative flex-shrink-0" ref={aiConfigRef}>
-          <button
-            type="button"
-            onClick={() => setShowAIConfig((v) => !v)}
-            title={t.translate_ai_config_title}
-            aria-label={t.translate_ai_config_title}
-            className={[
-              'flex items-center justify-center w-7 h-7 rounded-lg',
-              'transition-colors duration-150',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007AFF]',
-              showAIConfig
-                ? 'bg-[#007AFF]/10 dark:bg-[#0A84FF]/15 text-[#007AFF] dark:text-[#0A84FF]'
-                : 'text-[var(--apple-label-secondary)] hover:bg-[var(--apple-fill-tertiary)] hover:text-[var(--apple-label-primary)]',
-            ].join(' ')}
-          >
-            <GearIcon className="h-3.5 w-3.5" />
-          </button>
-
-          {showAIConfig && (
-            <div
-              className="absolute top-full right-0 mt-2 z-50 w-[480px] p-4 flex flex-col gap-3 rounded-xl"
-              style={{
-                background: 'var(--apple-bg-elevated)',
-                boxShadow: 'var(--apple-shadow-lg)',
-                border: '1px solid var(--apple-separator)',
-              }}
-            >
-              <h2 className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--apple-label-secondary)' }}>
-                {t.translate_ai_config_title}
-              </h2>
-              <ModelSelector />
+      <div className="scroll-area" style={{ flex: 1 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {result.meaning && (
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{t.dictionary_meaning}</p>
+              <p style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.6 }}>{result.meaning}</p>
+            </div>
+          )}
+          {result.translations.length > 0 && (
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{t.dictionary_translations}</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {result.translations.map((tx, i) => (
+                  <div key={i} className="card" style={{ padding: '10px 12px', borderRadius: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: tx.meaning || tx.usage || tx.nuance ? 6 : 0 }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{tx.text}</span>
+                      {tx.pronunciation && <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>{tx.pronunciation}</span>}
+                      {tx.partOfSpeech && <span className="badge badge-glass" style={{ fontSize: 10, marginLeft: 'auto' }}>{tx.partOfSpeech}</span>}
+                    </div>
+                    {tx.meaning && <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4, lineHeight: 1.5 }}>{tx.meaning}</p>}
+                    {tx.usage && <p style={{ fontSize: 11.5, color: 'var(--text-tertiary)', marginBottom: 3 }}><span style={{ fontWeight: 600 }}>{t.dictionary_translation_usage}: </span>{tx.usage}</p>}
+                    {tx.nuance && <p style={{ fontSize: 11.5, color: 'var(--text-tertiary)' }}><span style={{ fontWeight: 600 }}>{t.dictionary_translation_nuance}: </span>{tx.nuance}</p>}
+                    {tx.examples && tx.examples.length > 0 && (
+                      <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        {tx.examples.map((ex, j) => (
+                          <p key={j} style={{ fontSize: 11.5, color: 'var(--text-tertiary)', fontStyle: 'italic', paddingLeft: 8, borderLeft: '2px solid var(--glass-border)' }}>{ex}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {result.examples.length > 0 && (
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{t.dictionary_examples}</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {result.examples.map((ex, i) => (
+                  <p key={i} style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.6, paddingLeft: 10, borderLeft: '2px solid var(--accent)', opacity: 0.8 }}>{ex}</p>
+                ))}
+              </div>
             </div>
           )}
         </div>
       </div>
+    </div>
+  )
+})
 
-      {/* ── Search bar + panels ── */}
-      <div className="flex flex-col flex-1 min-h-0 px-4 pb-4 gap-3 pt-3">
-        {/* Search command bar */}
-        <DictionarySearchPanel
-          term={term}
-          onTermChange={setTerm}
-          context={context}
-          onContextChange={setContext}
-          sourceLang={sourceLang}
-          onSourceLangChange={setSourceLang}
-          targetLang={targetLang}
-          onTargetLangChange={setTargetLang}
-          isLoading={isLoading}
-          canSubmit={Boolean(model)}
-          error={error}
-          maxTermChars={MAX_DICTIONARY_TERM_CHARS}
-          maxContextChars={MAX_DICTIONARY_CONTEXT_CHARS}
-          onSubmit={() => { void runLookup() }}
-          t={t}
-        />
+const HistoryList = memo(function HistoryList({ entries, onSelect, onToggleFavorite, onDelete, onClear, t }: {
+  entries: DictionaryEntry[]
+  onSelect: (e: DictionaryEntry) => void
+  onToggleFavorite: (id: string) => void
+  onDelete: (id: string) => void
+  onClear: () => void
+  t: Translations
+}) {
+  const [confirmClear, setConfirmClear] = useState(false)
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 0 10px', flexShrink: 0 }}>
+        <span style={{ fontSize: 13, fontWeight: 600 }}>{t.dictionary_title}</span>
+        {entries.length > 0 && <span className="badge badge-glass">{entries.length}</span>}
+        <div style={{ flex: 1 }} />
+        {entries.length > 0 && (
+          confirmClear ? (
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button type="button" className="btn btn-danger" onClick={() => { onClear(); setConfirmClear(false) }} style={{ padding: '4px 10px', fontSize: 11 }}>{t.dictionary_confirm_clear}</button>
+              <button type="button" className="btn btn-ghost" onClick={() => setConfirmClear(false)} style={{ padding: '4px 10px', fontSize: 11 }}>{t.dictionary_cancel}</button>
+            </div>
+          ) : (
+            <button type="button" className="btn btn-ghost" onClick={() => setConfirmClear(true)} style={{ padding: '4px 10px', fontSize: 11, gap: 4 }}>
+              <IconTrash size={12} />{t.dictionary_clear_btn}
+            </button>
+          )
+        )}
+      </div>
 
-        {/* Result + History grid */}
-        <div className="grid flex-1 min-h-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_300px]">
-          {/* Result panel */}
-          <div
-            className="min-h-0 order-2 lg:order-1 rounded-xl overflow-hidden flex flex-col"
-            style={{
-              background: 'var(--apple-bg-primary)',
-              border: '1px solid var(--apple-separator)',
-              boxShadow: 'var(--apple-shadow-sm)',
-            }}
-          >
-            <DictionaryResultPanel
-              entry={selectedEntry}
-              copied={copied}
-              onCopy={() => { void handleCopy() }}
-              onFavorite={() => {
-                if (selectedEntry) toggleDictionaryFavorite(selectedEntry.id)
-              }}
-              onReuse={handleReuse}
-              t={t}
-            />
+      <div className="scroll-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+        {entries.length === 0 ? (
+          <div className="empty-state" style={{ flex: 1 }}>
+            <span style={{ fontSize: 26, opacity: 0.4 }}>📖</span>
+            <p style={{ fontSize: 12 }}>{t.dictionary_no_lookups}</p>
           </div>
-
-          {/* History panel */}
-          <div className="order-1 min-h-0 lg:order-2 lg:flex lg:flex-col">
-            <DictionaryHistoryPanel
-              entries={dictionaryEntries}
-              selectedEntryId={selectedEntry?.id ?? null}
-              activeTab={activeListTab}
-              onTabChange={setActiveListTab}
-              onSelect={setSelectedEntryId}
-              onToggleFavorite={toggleDictionaryFavorite}
-              onDeleteSelected={() => {
-                if (!selectedEntry) return
-                deleteDictionaryEntry(selectedEntry.id)
-                setSelectedEntryId(null)
-              }}
-              onClearHistory={clearDictionaryHistory}
-              t={t}
-            />
+        ) : entries.map((entry) => (
+          <div key={entry.id} className="card" style={{ padding: '10px 12px', cursor: 'pointer', borderRadius: 12 }} onClick={() => onSelect(entry)}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.term}</span>
+                  {entry.favorite && <span style={{ color: 'var(--warning)', flexShrink: 0, display: 'flex' }}><IconStarFilled size={13} /></span>}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{entry.sourceLang.toUpperCase()} → {entry.targetLang.toUpperCase()}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>·</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{formatDate(entry.createdAt)}</span>
+                  <ProviderIcon provider={entry.provider} size={14} />
+                </div>
+                {entry.result.meaning && <p style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.result.meaning}</p>}
+              </div>
+              <div style={{ display: 'flex', gap: 2, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                <button type="button" className="btn-icon" onClick={() => onToggleFavorite(entry.id)} style={{ padding: 5, color: entry.favorite ? 'var(--warning)' : 'var(--text-tertiary)' }} data-tooltip={entry.favorite ? t.dictionary_unfavorite : t.dictionary_favorite}>
+                  {entry.favorite ? <IconStarFilled size={13} /> : <IconStar size={13} />}
+                </button>
+                <button type="button" className="btn-icon" onClick={() => onDelete(entry.id)} style={{ padding: 5 }} data-tooltip={t.dictionary_delete}>
+                  <IconTrash size={13} />
+                </button>
+              </div>
+            </div>
           </div>
+        ))}
+      </div>
+    </div>
+  )
+})
+
+export default function DictionaryPage() {
+  const t = useT()
+  const dictionaryEntries        = useAppStore((s) => s.dictionaryEntries)
+  const addDictionaryEntry       = useAppStore((s) => s.addDictionaryEntry)
+  const toggleDictionaryFavorite = useAppStore((s) => s.toggleDictionaryFavorite)
+  const deleteDictionaryEntry    = useAppStore((s) => s.deleteDictionaryEntry)
+  const clearDictionaryHistory   = useAppStore((s) => s.clearDictionaryHistory)
+  const storeSrcLang  = useAppStore((s) => s.sourceLang)
+  const storeTgtLang  = useAppStore((s) => s.targetLang)
+  const selectedProvider = useAppStore((s) => s.selectedProvider)
+  const selectedModels   = useAppStore((s) => s.selectedModels)
+
+  const [term, setTerm]       = useState('')
+  const [context, setContext] = useState('')
+  const [srcLang, setSrcLang] = useState(storeSrcLang)
+  const [tgtLang, setTgtLang] = useState(storeTgtLang)
+  const [isLooking, setIsLooking]     = useState(false)
+  const [lookupError, setLookupError] = useState<string | null>(null)
+  const [selectedEntry, setSelectedEntry] = useState<DictionaryEntry | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+
+  const handleLookup = useCallback(async () => {
+    const trimmed = term.trim()
+    if (!trimmed || isLooking) return
+    setIsLooking(true)
+    setLookupError(null)
+    abortRef.current?.abort()
+    abortRef.current = new AbortController()
+    try {
+      const model = selectedModels[selectedProvider] ?? ''
+      const result = await dictionaryService.lookup({ term: trimmed, context: context.trim() || undefined, sourceLang: srcLang, targetLang: tgtLang, provider: selectedProvider, model })
+      if (result.success && result.result) {
+        const entry: DictionaryEntry = {
+          id: createClientId('dict'), term: trimmed,
+          normalizedTerm: normalizeDictionaryTerm(trimmed),
+          context: context.trim() || undefined,
+          sourceLang: srcLang, targetLang: tgtLang,
+          provider: selectedProvider, model,
+          createdAt: Date.now(), favorite: false, result: result.result,
+        }
+        addDictionaryEntry(entry)
+        setSelectedEntry(entry)
+      } else {
+        setLookupError(result.error ?? t.dictionary_error_failed)
+      }
+    } catch (err) {
+      setLookupError(err instanceof Error ? err.message : t.dictionary_error_failed)
+    } finally {
+      setIsLooking(false)
+    }
+  }, [term, context, srcLang, tgtLang, selectedProvider, selectedModels, addDictionaryEntry, isLooking, t])
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleLookup() }
+  }, [handleLookup])
+
+  return (
+    <div className="page-container" style={{ gap: 12 }}>
+      <div className="panel-grid" style={{ flex: 1 }}>
+        <div className="panel glass" style={{ padding: '14px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, height: '100%' }}>
+            <p style={{ fontSize: 13, fontWeight: 600, flexShrink: 0 }}>{t.dictionary_look_up_word}</p>
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none', display: 'flex' }}><IconSearch size={14} /></span>
+              <input className="search-input" type="text" placeholder={t.dictionary_term_placeholder} value={term} onChange={(e) => setTerm(e.target.value)} onKeyDown={handleKeyDown} style={{ paddingRight: 12 }} />
+            </div>
+            <textarea className="field-textarea" placeholder={t.dictionary_context_placeholder} value={context} onChange={(e) => setContext(e.target.value)} rows={3} style={{ flexShrink: 0, resize: 'none' }} />
+            <div style={{ flexShrink: 0 }}>
+              <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.dictionary_source_lang}</p>
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                {COMMON_SOURCE_LANGS.map((lang) => (
+                  <button key={lang} type="button" className={`lang-pill${srcLang === lang ? ' active' : ''}`} onClick={() => setSrcLang(lang)}>
+                    {LANG_LABELS[lang] ?? lang.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ flexShrink: 0 }}>
+              <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.dictionary_target_lang}</p>
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                {COMMON_TARGET_LANGS.map((lang) => (
+                  <button key={lang} type="button" className={`lang-pill${tgtLang === lang ? ' active' : ''}`} onClick={() => setTgtLang(lang)}>
+                    {LANG_LABELS[lang] ?? lang.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {lookupError && (
+              <div style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(255,69,58,0.1)', border: '1px solid rgba(255,69,58,0.2)', color: 'var(--danger)', fontSize: 12, flexShrink: 0 }}>
+                {lookupError}
+              </div>
+            )}
+            <div style={{ flex: 1 }} />
+            <button type="button" className="btn btn-primary" onClick={() => void handleLookup()} disabled={!term.trim() || isLooking} style={{ width: '100%', gap: 6, flexShrink: 0 }}>
+              {isLooking ? <IconSpinner size={14} /> : <IconSearch size={14} />}
+              {isLooking ? t.dictionary_lookup_loading : t.dictionary_lookup}
+            </button>
+          </div>
+        </div>
+
+        <div className="panel glass" style={{ padding: '14px' }}>
+          {selectedEntry ? (
+            <DictionaryResultView entry={selectedEntry} onBack={() => setSelectedEntry(null)} t={t} />
+          ) : (
+            <HistoryList entries={dictionaryEntries} onSelect={setSelectedEntry} onToggleFavorite={toggleDictionaryFavorite} onDelete={deleteDictionaryEntry} onClear={clearDictionaryHistory} t={t} />
+          )}
         </div>
       </div>
     </div>

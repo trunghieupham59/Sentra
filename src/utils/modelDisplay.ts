@@ -171,7 +171,7 @@ export function formatModelName(
  * to a single bucket. We strip date stamps + `-latest` suffixes and lowercase
  * the rest.
  */
-function modelFamilyKey(_provider: Provider, id: string): string {
+export function getModelFamilyKey(_provider: Provider, id: string): string {
   return stripVersionSuffix(id).toLowerCase()
 }
 
@@ -200,7 +200,7 @@ export function dedupeModelsByFamily<T extends FetchedModel>(
   const buckets = new Map<string, T>()
   const order: string[] = []
   for (const model of models) {
-    const key = modelFamilyKey(provider, model.id)
+    const key = getModelFamilyKey(provider, model.id)
     const existing = buckets.get(key)
     if (!existing) {
       buckets.set(key, model)

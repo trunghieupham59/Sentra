@@ -1,194 +1,217 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { SettingsModal } from './components/SettingsModal'
-import { Sidebar } from './components/Sidebar'
-import { PROVIDERS } from './constants/providers'
-import { flushPersistedStore, useAppStore } from './store/useAppStore'
-import type { Provider, QuickChatSeedPayload } from './types'
-import { detectSystemLocale } from './utils/locale'
+import { IconSpinner } from './components/icons/AppIcons'
+import Sidebar from './components/Sidebar'
+import { useProviderModelRefresh } from './hooks/useProviderModelRefresh'
+import type { AppLocale } from './i18n'
+import { useAppStore } from './store/useAppStore'
+import type { AppPage, Provider } from './types'
 
-
-const TranslatePage = lazy(() => import('./pages/TranslatePage').then(module => ({ default: module.TranslatePage })))
-const LiveTranslatePage = lazy(() => import('./pages/LiveTranslatePage').then(module => ({ default: module.LiveTranslatePage })))
-const ChatPage = lazy(() => import('./pages/ChatPage').then(module => ({ default: module.ChatPage })))
-const HistoryPage = lazy(() => import('./pages/HistoryPage').then(module => ({ default: module.HistoryPage })))
-const DictionaryPage = lazy(() => import('./pages/DictionaryPage').then(module => ({ default: module.DictionaryPage })))
-
-const FONT_SIZE_MAP = {
-  small:  '13px',
-  medium: '15px',
-  large:  '17px',
-}
-
-/** Height (px) of the macOS traffic-light drag region at the top of the window. */
-const MACOS_TITLEBAR_HEIGHT_PX = 40
-
-function PageFallback() {
-  return <div className="app-page" aria-hidden="true" />
-}
-
-function App() {
-  const {
-    activePage,
-    localeAuto,
-    setKeyStatus,
-    setLocaleFromSystem,
-    fontSize,
-    selectedProvider,
-    selectedModels,
-    ttsMode,
-    ttsVoice,
-    createChatSession,
-    setActiveChatSession,
-    addChatMessage,
-    setActivePage,
-    openSettings,
-  } = useAppStore()
-
-  // Auto-detect system language on startup (only when localeAuto is enabled)
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally run only once on mount
-  useEffect(() => {
-    if (localeAuto) {
-      setLocaleFromSystem(detectSystemLocale())
-    }
-  }, []) // Only run once on mount
-
-  // Apply font size to document root
-  useEffect(() => {
-    document.documentElement.style.fontSize = FONT_SIZE_MAP[fontSize ?? 'medium']
-  }, [fontSize])
-
-  // Sync active provider/model to main process so the local server's /api/config
-  // always reflects the user's current selection in the app.
-  useEffect(() => {
-    if (!window.api?.localServer) return
-    const model = selectedModels[selectedProvider] ?? ''
-    window.api.localServer.syncConfig({ provider: selectedProvider, model, ttsMode, ttsVoice })
-    // The Quick Chat popup is a separate BrowserWindow with its own Zustand store
-    // hydrated from localStorage. Flush the debounced persist write immediately
-    // whenever the active provider/model changes so the popup sees the latest
-    // selection the next time it shows up — without waiting for the 500 ms
-    // debounce window.
-    flushPersistedStore()
-  }, [selectedProvider, selectedModels, ttsMode, ttsVoice])
-
-  // Also flush on tab/window hide — covers any other persisted state (system
-  // prompt, locale, etc.) that the popup reads from the same store.
-  useEffect(() => {
-    const onHide = () => flushPersistedStore()
-    document.addEventListener('visibilitychange', onHide)
-    window.addEventListener('blur', onHide)
-    window.addEventListener('beforeunload', onHide)
-    return () => {
-      document.removeEventListener('visibilitychange', onHide)
-      window.removeEventListener('blur', onHide)
-      window.removeEventListener('beforeunload', onHide)
-    }
-  }, [])
-
-
-  // Listen for quick chat window actions forwarded from the main process.
-  useEffect(() => {
-    if (!window.api?.quickChat) return
-    const unsubOpenSettings = window.api.quickChat.onOpenSettings(() => {
-      openSettings()
-    })
-    const unsubOpenInChat = window.api.quickChat.onOpenInChat((payload: QuickChatSeedPayload | null) => {
-      if (!payload) {
-        setActivePage('chat')
-        return
-      }
-
-      const provider = payload.provider as Provider
-      const sessionId = createChatSession(provider, payload.model)
-      setActiveChatSession(sessionId)
-      addChatMessage(sessionId, {
-        id: `msg-${Date.now()}-quick-u`,
-        role: 'user',
-        content: [{ type: 'text', text: payload.question }],
-        timestamp: Date.now(),
-      })
-      if (payload.response) {
-        addChatMessage(sessionId, {
-          id: `msg-${Date.now()}-quick-a`,
-          role: 'assistant',
-          content: [{ type: 'text', text: payload.response }],
-          timestamp: Date.now(),
-        })
-      }
-      setActivePage('chat')
-    })
-    return () => {
-      unsubOpenSettings()
-      unsubOpenInChat()
-    }
-  }, [openSettings, setActivePage, createChatSession, setActiveChatSession, addChatMessage])
-
-  // On startup, check which API keys exist in keychain
-  useEffect(() => {
-    const checkKeys = async () => {
-      if (!window.api) return
-      for (const provider of PROVIDERS) {
-        try {
-          const result = await window.api.keychain.hasKey(provider.id)
-          setKeyStatus(provider.id as Provider, result.exists)
-        } catch (error) {
-          console.error(`Error checking key for ${provider.id}:`, error)
-        }
-      }
-    }
-    checkKeys()
-  }, [setKeyStatus])
-
-  const isMac = window.api?.platform === 'darwin'
-
+// ── Full-width title-bar header — pure drag strip, clears macOS traffic lights ──
+function AppHeader() {
+  const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed)
+  const collapsed        = sidebarCollapsed
   return (
-    <div
-      className="flex flex-col h-screen overflow-hidden"
-      style={{ background: 'var(--apple-bg-secondary)', color: 'var(--apple-label-primary)' }}
-    >
-      {/* Full-width macOS traffic light drag region — only on macOS */}
-      {isMac && (
-        <div
-          className="titlebar-drag flex-shrink-0 w-full"
-          style={{
-            height: `${MACOS_TITLEBAR_HEIGHT_PX}px`,
-            borderBottom: '1px solid var(--apple-separator)',
-            background: 'var(--apple-vibrancy-bg)',
-            backdropFilter: 'blur(20px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-          }}
-        />
-      )}
+    <header className="app-header">
+      {/* Sidebar-coloured traffic-light zone — no interactive content */}
+      <div
+        className="app-header-sidebar"
+        style={{
+          width: collapsed ? 64 : 240,
+          transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      />
+      {/* Content-area drag strip */}
+      <div className="app-header-content" />
+    </header>
+  )
+}
 
-      {/* Body: sidebar + main content */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        <Sidebar />
+function detectSystemLocale(): AppLocale {
+  const langs: readonly string[] = navigator.languages?.length
+    ? navigator.languages
+    : [navigator.language ?? 'en']
+  for (const lang of langs) {
+    const l = lang.toLowerCase()
+    if (l.startsWith('vi')) return 'vi'
+    if (l.startsWith('ja')) return 'ja'
+    if (l.startsWith('en')) return 'en'
+  }
+  return 'en'
+}
 
-        {/* Main content area */}
-        <main
-          className="flex-1 overflow-hidden"
-          style={{ background: 'var(--apple-bg-primary)' }}
-        >
-          <Suspense fallback={<PageFallback />}>
-            {activePage === 'translate' ? (
-              <TranslatePage />
-            ) : activePage === 'live' ? (
-              <LiveTranslatePage />
-            ) : activePage === 'chat' ? (
-              <ChatPage />
-            ) : activePage === 'dictionary' ? (
-              <DictionaryPage />
-            ) : (
-              <HistoryPage />
-            )}
-          </Suspense>
-        </main>
+// ─── Lazy page imports ────────────────────────────────────────────────────────
+// Pages are created on-demand; stubs render an empty placeholder until the real
+// page components exist.
+const TranslatePage  = lazy(() => import('./pages/TranslatePage').catch(() => ({ default: PlaceholderPage('Translate') })))
+const ChatPage       = lazy(() => import('./pages/ChatPage').catch(() => ({ default: PlaceholderPage('Chat') })))
+const LivePage       = lazy(() => import('./pages/LivePage').catch(() => ({ default: PlaceholderPage('Live') })))
+const DictionaryPage = lazy(() => import('./pages/DictionaryPage').catch(() => ({ default: PlaceholderPage('Dictionary') })))
+const HistoryPage    = lazy(() => import('./pages/HistoryPage').catch(() => ({ default: PlaceholderPage('History') })))
+const SettingsModal  = lazy(() => import('./components/SettingsModal').catch(() => ({ default: () => <></> })))
+
+// ─── Placeholder for missing page modules ─────────────────────────────────────
+function PlaceholderPage(name: string) {
+  return function Page() {
+    return (
+      <div className="page-container" style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <div className="empty-state">
+          <span style={{ fontSize: 32 }}>🚧</span>
+          <p style={{ fontSize: 14, fontWeight: 600 }}>{name}</p>
+          <p style={{ fontSize: 12 }}>This page is coming soon.</p>
+        </div>
       </div>
+    )
+  }
+}
 
-      {/* Settings popup modal */}
-      <SettingsModal />
+// ─── Loading fallback ─────────────────────────────────────────────────────────
+function LoadingPage() {
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
+      <span style={{
+        fontSize: 26,
+        fontWeight: 700,
+        background: 'linear-gradient(135deg, #0A84FF 0%, #5E5CE6 100%)',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        letterSpacing: '-0.03em',
+      }}>
+        Viezan
+      </span>
+      <span style={{ color: 'var(--accent)', display: 'flex' }}><IconSpinner size={22} /></span>
     </div>
   )
 }
 
-export default App
+// ─── Page router ──────────────────────────────────────────────────────────────
+function ActivePage({ page }: { page: AppPage }) {
+  switch (page) {
+    case 'translate':  return <TranslatePage />
+    case 'chat':       return <ChatPage />
+    case 'live':       return <LivePage />
+    case 'dictionary': return <DictionaryPage />
+    case 'history':    return <HistoryPage />
+    default:           return <TranslatePage />
+  }
+}
+
+// ─── Font size sync ───────────────────────────────────────────────────────────
+const FONT_SIZE_MAP: Record<'small' | 'medium' | 'large', string> = {
+  small:  '12px',
+  medium: '14px',
+  large:  '16px',
+}
+
+// ─── App root ─────────────────────────────────────────────────────────────────
+export default function App() {
+  const activePage   = useAppStore((s) => s.activePage)
+  const settingsOpen = useAppStore((s) => s.settingsOpen)
+  const fontSize     = useAppStore((s) => s.fontSize)
+  const selectedProvider = useAppStore((s) => s.selectedProvider)
+  const selectedModels   = useAppStore((s) => s.selectedModels)
+  const keyStatus    = useAppStore((s) => s.keyStatus)
+  const ttsMode      = useAppStore((s) => s.ttsMode)
+  const ttsVoice     = useAppStore((s) => s.ttsVoice)
+  const localeAuto   = useAppStore((s) => s.localeAuto)
+  const theme        = useAppStore((s) => s.theme)
+  const setLocaleFromSystem = useAppStore((s) => s.setLocaleFromSystem)
+  const setKeyStatus    = useAppStore((s) => s.setKeyStatus)
+  const setHasTavilyKey = useAppStore((s) => s.setHasTavilyKey)
+  const setHasBraveKey  = useAppStore((s) => s.setHasBraveKey)
+
+  useProviderModelRefresh(selectedProvider, {
+    refreshKey: keyStatus[selectedProvider],
+  })
+
+  // Apply font size to <html> root
+  useEffect(() => {
+    document.documentElement.style.fontSize = FONT_SIZE_MAP[fontSize] ?? '14px'
+  }, [fontSize])
+
+  // Sync OS keychain → store on startup so key status is accurate without
+  // requiring the user to open Settings first.
+  useEffect(() => {
+    if (!window.api?.keychain?.get) return
+    const PROVIDER_KEYS: Array<{ id: string; type: 'provider' | 'tavily' | 'brave' }> = [
+      { id: 'gemini', type: 'provider' },
+      { id: 'claude', type: 'provider' },
+      { id: 'openai', type: 'provider' },
+      { id: 'groq',   type: 'provider' },
+      { id: 'tavily', type: 'tavily' },
+      { id: 'brave',  type: 'brave' },
+    ]
+    PROVIDER_KEYS.forEach(({ id, type }) => {
+      window.api.keychain.get(id).then((res) => {
+        if (res == null) return
+        const exists = res.exists ?? false
+        if (type === 'tavily') { setHasTavilyKey(exists); return }
+        if (type === 'brave')  { setHasBraveKey(exists); return }
+        setKeyStatus(id as Provider, exists)
+      }).catch(() => { /* keychain unavailable — keep persisted value */ })
+    })
+  }, [setKeyStatus, setHasTavilyKey, setHasBraveKey])
+
+  // Auto locale detection — runs on mount and whenever localeAuto is turned on
+  useEffect(() => {
+    if (!localeAuto) return
+    setLocaleFromSystem(detectSystemLocale())
+  }, [localeAuto, setLocaleFromSystem])
+
+  // Apply theme: 'system' follows prefers-color-scheme; 'dark'/'light' forces it
+  useEffect(() => {
+    const apply = (dark: boolean) =>
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
+    if (theme === 'system') {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)')
+      apply(mq.matches)
+      const handler = (e: MediaQueryListEvent) => apply(e.matches)
+      mq.addEventListener('change', handler)
+      return () => mq.removeEventListener('change', handler)
+    }
+    apply(theme === 'dark')
+  }, [theme])
+
+  // Sync provider/model to main process (local server bridge, subtitle window, etc.)
+  useEffect(() => {
+    const model = selectedModels[selectedProvider] ?? ''
+    if (typeof window !== 'undefined' && window.api?.localServer?.syncConfig) {
+      window.api.localServer.syncConfig({
+        provider: selectedProvider,
+        model,
+        ttsMode,
+        ttsVoice,
+      }).catch(() => { /* non-critical */ })
+    }
+  }, [selectedProvider, selectedModels, ttsMode, ttsVoice])
+
+  // Listen for quick chat open (hotkey → open chat page)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.api?.hotkey?.chat?.onOpen) return
+    const cleanup = window.api.hotkey.chat.onOpen(() => {
+      useAppStore.getState().setActivePage('chat')
+    })
+    return cleanup
+  }, [])
+
+  return (
+    <div className="app-root">
+      <AppHeader />
+
+      <div className="app-body">
+        <Sidebar />
+
+        <div className="content-area">
+          <Suspense fallback={<LoadingPage />}>
+            <ActivePage page={activePage} />
+          </Suspense>
+        </div>
+      </div>
+
+      {settingsOpen && (
+        <Suspense fallback={null}>
+          <SettingsModal />
+        </Suspense>
+      )}
+    </div>
+  )
+}

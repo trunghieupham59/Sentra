@@ -110,6 +110,7 @@ export const useAppStore = create<AppState>()(
         sidebarCollapsed: state.sidebarCollapsed,
         locale: state.locale,
         localeAuto: state.localeAuto,
+        theme: state.theme,
         history: state.history,
         liveSessions: state.liveSessions,
         chatSessions: state.chatSessions,
@@ -120,6 +121,7 @@ export const useAppStore = create<AppState>()(
         dictionaryEntries: state.dictionaryEntries,
         costCurrency: state.costCurrency,
         apiKeyUsageTotals: state.apiKeyUsageTotals,
+        recentlyUsedModels: state.recentlyUsedModels,
       }),
     }
   )

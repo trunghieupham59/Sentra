@@ -3,9 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://generativelanguage.googleapis.com https://api.anthropic.com https://api.openai.com ws://localhost:* http://localhost:*" />
-    <link rel="icon" type="image/png" href="/logo.png" />
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline';
+      style-src 'self' 'unsafe-inline';
+      img-src 'self' data: blob:;
+      media-src 'self' blob:;
+      connect-src 'self' https://generativelanguage.googleapis.com https://api.anthropic.com https://api.openai.com https://api.groq.com https://api.tavily.com https://api.search.brave.com https://r.jina.ai http://localhost:* ws://localhost:*;
+      worker-src 'self' blob:;
+    " />
     <title>Viezan</title>
+    <link rel="icon" type="image/png" href="/icon.png" />
   </head>
   <body>
     <div id="root"></div>
