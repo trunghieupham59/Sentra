@@ -81,7 +81,7 @@ function LocalAiProviderCard({
   }
 
   return (
-    <div className="card p-4 space-y-3 border border-gray-200 dark:border-gray-700">
+    <div className="settings-card p-4 space-y-3">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-100 dark:bg-gray-700 flex-shrink-0">

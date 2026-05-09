@@ -95,7 +95,7 @@ export function TtsSection() {
     <section className="space-y-3">
       <h2 className="section-label">{t.settings_tts_section}</h2>
 
-      <div className="card divide-y divide-gray-100 dark:divide-gray-700">
+      <div className="settings-card">
 
         {/* TTS mode selector — default free-first to avoid paid API calls */}
         <div className="px-4 py-3.5 space-y-3">

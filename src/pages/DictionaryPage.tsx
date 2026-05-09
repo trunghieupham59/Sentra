@@ -302,10 +302,10 @@ export function DictionaryPage() {
         {/* ── Topbar: title + AI config gear (popup with ModelSelector) ── */}
         <div className="app-topbar justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-base font-semibold text-gray-900 dark:text-gray-50">
+            <h1 className="text-base font-semibold" style={{ color: 'var(--vzn-text-strong)' }}>
               {t.dictionary_title}
             </h1>
-            <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
+            <p className="mt-0.5 text-xs" style={{ color: 'var(--vzn-text-soft)' }}>
               {t.dictionary_subtitle}
             </p>
           </div>

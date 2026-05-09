@@ -192,7 +192,8 @@ export function LiveTranslatePage() {
             <button
               type="button"
               disabled
-              className="btn-icon flex-shrink-0 border-transparent bg-transparent text-gray-200 shadow-none dark:bg-transparent dark:text-gray-700"
+              className="btn-icon flex-shrink-0 border-transparent bg-transparent shadow-none"
+              style={{ color: 'var(--vzn-text-disabled)' }}
             >
               <SwapIcon className="w-5 h-5" />
             </button>
@@ -254,8 +255,7 @@ export function LiveTranslatePage() {
                   {/* Model */}
                   <ModelSelector />
 
-                  {/* Divider */}
-                  <div className="border-t border-gray-100 dark:border-gray-800" />
+                  <div className="border-t" style={{ borderColor: 'var(--vzn-divider)' }} />
 
                   {/* Nguồn âm thanh */}
                   <div className="flex flex-col gap-2">
@@ -311,8 +311,7 @@ export function LiveTranslatePage() {
                     </div>
                   </div>
 
-                  {/* Divider */}
-                  <div className="border-t border-gray-100 dark:border-gray-800" />
+                  <div className="border-t" style={{ borderColor: 'var(--vzn-divider)' }} />
 
                   {/* Phụ đề */}
                   <div className="flex flex-col gap-2">
@@ -412,8 +411,7 @@ export function LiveTranslatePage() {
                     </div>
                   </div>
 
-                  {/* Divider */}
-                  <div className="border-t border-gray-100 dark:border-gray-800" />
+                  <div className="border-t" style={{ borderColor: 'var(--vzn-divider)' }} />
 
                   {/* Transcript actions */}
                   <div className="flex flex-col gap-2">
@@ -422,7 +420,7 @@ export function LiveTranslatePage() {
                         {t.live_transcript_label}
                       </span>
                       {wordCount > 0 && (
-                        <span className="text-xs text-gray-400 tabular-nums">
+                        <span className="text-xs tabular-nums" style={{ color: 'var(--vzn-text-soft)' }}>
                           {wordCount.toLocaleString()} {t.live_words}
                         </span>
                       )}
@@ -497,29 +495,29 @@ export function LiveTranslatePage() {
                   <span className="flex items-center gap-1.5 select-none">
                     {isTranscribing ? (
                       <>
-                        <SpinnerIcon className="w-2.5 h-2.5 animate-spin text-gray-500 flex-shrink-0" />
-                        <span className="ui-micro font-medium text-gray-500 dark:text-gray-400">{t.voice_transcribing}</span>
+                        <SpinnerIcon className="w-2.5 h-2.5 animate-spin flex-shrink-0" style={{ color: 'var(--vzn-text-muted)' }} />
+                        <span className="ui-micro font-medium">{t.voice_transcribing}</span>
                       </>
                     ) : isTranslating ? (
                       <>
-                        <SpinnerIcon className="w-2.5 h-2.5 animate-spin text-gray-500 flex-shrink-0" />
-                        <span className="ui-micro font-medium text-gray-500 dark:text-gray-400">{t.live_status_translating}</span>
+                        <SpinnerIcon className="w-2.5 h-2.5 animate-spin flex-shrink-0" style={{ color: 'var(--vzn-text-muted)' }} />
+                        <span className="ui-micro font-medium">{t.live_status_translating}</span>
                       </>
                     ) : pendingText ? (
                       <>
                         <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gray-400 opacity-75" />
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-gray-500" />
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: 'var(--vzn-text-soft)' }} />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: 'var(--vzn-text-muted)' }} />
                         </span>
-                        <span className="ui-micro font-medium text-gray-500 dark:text-gray-400">{t.voice_whisper_mode}</span>
+                        <span className="ui-micro font-medium">{t.voice_whisper_mode}</span>
                       </>
                     ) : (
                       <>
                         <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gray-400 opacity-75" />
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-gray-500" />
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: 'var(--vzn-text-soft)' }} />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: 'var(--vzn-text-muted)' }} />
                         </span>
-                        <span className="ui-micro font-medium text-gray-600 dark:text-gray-400">{t.live_status_listening}</span>
+                        <span className="ui-micro font-medium">{t.live_status_listening}</span>
                       </>
                     )}
                   </span>
@@ -539,20 +537,26 @@ export function LiveTranslatePage() {
                     ))}
                     {isActive && pendingText && (
                       <div className="flex items-start gap-2 opacity-50">
-                        <span className="ui-badge-xs mt-0.5 flex-shrink-0 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                        <span className="ui-badge-xs mt-0.5 flex-shrink-0">
                           {segments.length > 0
                             ? (speakerNameMap[segments[segments.length - 1].speaker] || segments[segments.length - 1].speaker)
                             : t.live_speaker_default}
                         </span>
-                        <span className="ui-reader-text text-gray-500 dark:text-gray-500 italic">
+                        <span className="ui-reader-text italic" style={{ color: 'var(--vzn-text-muted)' }}>
                           {pendingText}
-                          <span className="not-italic inline-block ml-0.5 w-0.5 h-4 bg-gray-400 dark:bg-gray-600 animate-pulse align-middle" />
+                          <span
+                            className="not-italic inline-block ml-0.5 w-0.5 h-4 animate-pulse align-middle rounded-full"
+                            style={{ background: 'var(--vzn-text-muted)' }}
+                          />
                         </span>
                       </div>
                     )}
                     {isActive && !pendingText && (
                       <div className="flex items-center gap-2 pl-1">
-                        <span className="inline-block w-0.5 h-4 bg-gray-400 dark:bg-gray-600 animate-pulse" />
+                        <span
+                          className="inline-block w-0.5 h-4 animate-pulse rounded-full"
+                          style={{ background: 'var(--vzn-text-muted)' }}
+                        />
                       </div>
                     )}
                   </>
@@ -588,7 +592,7 @@ export function LiveTranslatePage() {
                   {copiedRaw ? <CheckIcon className="w-4 h-4" /> : <CopyIcon className="w-4 h-4" />}
                 </button>
                 {wordCount > 0 && (
-                  <span className="text-xs text-gray-400 tabular-nums select-none">
+                  <span className="text-xs tabular-nums select-none" style={{ color: 'var(--vzn-text-soft)' }}>
                     {wordCount.toLocaleString()} {t.live_words}
                   </span>
                 )}
@@ -600,22 +604,8 @@ export function LiveTranslatePage() {
               {/* STT provider badge — top-right, only when active */}
               {isActive && (
                 <div className="flex-shrink-0 flex items-center justify-end px-4 pt-2 pb-1">
-                  <span className={[
-                    'ui-badge-xs gap-1.5 select-none',
-                    activeSttProvider === 'whisper'
-                      ? 'bg-gray-100 text-gray-700 dark:bg-gray-900/40 dark:text-gray-300'
-                      : activeSttProvider === 'gemini'
-                        ? 'bg-gray-100 text-gray-700 dark:bg-gray-900/40 dark:text-gray-300'
-                        : activeSttProvider === 'groq'
-                          ? 'bg-gray-100 text-gray-700 dark:bg-gray-900/40 dark:text-gray-300'
-                          : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
-                  ].join(' ')}>
-                    <span className={[
-                      'w-1.5 h-1.5 rounded-full flex-shrink-0',
-                      activeSttProvider === 'whisper' ? 'bg-gray-500' :
-                      activeSttProvider === 'gemini'  ? 'bg-gray-500' :
-                      activeSttProvider === 'groq'    ? 'bg-gray-500' : 'bg-gray-400',
-                    ].join(' ')} />
+                  <span className="ui-badge-xs gap-1.5 select-none">
+                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--vzn-accent)' }} />
                     {activeSttProvider === 'whisper' ? 'Whisper' :
                      activeSttProvider === 'gemini'  ? 'Gemini' :
                      activeSttProvider === 'groq'    ? 'Groq (free)' :
@@ -636,13 +626,13 @@ export function LiveTranslatePage() {
                     ))}
                     {isActive && isTranslating && (
                       <div className="flex items-center gap-2 pl-1">
-                        <SpinnerIcon className="w-3 h-3 animate-spin text-gray-400" />
-                        <span className="text-xs text-gray-400 italic">{t.live_status_translating}</span>
+                        <SpinnerIcon className="w-3 h-3 animate-spin" style={{ color: 'var(--vzn-text-muted)' }} />
+                        <span className="text-xs italic" style={{ color: 'var(--vzn-text-soft)' }}>{t.live_status_translating}</span>
                       </div>
                     )}
                     {isActive && !isTranslating && (
                       <div className="flex items-center gap-2 pl-1">
-                        <span className="inline-block w-0.5 h-4 bg-gray-300 dark:bg-gray-700 animate-pulse" />
+                        <span className="inline-block w-0.5 h-4 animate-pulse rounded-full" style={{ background: 'var(--vzn-text-soft)' }} />
                       </div>
                     )}
                   </>
@@ -707,10 +697,13 @@ export function LiveTranslatePage() {
             onKeyDown={(e) => e.stopPropagation()}
           >
             {/* Popup header */}
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
+            <div
+              className="flex items-center justify-between px-5 py-3.5 border-b flex-shrink-0"
+              style={{ borderColor: 'var(--vzn-divider)' }}
+            >
               <div className="flex items-center gap-2">
-                <LightbulbIcon className="w-4 h-4 text-gray-500" />
-                <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">{t.live_summary_title}</h2>
+                <LightbulbIcon className="w-4 h-4" style={{ color: 'var(--vzn-text-muted)' }} />
+                <h2 className="text-sm font-semibold" style={{ color: 'var(--vzn-text-strong)' }}>{t.live_summary_title}</h2>
               </div>
               <button
                 type="button"
@@ -743,14 +736,14 @@ export function LiveTranslatePage() {
               {/* ── Tóm tắt ── */}
               {postTab === 'summary' && (
                 isSummarizing ? (
-                  <div className="flex flex-col items-center justify-center gap-3 py-10 text-gray-400 dark:text-gray-600">
+                  <div className="flex flex-col items-center justify-center gap-3 py-10" style={{ color: 'var(--vzn-text-soft)' }}>
                     <SpinnerIcon className="w-6 h-6 animate-spin" />
                     <span className="text-sm">{t.live_summarizing}</span>
                   </div>
                 ) : summary ? (
-                  <MarkdownText text={summary} className="text-gray-800 dark:text-gray-200" />
+                  <MarkdownText text={summary} />
                 ) : (
-                  <p className="text-sm text-gray-400 dark:text-gray-600 italic py-4 text-center">{t.live_empty_desc}</p>
+                  <p className="text-sm italic py-4 text-center" style={{ color: 'var(--vzn-text-soft)' }}>{t.live_empty_desc}</p>
                 )
               )}
 
@@ -762,29 +755,29 @@ export function LiveTranslatePage() {
                     <span className="text-sm">{t.live_extracting_action_items}</span>
                   </div>
                 ) : actionItems ? (
-                  <MarkdownText text={actionItems} className="text-gray-800 dark:text-gray-200" />
+                  <MarkdownText text={actionItems} />
                 ) : (
-                  <p className="text-sm text-gray-400 dark:text-gray-600 italic py-4 text-center">{t.live_empty_desc}</p>
+                  <p className="text-sm italic py-4 text-center" style={{ color: 'var(--vzn-text-soft)' }}>{t.live_empty_desc}</p>
                 )
               )}
 
               {/* ── Quyết định ── */}
               {postTab === 'decisions' && (
                 isExtractingDecisions ? (
-                  <div className="flex flex-col items-center justify-center gap-3 py-10 text-gray-400 dark:text-gray-600">
+                  <div className="flex flex-col items-center justify-center gap-3 py-10" style={{ color: 'var(--vzn-text-soft)' }}>
                     <SpinnerIcon className="w-6 h-6 animate-spin" />
                     <span className="text-sm">{t.live_extracting_decisions}</span>
                   </div>
                 ) : decisions ? (
-                  <MarkdownText text={decisions} className="text-gray-800 dark:text-gray-200" />
+                  <MarkdownText text={decisions} />
                 ) : (
-                  <p className="text-sm text-gray-400 dark:text-gray-600 italic py-4 text-center">{t.live_empty_desc}</p>
+                  <p className="text-sm italic py-4 text-center" style={{ color: 'var(--vzn-text-soft)' }}>{t.live_empty_desc}</p>
                 )
               )}
             </div>
 
             {/* Popup footer — action buttons */}
-            <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 dark:border-gray-800 flex-shrink-0 gap-2">
+            <div className="flex items-center justify-between px-5 py-3 border-t flex-shrink-0 gap-2" style={{ borderColor: 'var(--vzn-divider)' }}>
               {/* Copy active tab content */}
               {postTab === 'summary' && summary && !isSummarizing && (
                 <button
@@ -878,18 +871,21 @@ export function LiveTranslatePage() {
           >
             {/* Header */}
             <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-950/40 flex items-center justify-center">
-                <InfoCircleIcon className="w-5 h-5 text-gray-500" />
+              <div
+                className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ background: 'var(--vzn-surface-subtle)' }}
+              >
+                <InfoCircleIcon className="w-5 h-5" style={{ color: 'var(--vzn-text-muted)' }} />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--vzn-text-strong)' }}>
                   {t.live_screen_permission_title}
                 </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
+                <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--vzn-text-muted)' }}>
                   {t.live_screen_recording_hint.split(/(<strong>.*?<\/strong>)/g).map((part, i) => {
                     const m = part.match(/^<strong>(.*?)<\/strong>$/)
                     // biome-ignore lint/suspicious/noArrayIndexKey: stable index for locale string segments
-                    return m ? <strong key={i} className="text-gray-700 dark:text-gray-200">{m[1]}</strong> : part
+                    return m ? <strong key={i} style={{ color: 'var(--vzn-text-strong)' }}>{m[1]}</strong> : part
                   })}
                 </p>
               </div>
@@ -928,34 +924,37 @@ export function LiveTranslatePage() {
           supported in Live Translate (uses Whisper instead). Floating near footer, dismissable. */}
       {sttProvider === 'webSpeech' && (
         <div className="absolute bottom-16 inset-x-0 flex justify-center px-4 z-40 pointer-events-none">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg
-                          bg-gray-50 dark:bg-gray-950/60
-                          border border-gray-200 dark:border-gray-700/60
-                          text-gray-600 dark:text-gray-300
-                          text-xs font-medium shadow-sm
-                          pointer-events-auto">
+          <div
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium shadow-sm pointer-events-auto"
+            style={{
+              background: 'var(--vzn-surface-raised)',
+              borderColor: 'var(--vzn-border)',
+              color: 'var(--vzn-text-muted)',
+              backdropFilter: 'var(--vzn-blur-sm)',
+              WebkitBackdropFilter: 'var(--vzn-blur-sm)',
+            }}
+          >
             <InfoCircleIcon className="w-3.5 h-3.5 flex-shrink-0" />
             <span>{t.live_webspeech_not_supported}</span>
-            <button
-              type="button"
-              onClick={() => openSettings()}
-              className="btn-link ml-0.5 text-xs"
-            >
+            <button type="button" onClick={() => openSettings()} className="btn-link ml-0.5 text-xs">
               {t.translate_error_open_settings}
             </button>
           </div>
         </div>
       )}
 
-      {/* Pipeline error toast */}
       {pipelineError && (
         <div className="pointer-events-none absolute bottom-14 inset-x-0 flex justify-center px-4 z-50">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg
-                          bg-gray-50 dark:bg-gray-950/60
-                          border border-gray-200 dark:border-gray-700/60
-                          text-gray-700 dark:text-gray-300
-                          text-xs font-medium shadow-md
-                          animate-[fadeIn_0.15s_ease-out]">
+          <div
+            className="flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-medium shadow-md fade-in"
+            style={{
+              background: 'var(--vzn-surface-raised)',
+              borderColor: 'var(--vzn-border)',
+              color: 'var(--vzn-text)',
+              backdropFilter: 'var(--vzn-blur-sm)',
+              WebkitBackdropFilter: 'var(--vzn-blur-sm)',
+            }}
+          >
             <AlertTriangleIcon className="w-3.5 h-3.5 flex-shrink-0" />
             {pipelineError}
           </div>
@@ -968,12 +967,24 @@ export function LiveTranslatePage() {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function Notice({ children, variant = 'warning' }: { children: React.ReactNode; variant?: 'warning' | 'error' }) {
-  const cls = variant === 'error'
-    ? 'ui-error-box'
-    : 'bg-gray-50 dark:bg-gray-950/30 border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300'
+  if (variant === 'error') {
+    return (
+      <div className="flex-shrink-0 flex items-start gap-2 p-3 rounded-xl border text-sm ui-error-box">
+        <AlertTriangleIcon className="w-4 h-4 flex-shrink-0 mt-0.5 ui-error-icon" />
+        <span>{children}</span>
+      </div>
+    )
+  }
   return (
-    <div className={`flex-shrink-0 flex items-start gap-2 p-3 rounded-lg border text-sm ${cls}`}>
-      <AlertTriangleIcon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${variant === 'error' ? 'ui-error-icon' : ''}`} />
+    <div
+      className="flex-shrink-0 flex items-start gap-2 p-3 rounded-xl border text-sm"
+      style={{
+        background: 'var(--vzn-surface-subtle)',
+        borderColor: 'var(--vzn-border)',
+        color: 'var(--vzn-text-muted)',
+      }}
+    >
+      <AlertTriangleIcon className="w-4 h-4 flex-shrink-0 mt-0.5" />
       <span>{children}</span>
     </div>
   )
@@ -981,25 +992,24 @@ function Notice({ children, variant = 'warning' }: { children: React.ReactNode; 
 
 function EmptyPanel({ children, icon, onClick }: { children: React.ReactNode; icon: 'mic' | 'translate'; onClick?: () => void }) {
   const iconEl = icon === 'mic'
-    ? <MicrophoneIcon className="w-6 h-6 text-gray-400" />
-    : <TranslateIcon className="w-6 h-6 text-gray-300 dark:text-gray-700" />
+    ? <MicrophoneIcon className="w-6 h-6" style={{ color: 'var(--vzn-text-muted)' }} />
+    : <TranslateIcon className="w-6 h-6" style={{ color: 'var(--vzn-text-soft)' }} />
 
   return (
     <div className="h-full flex flex-col items-center justify-center gap-3 select-none">
       {onClick ? (
-        <button
-          type="button"
-          onClick={onClick}
-          className="btn-icon btn-icon-2xl"
-        >
+        <button type="button" onClick={onClick} className="btn-icon btn-icon-2xl">
           {iconEl}
         </button>
       ) : (
-        <div className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center transition-all duration-150">
+        <div
+          className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-150"
+          style={{ background: 'var(--vzn-surface-subtle)' }}
+        >
           {iconEl}
         </div>
       )}
-      <p className="text-xs text-gray-400 dark:text-gray-600 text-center max-w-[160px]">{children}</p>
+      <p className="text-xs text-center max-w-[160px]" style={{ color: 'var(--vzn-text-soft)' }}>{children}</p>
     </div>
   )
 }

@@ -171,9 +171,12 @@ export function SettingsPage() {
 
   return (
     <div className="settings-shell">
-      <aside className="hidden md:flex min-h-0 flex-col border-r border-gray-200/80 bg-white/65 dark:border-white/10 dark:bg-neutral-950/50">
-        <nav className="flex-1 overflow-auto p-2" aria-label={t.settings_title}>
-          <div className="space-y-1">
+      <aside
+        className="hidden md:flex min-h-0 flex-col"
+        style={{ borderRight: '1px solid var(--vzn-border)', background: 'var(--vzn-surface-raised)' }}
+      >
+        <nav className="flex-1 overflow-auto p-3" aria-label={t.settings_title}>
+          <div className="space-y-0.5">
             {sections.map(({ id, label, description, Icon }) => {
               const active = activeSection === id
               return (
@@ -182,15 +185,12 @@ export function SettingsPage() {
                   type="button"
                   onClick={() => scrollToSection(id)}
                   title={description}
-                  className={[
-                    'btn-secondary btn-nav-item',
-                    active
-                      ? 'btn-active'
-                      : 'border-transparent bg-transparent text-gray-600 dark:bg-transparent dark:text-gray-400 dark:hover:bg-white/5',
-                  ].join(' ')}
+                  className={['settings-nav-item', active ? 'settings-nav-item-active' : ''].join(' ')}
                   aria-current={active ? 'true' : undefined}
                 >
-                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  <span className="settings-nav-icon">
+                    <Icon className="w-[15px] h-[15px]" />
+                  </span>
                   <span className="min-w-0 truncate">{label}</span>
                 </button>
               )
@@ -200,23 +200,20 @@ export function SettingsPage() {
       </aside>
 
       <div className="flex min-h-0 flex-col">
-        <div className="md:hidden border-b border-gray-200 bg-white/90 dark:border-white/10 dark:bg-neutral-950/90">
+        <div
+          className="md:hidden flex-shrink-0"
+          style={{ borderBottom: '1px solid var(--vzn-border)', background: 'var(--vzn-surface-raised)' }}
+        >
           <nav className="overflow-x-auto px-3 py-2" aria-label={t.settings_title}>
             <div className="flex gap-1">
-              {sections.map(({ id, label, description, Icon }) => {
+              {sections.map(({ id, label, Icon }) => {
                 const active = activeSection === id
                 return (
                   <button
                     key={id}
                     type="button"
                     onClick={() => scrollToSection(id)}
-                    title={description}
-                    className={[
-                      'btn-secondary btn-sm whitespace-nowrap shadow-none',
-                      active
-                        ? 'btn-active'
-                        : 'border-transparent bg-transparent text-gray-500 dark:bg-transparent dark:text-gray-400 dark:hover:bg-white/5',
-                    ].join(' ')}
+                    className={['settings-mobile-tab', active ? 'settings-mobile-tab-active' : ''].join(' ')}
                     aria-current={active ? 'true' : undefined}
                   >
                     <Icon className="w-3.5 h-3.5 flex-shrink-0" />

@@ -159,7 +159,7 @@ export function BrowserIntegrationSection() {
       </div>
 
       {/* ── Chrome Extension token card ── */}
-      <div className="card divide-y divide-gray-100 dark:divide-gray-700">
+      <div className="settings-card">
 
         <div className="px-4 pt-3 pb-1">
           <p className="ui-kicker">{t.settings_chrome_extension_label}</p>

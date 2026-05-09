@@ -8,7 +8,6 @@ import { TranslationHistoryTab } from './history/TranslationHistoryTab'
 
 type HistoryTabId = 'translate' | 'chat' | 'live'
 
-// ─── Main HistoryPage ──────────────────────────────────────────────────────────
 export function HistoryPage() {
   const { history, chatSessions, liveSessions } = useAppStore()
   const t = useT()
@@ -26,19 +25,27 @@ export function HistoryPage() {
     <div className="app-page">
       <div className="app-workspace">
         <section className="surface-panel flex-1 min-h-0">
-          <div className="flex-shrink-0 border-b border-gray-100 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+
+          {/* Header */}
+          <div
+            className="flex-shrink-0 border-b"
+            style={{ borderColor: 'var(--vzn-divider)', background: 'var(--vzn-surface-muted)' }}
+          >
             <div className="flex flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="min-w-0">
-                <h1 className="text-base font-semibold text-gray-900 dark:text-gray-50">
+                <h1 className="text-base font-semibold" style={{ color: 'var(--vzn-text-strong)' }}>
                   {t.history_title}
                 </h1>
-                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                <p className="mt-0.5 text-xs" style={{ color: 'var(--vzn-text-soft)' }}>
                   {tpl(t.history_total_count, { n: totalCount })}
                 </p>
               </div>
 
               <div className="relative w-full lg:max-w-sm">
-                <SearchIcon className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-300 dark:text-gray-600" />
+                <SearchIcon
+                  className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2"
+                  style={{ color: 'var(--vzn-text-soft)' }}
+                />
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -50,7 +57,7 @@ export function HistoryPage() {
                     type="button"
                     onClick={() => setQuery('')}
                     title={t.history_search_clear}
-                    className="btn-icon btn-icon-xs absolute right-2 top-1/2 -translate-y-1/2 border-transparent bg-transparent text-gray-400 shadow-none dark:bg-transparent"
+                    className="btn-icon btn-icon-xs absolute right-2 top-1/2 -translate-y-1/2 border-transparent bg-transparent shadow-none"
                   >
                     <XIcon className="w-3 h-3" />
                   </button>
@@ -58,6 +65,7 @@ export function HistoryPage() {
               </div>
             </div>
 
+            {/* Tabs */}
             <div className="px-3 pb-3">
               <div className="grid grid-cols-3 gap-2" role="tablist">
                 {tabs.map(({ id, label, count, icon: Icon }) => {
@@ -70,21 +78,19 @@ export function HistoryPage() {
                       aria-selected={isActive}
                       onClick={() => setActiveTab(id)}
                       className={[
-                        'btn-segment btn-segment-lg min-h-10 rounded-lg border border-transparent px-2 shadow-none sm:px-3',
-                        isActive
-                          ? 'btn-segment-active border-[var(--vzn-accent-border)]'
-                          : 'bg-transparent hover:bg-[var(--vzn-surface-hover)]',
+                        'btn-segment btn-segment-lg min-h-10 rounded-xl border px-2 sm:px-3',
+                        isActive ? 'btn-segment-active' : '',
                       ].join(' ')}
                     >
                       <Icon className="h-3.5 w-3.5 flex-shrink-0" />
                       <span className="truncate">{label}</span>
                       <span
-                        className={[
-                          'ui-badge-xs min-w-5 justify-center whitespace-nowrap',
+                        className="ui-badge-xs min-w-5 justify-center whitespace-nowrap"
+                        style={
                           isActive
-                            ? 'bg-gray-950 text-white dark:bg-gray-100 dark:text-neutral-950'
-                            : 'bg-gray-200 text-gray-500 dark:bg-gray-800 dark:text-gray-500',
-                        ].join(' ')}
+                            ? { background: 'var(--vzn-accent)', color: 'var(--vzn-text-inverse)' }
+                            : { background: 'var(--vzn-surface-subtle)', color: 'var(--vzn-text-soft)' }
+                        }
                       >
                         {count}
                       </span>

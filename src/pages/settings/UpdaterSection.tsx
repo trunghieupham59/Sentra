@@ -49,10 +49,10 @@ export function UpdaterSection() {
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_update_section_desc}</p>
       </div>
 
-      <div className="card divide-y divide-gray-100 dark:divide-gray-700">
+      <div className="settings-card">
 
         {/* Current version + Check button */}
-        <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+        <div className="settings-row">
           <div className="min-w-0">
             <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_update_current_version}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-mono">

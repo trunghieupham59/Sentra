@@ -1302,7 +1302,10 @@ export function ChatPage() {
                   <AppLogoIcon size={84} />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <h2 className="text-2xl font-semibold tracking-tight text-gray-800 dark:text-gray-100">
+                  <h2
+                    className="text-2xl font-semibold tracking-tight"
+                    style={{ color: 'var(--vzn-text-strong)' }}
+                  >
                     {t.chat_empty_title}
                   </h2>
                   <p className="ui-caption mx-auto max-w-[360px] leading-relaxed">
@@ -1311,7 +1314,7 @@ export function ChatPage() {
                 </div>
                 {!hasKey && (
                   <div className="flex flex-col items-center gap-2 mt-1">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.chat_error_no_key}</p>
+                    <p className="text-xs" style={{ color: 'var(--vzn-text-muted)' }}>{t.chat_error_no_key}</p>
                     <button
                       type="button"
                       onClick={() => openSettings()}
@@ -1396,9 +1399,11 @@ export function ChatPage() {
                 </div>
               </div>
 
-              {/* Input — panel footer, wrapped as composer card */}
-              <div className="flex-shrink-0 px-3 pb-3 pt-1 border-t border-gray-200/80 dark:border-neutral-800
-                              bg-gray-50/70 dark:bg-neutral-950/40">
+              {/* Input — panel footer */}
+              <div
+                className="flex-shrink-0 px-3 pb-3 pt-1 border-t"
+                style={{ borderColor: 'var(--vzn-divider)', background: 'var(--vzn-surface-muted)' }}
+              >
                 <div className="chat-composer">
                   {inputArea}
                 </div>
@@ -1411,8 +1416,11 @@ export function ChatPage() {
 
       {/* ── Copied toast ── */}
       {copiedId && (
-        <div className="pointer-events-none fixed bottom-20 left-1/2 -translate-x-1/2
-                        bg-gray-800 text-white text-xs px-3 py-1.5 rounded-full shadow-lg fade-in z-50">
+        <div
+          className="pointer-events-none fixed bottom-20 left-1/2 -translate-x-1/2
+                     text-white text-xs px-3 py-1.5 rounded-full shadow-lg fade-in z-50"
+          style={{ background: 'var(--vzn-text-strong)' }}
+        >
           {t.chat_copied}
         </div>
       )}

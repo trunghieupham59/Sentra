@@ -246,7 +246,7 @@ export function SttSection() {
     <section className="space-y-3">
       <h2 className="section-label">{t.settings_stt_section}</h2>
 
-      <div className="card divide-y divide-gray-100 dark:divide-gray-700">
+      <div className="settings-card">
         {/* STT provider selector */}
         <div className="px-4 py-3.5 space-y-3">
           <div>

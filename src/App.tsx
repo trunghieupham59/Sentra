@@ -146,9 +146,14 @@ function App() {
       {/* Full-width macOS traffic light drag region — only on macOS */}
       {isMac && (
         <>
-          <div className="titlebar-drag app-titlebar-drag flex-shrink-0 w-full" style={{ height: `${MACOS_TITLEBAR_HEIGHT_PX}px` }} />
-          {/* Divider below traffic light buttons */}
-          <div className="app-titlebar-divider flex-shrink-0 w-full border-b" />
+          <div
+            className="titlebar-drag app-titlebar-drag flex-shrink-0 w-full"
+            style={{ height: `${MACOS_TITLEBAR_HEIGHT_PX}px` }}
+          />
+          <div
+            className="app-titlebar-divider flex-shrink-0 w-full"
+            style={{ height: 1, background: 'var(--vzn-divider)' }}
+          />
         </>
       )}
 
@@ -156,7 +161,6 @@ function App() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
 
-        {/* Main content */}
         <main className="flex-1 overflow-hidden">
           <Suspense fallback={<PageFallback />}>
             {activePage === 'translate' ? (
@@ -174,9 +178,7 @@ function App() {
         </main>
       </div>
 
-      {/* Settings popup modal */}
       <SettingsModal />
-
     </div>
   )
 }

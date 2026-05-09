@@ -34,10 +34,10 @@ export function PreferencesSection() {
     <section className="space-y-3">
       <h2 className="section-label">{t.settings_prefs}</h2>
 
-      <div className="card divide-y divide-gray-100 dark:divide-gray-700">
+      <div className="settings-card">
 
         {/* Follow System Language toggle */}
-        <div className="flex items-center justify-between px-4 py-3.5">
+        <div className="settings-row">
           <div>
             <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_locale_auto}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_locale_auto_desc}</p>
@@ -50,7 +50,7 @@ export function PreferencesSection() {
         </div>
 
         {/* App Language selector */}
-        <div className="flex items-center justify-between px-4 py-3.5">
+        <div className="settings-row">
           <div>
             <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_app_language}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_app_language_desc}</p>
@@ -72,7 +72,7 @@ export function PreferencesSection() {
         </div>
 
         {/* Font Size */}
-        <div className="flex items-center justify-between px-4 py-3.5 gap-4">
+        <div className="settings-row">
           <div className="min-w-0">
             <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_font_size}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_font_size_desc}</p>
@@ -89,7 +89,7 @@ export function PreferencesSection() {
         </div>
 
         {/* Phonetic / Furigana toggle */}
-        <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+        <div className="settings-row">
           <div className="min-w-0">
             <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_furigana}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_furigana_desc}</p>
@@ -102,7 +102,7 @@ export function PreferencesSection() {
         </div>
 
         {/* Auto / Manual translation mode toggle */}
-        <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+        <div className="settings-row">
           <div className="min-w-0">
             <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
               {`${t.settings_translate_mode} — ${autoTranslate ? t.settings_mode_auto : t.settings_mode_manual}`}
@@ -120,7 +120,7 @@ export function PreferencesSection() {
 
         {/* Delay slider (only for auto) */}
         {autoTranslate && (
-          <div className="flex items-center justify-between px-4 py-3.5">
+          <div className="settings-row">
             <div>
               <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_translate_delay}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_translate_delay_desc}</p>

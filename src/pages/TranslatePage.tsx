@@ -129,10 +129,7 @@ export function TranslatePage() {
               onClick={handleSwapLanguages}
               disabled={!(translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL && !imageAttachment)}
               title={t.translate_swap}
-              className={`btn-icon flex-shrink-0 border-transparent bg-transparent shadow-none
-                          ${!(translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL && !imageAttachment)
-                            ? 'text-gray-200 dark:text-gray-700'
-                            : 'text-gray-400 dark:bg-transparent'}`}
+              className="btn-icon flex-shrink-0 border-transparent bg-transparent shadow-none"
             >
               <SwapIcon className="w-5 h-5" />
             </button>
@@ -168,8 +165,7 @@ export function TranslatePage() {
                     {/* Row 1: Provider + Model selector */}
                     <ModelSelector />
 
-                    {/* Divider */}
-                    <div className="border-t border-gray-100 dark:border-gray-800" />
+                    <div className="border-t" style={{ borderColor: 'var(--vzn-divider)' }} />
 
                     {/* Row 2: Style + Phonetic + Auto-translate */}
                     <TranslateToolbar
@@ -299,12 +295,16 @@ export function TranslatePage() {
                 <div className="flex items-center gap-3">
                   {!isVoiceActive && (
                     charCount > MAX_INPUT_CHARS ? (
-                      <span className="flex items-center gap-1 text-xs tabular-nums text-gray-500 font-medium" title={t.translate_limit}>
+                      <span
+                        className="flex items-center gap-1 text-xs tabular-nums font-medium"
+                        style={{ color: 'var(--vzn-danger)' }}
+                        title={t.translate_limit}
+                      >
                         <AlertTriangleIcon className="w-3 h-3 flex-shrink-0" />
                         {charCount.toLocaleString()} / {MAX_INPUT_CHARS.toLocaleString()}
                       </span>
                     ) : (
-                      <span className="text-xs tabular-nums text-gray-400">
+                      <span className="text-xs tabular-nums" style={{ color: 'var(--vzn-text-soft)' }}>
                         {charCount.toLocaleString()} {t.translate_chars}
                       </span>
                     )
@@ -328,8 +328,8 @@ export function TranslatePage() {
                 {isTranslating ? (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="flex flex-col items-center gap-3">
-                      <SpinnerIcon className="w-5 h-5 animate-spin text-gray-500" />
-                      <span className="text-sm text-gray-400">{t.translate_btn_loading}</span>
+                      <SpinnerIcon className="w-5 h-5 animate-spin" style={{ color: 'var(--vzn-text-muted)' }} />
+                      <span className="text-sm" style={{ color: 'var(--vzn-text-soft)' }}>{t.translate_btn_loading}</span>
                     </div>
                   </div>
                 ) : translateError ? (

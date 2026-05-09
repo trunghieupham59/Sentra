@@ -75,13 +75,13 @@ export function ChatPresetsSection() {
       <h2 className="section-label">{t.settings_chat_section}</h2>
       <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">{t.settings_chat_section_desc}</p>
 
-      <div className="card divide-y divide-gray-100 dark:divide-gray-700">
+      <div className="settings-card">
         <div className="px-4 py-3.5">
           <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_chat_shortcuts}</p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_chat_shortcuts_desc}</p>
         </div>
 
-        <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+        <div className="settings-row">
           <div className="min-w-0">
             <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_chat_shortcut_send}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_chat_shortcut_send_desc}</p>
@@ -138,7 +138,7 @@ export function ChatPresetsSection() {
         </div>
       </div>
 
-      <div className="card divide-y divide-gray-100 dark:divide-gray-700">
+      <div className="settings-card">
         <div className="px-4 py-3.5 space-y-3">
 
           {/* Header */}

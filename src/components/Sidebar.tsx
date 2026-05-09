@@ -22,22 +22,28 @@ function SidebarItem({ icon, label, active, badge, collapsed, onClick }: Sidebar
         onClick={onClick}
         aria-label={label}
         aria-current={active ? 'page' : undefined}
-        // Native OS tooltip in collapsed mode — appears outside the app surface, never overlaps content.
         title={collapsed ? label : undefined}
-        className={`btn-secondary btn-nav-item relative ${collapsed ? 'btn-nav-item-collapsed' : ''} ${
-          active
-            ? 'btn-active'
-            : 'border-transparent bg-transparent text-gray-500 dark:bg-transparent dark:text-gray-400 dark:hover:bg-white/5'
-        }`}
+        className={[
+          'btn-secondary btn-nav-item relative transition-all duration-200',
+          collapsed ? 'btn-nav-item-collapsed' : '',
+          active ? 'btn-active' : 'border-transparent bg-transparent shadow-none',
+        ].join(' ')}
+        style={active ? undefined : { background: 'transparent', boxShadow: 'none' }}
       >
-        <span className={`flex items-center justify-center rounded-lg ${collapsed ? 'h-8 w-8' : ''}`}>
+        <span className={`flex items-center justify-center rounded-xl ${collapsed ? 'h-8 w-8' : ''}`}>
           {icon}
         </span>
         {!collapsed && (
           <span className="min-w-0 truncate text-sm font-semibold">{label}</span>
         )}
         {badge && (
-          <span className={`absolute top-1.5 ${collapsed ? 'right-1.5' : 'right-2.5'} w-2 h-2 bg-gray-400 rounded-full border-2 border-white dark:border-neutral-950`} />
+          <span
+            className={`absolute top-1.5 ${collapsed ? 'right-1.5' : 'right-2.5'} w-2 h-2 rounded-full border-2`}
+            style={{
+              background: 'var(--vzn-danger)',
+              borderColor: 'var(--vzn-surface-raised)',
+            }}
+          />
         )}
       </button>
     </div>
@@ -57,19 +63,30 @@ export function Sidebar() {
   }
 
   return (
-    <aside className={`app-sidebar relative flex flex-col ${collapsed ? 'items-center w-[76px]' : 'items-stretch w-[188px]'} pt-3 pb-3 px-3 gap-2 flex-shrink-0
-                      border-r border-white/70 bg-white/70 backdrop-blur dark:border-white/10 dark:bg-neutral-950/55
-                      transition-[width] duration-200 ease-out`}>
-
-      {/* App icon + collapse toggle */}
-      <div className={`mb-1 flex h-11 items-center ${collapsed ? 'justify-center px-0' : 'justify-between pl-2 pr-1'} gap-2`}>
+    <aside
+      className={[
+        'app-sidebar relative flex flex-col flex-shrink-0',
+        'pt-3 pb-3 px-3 gap-1.5',
+        collapsed ? 'items-center w-[76px]' : 'items-stretch w-[188px]',
+        'border-r transition-[width] duration-200 ease-out',
+      ].join(' ')}
+      style={{
+        background: 'var(--vzn-surface-raised)',
+        borderColor: 'var(--vzn-border)',
+        WebkitBackdropFilter: 'var(--vzn-blur)',
+        backdropFilter: 'var(--vzn-blur)',
+        boxShadow: '1px 0 0 var(--vzn-divider)',
+      }}
+    >
+      {/* Logo + collapse toggle */}
+      <div className={`mb-2 flex h-11 items-center ${collapsed ? 'justify-center px-0' : 'justify-between pl-2 pr-1'} gap-2`}>
         {collapsed ? (
           <button
             type="button"
             onClick={toggleSidebar}
             aria-label={t.nav_expand_sidebar}
             title={t.nav_expand_sidebar}
-            className="btn-icon btn-icon-lg border-transparent bg-transparent shadow-none dark:bg-transparent"
+            className="btn-icon btn-icon-lg border-transparent bg-transparent shadow-none"
           >
             <AppLogoIcon size={34} />
           </button>
@@ -77,7 +94,9 @@ export function Sidebar() {
           <div className="flex items-center gap-3 min-w-0">
             <AppLogoIcon size={34} />
             <div className="min-w-0">
-              <div className="truncate text-sm font-bold text-gray-950 dark:text-gray-50">Viezan</div>
+              <div className="truncate text-sm font-bold" style={{ color: 'var(--vzn-text-strong)' }}>
+                Viezan
+              </div>
             </div>
           </div>
         )}
@@ -87,7 +106,7 @@ export function Sidebar() {
             onClick={toggleSidebar}
             aria-label={t.nav_collapse_sidebar}
             title={t.nav_collapse_sidebar}
-            className="btn-icon btn-icon-sm border-transparent bg-transparent shadow-none dark:bg-transparent"
+            className="btn-icon btn-icon-sm border-transparent bg-transparent shadow-none"
           >
             <ChevronLeftIcon className="w-4 h-4" />
           </button>
@@ -95,9 +114,11 @@ export function Sidebar() {
       </div>
 
       {/* Divider */}
-      <div className={`app-sidebar-divider ${collapsed ? 'mx-auto w-8' : 'mx-0 w-full'} h-px mb-0.5`} />
+      <div
+        className={`app-sidebar-divider ${collapsed ? 'mx-auto w-8' : 'mx-0 w-full'} h-px mb-1`}
+        style={{ background: 'var(--vzn-divider)' }}
+      />
 
-      {/* Chat with AI */}
       <SidebarItem
         label={t.nav_chat}
         active={activePage === 'chat'}
@@ -106,7 +127,6 @@ export function Sidebar() {
         icon={<ChatBubbleIcon className="w-5 h-5" />}
       />
 
-      {/* Translate */}
       <SidebarItem
         label={t.nav_translate}
         active={activePage === 'translate'}
@@ -115,7 +135,6 @@ export function Sidebar() {
         icon={<TranslateIcon className="w-5 h-5" />}
       />
 
-      {/* Dictionary */}
       <SidebarItem
         label={t.nav_dictionary}
         active={activePage === 'dictionary'}
@@ -124,7 +143,6 @@ export function Sidebar() {
         icon={<BookIcon className="w-5 h-5" />}
       />
 
-      {/* Live Translate */}
       <SidebarItem
         label={t.nav_live_translate}
         active={activePage === 'live'}
@@ -133,7 +151,6 @@ export function Sidebar() {
         icon={<MicrophoneIcon className="w-5 h-5" />}
       />
 
-      {/* History */}
       <SidebarItem
         label={t.nav_history}
         active={activePage === 'history'}
@@ -142,13 +159,14 @@ export function Sidebar() {
         icon={<ClockIcon className="w-5 h-5" />}
       />
 
-      {/* Spacer */}
       <div className="flex-1" />
 
       {/* Divider */}
-      <div className={`app-sidebar-divider ${collapsed ? 'mx-auto w-8' : 'mx-0 w-full'} h-px mb-0.5`} />
+      <div
+        className={`app-sidebar-divider ${collapsed ? 'mx-auto w-8' : 'mx-0 w-full'} h-px mb-1`}
+        style={{ background: 'var(--vzn-divider)' }}
+      />
 
-      {/* Settings */}
       <SidebarItem
         label={t.nav_settings}
         badge={!hasAnyKey}
