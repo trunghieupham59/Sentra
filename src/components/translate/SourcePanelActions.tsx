@@ -58,6 +58,17 @@ export function SourcePanelActions({
 
   return (
     <div className="flex items-center gap-1.5">
+      {/* Speaker always first — disabled when empty */}
+      <SpeakButton
+        panel="source"
+        text={sourceText}
+        lang={sourceLang === 'auto' ? DEFAULT_TTS_FALLBACK_LANG : sourceLang}
+        speakingPanel={speakingPanel}
+        speakLoading={speakLoading}
+        onSpeak={onSpeak}
+        labelSpeak={labelSpeak}
+        labelStop={labelSpeakStop}
+      />
       <VoiceRecorder
         sourceLang={sourceLang}
         onTranscript={onVoiceTranscript}
@@ -82,16 +93,6 @@ export function SourcePanelActions({
             onRewrite={onRewrite}
             labelRewrite={labelRewrite}
             labelRewriting={labelRewriting}
-          />
-          <SpeakButton
-            panel="source"
-            text={sourceText}
-            lang={sourceLang === 'auto' ? DEFAULT_TTS_FALLBACK_LANG : sourceLang}
-            speakingPanel={speakingPanel}
-            speakLoading={speakLoading}
-            onSpeak={onSpeak}
-            labelSpeak={labelSpeak}
-            labelStop={labelSpeakStop}
           />
         </>
       )}

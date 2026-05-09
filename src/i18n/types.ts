@@ -72,11 +72,14 @@ export interface Translations {
   /** HC-NEW-05: Error message when Speech Recognition API is unavailable (network error) */
   voice_error_network: string
 
-  // Model selector
+  // Model selector / picker
   model_no_key: string
   model_loading: string
   model_load_error: string
   model_refresh: string
+  model_picker_search: string
+  model_picker_frequent: string
+  model_picker_no_models: string
 
   // Markdown chart renderer
   markdown_chart_value: string

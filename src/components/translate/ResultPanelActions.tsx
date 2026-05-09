@@ -19,7 +19,6 @@ interface ResultPanelActionsProps {
   onDownloadTranslated: () => void
   onRewrite: (panel: 'source' | 'translated') => void
   onCopy: () => void
-  labelChars: string
   labelSpeak: string
   labelSpeakStop: string
   labelDownload: string
@@ -39,15 +38,26 @@ export function ResultPanelActions({
   hasImageRegions, hasImageAttachment,
   copied, isRewriting, speakingPanel, speakLoading,
   onSpeak, onDownloadEdited, onDownloadTranslated, onRewrite, onCopy,
-  labelChars, labelSpeak, labelSpeakStop, labelDownload,
+  labelSpeak, labelSpeakStop, labelDownload,
   labelRewrite, labelRewriting, labelCopy, labelCopied,
 }: ResultPanelActionsProps) {
   const hasContent = !!(translatedText || editedImageUrl)
 
   return (
     <>
-      {/* LEFT: action icons — copy, rewrite, speak, download */}
+      {/* LEFT: action icons — speak always first, then copy/rewrite/download when content */}
       <div className="flex items-center gap-1.5">
+        {/* Speaker always visible — disabled when empty */}
+        <SpeakButton
+          panel="translated"
+          text={translatedText}
+          lang={targetLang}
+          speakingPanel={speakingPanel}
+          speakLoading={speakLoading}
+          onSpeak={onSpeak}
+          labelSpeak={labelSpeak}
+          labelStop={labelSpeakStop}
+        />
         {hasContent && !editedImageUrl && (
           <CopyButton
             copied={copied}
@@ -65,18 +75,6 @@ export function ResultPanelActions({
             labelRewriting={labelRewriting}
           />
         )}
-        {hasContent && !editedImageUrl && (
-          <SpeakButton
-            panel="translated"
-            text={translatedText}
-            lang={targetLang}
-            speakingPanel={speakingPanel}
-            speakLoading={speakLoading}
-            onSpeak={onSpeak}
-            labelSpeak={labelSpeak}
-            labelStop={labelSpeakStop}
-          />
-        )}
         {editedImageUrl && (
           <DownloadImageButton title={labelDownload} onClick={onDownloadEdited} />
         )}
@@ -85,12 +83,6 @@ export function ResultPanelActions({
         )}
       </div>
 
-      {/* RIGHT: char count */}
-      <span className="text-xs text-gray-400 tabular-nums">
-        {translatedText && !editedImageUrl
-          ? `${translatedText.length.toLocaleString()} ${labelChars}`
-          : ''}
-      </span>
     </>
   )
 }

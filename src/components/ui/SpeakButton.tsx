@@ -46,12 +46,14 @@ export function SpeakButton({
 }: SpeakButtonProps) {
   const isThisPanel = speakingPanel === panel
   const isLoading = speakLoading && isThisPanel
+  const isEmpty = !text.trim()
 
   return (
     <button
       type="button"
-      onClick={() => onSpeak(text, lang, panel)}
+      onClick={() => { if (!isEmpty) onSpeak(text, lang, panel) }}
       title={isThisPanel ? labelStop : labelSpeak}
+      disabled={isEmpty && !isThisPanel}
       className={[
         'btn-ghost btn-xs',
         isThisPanel

@@ -62,9 +62,9 @@ function showMainWindow(options: { focus?: boolean } = {}) {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1200,
+    width: 1300,
     height: 700,
-    minWidth: 1200,
+    minWidth: 1300,
     minHeight: 700,
     title: 'Viezan',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',

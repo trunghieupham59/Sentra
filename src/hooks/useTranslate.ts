@@ -97,7 +97,7 @@ export function useTranslate() {
     ttsMode, ttsVoice,
     setSourceText, setTranslatedText, setPhoneticText, setTargetLang,
     setIsTranslating, setTranslateError, setActivePage, setPhoneticMode, setTranslationStyle, setAutoTranslate, addHistory, upsertHistory,
-    recordUsageCost,
+    recordUsageCost, recordModelUsage,
     swapLanguages,
   } = useAppStore()
   const t = useT()
@@ -491,6 +491,7 @@ export function useTranslate() {
         setIsTranslating(false)
 
         recordTranslationHistory(trigger, plainText)
+        recordModelUsage(selectedProvider, selectedModels[selectedProvider])
 
         // Second pass: add phonetic output for the mode that is active when the
         // translation finishes. This also supports toggling phonetic on while a

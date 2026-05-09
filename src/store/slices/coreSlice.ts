@@ -37,6 +37,10 @@ export interface CoreSlice {
   langUsage: Record<string, { count: number; lastUsed: number }>
   recordLangUsage: (lang: string) => void
 
+  // Model usage tracking (for frequently-used section in model picker)
+  modelUsage: Record<string, { count: number; lastUsed: number }>
+  recordModelUsage: (provider: Provider, modelId: string) => void
+
   // Core actions
   setSourceText: (text: string) => void
   setTranslatedText: (text: string) => void
@@ -73,6 +77,7 @@ export const createCoreSlice = (set: SliceSet, get: SliceGet): CoreSlice => ({
   activePage: 'translate',
   settingsOpen: false,
   langUsage: {},
+  modelUsage: {},
 
   // Computed getter — reads locale from SettingsSlice at access time.
   // NOTE: Zustand's shallow-merge on set() means this getter lives on the
@@ -99,6 +104,20 @@ export const createCoreSlice = (set: SliceSet, get: SliceGet): CoreSlice => ({
         ...state.langUsage,
         [lang]: {
           count: (state.langUsage[lang]?.count ?? 0) + 1,
+          lastUsed: Date.now(),
+        },
+      },
+    }))
+  },
+
+  recordModelUsage: (provider, modelId) => {
+    if (!provider || !modelId) return
+    const key = `${provider}:${modelId}`
+    set((state: CoreSlice) => ({
+      modelUsage: {
+        ...state.modelUsage,
+        [key]: {
+          count: (state.modelUsage[key]?.count ?? 0) + 1,
           lastUsed: Date.now(),
         },
       },

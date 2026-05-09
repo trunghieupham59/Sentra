@@ -7,12 +7,15 @@ interface TargetLanguageSelectorProps {
   targetLang: string
   onTargetLangChange: (lang: string) => void
   langNames: Record<string, string>
+  /** When true, renders as a compact single-language pill with a native select overlay */
+  compact?: boolean
 }
 
 export function TargetLanguageSelector({
   targetLang,
   onTargetLangChange,
   langNames,
+  compact = false,
 }: TargetLanguageSelectorProps) {
   const { langUsage, recordLangUsage } = useAppStore()
 
@@ -27,6 +30,26 @@ export function TargetLanguageSelector({
   const handleTargetChange = (lang: string) => {
     recordLangUsage(lang)
     onTargetLangChange(lang)
+  }
+
+  if (compact) {
+    return (
+      <div className="relative inline-flex items-center gap-1.5 cursor-pointer select-none">
+        <span className="text-sm font-medium" style={{ color: 'var(--vzn-text-muted)' }}>
+          {langNames[targetLang] ?? targetLang}
+        </span>
+        <ChevronDownIcon className="w-3.5 h-3.5 flex-shrink-0 text-gray-400" />
+        <select
+          value={targetLang}
+          onChange={(e) => handleTargetChange(e.target.value)}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        >
+          {TARGET_LANGUAGES.map((l) => (
+            <option key={l.code} value={l.code}>{langNames[l.code] ?? l.name}</option>
+          ))}
+        </select>
+      </div>
+    )
   }
 
   return (

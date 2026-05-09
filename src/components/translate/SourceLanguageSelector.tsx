@@ -9,6 +9,8 @@ interface SourceLanguageSelectorProps {
   detectedSourceLang: string | null
   isDetectingLang: boolean
   langNames: Record<string, string>
+  /** When true, renders as a compact single-language pill with a native select overlay */
+  compact?: boolean
 }
 
 export function SourceLanguageSelector({
@@ -17,6 +19,7 @@ export function SourceLanguageSelector({
   detectedSourceLang,
   isDetectingLang,
   langNames,
+  compact = false,
 }: SourceLanguageSelectorProps) {
   const { langUsage, recordLangUsage } = useAppStore()
   const t = useT()
@@ -32,6 +35,32 @@ export function SourceLanguageSelector({
   const handleSourceChange = (lang: string) => {
     if (lang !== 'auto') recordLangUsage(lang)
     onSourceLangChange(lang)
+  }
+
+  if (compact) {
+    const displayName = sourceLang === 'auto'
+      ? (detectedSourceLang ? (langNames[detectedSourceLang] ?? detectedSourceLang) : t.lang_auto)
+      : (langNames[sourceLang] ?? sourceLang)
+    return (
+      <div className="relative inline-flex items-center gap-1.5 cursor-pointer select-none">
+        {isDetectingLang
+          ? <SpinnerIcon className="w-3.5 h-3.5 animate-spin flex-shrink-0 text-gray-400" />
+          : <AutoDetectIcon className="w-3.5 h-3.5 flex-shrink-0 opacity-70 text-gray-500" />
+        }
+        <span className="text-sm font-medium" style={{ color: 'var(--vzn-text-muted)' }}>{displayName}</span>
+        <ChevronDownIcon className="w-3.5 h-3.5 flex-shrink-0 text-gray-400" />
+        <select
+          value={sourceLang}
+          onChange={(e) => handleSourceChange(e.target.value)}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        >
+          <option value="auto">{t.lang_auto}</option>
+          {TARGET_LANGUAGES.map((l) => (
+            <option key={l.code} value={l.code}>{langNames[l.code] ?? l.name}</option>
+          ))}
+        </select>
+      </div>
+    )
   }
 
   return (

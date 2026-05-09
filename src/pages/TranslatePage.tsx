@@ -1,6 +1,7 @@
-import { type MutableRefObject, useEffect, useRef, useState } from 'react'
+import { type MutableRefObject, useEffect, useMemo, useRef, useState } from 'react'
 import { MarkdownText } from '../components/MarkdownText'
-import { ModelSelector } from '../components/ModelSelector'
+import { ModelPickerDropdown } from '../components/ModelSelector'
+import { ProviderIcon } from '../components/ProviderIcon'
 import { FuriganaText } from '../components/translate/FuriganaText'
 import { ImageAttachmentPreview } from '../components/translate/ImageAttachmentPreview'
 import { ImageSwitchToast } from '../components/translate/ImageSwitchToast'
@@ -9,19 +10,20 @@ import { SourceLanguageSelector } from '../components/translate/SourceLanguageSe
 import { SourcePanelActions } from '../components/translate/SourcePanelActions'
 import { TargetLanguageSelector } from '../components/translate/TargetLanguageSelector'
 import { TranslateError } from '../components/translate/TranslateError'
-import { TranslateToolbar } from '../components/translate/TranslateToolbar'
 import { VoiceOverlay } from '../components/translate/VoiceOverlay'
 import { DragOverlay } from '../components/ui/DragOverlay'
-import { AlertTriangleIcon, GearIcon, SpinnerIcon, SwapIcon } from '../components/ui/icons'
+import { AlertTriangleIcon, ChevronDownIcon, SpinnerIcon } from '../components/ui/icons'
 import { TranslateButton } from '../components/ui/TranslateButton'
 import { ACCEPTED_IMAGE_MIME_TYPES } from '../constants/image'
-import { MAX_INPUT_CHARS } from '../constants/providers'
+import { MAX_INPUT_CHARS, PROVIDERS } from '../constants/providers'
 import { IMAGE_TRANSLATED_SENTINEL, useTranslate } from '../hooks/useTranslate'
 import { useAppStore, useT } from '../store/useAppStore'
+import type { PhoneticMode, TranslationStyle } from '../types'
+import { dedupeModelsByFamily, formatModelName } from '../utils/modelDisplay'
 
 export function TranslatePage() {
   const t = useT()
-  const { setSourceLang, openSettings } = useAppStore()
+  const { setSourceLang, openSettings, selectedModels, dynamicModels } = useAppStore()
   const {
     // Store state
     sourceText, translatedText, phoneticText, sourceLang, targetLang,
@@ -43,7 +45,7 @@ export function TranslatePage() {
     // Refs
     fileInputRef,
     // Handlers
-    handleTranslate, handleRewrite, handleSwapLanguages, handleCopy,
+    handleTranslate, handleRewrite, handleCopy,
     handleDismissError,
     handleDownloadTranslatedImage, handleDownloadEditedImage,
     handleSourceChange, handleClearSource, handleRemoveImage,
@@ -86,12 +88,9 @@ export function TranslatePage() {
     }
   }, [])
 
-  /** Controls visibility of the AI config popup */
   const [showAIConfig, setShowAIConfig] = useState(false)
-  /** Ref for AI config popup — used for click-outside detection */
   const aiConfigRef = useRef<HTMLDivElement>(null)
 
-  // ── Close AI config popup on outside click ──
   useEffect(() => {
     if (!showAIConfig) return
     const handleOutside = (e: MouseEvent) => {
@@ -103,105 +102,122 @@ export function TranslatePage() {
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [showAIConfig])
 
+  // ── Model display name for the toolbar pill ──
+  const currentDynamic = dynamicModels[selectedProvider] ?? []
+  const staticModels = PROVIDERS.find((p) => p.id === selectedProvider)?.models ?? []
+  const rawModels = currentDynamic.length > 0 ? currentDynamic : staticModels
+  const displayModels = useMemo(
+    () => dedupeModelsByFamily(selectedProvider, rawModels),
+    [selectedProvider, rawModels],
+  )
+  const selectedModelId = selectedModels[selectedProvider] ?? displayModels[0]?.id ?? ''
+  const selectedModelObj = displayModels.find((m) => m.id === selectedModelId) ?? displayModels[0]
+  const modelDisplayName = selectedModelObj
+    ? formatModelName(selectedProvider, selectedModelObj.id, selectedModelObj.name)
+    : (selectedModelId || '…')
+
+  // ── Inline toolbar data ──
+  const styleOptions: Array<[TranslationStyle, string]> = [
+    ['general',   t.translate_style_general],
+    ['formal',    t.translate_style_formal],
+    ['casual',    t.translate_style_casual],
+    ['business',  t.translate_style_business],
+    ['technical', t.translate_style_technical],
+    ['natural',   t.translate_style_natural],
+  ]
+
+  const phoneticOptions: Array<[PhoneticMode, string]> = [
+    ['off',      t.translate_phonetic_off],
+    ['standard', t.translate_phonetic_standard],
+    ['phonetic', t.translate_phonetic_transcription],
+  ]
+
+  const isPhoneticLoading =
+    phoneticMode !== 'off' &&
+    !phoneticText &&
+    (isTranslating || (!!translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL))
+
   return (
     <div className="app-page">
 
-      {/* Centered content — fills remaining height */}
       <div className="flex-1 flex flex-col min-h-0">
         <div className="app-workspace">
 
-          {/* ── Top action bar: Language selectors + settings icon ── */}
-          <div className="app-topbar">
-            {/* Source language selector — left half, overflow-hidden prevents pills from bleeding right */}
-            <div className="flex-1 min-w-0 overflow-hidden">
-              <SourceLanguageSelector
-                sourceLang={sourceLang}
-                onSourceLangChange={setSourceLang}
-                detectedSourceLang={detectedSourceLang}
-                isDetectingLang={isDetectingLang}
-                langNames={t.lang_names}
-              />
+          {/* ── Inline toolbar ── */}
+          <div className="app-topbar gap-1.5">
+
+            {/* Model pill — opens provider/model popup */}
+            <div className="relative flex-shrink-0" ref={aiConfigRef}>
+              <button
+                type="button"
+                onClick={() => setShowAIConfig((v) => !v)}
+                title={t.translate_ai_config_title}
+                className="toolbar-pill-button flex items-center gap-1.5 px-3 h-9"
+              >
+                <ProviderIcon provider={selectedProvider} size={13} />
+                <span className="text-sm font-semibold whitespace-nowrap">{modelDisplayName}</span>
+                <ChevronDownIcon className="w-3 h-3 flex-shrink-0 text-gray-400" />
+              </button>
+
+              {showAIConfig && (
+                <div className="absolute top-full left-0 mt-2 z-50">
+                  <ModelPickerDropdown onClose={() => setShowAIConfig(false)} />
+                </div>
+              )}
             </div>
 
-            {/* Swap button — inline between the two selectors */}
+            {/* Style pills */}
+            <div className="flex items-center gap-0.5 flex-1 min-w-0 overflow-x-auto">
+              {styleOptions.map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setTranslationStyle(value)}
+                  className={
+                    translationStyle === value
+                      ? 'toolbar-pill-button whitespace-nowrap flex-shrink-0 !px-2.5 text-xs'
+                      : 'btn-ghost whitespace-nowrap flex-shrink-0 !px-2.5 text-xs'
+                  }
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Phonetic mode pills */}
+            <div className="flex items-center gap-0.5 flex-shrink-0">
+              {phoneticOptions.map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setPhoneticMode(value)}
+                  className={
+                    phoneticMode === value
+                      ? 'toolbar-pill-button whitespace-nowrap flex items-center gap-1 !px-2.5 text-xs'
+                      : 'btn-ghost whitespace-nowrap !px-2.5 text-xs'
+                  }
+                >
+                  {label}
+                  {phoneticMode === value && isPhoneticLoading && (
+                    <SpinnerIcon className="w-3 h-3 animate-spin" />
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Auto/Manual toggle */}
             <button
               type="button"
-              onClick={handleSwapLanguages}
-              disabled={!(translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL && !imageAttachment)}
-              title={t.translate_swap}
-              className="btn-icon flex-shrink-0 border-transparent bg-transparent shadow-none"
+              onClick={() => setAutoTranslate(!autoTranslate)}
+              title={autoTranslate ? t.translate_mode_auto_title : t.translate_mode_manual_title}
+              className={
+                autoTranslate
+                  ? 'btn-primary whitespace-nowrap flex-shrink-0'
+                  : 'toolbar-pill-button whitespace-nowrap flex-shrink-0'
+              }
             >
-              <SwapIcon className="w-5 h-5" />
+              {autoTranslate ? t.translate_mode_auto : t.translate_mode_manual}
             </button>
-
-            {/* Target language selector + settings icon — right half */}
-            <div className="flex-1 min-w-0 flex items-center gap-3">
-              {/* overflow-hidden only on selector, NOT the whole div (gear popup must not be clipped) */}
-              <div className="flex-1 min-w-0 overflow-hidden">
-                <TargetLanguageSelector
-                  targetLang={targetLang}
-                  onTargetLangChange={setTargetLang}
-                  langNames={t.lang_names}
-                />
-              </div>
-
-              {/* AI Config settings icon + popup */}
-              <div className="relative flex-shrink-0" ref={aiConfigRef}>
-                <button
-                  type="button"
-                  onClick={() => setShowAIConfig((v) => !v)}
-                  title={t.translate_ai_config_title}
-                  className={`toolbar-icon-button ai-config-button cursor-pointer ${showAIConfig ? 'toolbar-icon-button-active' : ''}`}
-                >
-                  <GearIcon className="w-3.5 h-3.5" />
-                </button>
-
-                {/* Settings popup */}
-                {showAIConfig && (
-                  <div className="floating-panel ai-config-panel absolute top-full right-0 mt-2 z-50 w-[520px] p-4 flex flex-col gap-4">
-                    <h2 className="popover-title">
-                      {t.translate_ai_config_title}
-                    </h2>
-                    {/* Row 1: Provider + Model selector */}
-                    <ModelSelector />
-
-                    <div className="border-t" style={{ borderColor: 'var(--vzn-divider)' }} />
-
-                    {/* Row 2: Style + Phonetic + Auto-translate */}
-                    <TranslateToolbar
-                      hideModelSelector
-                      translationStyle={translationStyle}
-                      onStyleChange={setTranslationStyle}
-                      autoTranslate={autoTranslate}
-                      onAutoTranslateChange={setAutoTranslate}
-                      phoneticMode={phoneticMode}
-                      onPhoneticModeChange={setPhoneticMode}
-                      isPhoneticLoading={
-                        phoneticMode !== 'off' &&
-                        !phoneticText &&
-                        (isTranslating || (!!translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL))
-                      }
-                      labelStyleLabel={t.translate_style_label}
-                      labelStyleGeneral={t.translate_style_general}
-                      labelStyleFormal={t.translate_style_formal}
-                      labelStyleCasual={t.translate_style_casual}
-                      labelStyleBusiness={t.translate_style_business}
-                      labelStyleTechnical={t.translate_style_technical}
-                      labelStyleNatural={t.translate_style_natural}
-                      labelPhoneticSection={t.translate_phonetic}
-                      labelPhoneticOff={t.translate_phonetic_off}
-                      labelPhoneticStandard={t.translate_phonetic_standard}
-                      labelPhoneticTranscription={t.translate_phonetic_transcription}
-                      labelAutoSection={t.settings_auto_translate}
-                      titleAutoMode={t.translate_mode_auto_title}
-                      titleManualMode={t.translate_mode_manual_title}
-                      labelAutoMode={t.translate_mode_auto}
-                      labelManualMode={t.translate_mode_manual}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
 
           {/* Text panels */}
@@ -222,6 +238,34 @@ export function TranslatePage() {
               {isDraggingOver && (
                 <DragOverlay label={t.image_translate_upload_hint.split('\n')[0]} zIndex="z-30" />
               )}
+
+              {/* Panel header: language selector + char count */}
+              <div className="surface-panel-header">
+                <SourceLanguageSelector
+                  compact
+                  sourceLang={sourceLang}
+                  onSourceLangChange={setSourceLang}
+                  detectedSourceLang={detectedSourceLang}
+                  isDetectingLang={isDetectingLang}
+                  langNames={t.lang_names}
+                />
+                {!isVoiceActive && (
+                  charCount > MAX_INPUT_CHARS ? (
+                    <span
+                      className="flex items-center gap-1 text-xs tabular-nums font-medium"
+                      style={{ color: 'var(--vzn-danger)' }}
+                      title={t.translate_limit}
+                    >
+                      <AlertTriangleIcon className="w-3 h-3 flex-shrink-0" />
+                      {charCount.toLocaleString()} / {MAX_INPUT_CHARS.toLocaleString()}
+                    </span>
+                  ) : (
+                    <span className="text-xs tabular-nums" style={{ color: 'var(--vzn-text-soft)' }}>
+                      {charCount.toLocaleString()} {t.translate_chars}
+                    </span>
+                  )
+                )}
+              </div>
 
               {/* Listening overlay */}
               <VoiceOverlay
@@ -253,9 +297,8 @@ export function TranslatePage() {
                 />
               </div>
 
-              {/* Source panel footer — LEFT: icons | RIGHT: char count + translate button */}
+              {/* Source panel footer */}
               <div className="surface-footer relative z-20">
-                {/* LEFT: mic, image, (clear, rewrite, speak when content present) */}
                 <SourcePanelActions
                   isVoiceActive={isVoiceActive}
                   isVoiceInterim={isVoiceInterim}
@@ -282,7 +325,6 @@ export function TranslatePage() {
                   labelRewriting={t.translate_rewriting}
                   labelClear={t.translate_clear}
                 />
-                {/* Hidden file input */}
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -291,44 +333,41 @@ export function TranslatePage() {
                   onChange={handleFileInputChange}
                 />
 
-                {/* RIGHT: char count + translate button */}
-                <div className="flex items-center gap-3">
-                  {!isVoiceActive && (
-                    charCount > MAX_INPUT_CHARS ? (
-                      <span
-                        className="flex items-center gap-1 text-xs tabular-nums font-medium"
-                        style={{ color: 'var(--vzn-danger)' }}
-                        title={t.translate_limit}
-                      >
-                        <AlertTriangleIcon className="w-3 h-3 flex-shrink-0" />
-                        {charCount.toLocaleString()} / {MAX_INPUT_CHARS.toLocaleString()}
-                      </span>
-                    ) : (
-                      <span className="text-xs tabular-nums" style={{ color: 'var(--vzn-text-soft)' }}>
-                        {charCount.toLocaleString()} {t.translate_chars}
-                      </span>
-                    )
-                  )}
-                  {!autoTranslate && (
-                    <TranslateButton
-                      isTranslating={isTranslating}
-                      disabled={!sourceText.trim() && !imageAttachment}
-                      onClick={handleTranslate}
-                      labelTranslate={t.translate_btn}
-                      labelLoading={t.translate_btn_loading}
-                    />
-                  )}
-                </div>
+                {!autoTranslate && (
+                  <TranslateButton
+                    isTranslating={isTranslating}
+                    disabled={!sourceText.trim() && !imageAttachment}
+                    onClick={handleTranslate}
+                    labelTranslate={t.translate_btn}
+                    labelLoading={t.translate_btn_loading}
+                  />
+                )}
               </div>
             </section>
 
             {/* ── Result panel card ── */}
             <div className="surface-panel h-full">
+
+              {/* Panel header: target language selector + char count */}
+              <div className="surface-panel-header">
+                <TargetLanguageSelector
+                  compact
+                  targetLang={targetLang}
+                  onTargetLangChange={setTargetLang}
+                  langNames={t.lang_names}
+                />
+                {translatedText && !editedImageUrl && (
+                  <span className="text-xs tabular-nums" style={{ color: 'var(--vzn-text-soft)' }}>
+                    {translatedText.length.toLocaleString()} {t.translate_chars}
+                  </span>
+                )}
+              </div>
+
               <div ref={translatedScrollRef} className="flex-1 min-h-0 overflow-auto p-4 relative">
                 {isTranslating ? (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="flex flex-col items-center gap-3">
-                      <SpinnerIcon className="w-5 h-5 animate-spin" style={{ color: 'var(--vzn-text-muted)' }} />
+                      <SpinnerIcon className="w-5 h-5 animate-spin text-gray-500" />
                       <span className="text-sm" style={{ color: 'var(--vzn-text-soft)' }}>{t.translate_btn_loading}</span>
                     </div>
                   </div>
@@ -353,9 +392,7 @@ export function TranslatePage() {
                 ) : translatedText ? (
                   phoneticMode !== 'off' && phoneticText
                     ? phoneticMode === 'standard'
-                      // Standard mode: show {word|reading} ruby annotations over original script
                       ? <FuriganaText text={phoneticText} className="textarea-field fade-in" />
-                      // Phonetic mode: replace original script with pure phonetics (hiragana/pinyin/romanization/IPA)
                       : <MarkdownText text={phoneticText} className="textarea-field fade-in" />
                     : <MarkdownText text={translatedText} className="textarea-field fade-in" />
                 ) : (
@@ -382,7 +419,6 @@ export function TranslatePage() {
                   onDownloadTranslated={handleDownloadTranslatedImage}
                   onRewrite={handleRewrite}
                   onCopy={handleCopy}
-                  labelChars={t.translate_chars}
                   labelSpeak={t.translate_speak}
                   labelSpeakStop={t.translate_speak_stop}
                   labelDownload={t.image_translate_download}
