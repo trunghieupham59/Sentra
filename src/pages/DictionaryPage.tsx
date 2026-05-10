@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { DictionaryHistoryPanel, type DictionaryListTab } from '../components/dictionary/DictionaryHistoryPanel'
 import { DictionaryResultPanel } from '../components/dictionary/DictionaryResultPanel'
 import { DictionarySearchPanel } from '../components/dictionary/DictionarySearchPanel'
-import { ModelSelector } from '../components/ModelSelector'
-import { GearIcon } from '../components/ui/icons'
+import { ModelPickerDropdown } from '../components/ModelSelector'
+import { ProviderIcon } from '../components/ProviderIcon'
+import { ChevronDownIcon } from '../components/ui/icons'
 import {
   dictionaryService,
   MAX_DICTIONARY_CONTEXT_CHARS,
@@ -19,6 +20,7 @@ import type {
   DictionaryTranslation,
 } from '../types'
 import { createClientId } from '../utils/id'
+import { formatModelName } from '../utils/modelDisplay'
 import { combineUsageCosts, estimateUsageCost } from '../utils/usageCost'
 
 function createDictionaryEntryId(): string {
@@ -299,7 +301,7 @@ export function DictionaryPage() {
   return (
     <div className="app-page">
       <div className="app-workspace">
-        {/* ── Topbar: title + AI config gear (popup with ModelSelector) ── */}
+        {/* ── Topbar: title + model picker pill ── */}
         <div className="app-topbar justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-base font-semibold" style={{ color: 'var(--vzn-text-strong)' }}>
@@ -310,20 +312,24 @@ export function DictionaryPage() {
             </p>
           </div>
 
+          {/* Model picker pill — same design as TranslatePage */}
           <div className="relative flex-shrink-0" ref={aiConfigRef}>
             <button
               type="button"
               onClick={() => setShowAIConfig((v) => !v)}
               title={t.translate_ai_config_title}
-              className={`toolbar-icon-button ai-config-button cursor-pointer ${showAIConfig ? 'toolbar-icon-button-active' : ''}`}
+              className="toolbar-pill-button flex items-center gap-1.5 px-3 h-9"
             >
-              <GearIcon className="h-3.5 w-3.5" />
+              <ProviderIcon provider={selectedProvider} size={13} />
+              <span className="text-sm font-semibold whitespace-nowrap">
+                {formatModelName(selectedProvider, selectedModels[selectedProvider] ?? '') || '…'}
+              </span>
+              <ChevronDownIcon className="w-3 h-3 flex-shrink-0 text-gray-400" />
             </button>
 
             {showAIConfig && (
-              <div className="floating-panel ai-config-panel absolute top-full right-0 mt-2 z-50 w-[480px] p-4 flex flex-col gap-3">
-                <h2 className="popover-title">{t.translate_ai_config_title}</h2>
-                <ModelSelector />
+              <div className="absolute top-full right-0 mt-2 z-50">
+                <ModelPickerDropdown onClose={() => setShowAIConfig(false)} />
               </div>
             )}
           </div>

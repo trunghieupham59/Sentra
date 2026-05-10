@@ -152,10 +152,11 @@ export function TranslatePage() {
                 type="button"
                 onClick={() => setShowAIConfig((v) => !v)}
                 title={t.translate_ai_config_title}
-                className="toolbar-pill-button flex items-center gap-1.5 px-3 h-9"
+                className="toolbar-pill-button flex items-center gap-1.5 px-3 h-9 overflow-hidden"
+                style={{ maxWidth: '150px' }}
               >
-                <ProviderIcon provider={selectedProvider} size={13} />
-                <span className="text-sm font-semibold whitespace-nowrap">{modelDisplayName}</span>
+                <ProviderIcon provider={selectedProvider} size={13} className="flex-shrink-0" />
+                <span className="text-sm font-semibold truncate min-w-0 flex-1">{modelDisplayName}</span>
                 <ChevronDownIcon className="w-3 h-3 flex-shrink-0 text-gray-400" />
               </button>
 
@@ -194,13 +195,11 @@ export function TranslatePage() {
                   className={
                     phoneticMode === value
                       ? 'toolbar-pill-button whitespace-nowrap flex items-center gap-1 !px-2.5 text-xs'
-                      : 'btn-ghost whitespace-nowrap !px-2.5 text-xs'
+                      : 'btn-ghost whitespace-nowrap flex items-center gap-1 !px-2.5 text-xs'
                   }
                 >
                   {label}
-                  {phoneticMode === value && isPhoneticLoading && (
-                    <SpinnerIcon className="w-3 h-3 animate-spin" />
-                  )}
+                  <SpinnerIcon className={`w-3 h-3 animate-spin flex-shrink-0 ${phoneticMode === value && isPhoneticLoading ? 'visible' : 'invisible'}`} />
                 </button>
               ))}
             </div>
@@ -212,9 +211,10 @@ export function TranslatePage() {
               title={autoTranslate ? t.translate_mode_auto_title : t.translate_mode_manual_title}
               className={
                 autoTranslate
-                  ? 'btn-primary whitespace-nowrap flex-shrink-0'
+                  ? 'btn-primary whitespace-nowrap flex-shrink-0 border border-transparent'
                   : 'toolbar-pill-button whitespace-nowrap flex-shrink-0'
               }
+              style={{ minWidth: '84px' }}
             >
               {autoTranslate ? t.translate_mode_auto : t.translate_mode_manual}
             </button>
@@ -270,10 +270,7 @@ export function TranslatePage() {
               {/* Listening overlay */}
               <VoiceOverlay
                 isVoiceActive={isVoiceActive}
-                isVoiceInterim={isVoiceInterim}
-                sourceText={sourceText}
-                listeningLabel={t.voice_listening}
-                recordLabel={t.voice_record}
+                listeningLabel={t.voice_whisper_mode}
               />
 
               {/* Image attachment preview */}
@@ -317,7 +314,6 @@ export function TranslatePage() {
                   labelVoiceRecord={t.voice_record}
                   labelVoiceStop={t.voice_stop}
                   labelVoiceTranscribing={t.voice_transcribing}
-                  labelVoiceRecording={t.voice_whisper_mode}
                   labelImageTranslate={t.image_translate_title}
                   labelSpeak={t.translate_speak}
                   labelSpeakStop={t.translate_speak_stop}

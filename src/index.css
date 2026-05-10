@@ -11,14 +11,8 @@
 
 @layer base {
   :root {
-    /* ── Mesh Gradient Background ─────────────────────────── */
-    --vzn-app-bg:
-      radial-gradient(ellipse at 18% 28%, rgba(99, 155, 255, 0.22) 0%, transparent 52%),
-      radial-gradient(ellipse at 82% 18%, rgba(168, 120, 255, 0.17) 0%, transparent 48%),
-      radial-gradient(ellipse at 50% 88%, rgba(60, 190, 240, 0.14) 0%, transparent 44%),
-      radial-gradient(ellipse at 88% 68%, rgba(190, 130, 255, 0.11) 0%, transparent 38%),
-      radial-gradient(ellipse at 8%  72%, rgba(80,  170, 255, 0.10) 0%, transparent 40%),
-      linear-gradient(148deg, #ecf2ff 0%, #e8effe 40%, #efe8ff 100%);
+    /* ── Solid Background ─────────────────────────────────── */
+    --vzn-app-bg: #edf1fb;
     --vzn-bg: #edf1fb;
 
     /* ── Glass Surface Tokens ─────────────────────────────── */
@@ -86,13 +80,8 @@
   }
 
   html.dark {
-    /* ── Dark Mesh Background ─────────────────────────────── */
-    --vzn-app-bg:
-      radial-gradient(ellipse at 18% 28%, rgba(50,  90, 200, 0.22) 0%, transparent 52%),
-      radial-gradient(ellipse at 82% 18%, rgba(100, 50, 200, 0.18) 0%, transparent 48%),
-      radial-gradient(ellipse at 50% 88%, rgba(20, 110, 180, 0.15) 0%, transparent 44%),
-      radial-gradient(ellipse at 88% 68%, rgba(80,  30, 180, 0.12) 0%, transparent 38%),
-      linear-gradient(148deg, #07091a 0%, #080c1e 45%, #060816 100%);
+    /* ── Dark Solid Background ────────────────────────────── */
+    --vzn-app-bg: #07091a;
     --vzn-bg: #07091a;
 
     /* ── Dark Glass Surfaces ──────────────────────────────── */
@@ -454,7 +443,7 @@
   }
   .voice-recording-text { /* token */ }
   .voice-recording-bar {
-    @apply w-1 rounded-full animate-bounce;
+    @apply w-1 rounded-full animate-pulse;
   }
   .voice-recording-core  { /* token */ }
   .voice-ripple-soft     { /* token */ }

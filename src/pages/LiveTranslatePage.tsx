@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
+import { formatModelName } from '../utils/modelDisplay'
 import { LiveSourceLangBar } from '../components/live/LiveSourceLangBar'
 import { LiveTargetLangBar } from '../components/live/LiveTargetLangBar'
 import { SegmentRow } from '../components/live/SegmentRow'
 import { TranslationRow } from '../components/live/TranslationRow'
 import { MarkdownText } from '../components/MarkdownText'
-import { ModelSelector } from '../components/ModelSelector'
+import { ModelPickerDropdown } from '../components/ModelSelector'
+import { ProviderIcon } from '../components/ProviderIcon'
 import { 
   AlertTriangleIcon,
   CheckIcon,
+  ChevronDownIcon,
   CopyIcon,
   DownloadIcon,
   GearIcon,
@@ -52,7 +55,7 @@ type PostTab = 'summary' | 'actions' | 'decisions'
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function LiveTranslatePage() {
-  const { targetLang, setTargetLang, openSettings, sttProvider } = useAppStore()
+  const { targetLang, setTargetLang, openSettings, sttProvider, selectedProvider, selectedModels } = useAppStore()
   const t = useT()
 
   const {
@@ -78,9 +81,12 @@ export function LiveTranslatePage() {
   const [showScreenPermModal, setShowScreenPermModal] = useState(false)
   const [showSummaryPopup, setShowSummaryPopup] = useState(false)
 
-  /** CẤU HÌNH AI NÂNG CAO popup — contains Model + Nguồn + Phụ Đề + Transcript */
+  /** CẤU HÌNH AI NÂNG CAO popup — Nguồn + Phụ Đề + Transcript */
   const [showAIConfig, setShowAIConfig] = useState(false)
   const aiConfigRef = useRef<HTMLDivElement>(null)
+  /** Model picker pill */
+  const [showModelPicker, setShowModelPicker] = useState(false)
+  const modelPickerRef = useRef<HTMLDivElement>(null)
 
   // ── Close popup on outside click ──
   useEffect(() => {
@@ -94,6 +100,18 @@ export function LiveTranslatePage() {
     document.addEventListener('mousedown', handleOutside)
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [showAIConfig, setShowSubtitleConfig])
+
+  // ── Close model picker on outside click ──
+  useEffect(() => {
+    if (!showModelPicker) return
+    const handleOutside = (e: MouseEvent) => {
+      if (modelPickerRef.current && !modelPickerRef.current.contains(e.target as Node)) {
+        setShowModelPicker(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [showModelPicker])
 
   const handleCopy = async (text: string, setFlag: (v: boolean) => void) => {
     if (!text) return
@@ -235,7 +253,28 @@ export function LiveTranslatePage() {
               )}
             </button>
 
-            {/* Advanced AI config popup */}
+            {/* Model picker pill — same design as TranslatePage */}
+            <div className="relative flex-shrink-0" ref={modelPickerRef}>
+              <button
+                type="button"
+                onClick={() => setShowModelPicker((v) => !v)}
+                title={t.translate_ai_config_title}
+                className="toolbar-pill-button flex items-center gap-1.5 px-3 h-9"
+              >
+                <ProviderIcon provider={selectedProvider} size={13} />
+                <span className="text-sm font-semibold whitespace-nowrap">
+                  {formatModelName(selectedProvider, selectedModels[selectedProvider] ?? '') || '…'}
+                </span>
+                <ChevronDownIcon className="w-3 h-3 flex-shrink-0 text-gray-400" />
+              </button>
+              {showModelPicker && (
+                <div className="absolute top-full right-0 mt-2 z-50">
+                  <ModelPickerDropdown onClose={() => setShowModelPicker(false)} />
+                </div>
+              )}
+            </div>
+
+            {/* Advanced AI config popup — audio & subtitle settings */}
             <div className="relative flex-shrink-0" ref={aiConfigRef}>
               <button
                 type="button"
@@ -248,14 +287,6 @@ export function LiveTranslatePage() {
 
               {showAIConfig && (
                 <div className="floating-panel ai-config-panel absolute top-full right-0 mt-2 z-50 w-[440px] max-w-[calc(100vw-2rem)] p-4 flex flex-col gap-4">
-                  <h2 className="popover-title">
-                    {t.translate_ai_config_title}
-                  </h2>
-
-                  {/* Model */}
-                  <ModelSelector />
-
-                  <div className="border-t" style={{ borderColor: 'var(--vzn-divider)' }} />
 
                   {/* Nguồn âm thanh */}
                   <div className="flex flex-col gap-2">
@@ -505,18 +536,12 @@ export function LiveTranslatePage() {
                       </>
                     ) : pendingText ? (
                       <>
-                        <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: 'var(--vzn-text-soft)' }} />
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: 'var(--vzn-text-muted)' }} />
-                        </span>
+                        <span className="inline-flex rounded-full h-1.5 w-1.5 flex-shrink-0" style={{ background: 'var(--vzn-text-muted)' }} />
                         <span className="ui-micro font-medium">{t.voice_whisper_mode}</span>
                       </>
                     ) : (
                       <>
-                        <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: 'var(--vzn-text-soft)' }} />
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: 'var(--vzn-text-muted)' }} />
-                        </span>
+                        <span className="inline-flex rounded-full h-1.5 w-1.5 flex-shrink-0" style={{ background: 'var(--vzn-text-muted)' }} />
                         <span className="ui-micro font-medium">{t.live_status_listening}</span>
                       </>
                     )}
@@ -544,26 +569,13 @@ export function LiveTranslatePage() {
                         </span>
                         <span className="ui-reader-text italic" style={{ color: 'var(--vzn-text-muted)' }}>
                           {pendingText}
-                          <span
-                            className="not-italic inline-block ml-0.5 w-0.5 h-4 animate-pulse align-middle rounded-full"
-                            style={{ background: 'var(--vzn-text-muted)' }}
-                          />
                         </span>
-                      </div>
-                    )}
-                    {isActive && !pendingText && (
-                      <div className="flex items-center gap-2 pl-1">
-                        <span
-                          className="inline-block w-0.5 h-4 animate-pulse rounded-full"
-                          style={{ background: 'var(--vzn-text-muted)' }}
-                        />
                       </div>
                     )}
                   </>
                 ) : rawTranscript ? (
                   <p className="ui-reader-text whitespace-pre-wrap p-1">
                     {rawTranscript}
-                    {isActive && <span className="inline-block ml-0.5 w-0.5 h-4 bg-gray-400 dark:bg-gray-600 animate-pulse align-middle" />}
                   </p>
                 ) : (
                   <EmptyPanel icon="mic" onClick={hasOpenAIKey && hasAnyKey ? () => {
@@ -628,11 +640,6 @@ export function LiveTranslatePage() {
                       <div className="flex items-center gap-2 pl-1">
                         <SpinnerIcon className="w-3 h-3 animate-spin" style={{ color: 'var(--vzn-text-muted)' }} />
                         <span className="text-xs italic" style={{ color: 'var(--vzn-text-soft)' }}>{t.live_status_translating}</span>
-                      </div>
-                    )}
-                    {isActive && !isTranslating && (
-                      <div className="flex items-center gap-2 pl-1">
-                        <span className="inline-block w-0.5 h-4 animate-pulse rounded-full" style={{ background: 'var(--vzn-text-soft)' }} />
                       </div>
                     )}
                   </>

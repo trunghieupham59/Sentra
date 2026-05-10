@@ -3,7 +3,7 @@ import { AppLogoIcon } from '../components/AppLogo'
 import { MessageBubble } from '../components/chat/MessageBubble'
 import { ResearchStepsPanel } from '../components/chat/ResearchStepsPanel'
 import { SystemPromptDropdown } from '../components/chat/SystemPromptDropdown'
-import { ModelSelector } from '../components/ModelSelector'
+import { ModelPickerDropdown } from '../components/ModelSelector'
 import { ProviderIcon } from '../components/ProviderIcon'
 import { DragOverlay } from '../components/ui/DragOverlay'
 import { ImagePreviewThumbnail } from '../components/ui/ImagePreviewThumbnail'
@@ -203,6 +203,8 @@ export function ChatPage() {
   const [isDraggingOver, setIsDraggingOver] = useState(false)
   /** Controls visibility of the AI config popup */
   const [showAIConfig, setShowAIConfig] = useState(false)
+  /** Controls visibility of the model picker dropdown */
+  const [showModelPicker, setShowModelPicker] = useState(false)
   /** Whether Deep Research multi-step pipeline is active */
   const [deepResearchMode, setDeepResearchMode] = useState(false)
 
@@ -227,6 +229,8 @@ export function ChatPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   /** Ref for AI config popup — used for click-outside detection */
   const aiConfigRef = useRef<HTMLDivElement>(null)
+  /** Ref for model picker pill — used for click-outside detection */
+  const modelPickerRef = useRef<HTMLDivElement>(null)
 
   // Active session
   const activeSession = chatSessions.find((s) => s.id === activeChatSessionId) ?? null
@@ -271,6 +275,18 @@ export function ChatPage() {
     document.addEventListener('mousedown', handleOutside)
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [showAIConfig])
+
+  // ── Close model picker on outside click ──
+  useEffect(() => {
+    if (!showModelPicker) return
+    const handleOutside = (e: MouseEvent) => {
+      if (modelPickerRef.current && !modelPickerRef.current.contains(e.target as Node)) {
+        setShowModelPicker(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [showModelPicker])
 
   // ── Ensure active session exists for current provider/model ──
   const ensureSession = useCallback(() => {
@@ -1106,7 +1122,6 @@ export function ChatPage() {
           titleRecord={t.chat_voice_record}
           titleStop={t.chat_voice_stop}
           labelTranscribing="…"
-          labelRecording="…"
         />
         <button
           type="button"
@@ -1214,17 +1229,24 @@ export function ChatPage() {
 
           {/* ── Top action bar: model badge + actions + settings icon ── */}
           <div className="app-topbar gap-1.5">
-            {/* Model badge — quick visual feedback of current AI; clicking opens settings popup */}
-            <button
-              type="button"
-              onClick={() => setShowAIConfig((v) => !v)}
-              title={t.translate_ai_config_title}
-              className="chat-model-badge"
-            >
-              <ProviderIcon provider={selectedProvider} size={14} />
-              <span className="max-w-[160px] truncate">{currentModelLabel}</span>
-              <ChevronDownIcon className="w-3 h-3 opacity-60" />
-            </button>
+            {/* Model badge — click opens ModelPickerDropdown */}
+            <div className="relative flex-shrink-0" ref={modelPickerRef}>
+              <button
+                type="button"
+                onClick={() => setShowModelPicker((v) => !v)}
+                title={t.translate_ai_config_title}
+                className="chat-model-badge"
+              >
+                <ProviderIcon provider={selectedProvider} size={14} />
+                <span className="max-w-[160px] truncate">{currentModelLabel}</span>
+                <ChevronDownIcon className="w-3 h-3 opacity-60" />
+              </button>
+              {showModelPicker && (
+                <div className="absolute top-full left-0 mt-2 z-50">
+                  <ModelPickerDropdown onClose={() => setShowModelPicker(false)} />
+                </div>
+              )}
+            </div>
 
             {/* Active session turn count — subtle informational text */}
             {messages.length > 0 && (
@@ -1270,24 +1292,18 @@ export function ChatPage() {
                 <GearIcon className="w-3.5 h-3.5" />
               </button>
 
-              {/* Settings popup */}
+              {/* Settings popup — model is now changed via the model-badge pill above */}
               {showAIConfig && (
-                <div className="floating-panel ai-config-panel absolute top-full right-0 mt-2 z-50 w-[440px] p-4 flex flex-col gap-4 fade-in">
-                  <h2 className="popover-title">
-                    {t.translate_ai_config_title}
-                  </h2>
-                  <div className="flex flex-col gap-3">
-                    <ModelSelector />
-                    <SystemPromptDropdown
-                      chatSystemPrompt={chatSystemPrompt}
-                      systemPromptPresets={systemPromptPresets}
-                      activePreset={activePreset}
-                      onSetChatSystemPrompt={setChatSystemPrompt}
-                      onNavigateSettings={() => { openSettings(); setShowAIConfig(false) }}
-                      onAddPreset={addSystemPromptPreset}
-                      t={t}
-                    />
-                  </div>
+                <div className="floating-panel ai-config-panel absolute top-full right-0 mt-2 z-50 w-[440px] p-4 flex flex-col gap-3 fade-in">
+                  <SystemPromptDropdown
+                    chatSystemPrompt={chatSystemPrompt}
+                    systemPromptPresets={systemPromptPresets}
+                    activePreset={activePreset}
+                    onSetChatSystemPrompt={setChatSystemPrompt}
+                    onNavigateSettings={() => { openSettings(); setShowAIConfig(false) }}
+                    onAddPreset={addSystemPromptPreset}
+                    t={t}
+                  />
                 </div>
               )}
             </div>

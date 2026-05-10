@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getSupportedAudioMimeType, LANG_TO_BCP47 } from '../constants/audio'
 import { useAppStore, useT } from '../store/useAppStore'
-import { MicrophoneIcon, SpinnerIcon, StopSquareIcon } from './ui/icons'
+import { MicrophoneIcon, SpinnerIcon } from './ui/icons'
 
 // ─── SpeechRecognition retry config ──────────────────────────────────────────
 /** Max reconnect attempts before giving up on SpeechRecognition (network errors) */
@@ -69,7 +69,6 @@ interface VoiceRecorderProps {
    */
   useWhisper?: boolean
   labelTranscribing?: string
-  labelRecording?: string
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -83,7 +82,6 @@ export function VoiceRecorder({
   buttonClassName,
   useWhisper = false,
   labelTranscribing = 'Transcribing…',
-  labelRecording = 'Recording…',
 }: VoiceRecorderProps) {
   const t = useT()
   const { sttProvider } = useAppStore()
@@ -366,7 +364,7 @@ export function VoiceRecorder({
         className={[
           resolvedButtonClassName,
           isRecording
-            ? 'btn-danger'
+            ? 'btn-active'
             : isTranscribing
               ? 'btn-primary'
               : state === 'error'
@@ -374,35 +372,19 @@ export function VoiceRecorder({
                 : '',
         ].join(' ')}
       >
-        {/* Pulse ring */}
-        {(isRecording || isTranscribing) && (
-          <span className={[
-            'absolute inset-0 rounded-full animate-ping opacity-40',
-            isTranscribing ? 'bg-gray-400' : 'ui-status-ping-danger',
-          ].join(' ')} />
-        )}
-
         {isTranscribing ? (
           /* Spinner while transcribing */
           <SpinnerIcon className="w-3.5 h-3.5 relative z-10 animate-spin" />
-        ) : isRecording ? (
-          /* Stop square — SPLIT-ICON-02: use StopSquareIcon from icon registry */
-          <StopSquareIcon className="w-3.5 h-3.5 relative z-10" />
         ) : (
-          /* Microphone */
+          /* Mic icon — blue when recording, default otherwise */
           <MicrophoneIcon className="w-4 h-4 relative z-10" />
         )}
       </button>
 
       {/* Inline status label */}
       {isTranscribing && (
-        <span className="text-xs text-gray-500 dark:text-gray-400 animate-pulse whitespace-nowrap">
+        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
           {labelTranscribing}
-        </span>
-      )}
-      {isRecording && useMediaRecorder && (
-        <span className="voice-recording-text text-xs animate-pulse whitespace-nowrap">
-          {labelRecording}
         </span>
       )}
 

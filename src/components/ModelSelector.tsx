@@ -215,7 +215,9 @@ function ModelPickerItem({ provider, modelId, modelName, isActive, onSelect }: M
 export function ModelPickerDropdown({ onClose }: { onClose: () => void }) {
   const {
     selectedProvider, selectedModels, keyStatus, dynamicModels, modelUsage,
+    modelsLoading,
     setSelectedProvider, setSelectedModel,
+    setDynamicModels, setModelsLoading, setModelsError,
   } = useAppStore()
   const t = useT()
   const [search, setSearch] = useState('')
@@ -224,6 +226,41 @@ export function ModelPickerDropdown({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     searchRef.current?.focus()
   }, [])
+
+  // Auto-fetch models for all providers that have keys but no cached models yet.
+  // This runs once when the picker opens so the list is always up-to-date.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional one-time fetch on mount
+  useEffect(() => {
+    if (!window.api) return
+    for (const p of PROVIDERS) {
+      const hasKey = p.requiresApiKey === false || keyStatus[p.id as Provider]
+      if (!hasKey) continue
+      if ((dynamicModels[p.id as Provider] ?? []).length > 0) continue
+      if (modelsLoading[p.id as Provider]) continue
+      const provider = p.id as Provider
+      setModelsLoading(provider, true)
+      setModelsError(provider, null)
+      window.api.fetchModels(provider)
+        .then((result) => {
+          if (result.success && result.models.length > 0) {
+            setDynamicModels(provider, result.models)
+            const ids = result.models.map((m: { id: string }) => m.id)
+            const current = useAppStore.getState().selectedModels[provider]
+            if (!current || !ids.includes(current)) {
+              setSelectedModel(provider, result.recommendedModel ?? result.models[0].id)
+            }
+          } else {
+            setModelsError(provider, result.error ?? '')
+          }
+        })
+        .catch((err: unknown) => {
+          setModelsError(provider, err instanceof Error ? err.message : '')
+        })
+        .finally(() => {
+          setModelsLoading(provider, false)
+        })
+    }
+  }, []) // run once on mount
 
   // Build flat list of all models from providers that have API keys
   type ModelEntry = { provider: Provider; providerName: string; modelId: string; modelName: string; usageKey: string }

@@ -29,7 +29,6 @@ interface SourcePanelActionsProps {
   labelVoiceRecord: string
   labelVoiceStop: string
   labelVoiceTranscribing: string
-  labelVoiceRecording: string
   labelImageTranslate: string
   labelSpeak: string
   labelSpeakStop: string
@@ -50,7 +49,7 @@ export function SourcePanelActions({
   onVoiceTranscript, onVoiceRecordingChange, onImageButtonClick,
   onSpeak, onRewrite, onClear,
   labelVoiceRecord, labelVoiceStop,
-  labelVoiceTranscribing, labelVoiceRecording, labelImageTranslate,
+  labelVoiceTranscribing, labelImageTranslate,
   labelSpeak, labelSpeakStop,
   labelRewrite, labelRewriting, labelClear,
 }: SourcePanelActionsProps) {
@@ -77,7 +76,6 @@ export function SourcePanelActions({
         titleStop={labelVoiceStop}
         buttonClassName="btn-ghost btn-xs relative text-gray-500"
         labelTranscribing={labelVoiceTranscribing}
-        labelRecording={labelVoiceRecording}
       />
       <ImageTranslateButton
         onClick={onImageButtonClick}
