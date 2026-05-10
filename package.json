@@ -76,14 +76,14 @@
     "jscpd": "^4.0.9",
     "jsdom": "^29.1.1",
     "markdownlint-cli2": "^0.22.1",
-    "postcss": "^8.4.47",
-    "tailwindcss": "^4.2.4",
+    "postcss": "^8.5.14",
+    "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.10",
     "vite-plugin-electron": "^0.29.1",
     "vite-plugin-electron-renderer": "^0.14.7",
     "vitest": "^4.1.4",
-    "wait-on": "^9.0.5"
+    "wait-on": "^9.0.6"
   },
   "build": {
     "appId": "com.Viezan.app",
