@@ -277,8 +277,7 @@ describe('TranslatePage', () => {
   it('clear button does NOT appear when source text is empty', () => {
     // beforeEach already sets sourceText: ''
     render(<TranslatePage />)
-    // ClearButton uses class btn-ghost — not rendered when sourceText is empty
-    expect(document.querySelector('.btn-ghost')).toBeNull()
+    expect(screen.queryByTitle(/Clear|Xóa|クリア/i)).toBeNull()
   })
 
   it('clear button appears when source text is present', () => {
@@ -286,8 +285,7 @@ describe('TranslatePage', () => {
       useAppStore.setState({ sourceText: 'Some text to translate' })
     })
     render(<TranslatePage />)
-    // ClearButton (btn-ghost) should render in the source panel bottom bar
-    expect(document.querySelector('.btn-ghost')).not.toBeNull()
+    expect(screen.queryByTitle(/Clear|Xóa|クリア/i)).not.toBeNull()
   })
 
   // ── Required: character counter hiển thị đúng ─────────────────────────────

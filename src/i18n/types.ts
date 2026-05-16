@@ -520,6 +520,19 @@ export interface Translations {
   chat_voice_stop: string
   chat_empty_title: string
   chat_empty_desc: string
+  chat_session_panel_empty: string
+  chat_suggest_translate: string
+  chat_suggest_translate_desc: string
+  chat_suggest_translate_prompt: string
+  chat_suggest_research: string
+  chat_suggest_research_desc: string
+  chat_suggest_research_prompt: string
+  chat_suggest_explain: string
+  chat_suggest_explain_desc: string
+  chat_suggest_explain_prompt: string
+  chat_suggest_write: string
+  chat_suggest_write_desc: string
+  chat_suggest_write_prompt: string
   chat_system_prompt: string
 
   chat_system_prompt_placeholder: string

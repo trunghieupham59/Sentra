@@ -57,12 +57,11 @@ export function Sidebar() {
   }
 
   return (
-    <aside className={`app-sidebar relative flex flex-col ${collapsed ? 'items-center w-[76px]' : 'items-stretch w-[188px]'} pt-3 pb-3 px-3 gap-2 flex-shrink-0
-                      border-r border-white/70 bg-white/70 backdrop-blur dark:border-white/10 dark:bg-neutral-950/55
+    <aside className={`app-sidebar relative flex flex-col ${collapsed ? 'items-center w-[76px]' : 'items-stretch w-[204px]'} pt-3 pb-3 px-3 gap-2 flex-shrink-0
                       transition-[width] duration-200 ease-out`}>
 
       {/* App icon + collapse toggle */}
-      <div className={`mb-1 flex h-11 items-center ${collapsed ? 'justify-center px-0' : 'justify-between pl-2 pr-1'} gap-2`}>
+      <div className={`sidebar-brand-surface mb-1 flex items-center ${collapsed ? 'justify-center px-0' : 'justify-between pl-2 pr-1'} gap-2`}>
         {collapsed ? (
           <button
             type="button"
@@ -76,8 +75,8 @@ export function Sidebar() {
         ) : (
           <div className="flex items-center gap-3 min-w-0">
             <AppLogoIcon size={34} />
-            <div className="min-w-0">
-              <div className="truncate text-sm font-bold text-gray-950 dark:text-gray-50">Viezan</div>
+            <div className="sidebar-brand-copy">
+              <div className="sidebar-brand-title truncate">Viezan</div>
             </div>
           </div>
         )}

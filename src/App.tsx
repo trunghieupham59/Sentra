@@ -9,7 +9,7 @@ import { detectSystemLocale } from './utils/locale'
 
 const TranslatePage = lazy(() => import('./pages/TranslatePage').then(module => ({ default: module.TranslatePage })))
 const LiveTranslatePage = lazy(() => import('./pages/LiveTranslatePage').then(module => ({ default: module.LiveTranslatePage })))
-const ChatPage = lazy(() => import('./pages/ChatPage').then(module => ({ default: module.ChatPage })))
+const ChatPage = lazy(() => import('./pages/ChatPageV2').then(module => ({ default: module.ChatPageV2 })))
 const HistoryPage = lazy(() => import('./pages/HistoryPage').then(module => ({ default: module.HistoryPage })))
 const DictionaryPage = lazy(() => import('./pages/DictionaryPage').then(module => ({ default: module.DictionaryPage })))
 
@@ -153,11 +153,11 @@ function App() {
       )}
 
       {/* Body: sidebar + main content */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="app-body">
         <Sidebar />
 
         {/* Main content */}
-        <main className="flex-1 overflow-hidden">
+        <main className="app-main">
           <Suspense fallback={<PageFallback />}>
             {activePage === 'translate' ? (
               <TranslatePage />

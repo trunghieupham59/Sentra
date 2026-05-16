@@ -5,40 +5,40 @@
 }
 
 :root {
-  --vzn-bg: rgb(243 248 252);
+  --vzn-bg: rgb(244 244 245);
   --vzn-surface: rgb(255 255 255);
-  --vzn-surface-muted: rgb(248 251 253);
-  --vzn-panel-source: rgb(238 247 252);
-  --vzn-ink: rgb(24 32 43);
-  --vzn-ink-strong: rgb(15 23 32);
-  --vzn-ink-soft: rgb(58 68 80);
-  --vzn-control: rgb(82 94 108);
-  --vzn-muted: rgb(94 106 120);
-  --vzn-soft: rgb(138 150 165);
-  --vzn-line: rgba(0, 74, 122, 0.12);
-  --vzn-line-strong: rgba(0, 74, 122, 0.22);
-  --vzn-accent: rgb(0 104 172);
-  --vzn-accent-strong: rgb(0 90 150);
-  --vzn-accent-deep: rgb(0 74 124);
-  --vzn-accent-dark: rgb(0 41 108);
-  --vzn-accent-soft: rgb(232 245 252);
-  --vzn-accent-muted: rgb(213 236 248);
-  --vzn-accent-border: rgb(184 220 240);
-  --vzn-success: rgb(21 128 61);
-  --vzn-success-strong: rgb(22 101 52);
-  --vzn-success-soft: rgb(232 246 238);
-  --vzn-success-border: rgb(183 223 195);
-  --vzn-warning: rgb(180 83 9);
-  --vzn-warning-strong: rgb(146 64 14);
-  --vzn-warning-soft: rgb(255 244 223);
-  --vzn-danger: rgb(190 18 60);
-  --vzn-danger-soft: rgb(255 241 242);
-  --vzn-danger-border: rgb(254 205 211);
-  --vzn-provider: rgb(94 106 120);
-  --vzn-provider-soft: rgb(238 247 252);
-  --vzn-provider-border: rgba(0, 74, 122, 0.12);
-  --vzn-focus: 0 0 0 3px rgba(0, 104, 172, 0.24);
-  --vzn-shadow: 0 18px 44px rgba(0, 40, 70, 0.08), 0 2px 8px rgba(0, 40, 70, 0.04);
+  --vzn-surface-muted: rgb(247 247 248);
+  --vzn-panel-source: rgb(247 247 248);
+  --vzn-ink: rgb(36 36 38);
+  --vzn-ink-strong: rgb(15 15 16);
+  --vzn-ink-soft: rgb(64 64 68);
+  --vzn-control: rgb(86 86 92);
+  --vzn-muted: rgb(95 96 102);
+  --vzn-soft: rgb(138 139 145);
+  --vzn-line: rgba(24, 24, 27, 0.12);
+  --vzn-line-strong: rgba(24, 24, 27, 0.22);
+  --vzn-accent: rgb(23 23 23);
+  --vzn-accent-strong: rgb(47 47 49);
+  --vzn-accent-deep: rgb(10 10 11);
+  --vzn-accent-dark: rgb(10 10 11);
+  --vzn-accent-soft: rgb(232 232 234);
+  --vzn-accent-muted: rgb(222 222 226);
+  --vzn-accent-border: rgb(207 207 212);
+  --vzn-success: rgb(22 122 72);
+  --vzn-success-strong: rgb(18 104 61);
+  --vzn-success-soft: rgb(237 247 241);
+  --vzn-success-border: rgb(184 222 200);
+  --vzn-warning: rgb(154 103 0);
+  --vzn-warning-strong: rgb(122 82 0);
+  --vzn-warning-soft: rgb(255 248 230);
+  --vzn-danger: rgb(189 36 65);
+  --vzn-danger-soft: rgb(255 241 243);
+  --vzn-danger-border: rgb(243 194 202);
+  --vzn-provider: rgb(95 96 102);
+  --vzn-provider-soft: rgb(247 247 248);
+  --vzn-provider-border: rgba(24, 24, 27, 0.12);
+  --vzn-focus: 0 0 0 3px rgba(24, 24, 27, 0.18);
+  --vzn-shadow: 0 18px 44px rgba(15, 15, 16, 0.10), 0 2px 8px rgba(15, 15, 16, 0.05);
 }
 
 body {
@@ -118,18 +118,18 @@ button:focus-visible {
 
 .status-dot {
   background: var(--vzn-success);
-  box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.12);
+  box-shadow: 0 0 0 3px var(--vzn-success-soft);
 }
 
 .status-dot.loading {
   background: var(--vzn-warning-strong);
-  box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.14);
+  box-shadow: 0 0 0 3px var(--vzn-warning-soft);
   animation: vzn-pulse 1s ease-in-out infinite;
 }
 
 .status-dot.error {
   background: var(--vzn-danger);
-  box-shadow: 0 0 0 3px rgba(190, 18, 60, 0.12);
+  box-shadow: 0 0 0 3px var(--vzn-danger-soft);
 }
 
 @keyframes vzn-pulse {
@@ -199,7 +199,7 @@ button:focus-visible {
   border-color: var(--vzn-accent);
   background: var(--vzn-accent);
   color: var(--vzn-surface);
-  box-shadow: 0 8px 18px rgba(0, 104, 172, 0.18);
+  box-shadow: none;
 }
 
 .button-primary:hover {
@@ -221,7 +221,7 @@ button:focus-visible {
   border-color: var(--vzn-accent);
   background: var(--vzn-accent);
   color: var(--vzn-surface);
-  box-shadow: 0 8px 18px rgba(0, 104, 172, 0.18);
+  box-shadow: none;
 }
 
 .button-success:hover {

@@ -9,28 +9,28 @@
 #Viezan-btn,
 #tre-result-tooltip {
   --tre-surface: rgb(255 255 255);
-  --tre-surface-muted: rgb(248 251 253);
-  --tre-panel-source: rgb(238 247 252);
-  --tre-ink: rgb(24 32 43);
-  --tre-ink-soft: rgb(58 68 80);
-  --tre-control: rgb(82 94 108);
-  --tre-muted: rgb(94 106 120);
-  --tre-soft: rgb(138 150 165);
-  --tre-line: rgba(0, 74, 122, 0.12);
-  --tre-line-strong: rgba(0, 74, 122, 0.22);
-  --tre-accent: rgb(0 104 172);
-  --tre-accent-strong: rgb(0 90 150);
-  --tre-accent-soft: rgb(232 245 252);
-  --tre-accent-border: rgb(184 220 240);
-  --tre-success: rgb(21 128 61);
-  --tre-success-strong: rgb(22 101 52);
-  --tre-success-soft: rgb(232 246 238);
-  --tre-success-border: rgb(183 223 195);
-  --tre-warning: rgb(180 83 9);
-  --tre-danger: rgb(190 18 60);
-  --tre-provider: rgb(94 106 120);
-  --tre-provider-soft: rgb(238 247 252);
-  --tre-provider-border: rgba(0, 74, 122, 0.12);
+  --tre-surface-muted: rgb(247 247 248);
+  --tre-panel-source: rgb(247 247 248);
+  --tre-ink: rgb(36 36 38);
+  --tre-ink-soft: rgb(64 64 68);
+  --tre-control: rgb(86 86 92);
+  --tre-muted: rgb(95 96 102);
+  --tre-soft: rgb(138 139 145);
+  --tre-line: rgba(24, 24, 27, 0.12);
+  --tre-line-strong: rgba(24, 24, 27, 0.22);
+  --tre-accent: rgb(23 23 23);
+  --tre-accent-strong: rgb(47 47 49);
+  --tre-accent-soft: rgb(232 232 234);
+  --tre-accent-border: rgb(207 207 212);
+  --tre-success: rgb(22 122 72);
+  --tre-success-strong: rgb(18 104 61);
+  --tre-success-soft: rgb(237 247 241);
+  --tre-success-border: rgb(184 222 200);
+  --tre-warning: rgb(154 103 0);
+  --tre-danger: rgb(189 36 65);
+  --tre-provider: rgb(95 96 102);
+  --tre-provider-soft: rgb(247 247 248);
+  --tre-provider-border: rgba(24, 24, 27, 0.12);
 }
 
 #Viezan-btn {
@@ -45,7 +45,7 @@
   border: 1px solid var(--tre-line);
   border-radius: 999px;
   background: var(--tre-surface);
-  box-shadow: 0 10px 26px rgba(0, 40, 70, 0.16), 0 2px 8px rgba(0, 40, 70, 0.08);
+  box-shadow: 0 12px 28px rgba(15, 15, 16, 0.14), 0 2px 8px rgba(15, 15, 16, 0.08);
   cursor: pointer;
   pointer-events: auto;
   user-select: none;
@@ -55,12 +55,12 @@
 #Viezan-btn:focus-visible,
 #tre-result-tooltip button:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(0, 104, 172, 0.24);
+  box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.18);
 }
 
 #Viezan-btn:hover {
   border-color: var(--tre-accent-border);
-  box-shadow: 0 14px 32px rgba(0, 40, 70, 0.16), 0 4px 10px rgba(0, 40, 70, 0.08);
+  box-shadow: 0 16px 34px rgba(15, 15, 16, 0.16), 0 4px 10px rgba(15, 15, 16, 0.08);
   transform: translateY(-1px);
 }
 
@@ -98,10 +98,10 @@
   max-height: calc(100vh - 16px);
   overflow: hidden;
   border: 1px solid var(--tre-line);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--tre-surface);
   color: var(--tre-ink);
-  box-shadow: 0 22px 54px rgba(0, 40, 70, 0.16), 0 4px 12px rgba(0, 40, 70, 0.07);
+  box-shadow: 0 24px 56px rgba(15, 15, 16, 0.16), 0 4px 12px rgba(15, 15, 16, 0.07);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
   font-size: 13px;
   line-height: 1.58;
@@ -160,18 +160,18 @@
 
 #tre-result-tooltip .tre-status-loading {
   background: var(--tre-warning);
-  box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.14);
+  box-shadow: 0 0 0 3px rgba(154, 103, 0, 0.14);
   animation: tre-pulse 1s ease-in-out infinite;
 }
 
 #tre-result-tooltip .tre-status-active {
   background: var(--tre-success);
-  box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.12);
+  box-shadow: 0 0 0 3px var(--tre-success-soft);
 }
 
 #tre-result-tooltip .tre-status-error {
   background: var(--tre-danger);
-  box-shadow: 0 0 0 3px rgba(190, 18, 60, 0.12);
+  box-shadow: 0 0 0 3px rgba(189, 36, 65, 0.12);
 }
 
 @keyframes tre-pulse {
