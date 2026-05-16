@@ -105,8 +105,9 @@ export function DictionarySearchPanel({
               value={term}
               onChange={(e) => onTermChange(e.target.value)}
               placeholder={t.dictionary_term_placeholder}
+              aria-label={t.dictionary_term_label ?? t.dictionary_term_placeholder}
+              aria-invalid={isCharOver || undefined}
               className="h-9 w-full rounded-md border-0 bg-transparent pl-8 pr-16 text-sm text-gray-900 outline-none placeholder:text-gray-400 select-text dark:text-gray-50 dark:placeholder:text-gray-600"
-              maxLength={maxTermChars + 1}
             />
             {/* Char counter inside input — only shown when typing */}
             {charLength > 0 && (
@@ -190,14 +191,24 @@ export function DictionarySearchPanel({
       </div>
 
       {contextOpen && (
-        <div className="surface-panel">
+        <div className="surface-panel relative">
           <textarea
             value={context}
             onChange={(e) => onContextChange(e.target.value)}
             placeholder={t.dictionary_context_placeholder}
+            aria-label={t.dictionary_context_label}
+            aria-invalid={context.length > maxContextChars || undefined}
             className="h-16 w-full resize-none rounded-lg bg-transparent px-3 py-2 text-sm text-gray-800 outline-none placeholder:text-gray-400 select-text dark:text-gray-100 dark:placeholder:text-gray-600"
-            maxLength={maxContextChars + 1}
           />
+          {context.length > 0 && (
+            <span
+              className={`ui-micro pointer-events-none absolute bottom-1.5 right-2 font-medium tabular-nums ${
+                context.length > maxContextChars ? 'ui-error-text' : 'text-gray-300 dark:text-gray-600'
+              }`}
+            >
+              {context.length}/{maxContextChars}
+            </span>
+          )}
         </div>
       )}
 

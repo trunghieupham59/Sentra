@@ -11,7 +11,9 @@ import {
 vi.mock('../chatService', () => ({
   chatService: {
     send: vi.fn(),
+    sendAbortable: vi.fn(),
   },
+  CHAT_STREAM_CANCELLED_ERROR_CODE: 'CANCELLED',
 }))
 
 const lookupParams = {
@@ -134,11 +136,11 @@ describe('dictionaryService', () => {
       errorCode: 'INVALID_INPUT',
     })
 
-    expect(chatService.send).not.toHaveBeenCalled()
+    expect(chatService.sendAbortable).not.toHaveBeenCalled()
   })
 
   it('builds a chat request with the selected provider and model', async () => {
-    vi.mocked(chatService.send).mockResolvedValueOnce({
+    vi.mocked(chatService.sendAbortable).mockResolvedValueOnce({
       success: true,
       reply: JSON.stringify({
         headword: '工夫',
@@ -164,25 +166,28 @@ describe('dictionaryService', () => {
     const result = await dictionaryService.lookup(lookupParams)
 
     expect(result.success).toBe(true)
-    expect(chatService.send).toHaveBeenCalledWith(expect.objectContaining({
-      provider: 'local',
-      model: 'local-auto',
-      maxOutputTokens: 1800,
-      systemPrompt: expect.stringContaining('pronunciation field is mandatory'),
-      messages: [
-        expect.objectContaining({
-          role: 'user',
-          content: [expect.objectContaining({
-            type: 'text',
-            text: expect.stringContaining('"nuance": "when to choose this translation instead of the others"'),
-          })],
-        }),
-      ],
-    }))
+    expect(chatService.sendAbortable).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'local',
+        model: 'local-auto',
+        maxOutputTokens: 1800,
+        systemPrompt: expect.stringContaining('pronunciation field is mandatory'),
+        messages: [
+          expect.objectContaining({
+            role: 'user',
+            content: [expect.objectContaining({
+              type: 'text',
+              text: expect.stringContaining('"nuance": "when to choose this translation instead of the others"'),
+            })],
+          }),
+        ],
+      }),
+      expect.anything(),
+    )
   })
 
   it('builds a compact preview request for fast first paint', async () => {
-    vi.mocked(chatService.send).mockResolvedValueOnce({
+    vi.mocked(chatService.sendAbortable).mockResolvedValueOnce({
       success: true,
       reply: JSON.stringify({
         headword: '工夫',
@@ -198,21 +203,24 @@ describe('dictionaryService', () => {
     const result = await dictionaryService.lookupPreview(lookupParams)
 
     expect(result.success).toBe(true)
-    expect(chatService.send).toHaveBeenCalledWith(expect.objectContaining({
-      provider: 'local',
-      model: 'local-auto',
-      maxOutputTokens: 650,
-      systemPrompt: expect.stringContaining('fast multilingual dictionary'),
-      messages: [
-        expect.objectContaining({
-          role: 'user',
-          content: [expect.objectContaining({
-            type: 'text',
-            text: expect.stringContaining('compact JSON shape'),
-          })],
-        }),
-      ],
-    }))
+    expect(chatService.sendAbortable).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'local',
+        model: 'local-auto',
+        maxOutputTokens: 650,
+        systemPrompt: expect.stringContaining('fast multilingual dictionary'),
+        messages: [
+          expect.objectContaining({
+            role: 'user',
+            content: [expect.objectContaining({
+              type: 'text',
+              text: expect.stringContaining('compact JSON shape'),
+            })],
+          }),
+        ],
+      }),
+      expect.anything(),
+    )
   })
 
   it('builds a detail enrichment request from an existing preview', async () => {
@@ -225,7 +233,7 @@ describe('dictionaryService', () => {
       examples: ['工夫する -> cải tiến'],
       notes: [],
     }
-    vi.mocked(chatService.send).mockResolvedValueOnce({
+    vi.mocked(chatService.sendAbortable).mockResolvedValueOnce({
       success: true,
       reply: JSON.stringify({
         ...preview,
@@ -247,16 +255,19 @@ describe('dictionaryService', () => {
     const result = await dictionaryService.lookupDetails(lookupParams, preview)
 
     expect(result.success).toBe(true)
-    expect(chatService.send).toHaveBeenCalledWith(expect.objectContaining({
-      maxOutputTokens: 1600,
-      systemPrompt: expect.stringContaining('precise multilingual dictionary'),
-      messages: [
-        expect.objectContaining({
-          content: [expect.objectContaining({
-            text: expect.stringContaining('Current preview:'),
-          })],
-        }),
-      ],
-    }))
+    expect(chatService.sendAbortable).toHaveBeenCalledWith(
+      expect.objectContaining({
+        maxOutputTokens: 1600,
+        systemPrompt: expect.stringContaining('precise multilingual dictionary'),
+        messages: [
+          expect.objectContaining({
+            content: [expect.objectContaining({
+              text: expect.stringContaining('Current preview:'),
+            })],
+          }),
+        ],
+      }),
+      expect.anything(),
+    )
   })
 })

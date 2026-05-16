@@ -1,3 +1,4 @@
+import { MAX_TRANSLATE_SOURCE_CHARS } from './ipcConstants'
 import { invalidIpcInput, isNonEmptyString, isOptionalBoolean, isRecord, isSafeLanguageCode } from './ipcValidation'
 import { isValidProvider, unknownProviderError } from './providers/types'
 
@@ -83,6 +84,16 @@ export function parseTranslateParams(rawParams: unknown): ParsedParams<Translate
   if (typeof rawParams.sourceText !== 'string') {
     return { ok: false, response: invalidIpcInput('Source text is required') }
   }
+  if (rawParams.sourceText.length > MAX_TRANSLATE_SOURCE_CHARS) {
+    return {
+      ok: false,
+      response: {
+        success: false,
+        error: `Source text exceeds maximum length (${MAX_TRANSLATE_SOURCE_CHARS} characters)`,
+        errorCode: 'PAYLOAD_TOO_LARGE',
+      },
+    }
+  }
   if (rawParams.requestId !== undefined && !isNonEmptyString(rawParams.requestId)) {
     return { ok: false, response: invalidIpcInput('Invalid request id') }
   }
@@ -130,6 +141,16 @@ export function parseRewriteParams(rawParams: unknown): ParsedParams<RewritePara
   if (typeof rawParams.text !== 'string') {
     return { ok: false, response: invalidIpcInput('Text is required') }
   }
+  if (rawParams.text.length > MAX_TRANSLATE_SOURCE_CHARS) {
+    return {
+      ok: false,
+      response: {
+        success: false,
+        error: `Text exceeds maximum length (${MAX_TRANSLATE_SOURCE_CHARS} characters)`,
+        errorCode: 'PAYLOAD_TOO_LARGE',
+      },
+    }
+  }
   if (!isSafeLanguageCode(rawParams.lang)) {
     return { ok: false, response: invalidIpcInput('Invalid language') }
   }
@@ -148,7 +169,7 @@ export function parseRewriteParams(rawParams: unknown): ParsedParams<RewritePara
   }
 }
 
-export function parseDetectLanguageParams(rawParams: unknown): ParsedParams<{ provider: string; model: string; text: string }> {
+export function parseDetectLanguageParams(rawParams: unknown): ParsedParams<{ provider: string; model: string; text: string; requestId?: string }> {
   if (!isRecord(rawParams)) {
     return { ok: false, response: invalidIpcInput('Detect language payload must be an object') }
   }
@@ -160,6 +181,9 @@ export function parseDetectLanguageParams(rawParams: unknown): ParsedParams<{ pr
   if (typeof rawParams.text !== 'string') {
     return { ok: false, response: invalidIpcInput('Text is required') }
   }
+  if (rawParams.requestId !== undefined && !isNonEmptyString(rawParams.requestId)) {
+    return { ok: false, response: invalidIpcInput('Invalid request id') }
+  }
 
   return {
     ok: true,
@@ -167,6 +191,7 @@ export function parseDetectLanguageParams(rawParams: unknown): ParsedParams<{ pr
       provider: provider.value,
       model: model.value,
       text: rawParams.text,
+      requestId: typeof rawParams.requestId === 'string' ? rawParams.requestId : undefined,
     },
   }
 }

@@ -4,6 +4,7 @@ import {
   TRANSLATE_CHUNK_TIMEOUT_MS,
   TRANSLATE_CONTEXT_TAIL_CHARS,
 } from './ipcConstants'
+import { withRetry } from './retry'
 
 export const CHUNK_CHAR_LIMIT = TRANSLATE_CHUNK_CHAR_LIMIT
 
@@ -94,7 +95,8 @@ export async function translateChunked(
 ): Promise<string> {
   const chunks = splitIntoChunks(sourceText, chunkLimit)
   if (chunks.length === 1) {
-    return withTimeout(translateFn(sourceText), CHUNK_TIMEOUT_MS, 'single chunk')
+    // Wrap with retry so transient network errors don't fail the whole single-chunk translation.
+    return withRetry(() => withTimeout(translateFn(sourceText), CHUNK_TIMEOUT_MS, 'single chunk'))
   }
 
   const tasks: Array<() => Promise<string>> = chunks.map((chunk, idx) => () => {
@@ -114,7 +116,8 @@ export async function translateChunked(
         `with the rest of the document. Output only the translation — no notes or prefix.]\n\n` +
         chunk
     }
-    return withTimeout(translateFn(text), CHUNK_TIMEOUT_MS, `chunk ${idx + 1}/${chunks.length}`)
+    // Per-chunk retry: a transient network blip on one chunk no longer kills the whole document.
+    return withRetry(() => withTimeout(translateFn(text), CHUNK_TIMEOUT_MS, `chunk ${idx + 1}/${chunks.length}`))
   })
 
   const results = await promisePool(tasks, CHUNK_CONCURRENCY)

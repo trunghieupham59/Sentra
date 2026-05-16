@@ -27,6 +27,9 @@ const vi: Translations = {
   translate_error_retry: 'Thử lại',
   translate_error_rewrite: 'Viết lại thất bại. Vui lòng thử lại.',
   translate_error_copy: 'Không thể sao chép vào clipboard.',
+  translate_error_unexpected: 'Đã xảy ra lỗi không mong muốn. Vui lòng thử lại.',
+  translate_error_generic: 'Dịch thất bại.',
+  translate_error_download: 'Không thể tải ảnh xuống.',
   translate_phonetic: 'Phiên âm',
   translate_phonetic_off: 'Tắt',
   translate_phonetic_standard: 'Ngữ âm chuẩn',
@@ -107,6 +110,8 @@ const vi: Translations = {
   dictionary_error_context_too_long: 'Ngữ cảnh quá dài.',
   dictionary_error_failed: 'Tra từ thất bại.',
   dictionary_error_invalid_response: 'Provider trả về mục từ không hợp lệ.',
+  dictionary_error_truncated: 'Phản hồi bị cắt ngắn. Vui lòng thử lại hoặc rút gọn ngữ cảnh.',
+  dictionary_error_same_lang: 'Ngôn ngữ nguồn và đích phải khác nhau.',
   lang_auto: 'Tự động nhận dạng',
   lang_names: {
     auto: 'Tự động nhận dạng',

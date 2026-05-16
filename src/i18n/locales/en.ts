@@ -27,6 +27,9 @@ const en: Translations = {
   translate_error_retry: 'Retry',
   translate_error_rewrite: 'Rewrite failed. Please try again.',
   translate_error_copy: 'Failed to copy to clipboard.',
+  translate_error_unexpected: 'Unexpected error. Please try again.',
+  translate_error_generic: 'Translation failed.',
+  translate_error_download: 'Failed to download image.',
   translate_phonetic: 'Phonetic',
   translate_phonetic_off: 'Off',
   translate_phonetic_standard: 'Standard',
@@ -107,6 +110,8 @@ const en: Translations = {
   dictionary_error_context_too_long: 'Context is too long.',
   dictionary_error_failed: 'Dictionary lookup failed.',
   dictionary_error_invalid_response: 'The provider returned an invalid dictionary entry.',
+  dictionary_error_truncated: 'Response was truncated. Please try again or shorten the context.',
+  dictionary_error_same_lang: 'Source and target languages must differ.',
   lang_auto: 'Auto Detect',
   lang_names: {
     auto: 'Auto Detect',

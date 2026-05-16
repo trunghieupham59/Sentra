@@ -1,12 +1,13 @@
 import type { IpcMain } from 'electron'
 import { classifyProviderError, noApiKeyResponse } from './errorUtils'
 import {
-  ANTHROPIC_API_BASE, ANTHROPIC_API_VERSION,ANTHROPIC_MODELS_LIMIT, 
+  ANTHROPIC_API_BASE, ANTHROPIC_API_VERSION,ANTHROPIC_MODELS_LIMIT,
   GEMINI_API_BASE, GEMINI_IMAGE_EDIT_MODEL,
-  GEMINI_MODELS_PAGE_SIZE, 
-  MAX_CHAT_OUTPUT_TOKENS,VISION_DISCOVERY_TIMEOUT_MS,VISION_SCORE_BASIC,VISION_SCORE_CAPABLE, 
-  VISION_SCORE_CHEAP, VISION_SCORE_GEN_WEIGHT, VISION_SCORE_LITE_PENALTY,VISION_SCORE_MID, 
-  VISION_SCORE_SLOW, 
+  GEMINI_MODELS_PAGE_SIZE,
+  MAX_CHAT_OUTPUT_TOKENS, MAX_IMAGE_BASE64_CHARS,
+  VISION_DISCOVERY_TIMEOUT_MS,VISION_SCORE_BASIC,VISION_SCORE_CAPABLE,
+  VISION_SCORE_CHEAP, VISION_SCORE_GEN_WEIGHT, VISION_SCORE_LITE_PENALTY,VISION_SCORE_MID,
+  VISION_SCORE_SLOW,
 } from './ipcConstants'
 import { invalidIpcInput, isNonEmptyString, isRecord, isSafeLanguageCode, parseProviderModel } from './ipcValidation'
 import { isAbortError } from './providers/chatProviderTypes'
@@ -100,8 +101,10 @@ async function fetchVisionModels(provider: string, apiKey: string): Promise<stri
     let ids: string[] = []
 
     if (provider === 'gemini') {
-      const url = `${GEMINI_API_BASE}/models?key=${apiKey}&pageSize=${GEMINI_MODELS_PAGE_SIZE}`
-      const res = await fetchWithTimeout(url, {}, VISION_DISCOVERY_TIMEOUT_MS)
+      // Pass API key via header (x-goog-api-key) instead of query string so the
+      // key never ends up in URLs that may be logged by fetch errors, proxies, or stack traces.
+      const url = `${GEMINI_API_BASE}/models?pageSize=${GEMINI_MODELS_PAGE_SIZE}`
+      const res = await fetchWithTimeout(url, { headers: { 'x-goog-api-key': apiKey } }, VISION_DISCOVERY_TIMEOUT_MS)
       if (!res.ok) return []
       const data = await res.json() as {
         models?: Array<{ name: string; supportedGenerationMethods?: string[] }>
@@ -148,7 +151,9 @@ async function fetchVisionModels(provider: string, apiKey: string): Promise<stri
       .sort((a, b) => b.score - a.score)
       .map(x => x.id)
   } catch (err) {
-    console.warn(`fetchVisionModels(${provider}) failed, no fallback candidates:`, err)
+    // Only log the message — full error objects may include URLs/headers that leak API keys.
+    const msg = err instanceof Error ? err.message : String(err)
+    console.warn(`fetchVisionModels(${provider}) failed: ${msg.slice(0, 200)}`)
     return []
   }
 }
@@ -198,6 +203,16 @@ function parseImageTranslateParams(rawParams: unknown): ParsedImageTranslatePara
 
   if (!isNonEmptyString(params.imageBase64)) {
     return { ok: false, response: invalidIpcInput('No image data provided') }
+  }
+  if (params.imageBase64.length > MAX_IMAGE_BASE64_CHARS) {
+    return {
+      ok: false,
+      response: {
+        success: false,
+        error: `Image payload exceeds maximum size (${Math.round(MAX_IMAGE_BASE64_CHARS / 1024 / 1024)} MB)`,
+        errorCode: 'PAYLOAD_TOO_LARGE',
+      },
+    }
   }
   if (params.requestId !== undefined && !isNonEmptyString(params.requestId)) {
     return { ok: false, response: invalidIpcInput('Invalid request id') }
@@ -292,8 +307,9 @@ async function translateImageWithGeminiEdit(
     throw new Error(`Unsupported image MIME type: ${imageMimeType}`)
   }
 
-  // HC-06: Use GEMINI_API_BASE instead of hardcoded URL prefix
-  const url = `${GEMINI_API_BASE}/models/${GEMINI_IMAGE_EDIT_MODEL}:generateContent?key=${apiKey}`
+  // HC-06: Use GEMINI_API_BASE instead of hardcoded URL prefix.
+  // API key passed via x-goog-api-key header (not query string) so it cannot leak via URL logging.
+  const url = `${GEMINI_API_BASE}/models/${GEMINI_IMAGE_EDIT_MODEL}:generateContent`
   const sourceName = langName(sourceLang)
   const targetName = langName(targetLang)
 
@@ -323,7 +339,10 @@ async function translateImageWithGeminiEdit(
   // R-REL-03: Use fetchWithTimeout (already defined above) to prevent indefinite hang
   const res = await fetchWithTimeout(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey,
+    },
     body: JSON.stringify(body),
   }, VISION_DISCOVERY_TIMEOUT_MS, signal)
 
@@ -560,7 +579,8 @@ export function registerImageTranslateHandlers(ipcMain: IpcMain) {
           }
         } catch (editErr) {
           if (controller?.signal.aborted || isAbortError(editErr)) throw editErr
-          console.warn('Gemini image-edit failed, falling back to regions:', editErr)
+          const msg = editErr instanceof Error ? editErr.message : String(editErr)
+          console.warn(`Gemini image-edit failed, falling back to regions: ${msg.slice(0, 200)}`)
           // Fall through to OCR+regions approach below
         }
       }
@@ -595,9 +615,12 @@ export function registerImageTranslateHandlers(ipcMain: IpcMain) {
         const key = p === provider ? apiKey : getStoredApiKey(p)
         if (!key) continue
 
-        // Notify renderer immediately when switching to a fallback model/provider
+        // Notify renderer immediately when switching to a fallback model/provider.
+        // Guard against destroyed sender (window closed mid-fallback).
         if (m !== model || p !== provider) {
-          event.sender.send('image:model-switched', { model: m, provider: p })
+          if (!event.sender.isDestroyed()) {
+            event.sender.send('image:model-switched', { model: m, provider: p })
+          }
           console.info(`Image translate: switching to ${p}/${m} (requested: ${provider}/${model})`)
         }
 
@@ -666,8 +689,9 @@ export function registerImageTranslateHandlers(ipcMain: IpcMain) {
       if (controller?.signal.aborted || isAbortError(error)) {
         return { success: false, error: IMAGE_TRANSLATE_CANCELLED_MESSAGE, errorCode: 'CANCELLED' }
       }
-      console.error(`Image translation error with ${provider}:`, error)
       const msg = error instanceof Error ? error.message : String(error)
+      // Log only message — full error objects may include request URLs/headers containing API keys.
+      console.error(`Image translation error with ${provider}: ${msg.slice(0, 200)}`)
       // DUP-01: use classifyProviderError for standard error categorization
       return classifyProviderError(msg)
     } finally {

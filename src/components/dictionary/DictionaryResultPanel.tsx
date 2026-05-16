@@ -19,8 +19,27 @@ function normalizeTranslationItem(item: DictionaryTranslation | string): Diction
   return item
 }
 
+/**
+ * Detect whether a pronunciation string is IPA-like (Latin + IPA extensions)
+ * versus a native script reading (kana, hangul, han, devanagari, thai, …).
+ * Only IPA-like values are wrapped in `/.../` slashes; native scripts are
+ * shown as-is, which matches the convention dictionaries use.
+ */
+function isIpaLikePronunciation(value: string): boolean {
+  if (!value) return false
+  // If any non-Latin/Common character appears, treat as native script.
+  try {
+    return !/[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}\p{Script=Hangul}\p{Script=Thai}\p{Script=Devanagari}\p{Script=Arabic}\p{Script=Hebrew}\p{Script=Cyrillic}]/u.test(value)
+  } catch {
+    // Older engines without Unicode property escapes — fall back to slashes.
+    return true
+  }
+}
+
 function formatPronunciation(value: string): string {
-  return value ? `/${value.replace(/^\/|\/$/g, '')}/` : ''
+  const stripped = value.replace(/^\/|\/$/g, '').trim()
+  if (!stripped) return ''
+  return isIpaLikePronunciation(stripped) ? `/${stripped}/` : stripped
 }
 
 function getTranslationKey(item: DictionaryTranslation): string {
@@ -62,6 +81,9 @@ export function DictionaryResultPanel({
   t,
 }: DictionaryResultPanelProps) {
   const resultBodyRef = useRef<HTMLDivElement>(null)
+  const selectionRequestRef = useRef(0)
+  const selectionAbortRef = useRef<AbortController | null>(null)
+  const selectionTimerRef = useRef<number | null>(null)
   const [selectedTranslation, setSelectedTranslation] = useState<{
     entryId: string
     key: string
@@ -80,7 +102,12 @@ export function DictionaryResultPanel({
 
   useEffect(() => {
     const handleResultSelection = () => {
-      window.setTimeout(() => {
+      // Coalesce a burst of mouseup/keyup events into a single deferred check.
+      if (selectionTimerRef.current !== null) {
+        window.clearTimeout(selectionTimerRef.current)
+      }
+      selectionTimerRef.current = window.setTimeout(() => {
+        selectionTimerRef.current = null
         const selection = window.getSelection()
         const text = cleanSelectionText(selection?.toString() ?? '')
         const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null
@@ -109,6 +136,18 @@ export function DictionaryResultPanel({
     return () => {
       document.removeEventListener('mouseup', handleResultSelection)
       document.removeEventListener('keyup', handleResultSelection)
+      if (selectionTimerRef.current !== null) {
+        window.clearTimeout(selectionTimerRef.current)
+        selectionTimerRef.current = null
+      }
+    }
+  }, [])
+
+  // Abort any in-flight selection lookup on unmount.
+  useEffect(() => {
+    return () => {
+      selectionAbortRef.current?.abort()
+      selectionAbortRef.current = null
     }
   }, [])
 
@@ -124,25 +163,47 @@ export function DictionaryResultPanel({
       ? null
       : translations.find((item) => getTranslationKey(item) === selectedTranslationKey) ?? null
 
-  const closeSelectionLookup = () => setSelectionLookup(null)
+  const closeSelectionLookup = () => {
+    selectionAbortRef.current?.abort()
+    selectionAbortRef.current = null
+    setSelectionLookup(null)
+  }
 
   const runSelectionLookup = async () => {
     if (!selectionAction) return
     const lookupTerm = selectionAction.text
     setSelectionAction(null)
     window.getSelection()?.removeAllRanges()
+
+    // Cancel any prior selection lookup before kicking off a new one.
+    selectionAbortRef.current?.abort()
+    const controller = new AbortController()
+    selectionAbortRef.current = controller
+    const requestId = selectionRequestRef.current + 1
+    selectionRequestRef.current = requestId
+
     setSelectionLookup({ term: lookupTerm, loading: true, result: null, error: null })
 
-    const lookup = await dictionaryService.lookup({
-      term: lookupTerm,
-      context: `Selected inside dictionary entry "${entry.term}". Entry meaning: ${result.meaning}`,
-      sourceLang: entry.targetLang,
-      targetLang: entry.targetLang,
-      provider: entry.provider,
-      model: entry.model,
-    })
+    // Use the entry's target language as the lookup target so we keep the
+    // user's preferred output language, but mark the source as `auto` to
+    // bypass the same-language guard — the selected text may be in either
+    // language depending on which section the user highlighted.
+    const lookup = await dictionaryService.lookup(
+      {
+        term: lookupTerm,
+        context: `Selected inside dictionary entry "${entry.term}". Entry meaning: ${result.meaning}`,
+        sourceLang: 'auto',
+        targetLang: entry.targetLang,
+        provider: entry.provider,
+        model: entry.model,
+      },
+      { signal: controller.signal },
+    )
+
+    if (requestId !== selectionRequestRef.current || controller.signal.aborted) return
 
     if (!lookup.success || !lookup.result) {
+      if (lookup.errorCode === 'CANCELLED') return
       setSelectionLookup({
         term: lookupTerm,
         loading: false,
@@ -258,7 +319,19 @@ export function DictionaryResultPanel({
               })}
             </div>
 
-            {activeTranslation && (
+            {activeTranslation && (() => {
+              const translationExamples = uniqueText([
+                ...(activeTranslation.examples ?? []),
+                activeTranslation.example,
+                ...((activeTranslation.examples?.length || activeTranslation.example)
+                  ? []
+                  : result.examples.slice(0, 3)),
+              ])
+              const translationNotes = uniqueText([
+                ...(activeTranslation.notes ?? []),
+                ...((activeTranslation.notes?.length ?? 0) > 0 ? [] : result.notes),
+              ])
+              return (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/25 px-6 py-8 backdrop-blur-[1px]">
                 <button
                   type="button"
@@ -327,19 +400,11 @@ export function DictionaryResultPanel({
                       </section>
                     )}
 
-                    {uniqueText([
-                      ...(activeTranslation.examples ?? []),
-                      activeTranslation.example,
-                      ...((activeTranslation.examples?.length || activeTranslation.example) ? [] : result.examples.slice(0, 3)),
-                    ]).length > 0 && (
+                    {translationExamples.length > 0 && (
                       <section>
                         <h5 className="section-label mb-2">{t.dictionary_translation_example}</h5>
                         <ol className="space-y-1.5">
-                          {uniqueText([
-                            ...(activeTranslation.examples ?? []),
-                            activeTranslation.example,
-                            ...((activeTranslation.examples?.length || activeTranslation.example) ? [] : result.examples.slice(0, 3)),
-                          ]).map((item, idx) => (
+                          {translationExamples.map((item, idx) => (
                             <li key={`translation-example-${item}`} className="flex items-start gap-2.5 select-text">
                               <span
                                 aria-hidden
@@ -370,17 +435,11 @@ export function DictionaryResultPanel({
                       </section>
                     )}
 
-                    {uniqueText([
-                      ...(activeTranslation.notes ?? []),
-                      ...((activeTranslation.notes?.length ?? 0) > 0 ? [] : result.notes),
-                    ]).length > 0 && (
+                    {translationNotes.length > 0 && (
                       <section>
                         <h5 className="section-label mb-2">{t.dictionary_notes}</h5>
                         <ul className="space-y-1.5">
-                          {uniqueText([
-                            ...(activeTranslation.notes ?? []),
-                            ...((activeTranslation.notes?.length ?? 0) > 0 ? [] : result.notes),
-                          ]).map((item) => (
+                          {translationNotes.map((item) => (
                             <li key={`translation-note-${item}`} className="flex items-start gap-2.5 select-text">
                               <span
                                 aria-hidden
@@ -395,7 +454,8 @@ export function DictionaryResultPanel({
                   </div>
                 </div>
               </div>
-            )}
+              )
+            })()}
           </section>
         )}
 

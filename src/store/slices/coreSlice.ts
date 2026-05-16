@@ -22,6 +22,8 @@ export interface CoreSlice {
   targetLang: string
   isTranslating: boolean
   translateError: string | null
+  /** Structured error code from the IPC handler — preferred over substring matching on translateError. */
+  translateErrorCode: string | null
 
   // Provider/Model selection
   selectedProvider: Provider
@@ -47,7 +49,7 @@ export interface CoreSlice {
    * @param detectedLang — optional AI-detected source lang to use as the new target. */
   swapLanguages: (detectedLang?: string) => void
   setIsTranslating: (v: boolean) => void
-  setTranslateError: (err: string | null) => void
+  setTranslateError: (err: string | null, errorCode?: string | null) => void
   setSelectedProvider: (provider: Provider) => void
   setSelectedModel: (provider: Provider, model: string) => void
   setActivePage: (page: AppPage) => void
@@ -68,6 +70,7 @@ export const createCoreSlice = (set: SliceSet, get: SliceGet): CoreSlice => ({
   targetLang: DEFAULT_SETTINGS.defaultTargetLang,
   isTranslating: false,
   translateError: null,
+  translateErrorCode: null,
   selectedProvider: DEFAULT_SETTINGS.defaultProvider,
   selectedModels: DEFAULT_SETTINGS.defaultModels,
   activePage: 'translate',
@@ -86,7 +89,7 @@ export const createCoreSlice = (set: SliceSet, get: SliceGet): CoreSlice => ({
   },
 
   // ── Actions ─────────────────────────────────────────────────────────────────
-  setSourceText: (text) => set({ sourceText: text, translateError: null }),
+  setSourceText: (text) => set({ sourceText: text, translateError: null, translateErrorCode: null }),
   setTranslatedText: (text) => set({ translatedText: text }),
   setPhoneticText: (text) => set({ phoneticText: text }),
   setSourceLang: (lang) => set({ sourceLang: lang }),
@@ -120,8 +123,10 @@ export const createCoreSlice = (set: SliceSet, get: SliceGet): CoreSlice => ({
     }),
 
   setIsTranslating: (v) => set({ isTranslating: v }),
-  setTranslateError: (err) => set({ translateError: err }),
-  setSelectedProvider: (provider) => set({ selectedProvider: provider, translateError: null }),
+  setTranslateError: (err, errorCode) =>
+    set({ translateError: err, translateErrorCode: err ? (errorCode ?? null) : null }),
+  setSelectedProvider: (provider) =>
+    set({ selectedProvider: provider, translateError: null, translateErrorCode: null }),
   setSelectedModel: (provider, model) =>
     set((state: CoreSlice) => ({ selectedModels: { ...state.selectedModels, [provider]: model } })),
 
@@ -129,5 +134,5 @@ export const createCoreSlice = (set: SliceSet, get: SliceGet): CoreSlice => ({
   openSettings: () => set({ settingsOpen: true }),
   closeSettings: () => set({ settingsOpen: false }),
   clearTranslation: () =>
-    set({ sourceText: '', translatedText: '', phoneticText: '', translateError: null }),
+    set({ sourceText: '', translatedText: '', phoneticText: '', translateError: null, translateErrorCode: null }),
 })

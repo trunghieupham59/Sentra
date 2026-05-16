@@ -123,8 +123,9 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
       if (isAbortError(error)) {
         return { success: false, error: TRANSLATE_CANCELLED_MESSAGE, errorCode: 'CANCELLED' }
       }
-      console.error(`Translation error with ${provider}:`, error)
       const msg = error instanceof Error ? error.message : String(error)
+      // Log only the message — full error objects may include request URLs/headers containing API keys.
+      console.error(`Translation error with ${provider}: ${msg.slice(0, 200)}`)
       const classified = classifyProviderError(msg)
       return { ...classified, error: classified.errorCode ? classified.error : `Translation failed: ${msg}` }
     }
@@ -151,8 +152,8 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
 
       return { success: true, translatedText: rewrittenText }
     } catch (error: unknown) {
-      console.error(`Rewrite error with ${provider}:`, error)
       const msg = error instanceof Error ? error.message : String(error)
+      console.error(`Rewrite error with ${provider}: ${msg.slice(0, 200)}`)
       const classified = classifyProviderError(msg)
       return { ...classified, error: classified.errorCode ? classified.error : `Rewrite failed: ${msg}` }
     }

@@ -561,7 +561,21 @@ export interface DictionaryLookupResult {
   success: boolean
   result?: DictionaryResult
   error?: string
-  errorCode?: 'INVALID_INPUT' | 'INVALID_RESPONSE' | 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'NETWORK' | string
+  errorCode?:
+    | 'INVALID_INPUT'
+    | 'INVALID_RESPONSE'
+    | 'TRUNCATED_RESPONSE'
+    | 'SAME_LANGUAGE'
+    | 'CANCELLED'
+    | 'NO_API_KEY'
+    | 'INVALID_KEY'
+    | 'RATE_LIMIT'
+    | 'NETWORK'
+    | 'TIMEOUT'
+    | 'EMPTY_RESPONSE'
+    | 'BLOCKED_RECITATION'
+    | 'BLOCKED_SAFETY'
+    | string
 }
 
 // ─── Live Session History ─────────────────────────────────────────────────────

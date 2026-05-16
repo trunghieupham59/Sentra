@@ -36,6 +36,12 @@ export interface Translations {
   translate_error_rewrite: string
   /** Error shown when copy to clipboard fails */
   translate_error_copy: string
+  /** Generic fallback when translation fails for an unknown reason */
+  translate_error_unexpected: string
+  /** Generic fallback when translation IPC returned success=false without a specific message */
+  translate_error_generic: string
+  /** Error shown when downloading the translated image fails */
+  translate_error_download: string
   translate_phonetic: string
   /** Phonetic mode dropdown — off */
   translate_phonetic_off: string
@@ -132,6 +138,8 @@ export interface Translations {
   dictionary_error_context_too_long: string
   dictionary_error_failed: string
   dictionary_error_invalid_response: string
+  dictionary_error_truncated: string
+  dictionary_error_same_lang: string
 
   // Language selector
   lang_auto: string

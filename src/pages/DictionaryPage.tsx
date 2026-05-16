@@ -18,6 +18,7 @@ import type {
   DictionaryResult,
   DictionaryTranslation,
 } from '../types'
+import { localizeChatError } from '../utils/chatErrors'
 import { createClientId } from '../utils/id'
 import { combineUsageCosts, estimateUsageCost } from '../utils/usageCost'
 
@@ -43,6 +44,10 @@ function formatDictionaryEntry(entry: DictionaryEntry): string {
   return lines.filter(Boolean).join('\n')
 }
 
+function normalizeContextKey(value: string): string {
+  return value.trim().toLocaleLowerCase()
+}
+
 function sameDictionaryLookup(
   entry: DictionaryEntry,
   normalizedTerm: string,
@@ -54,7 +59,7 @@ function sameDictionaryLookup(
     entry.normalizedTerm === normalizedTerm &&
     entry.sourceLang === sourceLang &&
     entry.targetLang === targetLang &&
-    (entry.context?.trim() ?? '') === context
+    normalizeContextKey(entry.context ?? '') === normalizeContextKey(context)
   )
 }
 
@@ -103,6 +108,7 @@ export function DictionaryPage() {
   const [activeListTab, setActiveListTab] = useState<DictionaryListTab>('recent')
   const [copied, setCopied] = useState(false)
   const lookupRequestRef = useRef(0)
+  const lookupAbortRef = useRef<AbortController | null>(null)
 
   /** Controls visibility of the AI config popup — mirrors TranslatePage. */
   const [showAIConfig, setShowAIConfig] = useState(false)
@@ -134,14 +140,25 @@ export function DictionaryPage() {
     if (matchedEntry) setSelectedEntryId(matchedEntry.id)
   }, [context, dictionaryEntries, sourceLang, targetLang, term])
 
+  // Cancel any in-flight lookup when the page unmounts.
+  useEffect(() => {
+    return () => {
+      lookupAbortRef.current?.abort()
+      lookupAbortRef.current = null
+    }
+  }, [])
+
   const selectedEntry =
     dictionaryEntries.find((entry) => entry.id === selectedEntryId) ?? dictionaryEntries[0] ?? null
   const model = selectedModels[selectedProvider] ?? ''
 
-  const localizeError = (code?: string, fallback?: string) => {
+  const localizeError = (code?: string, fallback?: string): string => {
     if (code === 'INVALID_RESPONSE') return t.dictionary_error_invalid_response
-    if (code === 'NO_API_KEY') return t.translate_error_no_key
-    return fallback || t.dictionary_error_failed
+    if (code === 'TRUNCATED_RESPONSE') return t.dictionary_error_truncated
+    if (code === 'SAME_LANGUAGE') return t.dictionary_error_same_lang
+    if (code === 'INVALID_INPUT') return fallback || t.dictionary_error_failed
+    if (code === 'CANCELLED') return ''
+    return localizeChatError(t, { error: fallback, errorCode: code }, fallback || t.dictionary_error_failed)
   }
 
   const createLookupEntry = ({
@@ -187,22 +204,48 @@ export function DictionaryPage() {
       setError(t.dictionary_error_context_too_long)
       return
     }
+    if (sourceLang && targetLang && sourceLang !== 'auto' && sourceLang === targetLang) {
+      setError(t.dictionary_error_same_lang)
+      return
+    }
 
+    // Cancel any previous in-flight lookup before starting a new one. We still
+    // bump requestId so any stragglers that escape the abort signal are
+    // filtered out by the staleness check below.
+    lookupAbortRef.current?.abort()
+    const controller = new AbortController()
+    lookupAbortRef.current = controller
     const requestId = lookupRequestRef.current + 1
     lookupRequestRef.current = requestId
+
     const normalizedTerm = normalizeDictionaryTerm(cleanTerm)
     const cachedEntry = dictionaryEntries.find((entry) =>
       sameDictionaryLookup(entry, normalizedTerm, sourceLang, targetLang, cleanContext),
     )
+    // If the cached entry was produced by a different provider/model, treat it
+    // as stale — the user explicitly switched models, so a refresh is expected.
+    const cacheIsCurrent = Boolean(
+      cachedEntry && cachedEntry.provider === selectedProvider && cachedEntry.model === model,
+    )
+    const usableCache = cacheIsCurrent ? cachedEntry : null
 
     setError(null)
-    if (cachedEntry) {
-      setSelectedEntryId(cachedEntry.id)
+    if (usableCache && hasDictionaryDetails(usableCache)) {
+      // Fully cached, current model — just promote it to the top of "Recent".
+      const refreshed = createLookupEntry({
+        id: usableCache.id,
+        favorite: usableCache.favorite,
+        result: usableCache.result,
+        normalizedTerm,
+        cleanTerm,
+        cleanContext,
+      })
+      refreshed.cost = usableCache.cost
+      addDictionaryEntry(refreshed)
+      setSelectedEntryId(refreshed.id)
       setActiveListTab('recent')
-      if (hasDictionaryDetails(cachedEntry)) {
-        setIsLoading(false)
-        return
-      }
+      setIsLoading(false)
+      return
     }
 
     setIsLoading(true)
@@ -215,19 +258,21 @@ export function DictionaryPage() {
         provider: selectedProvider,
         model,
       }
-      const preview: DictionaryLookupResult = cachedEntry
-        ? { success: true as const, result: cachedEntry.result }
-        : await dictionaryService.lookupPreview(lookupParams)
+      const preview: DictionaryLookupResult = usableCache
+        ? { success: true as const, result: usableCache.result }
+        : await dictionaryService.lookupPreview(lookupParams, { signal: controller.signal })
 
-      if (requestId !== lookupRequestRef.current) return
+      if (requestId !== lookupRequestRef.current || controller.signal.aborted) return
 
       if (!preview.success || !preview.result) {
-        setError(localizeError(preview.errorCode, preview.error))
+        if (preview.errorCode !== 'CANCELLED') {
+          setError(localizeError(preview.errorCode, preview.error))
+        }
         return
       }
 
-      const entryId = cachedEntry?.id ?? createDictionaryEntryId()
-      const favorite = cachedEntry?.favorite ?? false
+      const entryId = usableCache?.id ?? createDictionaryEntryId()
+      const favorite = usableCache?.favorite ?? false
       const previewEntry = createLookupEntry({
         id: entryId,
         favorite,
@@ -236,14 +281,14 @@ export function DictionaryPage() {
         cleanTerm,
         cleanContext,
       })
-      const previewCost = cachedEntry?.cost ?? estimateUsageCost({
+      const previewCost = usableCache?.cost ?? estimateUsageCost({
         feature: 'dictionary',
         provider: selectedProvider,
         model,
         inputText: `${cleanTerm}\n${cleanContext}`,
         outputText: formatDictionaryEntry(previewEntry),
       })
-      if (!cachedEntry) recordUsageCost(previewCost)
+      if (!usableCache) recordUsageCost(previewCost)
       previewEntry.cost = previewCost
 
       addDictionaryEntry(previewEntry)
@@ -251,8 +296,24 @@ export function DictionaryPage() {
       setActiveListTab('recent')
       setIsLoading(false)
 
-      const detailed = await dictionaryService.lookupDetails(lookupParams, preview.result)
-      if (requestId !== lookupRequestRef.current || !detailed.success || !detailed.result) return
+      const detailed = await dictionaryService.lookupDetails(
+        lookupParams,
+        preview.result,
+        { signal: controller.signal },
+      )
+      if (requestId !== lookupRequestRef.current || controller.signal.aborted) return
+      if (!detailed.success || !detailed.result) {
+        // Preview already shown — only surface a hard error for non-cancel cases.
+        if (
+          detailed.errorCode &&
+          detailed.errorCode !== 'CANCELLED' &&
+          detailed.errorCode !== 'INVALID_RESPONSE' &&
+          detailed.errorCode !== 'TRUNCATED_RESPONSE'
+        ) {
+          setError(localizeError(detailed.errorCode, detailed.error))
+        }
+        return
+      }
       const detailedEntry = createLookupEntry({
         id: entryId,
         favorite,
@@ -272,9 +333,15 @@ export function DictionaryPage() {
       detailedEntry.cost = combineUsageCosts([previewCost, detailedCost], 'dictionary')
 
       addDictionaryEntry(detailedEntry)
+    } catch (err) {
+      if (controller.signal.aborted) return
+      if (requestId !== lookupRequestRef.current) return
+      const message = err instanceof Error ? err.message : String(err ?? '')
+      setError(message || t.dictionary_error_failed)
     } finally {
       if (requestId === lookupRequestRef.current) {
         setIsLoading(false)
+        lookupAbortRef.current = null
       }
     }
   }

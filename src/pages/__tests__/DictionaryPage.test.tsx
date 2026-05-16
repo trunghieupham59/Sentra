@@ -77,15 +77,19 @@ describe('DictionaryPage', () => {
     fireEvent.change(screen.getByPlaceholderText(/Enter a word|Nhập từ|単語/i), { target: { value: '工夫' } })
     fireEvent.click(screen.getByRole('button', { name: /Look up|Tra cứu|検索/i }))
 
-    await waitFor(() => expect(dictionaryService.lookupPreview).toHaveBeenCalledWith(expect.objectContaining({
-      term: '工夫',
-      provider: 'local',
-      model: 'local-auto',
-    })))
+    await waitFor(() => expect(dictionaryService.lookupPreview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        term: '工夫',
+        provider: 'local',
+        model: 'local-auto',
+      }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    ))
     await waitFor(() => expect(screen.getAllByText('Cải tiến cách làm.').length).toBeGreaterThan(0))
     expect(dictionaryService.lookupDetails).toHaveBeenCalledWith(
       expect.objectContaining({ term: '工夫' }),
       expect.objectContaining({ headword: '工夫' }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )
     expect(useAppStore.getState().dictionaryEntries).toHaveLength(1)
   })
@@ -194,13 +198,16 @@ describe('DictionaryPage', () => {
     const lookupButton = await screen.findByRole('button', { name: /Look up selection.*Cải tiến|Tra phần đã chọn.*Cải tiến|選択部分を検索.*Cải tiến/i })
     fireEvent.click(lookupButton)
 
-    await waitFor(() => expect(dictionaryService.lookup).toHaveBeenLastCalledWith(expect.objectContaining({
-      term: 'Cải tiến',
-      sourceLang: 'vi',
-      targetLang: 'vi',
-      provider: 'local',
-      model: 'local-auto',
-    })))
+    await waitFor(() => expect(dictionaryService.lookup).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        term: 'Cải tiến',
+        sourceLang: 'auto',
+        targetLang: 'vi',
+        provider: 'local',
+        model: 'local-auto',
+      }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    ))
     expect(await screen.findByRole('dialog', { name: /Look up selection|Tra phần đã chọn|選択部分を検索/i })).toBeInTheDocument()
     expect(screen.getByText('Làm cho cách làm hoặc sản phẩm tốt hơn.')).toBeInTheDocument()
   })

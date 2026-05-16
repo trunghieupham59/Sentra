@@ -20,6 +20,21 @@ interface DictionaryHistoryPanelProps {
 }
 
 /**
+ * Wrap the pronunciation in `/.../` only for IPA-like (Latin-script) values.
+ * Native-script readings (kana/hangul/han/…) are shown as-is.
+ */
+function formatPronunciationForList(value: string): string {
+  const stripped = value.replace(/^\/|\/$/g, '').trim()
+  if (!stripped) return ''
+  try {
+    const hasNativeScript = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}\p{Script=Hangul}\p{Script=Thai}\p{Script=Devanagari}\p{Script=Arabic}\p{Script=Hebrew}\p{Script=Cyrillic}]/u.test(stripped)
+    return hasNativeScript ? stripped : `/${stripped}/`
+  } catch {
+    return `/${stripped}/`
+  }
+}
+
+/**
  * Format a timestamp as a relative time string in Vietnamese-friendly
  * shorthand (e.g. "vừa xong", "5p", "2g", "3n").  Stays locale-neutral by
  * using single-character suffixes.
@@ -195,7 +210,7 @@ export function DictionaryHistoryPanel({
                         </span>
                         {entry.result.pronunciation && (
                           <span className="ui-meta truncate font-mono">
-                            /{entry.result.pronunciation.replace(/^\/|\/$/g, '')}/
+                            {formatPronunciationForList(entry.result.pronunciation)}
                           </span>
                         )}
                         <span className="ui-micro ml-auto flex-shrink-0 tabular-nums">

@@ -328,6 +328,27 @@ export const EXT_DEFAULT_CLAUDE_MODEL = 'claude-sonnet-4-20250514'
  */
 export const EDGE_TTS_TIMEOUT_MS = 8_000
 
+// ── Translate IPC payload limits (main-process enforcement) ───────────────────
+/**
+ * Hard upper bound for `sourceText` accepted by the translate IPC handler.
+ *
+ * The renderer enforces MAX_INPUT_CHARS (5 000) as a soft warning but does not
+ * block the user from submitting longer input — long documents are then sent
+ * through the chunked translation pipeline. We still need a defensive cap at the
+ * IPC boundary so a malicious or buggy caller cannot push a multi-megabyte string
+ * through `JSON.parse` on the main process. 1 MB of text (~250 000 characters)
+ * comfortably covers any realistic book-length input while keeping memory bounded.
+ */
+export const MAX_TRANSLATE_SOURCE_CHARS = 1_000_000
+
+/**
+ * Hard upper bound for `imageBase64` accepted by the image-translate IPC handler.
+ * Renderer already resizes and caps at MAX_IMAGE_INPUT_BYTES (25 MB raw),
+ * which expands to ~33 MB when base64-encoded. We add a 35 MB ceiling here so
+ * a direct IPC call bypassing the renderer cannot DoS the main process.
+ */
+export const MAX_IMAGE_BASE64_CHARS = 35 * 1024 * 1024
+
 // ── Chunked translation parameters ────────────────────────────────────────────
 /**
  * HC-09: Maximum characters per chunk sent to the AI.

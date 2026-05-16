@@ -92,7 +92,7 @@ function shouldReuseAutoHistoryDraft(
 export function useTranslate() {
   const {
     sourceText, translatedText, phoneticText, sourceLang, targetLang,
-    isTranslating, translateError,
+    isTranslating, translateError, translateErrorCode,
     selectedProvider, selectedModels, autoTranslate, autoTranslateDelay, keyStatus, phoneticMode, translationStyle,
     ttsMode, ttsVoice,
     setSourceText, setTranslatedText, setPhoneticText, setTargetLang,
@@ -107,6 +107,7 @@ export function useTranslate() {
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const activeTranslateRequestIdRef = useRef<string | null>(null)
+  const activePhoneticRequestIdRef = useRef<string | null>(null)
   /**
    * Monotonically-increasing counter that identifies the "current" translation job.
    * Incremented each time a new job starts OR when the user cancels (clears content/image).
@@ -121,16 +122,17 @@ export function useTranslate() {
 
   /**
    * True when the current error is due to a missing or invalid API key.
-   * Computed once here instead of via fragile substring matching in the view.
+   * Prefer the structured errorCode coming from IPC; fall back to the
+   * "no stored key" heuristic only when the backend did not return a code
+   * (e.g. the error was set client-side before any IPC call).
    */
-  const isApiKeyError = !!(translateError && (
-    !hasKey ||
-    translateError === t.translate_error_no_key ||
-    translateError.toLowerCase().includes('api key') ||
-    translateError.toLowerCase().includes('apikey') ||
-    translateError.toLowerCase().includes('unauthorized') ||
-    translateError.toLowerCase().includes('invalid key')
-  ))
+  const isApiKeyError = !!(
+    translateError && (
+      translateErrorCode === 'NO_API_KEY' ||
+      translateErrorCode === 'INVALID_KEY' ||
+      (!translateErrorCode && !hasKey)
+    )
+  )
 
   const [copied, setCopied] = useState(false)
   const [isRewriting, setIsRewriting] = useState<'source' | 'translated' | null>(null)
@@ -198,7 +200,7 @@ export function useTranslate() {
       setPhoneticText('')
       setTranslateError(null)
     } catch (err) {
-      setTranslateError(err instanceof Error ? err.message : 'Failed to process image')
+      setTranslateError(err instanceof Error ? err.message : t.image_translate_error_failed)
     }
   }, [setTranslateError, setTranslatedText, setPhoneticText, t])
 
@@ -278,9 +280,17 @@ export function useTranslate() {
 
   const cancelActiveTranslation = useCallback(() => {
     const requestId = activeTranslateRequestIdRef.current
-    if (!requestId) return
-    void window.api.cancelTranslate?.({ requestId })
-    activeTranslateRequestIdRef.current = null
+    if (requestId) {
+      void window.api.cancelTranslate?.({ requestId })
+      activeTranslateRequestIdRef.current = null
+    }
+    // Also cancel any in-flight phonetic pass — toggling phonetic mode rapidly otherwise
+    // leaves multiple parallel requests running and burns provider quota.
+    const phoneticRequestId = activePhoneticRequestIdRef.current
+    if (phoneticRequestId) {
+      void window.api.cancelTranslate?.({ requestId: phoneticRequestId })
+      activePhoneticRequestIdRef.current = null
+    }
   }, [])
 
   const recordTranslationHistory = useCallback((trigger: TranslateTrigger, plainText: string) => {
@@ -327,7 +337,7 @@ export function useTranslate() {
     mode: PhoneticMode,
     ownerGeneration?: number,
   ) => {
-    const requestId = ++phoneticRequestRef.current
+    const localRequestId = ++phoneticRequestRef.current
 
     if (mode === 'off' || !text.trim() || text === IMAGE_TRANSLATED_SENTINEL) {
       setPhoneticText('')
@@ -335,14 +345,23 @@ export function useTranslate() {
     }
 
     if (!hasKey) {
-      setTranslateError(t.translate_error_no_key)
+      setTranslateError(t.translate_error_no_key, 'NO_API_KEY')
       return
     }
+
+    // Cancel any phonetic pass that is still in flight before starting a new one.
+    const previousPhoneticRequestId = activePhoneticRequestIdRef.current
+    if (previousPhoneticRequestId) {
+      void window.api.cancelTranslate?.({ requestId: previousPhoneticRequestId })
+    }
+    const ipcRequestId = createClientId('phonetic')
+    activePhoneticRequestIdRef.current = ipcRequestId
 
     setPhoneticText('')
     void translationService.translate({
       provider: selectedProvider,
       model: selectedModels[selectedProvider],
+      requestId: ipcRequestId,
       sourceText: text,
       sourceLang: targetLang,
       targetLang,
@@ -352,11 +371,16 @@ export function useTranslate() {
       phoneticMode: mode,
     })
       .then((res) => {
-        if (phoneticRequestRef.current !== requestId) return
+        if (phoneticRequestRef.current !== localRequestId) return
         if (ownerGeneration !== undefined && translateGenerationRef.current !== ownerGeneration) return
         if (res.success && res.translatedText) setPhoneticText(res.translatedText)
       })
       .catch(() => {})
+      .finally(() => {
+        if (activePhoneticRequestIdRef.current === ipcRequestId) {
+          activePhoneticRequestIdRef.current = null
+        }
+      })
   }, [
     hasKey,
     selectedProvider,
@@ -384,7 +408,10 @@ export function useTranslate() {
     }
 
     const currentTranslation = translatedTextRef.current
-    if (!currentTranslation || currentTranslation === IMAGE_TRANSLATED_SENTINEL || imageAttachmentRef.current) {
+    // Allow phonetic for OCR-region image translations (translatedText holds the joined
+    // region text). Only skip when the image was edited directly (sentinel) — there is
+    // no text to apply furigana/romanisation to in that case.
+    if (!currentTranslation || currentTranslation === IMAGE_TRANSLATED_SENTINEL) {
       setPhoneticText('')
       return
     }
@@ -393,7 +420,7 @@ export function useTranslate() {
   }, [generatePhoneticText, setPhoneticMode, setPhoneticText])
 
   const runTranslate = useCallback(async (trigger: TranslateTrigger) => {
-    if (!hasKey) { setTranslateError(t.translate_error_no_key); return }
+    if (!hasKey) { setTranslateError(t.translate_error_no_key, 'NO_API_KEY'); return }
 
     if (debounceRef.current) {
       clearTimeout(debounceRef.current)
@@ -433,11 +460,19 @@ export function useTranslate() {
           setTranslatedText(text)
           setImageRegions(result.regions)
           setEditedImageUrl(null)
+          // Generate phonetic pass for the compiled region text — image translations
+          // also benefit from furigana/romanisation when target is JA/ZH/KO etc.
+          const modeAtCompletion = phoneticModeRef.current
+          if (modeAtCompletion !== 'off' && text) {
+            generatePhoneticText(text, modeAtCompletion, generation)
+          } else {
+            setPhoneticText('')
+          }
         } else if (result.success) {
           setTranslatedText('')
-          setTranslateError('No text found in image')
+          setTranslateError(t.image_translate_no_text)
         } else {
-          setTranslateError(result.error || 'Image translation failed')
+          setTranslateError(result.error || t.image_translate_error_failed, result.errorCode)
         }
 
         // Show notice if system auto-switched to a different model/provider
@@ -451,7 +486,7 @@ export function useTranslate() {
         }
       } catch (err) {
         if (translateGenerationRef.current !== generation) return
-        setTranslateError(err instanceof Error ? err.message : 'Unexpected error')
+        setTranslateError(err instanceof Error ? err.message : t.translate_error_unexpected)
       } finally {
         if (translateGenerationRef.current === generation) setIsTranslating(false)
         if (translateGenerationRef.current === generation) activeTranslateRequestIdRef.current = null
@@ -502,11 +537,11 @@ export function useTranslate() {
         // Identifies the source language so the swap button can set the correct target.
         detectLanguageInBackground(sourceText, generation, selectedProvider, selectedModels[selectedProvider])
       } else {
-        setTranslateError(plainResult.error || 'Translation failed')
+        setTranslateError(plainResult.error || t.translate_error_generic, plainResult.errorCode)
       }
     } catch (err) {
       if (translateGenerationRef.current !== generation) return
-      setTranslateError(err instanceof Error ? err.message : 'Unexpected error')
+      setTranslateError(err instanceof Error ? err.message : t.translate_error_unexpected)
     } finally {
       if (translateGenerationRef.current === generation) setIsTranslating(false)
       if (translateGenerationRef.current === generation) activeTranslateRequestIdRef.current = null
@@ -539,9 +574,9 @@ export function useTranslate() {
       a.download = `translated_${Date.now()}.png`
       a.click()
     } catch (err) {
-      setTranslateError(err instanceof Error ? err.message : 'Failed to download image')
+      setTranslateError(err instanceof Error ? err.message : t.translate_error_download)
     }
-  }, [imageAttachment, imageRegions, setTranslateError])
+  }, [imageAttachment, imageRegions, setTranslateError, t])
 
   /** Download the Gemini-edited image directly */
   const handleDownloadEditedImage = useCallback(() => {
@@ -600,8 +635,10 @@ export function useTranslate() {
     runTranslateRef.current('auto')
   }, [translationStyle])
 
-  // Re-translate when target or source language changes (skip first render, skip manual mode)
-  // Also fires when image is attached — imageAttachmentRef accessed via stable ref
+  // Re-translate when target or source language changes (skip first render, skip manual mode).
+  // Special case: if a translation is already in flight, restart it with the new lang pair so
+  // the stale result (targeting the old language) does not surface — this is intentional and
+  // preserves user expectations when they bump the language picker mid-translation.
   // biome-ignore lint/correctness/useExhaustiveDependencies: lang changes are the triggers; sourceText/imageAttachment/runTranslate accessed via stable refs
   useEffect(() => {
     if (!langInitRef.current) { langInitRef.current = true; return }
@@ -654,7 +691,7 @@ export function useTranslate() {
   // Rewrite: make text more natural in its own language without changing meaning
   const handleRewrite = useCallback(async (panel: 'source' | 'translated') => {
     if (isRewriting) return
-    if (!hasKey) { setTranslateError(t.translate_error_no_key); return }
+    if (!hasKey) { setTranslateError(t.translate_error_no_key, 'NO_API_KEY'); return }
     const text = panel === 'source' ? sourceText : translatedText
     const lang = panel === 'source'
       ? (sourceLang === 'auto' ? 'the same language as the input text' : sourceLang)

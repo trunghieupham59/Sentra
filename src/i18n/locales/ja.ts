@@ -27,6 +27,9 @@ const ja: Translations = {
   translate_error_retry: '再試行',
   translate_error_rewrite: '書き直しに失敗しました。もう一度お試しください。',
   translate_error_copy: 'クリップボードへのコピーに失敗しました。',
+  translate_error_unexpected: '予期しないエラーが発生しました。もう一度お試しください。',
+  translate_error_generic: '翻訳に失敗しました。',
+  translate_error_download: '画像のダウンロードに失敗しました。',
   translate_phonetic: '読み方',
   translate_phonetic_off: 'オフ',
   translate_phonetic_standard: '標準読み',
@@ -107,6 +110,8 @@ const ja: Translations = {
   dictionary_error_context_too_long: '文脈が長すぎます。',
   dictionary_error_failed: '辞書検索に失敗しました。',
   dictionary_error_invalid_response: 'プロバイダーから無効な辞書項目が返されました。',
+  dictionary_error_truncated: '応答が途中で切れました。再試行するか文脈を短くしてください。',
+  dictionary_error_same_lang: 'ソース言語とターゲット言語は異なる必要があります。',
   lang_auto: '自動検出',
   lang_names: {
     auto: '自動検出',
