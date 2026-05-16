@@ -70,12 +70,11 @@ export function DictionaryHistoryPanel({
   const [filter, setFilter] = useState('')
   const costCurrency = useAppStore((state) => state.costCurrency)
 
-  const recentCount = entries.length
-  const favoriteCount = entries.filter((entry) => entry.favorite).length
+  const totalCount = entries.length
+  const favorites = entries.filter((entry) => entry.favorite)
+  const favoriteCount = favorites.length
 
-  const baseEntries = activeTab === 'favorites'
-    ? entries.filter((entry) => entry.favorite)
-    : entries
+  const baseEntries = activeTab === 'favorites' ? favorites : entries
 
   const lowerFilter = filter.trim().toLowerCase()
   const visibleEntries = lowerFilter
@@ -88,8 +87,10 @@ export function DictionaryHistoryPanel({
 
   const selectedEntry = entries.find((entry) => entry.id === selectedEntryId) ?? null
 
+  const currentTabCount = activeTab === 'favorites' ? favoriteCount : totalCount
+
   const tabs: Array<{ id: DictionaryListTab; label: string; count: number }> = [
-    { id: 'recent', label: t.dictionary_recent, count: recentCount },
+    { id: 'recent', label: t.dictionary_recent, count: totalCount },
     { id: 'favorites', label: t.dictionary_favorites, count: favoriteCount },
   ]
 
@@ -130,8 +131,8 @@ export function DictionaryHistoryPanel({
           })}
         </div>
 
-        {/* Filter input — only shown when there is enough data */}
-        {recentCount > 4 && (
+        {/* Filter input — only shown when the current tab has enough items */}
+        {currentTabCount > 4 && (
           <div className="relative">
             <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-300 dark:text-gray-600" />
             <input
@@ -254,7 +255,9 @@ export function DictionaryHistoryPanel({
         <div className="surface-footer">
           <button
             type="button"
-            onClick={onClearHistory}
+            onClick={() => {
+              if (window.confirm(t.dictionary_clear_history_confirm)) onClearHistory()
+            }}
             disabled={!entries.some((entry) => !entry.favorite)}
             className="btn-ghost btn-xs"
             title={t.dictionary_clear_history}

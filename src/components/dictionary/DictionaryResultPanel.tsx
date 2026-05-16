@@ -1,21 +1,33 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Translations } from '../../i18n'
 import { dictionaryService } from '../../services/dictionaryService'
-import type { DictionaryEntry, DictionaryResult, DictionaryTranslation } from '../../types'
+import type { DictionaryEntry, DictionaryResult, DictionaryTranslation, Provider } from '../../types'
 import { CheckIcon, CopyIcon, ReuseIcon, SearchIcon, StarIcon, XIcon } from '../ui/icons'
 import { DictionaryEmptyState } from './DictionaryEmptyState'
+
+export interface SelectionLookupSaveParams {
+  term: string
+  context: string
+  sourceLang: string
+  targetLang: string
+  provider: Provider
+  model: string
+  result: DictionaryResult
+}
 
 interface DictionaryResultPanelProps {
   entry: DictionaryEntry | null
   copied: boolean
+  isEnriching?: boolean
   onCopy: () => void
   onFavorite: () => void
   onReuse: () => void
+  /** Called after a successful selection lookup so the page can persist the result. */
+  onSelectionLookupComplete?: (params: SelectionLookupSaveParams) => void
   t: Translations
 }
 
-function normalizeTranslationItem(item: DictionaryTranslation | string): DictionaryTranslation {
-  if (typeof item === 'string') return { text: item, pronunciation: '' }
+function normalizeTranslationItem(item: DictionaryTranslation): DictionaryTranslation {
   return item
 }
 
@@ -75,9 +87,11 @@ function cleanSelectionText(value: string): string {
 export function DictionaryResultPanel({
   entry,
   copied,
+  isEnriching = false,
   onCopy,
   onFavorite,
   onReuse,
+  onSelectionLookupComplete,
   t,
 }: DictionaryResultPanelProps) {
   const resultBodyRef = useRef<HTMLDivElement>(null)
@@ -214,6 +228,18 @@ export function DictionaryResultPanel({
     }
 
     setSelectionLookup({ term: lookupTerm, loading: false, result: lookup.result, error: null })
+
+    // Persist the result to history and record its cost via the page callback.
+    const lookupContext = `Selected inside dictionary entry "${entry.term}". Entry meaning: ${result.meaning}`
+    onSelectionLookupComplete?.({
+      term: lookupTerm,
+      context: lookupContext,
+      sourceLang: 'auto',
+      targetLang: entry.targetLang,
+      provider: entry.provider,
+      model: entry.model,
+      result: lookup.result,
+    })
   }
 
   return (
@@ -239,6 +265,14 @@ export function DictionaryResultPanel({
                   {item}
                 </span>
               ))}
+              {isEnriching && (
+                <span
+                  aria-label={t.dictionary_enriching}
+                  title={t.dictionary_enriching}
+                  className="inline-flex h-2 w-2 flex-shrink-0 rounded-full bg-gray-400/60 dark:bg-gray-500/60"
+                  style={{ animation: 'thinkingDot 1.2s ease-in-out infinite both' }}
+                />
+              )}
             </div>
           </div>
 
@@ -466,7 +500,7 @@ export function DictionaryResultPanel({
             <ol className="space-y-1.5">
               {result.examples.map((item, idx) => (
                 <li
-                  key={`ex-${item}`}
+                  key={`ex-${idx}-${item}`}
                   className="flex items-start gap-2.5 text-sm leading-6 text-gray-700 select-text dark:text-gray-300"
                 >
                   <span
@@ -487,9 +521,9 @@ export function DictionaryResultPanel({
           <section>
             <h3 className="section-label mb-2">{t.dictionary_notes}</h3>
             <ul className="space-y-1.5">
-              {result.notes.map((item) => (
+              {result.notes.map((item, idx) => (
                 <li
-                  key={`note-${item}`}
+                  key={`note-${idx}-${item}`}
                   className="flex items-start gap-2.5 text-sm leading-6 text-gray-700 select-text dark:text-gray-300"
                 >
                   <span
@@ -642,7 +676,7 @@ export function DictionaryResultPanel({
                       <h5 className="section-label mb-2">{t.dictionary_examples}</h5>
                       <ol className="space-y-1.5">
                         {selectionLookup.result.examples.map((item, idx) => (
-                          <li key={`selection-example-${item}`} className="flex items-start gap-2.5 select-text">
+                          <li key={`selection-example-${idx}-${item}`} className="flex items-start gap-2.5 select-text">
                             <span
                               aria-hidden
                               className="ui-index-dot"
@@ -660,8 +694,8 @@ export function DictionaryResultPanel({
                     <section>
                       <h5 className="section-label mb-2">{t.dictionary_notes}</h5>
                       <ul className="space-y-1.5">
-                        {selectionLookup.result.notes.map((item) => (
-                          <li key={`selection-note-${item}`} className="flex items-start gap-2.5 select-text">
+                        {selectionLookup.result.notes.map((item, idx) => (
+                          <li key={`selection-note-${idx}-${item}`} className="flex items-start gap-2.5 select-text">
                             <span
                               aria-hidden
                               className="mt-2 inline-block h-1 w-1 flex-shrink-0 rounded-full bg-gray-500 dark:bg-gray-400"

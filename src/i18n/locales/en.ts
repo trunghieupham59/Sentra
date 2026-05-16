@@ -112,6 +112,8 @@ const en: Translations = {
   dictionary_error_invalid_response: 'The provider returned an invalid dictionary entry.',
   dictionary_error_truncated: 'Response was truncated. Please try again or shorten the context.',
   dictionary_error_same_lang: 'Source and target languages must differ.',
+  dictionary_clear_history_confirm: 'Clear all non-favorite history entries? This cannot be undone.',
+  dictionary_enriching: 'Enriching entry…',
   lang_auto: 'Auto Detect',
   lang_names: {
     auto: 'Auto Detect',

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { DictionaryHistoryPanel, type DictionaryListTab } from '../components/dictionary/DictionaryHistoryPanel'
-import { DictionaryResultPanel } from '../components/dictionary/DictionaryResultPanel'
+import { DictionaryResultPanel, type SelectionLookupSaveParams } from '../components/dictionary/DictionaryResultPanel'
 import { DictionarySearchPanel } from '../components/dictionary/DictionarySearchPanel'
 import { ModelSelector } from '../components/ModelSelector'
 import { GearIcon } from '../components/ui/icons'
@@ -16,9 +16,9 @@ import type {
   DictionaryLookupParams,
   DictionaryLookupResult,
   DictionaryResult,
-  DictionaryTranslation,
 } from '../types'
 import { localizeChatError } from '../utils/chatErrors'
+import { normalizeContextKey } from '../utils/dictionary'
 import { createClientId } from '../utils/id'
 import { combineUsageCosts, estimateUsageCost } from '../utils/usageCost'
 
@@ -28,10 +28,7 @@ function createDictionaryEntryId(): string {
 
 function formatDictionaryEntry(entry: DictionaryEntry): string {
   const translations = entry.result.translations
-    .map((item: DictionaryTranslation | string) => {
-      if (typeof item === 'string') return item
-      return item.pronunciation ? `${item.text} /${item.pronunciation.replace(/^\/|\/$/g, '')}/` : item.text
-    })
+    .map((item) => item.pronunciation ? `${item.text} /${item.pronunciation.replace(/^\/|\/$/g, '')}/` : item.text)
     .join(', ')
   const lines = [
     entry.result.headword,
@@ -42,10 +39,6 @@ function formatDictionaryEntry(entry: DictionaryEntry): string {
     ...entry.result.notes,
   ]
   return lines.filter(Boolean).join('\n')
-}
-
-function normalizeContextKey(value: string): string {
-  return value.trim().toLocaleLowerCase()
 }
 
 function sameDictionaryLookup(
@@ -59,14 +52,13 @@ function sameDictionaryLookup(
     entry.normalizedTerm === normalizedTerm &&
     entry.sourceLang === sourceLang &&
     entry.targetLang === targetLang &&
-    normalizeContextKey(entry.context ?? '') === normalizeContextKey(context)
+    normalizeContextKey(entry.context) === normalizeContextKey(context)
   )
 }
 
 function hasDictionaryDetails(entry: DictionaryEntry): boolean {
-  return entry.result.translations.some((item) => {
-    if (typeof item === 'string') return false
-    return Boolean(
+  return entry.result.translations.some((item) =>
+    Boolean(
       item.meaning ||
         item.usage ||
         item.nuance ||
@@ -74,7 +66,7 @@ function hasDictionaryDetails(entry: DictionaryEntry): boolean {
         item.collocations?.length ||
         item.notes?.length,
     )
-  })
+  )
 }
 
 export function DictionaryPage() {
@@ -101,6 +93,7 @@ export function DictionaryPage() {
   const [term, setTerm] = useState('')
   const [context, setContext] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isEnriching, setIsEnriching] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(
     dictionaryEntries[0]?.id ?? null,
@@ -109,6 +102,7 @@ export function DictionaryPage() {
   const [copied, setCopied] = useState(false)
   const lookupRequestRef = useRef(0)
   const lookupAbortRef = useRef<AbortController | null>(null)
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   /** Controls visibility of the AI config popup — mirrors TranslatePage. */
   const [showAIConfig, setShowAIConfig] = useState(false)
@@ -140,16 +134,30 @@ export function DictionaryPage() {
     if (matchedEntry) setSelectedEntryId(matchedEntry.id)
   }, [context, dictionaryEntries, sourceLang, targetLang, term])
 
-  // Cancel any in-flight lookup when the page unmounts.
+  // Reset selection when the language pair changes — the old entry belongs to a
+  // different language context and showing it alongside new-pair search settings
+  // is confusing. Intentionally not in the auto-selection effect below so the
+  // two concerns stay independent.
+  useEffect(() => {
+    setSelectedEntryId(null)
+  }, [sourceLang, targetLang])
+
+  // Cancel any in-flight lookup and clear the copy timer when the page unmounts.
   useEffect(() => {
     return () => {
       lookupAbortRef.current?.abort()
       lookupAbortRef.current = null
+      if (copyTimerRef.current !== null) clearTimeout(copyTimerRef.current)
     }
   }, [])
 
-  const selectedEntry =
-    dictionaryEntries.find((entry) => entry.id === selectedEntryId) ?? dictionaryEntries[0] ?? null
+  // selectedEntryId is either an explicit selection or the initial default
+  // (set in useState). After deletion we set it to null intentionally — drop the
+  // dictionaryEntries[0] fallback so the result panel shows the empty state
+  // rather than auto-jumping to an unrelated entry.
+  const selectedEntry = selectedEntryId
+    ? (dictionaryEntries.find((entry) => entry.id === selectedEntryId) ?? null)
+    : null
   const model = selectedModels[selectedProvider] ?? ''
 
   const localizeError = (code?: string, fallback?: string): string => {
@@ -295,44 +303,53 @@ export function DictionaryPage() {
       setSelectedEntryId(previewEntry.id)
       setActiveListTab('recent')
       setIsLoading(false)
+      setIsEnriching(true)
 
-      const detailed = await dictionaryService.lookupDetails(
-        lookupParams,
-        preview.result,
-        { signal: controller.signal },
-      )
-      if (requestId !== lookupRequestRef.current || controller.signal.aborted) return
-      if (!detailed.success || !detailed.result) {
-        // Preview already shown — only surface a hard error for non-cancel cases.
-        if (
-          detailed.errorCode &&
-          detailed.errorCode !== 'CANCELLED' &&
-          detailed.errorCode !== 'INVALID_RESPONSE' &&
-          detailed.errorCode !== 'TRUNCATED_RESPONSE'
-        ) {
-          setError(localizeError(detailed.errorCode, detailed.error))
+      // Inner try/finally ensures the enriching indicator is cleared regardless
+      // of whether lookupDetails succeeds, fails softly, or returns early due to
+      // a stale request check. The outer try/catch/finally handles isLoading and
+      // the abort ref — this only owns isEnriching.
+      try {
+        const detailed = await dictionaryService.lookupDetails(
+          lookupParams,
+          preview.result,
+          { signal: controller.signal },
+        )
+        if (requestId !== lookupRequestRef.current || controller.signal.aborted) return
+        if (!detailed.success || !detailed.result) {
+          // Preview already shown — only surface a hard error for non-cancel cases.
+          if (
+            detailed.errorCode &&
+            detailed.errorCode !== 'CANCELLED' &&
+            detailed.errorCode !== 'INVALID_RESPONSE' &&
+            detailed.errorCode !== 'TRUNCATED_RESPONSE'
+          ) {
+            setError(localizeError(detailed.errorCode, detailed.error))
+          }
+          return
         }
-        return
-      }
-      const detailedEntry = createLookupEntry({
-        id: entryId,
-        favorite,
-        result: detailed.result,
-        normalizedTerm,
-        cleanTerm,
-        cleanContext,
-      })
-      const detailedCost = estimateUsageCost({
-        feature: 'dictionary',
-        provider: selectedProvider,
-        model,
-        inputText: `${cleanTerm}\n${cleanContext}\n${formatDictionaryEntry(previewEntry)}`,
-        outputText: formatDictionaryEntry(detailedEntry),
-      })
-      recordUsageCost(detailedCost)
-      detailedEntry.cost = combineUsageCosts([previewCost, detailedCost], 'dictionary')
+        const detailedEntry = createLookupEntry({
+          id: entryId,
+          favorite,
+          result: detailed.result,
+          normalizedTerm,
+          cleanTerm,
+          cleanContext,
+        })
+        const detailedCost = estimateUsageCost({
+          feature: 'dictionary',
+          provider: selectedProvider,
+          model,
+          inputText: `${cleanTerm}\n${cleanContext}\n${formatDictionaryEntry(previewEntry)}`,
+          outputText: formatDictionaryEntry(detailedEntry),
+        })
+        recordUsageCost(detailedCost)
+        detailedEntry.cost = combineUsageCosts([previewCost, detailedCost], 'dictionary')
 
-      addDictionaryEntry(detailedEntry)
+        addDictionaryEntry(detailedEntry)
+      } finally {
+        if (requestId === lookupRequestRef.current) setIsEnriching(false)
+      }
     } catch (err) {
       if (controller.signal.aborted) return
       if (requestId !== lookupRequestRef.current) return
@@ -350,7 +367,36 @@ export function DictionaryPage() {
     if (!selectedEntry) return
     await navigator.clipboard?.writeText?.(formatDictionaryEntry(selectedEntry))
     setCopied(true)
-    window.setTimeout(() => setCopied(false), 1200)
+    if (copyTimerRef.current !== null) clearTimeout(copyTimerRef.current)
+    copyTimerRef.current = setTimeout(() => { setCopied(false) }, 1200)
+  }
+
+  const handleSelectionLookupComplete = ({ term: lookupTerm, context: lookupContext, sourceLang: src, targetLang: tgt, provider, model: mdl, result }: SelectionLookupSaveParams) => {
+    const cleanTerm = lookupTerm.trim()
+    const id = createDictionaryEntryId()
+    const entry: DictionaryEntry = {
+      id,
+      term: cleanTerm,
+      normalizedTerm: normalizeDictionaryTerm(cleanTerm),
+      context: lookupContext || undefined,
+      sourceLang: src,
+      targetLang: tgt,
+      provider,
+      model: mdl,
+      createdAt: Date.now(),
+      favorite: false,
+      result,
+    }
+    const cost = estimateUsageCost({
+      feature: 'dictionary',
+      provider,
+      model: mdl,
+      inputText: cleanTerm,
+      outputText: formatDictionaryEntry(entry),
+    })
+    recordUsageCost(cost)
+    entry.cost = cost
+    addDictionaryEntry(entry)
   }
 
   const handleReuse = () => {
@@ -399,7 +445,7 @@ export function DictionaryPage() {
         {/* ── Search command bar ────────────────────────────────────────── */}
         <DictionarySearchPanel
           term={term}
-          onTermChange={setTerm}
+          onTermChange={(v) => { setTerm(v); if (error) setError(null) }}
           context={context}
           onContextChange={setContext}
           sourceLang={sourceLang}
@@ -423,6 +469,7 @@ export function DictionaryPage() {
             <DictionaryResultPanel
               entry={selectedEntry}
               copied={copied}
+              isEnriching={isEnriching}
               onCopy={() => {
                 void handleCopy()
               }}
@@ -430,6 +477,7 @@ export function DictionaryPage() {
                 if (selectedEntry) toggleDictionaryFavorite(selectedEntry.id)
               }}
               onReuse={handleReuse}
+              onSelectionLookupComplete={handleSelectionLookupComplete}
               t={t}
             />
           </div>
