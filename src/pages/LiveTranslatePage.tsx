@@ -17,7 +17,7 @@ import {
   MonitorIcon,
   SpinnerIcon,
   StopIcon,
-  SubtitlesIcon,SwapIcon, 
+  SubtitlesIcon,
   TranslateIcon,
   TrashIcon,
   XIcon,} from '../components/ui/icons'
@@ -71,9 +71,11 @@ export function LiveTranslatePage() {
     activeSttProvider,
   } = useLiveTranslate()
 
-  const [copiedRaw,     setCopiedRaw]     = useState(false)
-  const [copiedTx,      setCopiedTx]      = useState(false)
-  const [copiedSummary, setCopiedSummary] = useState(false)
+  const [copiedRaw,       setCopiedRaw]       = useState(false)
+  const [copiedTx,        setCopiedTx]        = useState(false)
+  const [copiedSummary,   setCopiedSummary]   = useState(false)
+  const [copiedActions,   setCopiedActions]   = useState(false)
+  const [copiedDecisions, setCopiedDecisions] = useState(false)
   const [postTab, setPostTab] = useState<PostTab>('summary')
   const [showScreenPermModal, setShowScreenPermModal] = useState(false)
   const [showSummaryPopup, setShowSummaryPopup] = useState(false)
@@ -94,6 +96,21 @@ export function LiveTranslatePage() {
     document.addEventListener('mousedown', handleOutside)
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [showAIConfig, setShowSubtitleConfig])
+
+  // ── Global Escape handler for open modals ──
+  // Backdrop-level onKeyDown only fires when the backdrop or its descendants
+  // have focus; in practice the user's focus stays on the trigger button, so
+  // Escape would do nothing without this document listener.
+  useEffect(() => {
+    if (!showSummaryPopup && !showScreenPermModal) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (showSummaryPopup) setShowSummaryPopup(false)
+      if (showScreenPermModal) setShowScreenPermModal(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [showSummaryPopup, showScreenPermModal])
 
   const handleCopy = async (text: string, setFlag: (v: boolean) => void) => {
     if (!text) return
@@ -188,14 +205,7 @@ export function LiveTranslatePage() {
               />
             </div>
 
-            {/* Swap button — always disabled for live translate */}
-            <button
-              type="button"
-              disabled
-              className="btn-icon flex-shrink-0 border-transparent bg-transparent text-gray-200 shadow-none dark:bg-transparent dark:text-gray-700"
-            >
-              <SwapIcon className="w-5 h-5" />
-            </button>
+            {/* No swap control — source is always auto-detected. */}
 
             {/* Target language selector + Start/Stop + Gear */}
             <div className="flex-1 min-w-0 flex items-center gap-3">
@@ -562,13 +572,17 @@ export function LiveTranslatePage() {
                     {isActive && <span className="inline-block ml-0.5 w-0.5 h-4 bg-gray-400 dark:bg-gray-600 animate-pulse align-middle" />}
                   </p>
                 ) : (
-                  <EmptyPanel icon="mic" onClick={hasOpenAIKey && hasAnyKey ? () => {
-                    if ((audioMode === 'system' || audioMode === 'both') && isMac && screenPermission !== 'granted') {
-                      setShowScreenPermModal(true)
-                    } else {
-                      handleStart()
-                    }
-                  } : undefined}>{t.live_empty}</EmptyPanel>
+                  <EmptyPanel
+                    icon="mic"
+                    label={t.live_start}
+                    onClick={hasOpenAIKey && hasAnyKey ? () => {
+                      if ((audioMode === 'system' || audioMode === 'both') && isMac && screenPermission !== 'granted') {
+                        setShowScreenPermModal(true)
+                      } else {
+                        handleStart()
+                      }
+                    } : undefined}
+                  >{t.live_empty}</EmptyPanel>
                 )}
                 <div ref={rawEndRef} />
               </div>
@@ -799,21 +813,21 @@ export function LiveTranslatePage() {
               {postTab === 'actions' && actionItems && !isExtractingActionItems && (
                 <button
                   type="button"
-                  onClick={() => handleCopy(actionItems, setCopiedSummary)}
-                  className={`btn-secondary btn-xs ${copiedSummary ? 'btn-active' : ''}`}
+                  onClick={() => handleCopy(actionItems, setCopiedActions)}
+                  className={`btn-secondary btn-xs ${copiedActions ? 'btn-active' : ''}`}
                 >
-                  {copiedSummary ? <CheckIcon className="w-3.5 h-3.5" /> : <CopyIcon className="w-3.5 h-3.5" />}
-                  {copiedSummary ? t.translate_copied : t.translate_copy}
+                  {copiedActions ? <CheckIcon className="w-3.5 h-3.5" /> : <CopyIcon className="w-3.5 h-3.5" />}
+                  {copiedActions ? t.translate_copied : t.translate_copy}
                 </button>
               )}
               {postTab === 'decisions' && decisions && !isExtractingDecisions && (
                 <button
                   type="button"
-                  onClick={() => handleCopy(decisions, setCopiedSummary)}
-                  className={`btn-secondary btn-xs ${copiedSummary ? 'btn-active' : ''}`}
+                  onClick={() => handleCopy(decisions, setCopiedDecisions)}
+                  className={`btn-secondary btn-xs ${copiedDecisions ? 'btn-active' : ''}`}
                 >
-                  {copiedSummary ? <CheckIcon className="w-3.5 h-3.5" /> : <CopyIcon className="w-3.5 h-3.5" />}
-                  {copiedSummary ? t.translate_copied : t.translate_copy}
+                  {copiedDecisions ? <CheckIcon className="w-3.5 h-3.5" /> : <CopyIcon className="w-3.5 h-3.5" />}
+                  {copiedDecisions ? t.translate_copied : t.translate_copy}
                 </button>
               )}
               {/* Spacer if no copy button */}
@@ -979,7 +993,7 @@ function Notice({ children, variant = 'warning' }: { children: React.ReactNode; 
   )
 }
 
-function EmptyPanel({ children, icon, onClick }: { children: React.ReactNode; icon: 'mic' | 'translate'; onClick?: () => void }) {
+function EmptyPanel({ children, icon, onClick, label }: { children: React.ReactNode; icon: 'mic' | 'translate'; onClick?: () => void; label?: string }) {
   const iconEl = icon === 'mic'
     ? <MicrophoneIcon className="w-6 h-6 text-gray-400" />
     : <TranslateIcon className="w-6 h-6 text-gray-300 dark:text-gray-700" />
@@ -990,6 +1004,7 @@ function EmptyPanel({ children, icon, onClick }: { children: React.ReactNode; ic
         <button
           type="button"
           onClick={onClick}
+          aria-label={label ?? (icon === 'mic' ? 'Start recording' : 'Translate')}
           className="btn-icon btn-icon-2xl"
         >
           {iconEl}
