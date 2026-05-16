@@ -13,7 +13,6 @@ import {
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  GearIcon,
   ImageIcon,
   LightbulbIcon,
   PlusIcon,
@@ -34,7 +33,7 @@ import type { ChatMessage, ChatMessageContent, ChatSession, DeepResearchResumeSt
 import { localizeChatError, localizeChatException } from '../utils/chatErrors'
 import { createClientId } from '../utils/id'
 import { extractImageFromClipboard, resizeImageFile } from '../utils/imageUtils'
-import { eventMatchesShortcut, formatShortcutLabel, shouldSendChatMessage } from '../utils/keyboardShortcuts'
+import { eventMatchesShortcut, shouldSendChatMessage } from '../utils/keyboardShortcuts'
 import { formatModelName } from '../utils/modelDisplay'
 import { formatTime } from './history/historyUtils'
 import { estimateUsageCost } from '../utils/usageCost'
@@ -130,19 +129,15 @@ function SessionPanel({ sessions, activeChatSessionId, onSelect, onNew, onDelete
 
   return (
     <aside
-      className="flex w-[220px] flex-shrink-0 flex-col border-r transition-all duration-200"
-      style={{ borderColor: 'var(--vzn-border)', background: 'var(--vzn-surface-muted)' }}
+      className="flex flex-shrink-0 flex-col"
+      style={{ width: 220, borderRight: '1px solid var(--vzn-border)', background: 'var(--vzn-surface)' }}
     >
-      {/* New Chat */}
+      {/* New chat button */}
       <div className="flex-shrink-0 px-3 pt-3 pb-2">
         <button
           type="button"
           onClick={onNew}
-          className="flex w-full items-center justify-center gap-1.5 rounded-lg border
-                     border-gray-950 bg-gray-950 py-2 text-sm font-semibold text-white
-                     shadow-sm transition-colors hover:bg-gray-800 active:bg-black
-                     dark:border-gray-100 dark:bg-gray-100 dark:text-neutral-950
-                     dark:hover:bg-white"
+          className="btn-primary flex w-full items-center justify-center gap-1.5 py-2 text-sm"
         >
           <PlusIcon className="w-3.5 h-3.5" />
           {t.chat_new_session}
@@ -162,34 +157,30 @@ function SessionPanel({ sessions, activeChatSessionId, onSelect, onNew, onDelete
             const timeStr = formatTime(session.updatedAt, t)
 
             return (
-              <div
+              <button
                 key={session.id}
-                role="button"
-                tabIndex={0}
+                type="button"
                 onClick={() => onSelect(session.id)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelect(session.id) }}
-                className={`group relative flex cursor-pointer flex-col gap-0.5 rounded-lg px-3 py-2.5 transition-all duration-150 outline-none
-                  focus-visible:ring-2 focus-visible:ring-gray-400/60
-                  ${isActive
-                    ? 'bg-white shadow-sm dark:bg-neutral-800'
-                    : 'hover:bg-white/60 dark:hover:bg-neutral-800/50'
-                  }`}
+                className="group relative flex w-full cursor-pointer flex-col gap-0.5 rounded-lg px-3 py-2.5 text-left transition-all duration-150 outline-none focus-visible:ring-2"
+                style={{
+                  background: isActive ? 'var(--vzn-accent-soft)' : 'transparent',
+                  boxShadow: isActive ? 'inset 2px 0 0 var(--vzn-accent)' : 'none',
+                }}
+                onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = 'var(--vzn-surface-muted)' }}
+                onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
               >
                 <div className="flex min-w-0 items-center gap-1.5">
                   <ProviderIcon provider={session.provider} size={11} />
-                  <span
-                    className="min-w-0 flex-1 truncate text-xs font-semibold leading-snug"
-                    style={{ color: 'var(--vzn-text-strong)' }}
-                  >
+                  <span className="min-w-0 flex-1 truncate text-xs font-semibold leading-snug" style={{ color: isActive ? 'var(--vzn-accent)' : 'var(--vzn-text-strong)' }}>
                     {session.title}
                   </span>
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); onDelete(session.id) }}
-                    className="shrink-0 rounded p-0.5 text-gray-400 opacity-0 transition-all duration-150
-                               hover:bg-red-50 hover:text-red-500
-                               group-hover:opacity-100
-                               dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                    className="shrink-0 rounded p-0.5 opacity-0 transition-all duration-150 group-hover:opacity-100"
+                    style={{ color: 'var(--vzn-text-soft)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vzn-danger-soft)'; e.currentTarget.style.color = 'var(--vzn-danger)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--vzn-text-soft)' }}
                     aria-label={t.history_chat_delete}
                   >
                     <TrashIcon className="h-3 w-3" />
@@ -206,11 +197,11 @@ function SessionPanel({ sessions, activeChatSessionId, onSelect, onNew, onDelete
                   {session.deepResearchResumeState && session.deepResearchResumeState.lastCompletedPhase !== 'synth' && (
                     <>
                       <span className="text-[10px]">·</span>
-                      <LightbulbIcon className="h-2.5 w-2.5 text-amber-400" />
+                      <LightbulbIcon className="h-2.5 w-2.5 text-yellow-400" />
                     </>
                   )}
                 </div>
-              </div>
+              </button>
             )
           })
         )}
@@ -306,7 +297,6 @@ export function ChatPageV2() {
 
   const activePreset = systemPromptPresets.find((p) => p.content === chatSystemPrompt) ?? null
   const platform = window.api?.platform
-  const newChatShortcutLabel = formatShortcutLabel(chatNewSessionShortcut, platform)
 
   const { isVoiceActive, isVoiceInterim, voicePrefixRef: _voicePrefixRef, handleVoiceRecordingChange, handleVoiceTranscript, resetVoicePrefix } =
     useVoiceInput({ currentText: inputText, onTextChange: setInputText })
@@ -736,75 +726,74 @@ export function ChatPageV2() {
   return (
     <div
       role="application"
-      aria-label={t.chat_attach_image}
-      className="flex flex-1 overflow-hidden relative"
+      className="flex flex-1 min-h-0 overflow-hidden relative"
+      style={{ height: '100%' }}
       onDragOver={(e) => { e.preventDefault(); if (!isDraggingOver) setIsDraggingOver(true) }}
       onDragLeave={handleDragLeave}
       onDrop={handleFileDrop}
     >
       {isDraggingOver && <DragOverlay label={t.chat_attach_image} zIndex="z-50" showRing />}
 
-      {/* ── Session panel ── */}
+      {/* Session panel - slide in from left when showSessionPanel */}
       {showSessionPanel && (
-        <SessionPanel
-          sessions={chatSessions}
-          activeChatSessionId={activeChatSessionId}
-          onSelect={(id) => setActiveChatSession(id)}
-          onNew={handleNewChat}
-          onDelete={(id) => {
-            deleteChatSession(id)
-            if (activeChatSessionId === id) setActiveChatSession(null)
-          }}
-          t={t}
-        />
+        <div className="session-panel flex-shrink-0">
+          <SessionPanel
+            sessions={chatSessions}
+            activeChatSessionId={activeChatSessionId}
+            onSelect={(id) => setActiveChatSession(id)}
+            onNew={handleNewChat}
+            onDelete={(id) => {
+              deleteChatSession(id)
+              if (activeChatSessionId === id) setActiveChatSession(null)
+            }}
+            t={t}
+          />
+        </div>
       )}
 
-      {/* ── Main area ── */}
+      {/* Main chat column */}
       <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
 
-        {/* Top bar */}
-        <div className="app-topbar gap-1.5">
-          {/* Toggle session panel */}
+        {/* Slim top bar - no border, transparent, just actions */}
+        <div className="flex flex-shrink-0 items-center gap-2 px-4 py-2">
           <button
             type="button"
             onClick={() => setShowSessionPanel((v) => !v)}
             title={showSessionPanel ? t.nav_collapse_sidebar : t.nav_expand_sidebar}
-            className="toolbar-icon-button cursor-pointer"
+            className={`btn-icon btn-icon-sm ${showSessionPanel ? 'btn-active' : ''}`}
           >
             {showSessionPanel ? <ChevronLeftIcon className="w-3.5 h-3.5" /> : <ChevronRightIcon className="w-3.5 h-3.5" />}
           </button>
-
-          {/* Message count indicator */}
           {messages.length > 0 && (
-            <span className="ui-meta ml-0.5 hidden font-medium md:inline" style={{ color: 'var(--vzn-text-soft)' }}>
+            <span className="ui-meta" style={{ color: 'var(--vzn-text-soft)' }}>
               {messages.filter((m) => m.role === 'user').length} {t.history_chat_messages}
             </span>
           )}
-
           <div className="flex-1" />
-
-          {/* Clear button when conversation active */}
           {messages.length > 0 && (
-            <button type="button" onClick={handleClear} title={t.chat_clear} className="toolbar-pill-button toolbar-pill-danger cursor-pointer whitespace-nowrap">
-              <TrashIcon />
-              <span>{t.chat_clear}</span>
+            <button
+              type="button"
+              onClick={handleClear}
+              title={t.chat_clear}
+              className="btn-icon btn-icon-sm"
+              style={{ color: 'var(--vzn-text-soft)' }}
+            >
+              <TrashIcon className="w-3.5 h-3.5" />
             </button>
           )}
-
-          {/* AI config badge + popup */}
+          {/* Model badge + popup */}
           <div className="relative" ref={aiConfigRef}>
             <button
               type="button"
               onClick={() => setShowAIConfig((v) => !v)}
-              title={t.translate_ai_config_title}
-              className={`chat-model-badge ${showAIConfig ? 'border-gray-400 dark:border-gray-500' : ''}`}
+              className={`chat-model-badge ${showAIConfig ? 'btn-active' : ''}`}
             >
-              <ProviderIcon provider={selectedProvider} size={14} />
-              <span className="max-w-[160px] truncate">{currentModelLabel}</span>
-              <ChevronDownIcon className="w-3 h-3 opacity-60" />
+              <ProviderIcon provider={selectedProvider} size={13} />
+              <span className="max-w-[140px] truncate">{currentModelLabel}</span>
+              <ChevronDownIcon className="w-3 h-3 opacity-50" />
             </button>
             {showAIConfig && (
-              <div className="floating-panel ai-config-panel absolute top-full right-0 mt-2 z-50 w-[440px] p-4 flex flex-col gap-4 fade-in">
+              <div className="floating-panel ai-config-panel absolute top-full right-0 mt-2 z-50 w-[420px] p-4 flex flex-col gap-4 fade-in">
                 <h2 className="popover-title">{t.translate_ai_config_title}</h2>
                 <div className="flex flex-col gap-3">
                   <ModelSelector />
@@ -821,85 +810,65 @@ export function ChatPageV2() {
               </div>
             )}
           </div>
-
-          <button
-            type="button"
-            onClick={() => openSettings()}
-            title={t.nav_settings}
-            className={`toolbar-icon-button cursor-pointer`}
-          >
-            <GearIcon className="w-3.5 h-3.5" />
-          </button>
         </div>
 
-        {/* Content area */}
-        <div className="app-workspace">
+        {/* Content */}
+        <div className="flex flex-1 min-h-0 flex-col px-4 pb-4">
           {messages.length === 0 ? (
 
-            /* ── Empty state ── */
-            <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 pb-8">
-              <div className="flex w-full max-w-xl flex-col items-center gap-8">
-
-                {/* Greeting */}
-                <div className="flex flex-col items-center gap-4 text-center select-none">
-                  <AppLogoIcon size={48} />
-                  <div className="flex flex-col gap-1.5">
-                    <h2
-                      className="text-xl font-semibold tracking-tight"
-                      style={{ color: 'var(--vzn-text-strong)' }}
-                    >
-                      {t.chat_empty_title}
-                    </h2>
-                    <p className="ui-caption mx-auto max-w-xs leading-relaxed">
-                      {t.chat_empty_desc}
-                    </p>
-                  </div>
-                  {!hasKey && (
-                    <div className="flex flex-col items-center gap-2">
-                      <p className="text-xs" style={{ color: 'var(--vzn-text-muted)' }}>{t.chat_error_no_key}</p>
-                      <button type="button" onClick={() => openSettings()} className="btn-primary btn-sm">
-                        {t.chat_error_open_settings}
-                      </button>
+            /* ── Empty state: logo+chips float center, composer pinned bottom ── */
+            <div className="flex flex-1 min-h-0 flex-col">
+              {/* Scrollable center section */}
+              <div className="flex flex-1 min-h-0 items-center justify-center overflow-y-auto py-6 px-4">
+                <div className="flex w-full max-w-lg flex-col items-center gap-7">
+                  {/* Logo + heading */}
+                  <div className="flex flex-col items-center gap-3 text-center select-none">
+                    <div className="chat-logo-ring p-4">
+                      <AppLogoIcon size={42} />
                     </div>
-                  )}
-                </div>
-
-                {/* Suggestion cards — 2×2 grid */}
-                <div className="grid w-full grid-cols-2 gap-3">
-                  {suggestions.map(({ emoji, label, desc, prompt }) => (
-                    <button
-                      key={label}
-                      type="button"
-                      className="chat-suggest-chip group text-left"
-                      onClick={() => { setInputText(prompt); textareaRef.current?.focus() }}
-                    >
-                      <span className="text-2xl leading-none flex-shrink-0">{emoji}</span>
-                      <span className="flex flex-col gap-0.5 min-w-0">
-                        <span
-                          className="text-sm font-semibold leading-snug"
-                          style={{ color: 'var(--vzn-text-strong)' }}
-                        >
-                          {label}
+                    <div>
+                      <h2 className="text-xl font-bold" style={{ color: 'var(--vzn-text-strong)' }}>{t.chat_empty_title}</h2>
+                      <p className="text-sm mt-1 max-w-xs mx-auto leading-relaxed" style={{ color: 'var(--vzn-text-muted)' }}>{t.chat_empty_desc}</p>
+                    </div>
+                    {!hasKey && (
+                      <div className="flex flex-col items-center gap-2 mt-1">
+                        <p className="text-xs" style={{ color: 'var(--vzn-text-muted)' }}>{t.chat_error_no_key}</p>
+                        <button type="button" onClick={() => openSettings()} className="btn-primary btn-sm">{t.chat_error_open_settings}</button>
+                      </div>
+                    )}
+                  </div>
+                  {/* 2×2 suggestion chips */}
+                  <div className="grid w-full grid-cols-2 gap-2.5">
+                    {suggestions.map(({ emoji, label, desc, prompt }) => (
+                      <button
+                        key={label}
+                        type="button"
+                        className="chat-suggest-chip"
+                        onClick={() => { setInputText(prompt); textareaRef.current?.focus() }}
+                      >
+                        <span className="chat-suggest-icon">{emoji}</span>
+                        <span className="flex flex-col gap-0.5 min-w-0 text-left">
+                          <span className="text-sm font-semibold" style={{ color: 'var(--vzn-text-strong)' }}>{label}</span>
+                          <span className="text-xs" style={{ color: 'var(--vzn-text-muted)' }}>{desc}</span>
                         </span>
-                        <span className="ui-caption leading-snug">{desc}</span>
-                      </span>
-                    </button>
-                  ))}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+              </div>
 
-                {/* Composer */}
-                <div className={`chat-composer w-full ${isDraggingOver ? 'chat-composer-drop' : ''}`}>
-                  {composer}
-                </div>
+              {/* Composer pinned at bottom */}
+              <div className="flex-shrink-0 pt-2">
+                <div className={`chat-composer ${isDraggingOver ? 'chat-composer-drop' : ''}`}>{composer}</div>
               </div>
             </div>
 
           ) : (
 
-            /* ── Messages view ── */
-            <div className={`surface-panel flex-1 min-h-0 transition-colors duration-150 ${isDraggingOver ? 'surface-panel-drop' : ''}`}>
+            // Messages view
+            <div className={`glass-panel flex-1 min-h-0 flex flex-col ${isDraggingOver ? 'surface-panel-drop' : ''}`}>
               <div className="flex-1 overflow-y-auto">
-                <div className="px-4 py-5 space-y-4">
+                <div className="px-5 py-5 space-y-5">
                   {(() => {
                     const lastAssistantIdx = messages.reduce((acc, m, i) => (m.role === 'assistant' ? i : acc), -1)
                     const rendered: React.ReactNode[] = []
@@ -936,11 +905,8 @@ export function ChatPageV2() {
               </div>
 
               {/* Pinned composer */}
-              <div
-                className="flex-shrink-0 px-3 pb-3 pt-1 border-t"
-                style={{ borderColor: 'var(--vzn-border)', background: 'color-mix(in srgb, var(--vzn-surface) 70%, transparent)' }}
-              >
-                <div className="chat-composer">
+              <div className="flex-shrink-0 px-4 pb-4 pt-2" style={{ borderTop: '1px solid var(--vzn-border)', background: 'var(--vzn-surface-muted)' }}>
+                <div className={`chat-composer ${isDraggingOver ? 'chat-composer-drop' : ''}`}>
                   {composer}
                 </div>
               </div>
@@ -952,9 +918,10 @@ export function ChatPageV2() {
 
       {/* Copied toast */}
       {copiedId && (
-        <div className="pointer-events-none fixed bottom-20 left-1/2 -translate-x-1/2
-                        bg-gray-800 text-white text-xs px-3 py-1.5 rounded-full shadow-lg fade-in z-50">
-          {t.chat_copied}
+        <div className="pointer-events-none fixed bottom-6 left-1/2 -translate-x-1/2 z-50 fade-in">
+          <div className="rounded-full px-4 py-2 text-xs font-semibold text-white" style={{ background: 'var(--vzn-accent)', boxShadow: 'var(--vzn-shadow-glow)' }}>
+            {t.chat_copied}
+          </div>
         </div>
       )}
     </div>

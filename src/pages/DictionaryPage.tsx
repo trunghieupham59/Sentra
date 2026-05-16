@@ -416,93 +416,80 @@ export function DictionaryPage() {
   return (
     <div className="app-page">
       <div className="app-workspace">
-        {/* ── Topbar: title + AI config gear (popup with ModelSelector) ── */}
-        <div className="app-topbar justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="text-base font-semibold text-gray-900 dark:text-gray-50">
-              {t.dictionary_title}
-            </h1>
-            <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
-              {t.dictionary_subtitle}
-            </p>
+
+        {/* Single glass panel wrapping everything */}
+        <div className="glass-panel flex-1 min-h-0 flex flex-col overflow-hidden">
+
+          {/* Panel header: title + model config */}
+          <div className="page-section-header">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base font-bold" style={{color:'var(--vzn-text-strong)'}}>{t.dictionary_title}</h1>
+              <p className="text-xs mt-0.5" style={{color:'var(--vzn-text-soft)'}}>{t.dictionary_subtitle}</p>
+            </div>
+            <div className="relative flex-shrink-0" ref={aiConfigRef}>
+              <button type="button" onClick={()=>setShowAIConfig(v=>!v)} title={t.translate_ai_config_title}
+                className={`btn-icon ${showAIConfig?'btn-active':''}`}>
+                <GearIcon className="h-3.5 w-3.5"/>
+              </button>
+              {showAIConfig && (
+                <div className="floating-panel ai-config-panel absolute top-full right-0 mt-2 z-50 w-[420px] p-4 flex flex-col gap-3">
+                  <h2 className="popover-title">{t.translate_ai_config_title}</h2>
+                  <ModelSelector/>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="relative flex-shrink-0" ref={aiConfigRef}>
-            <button
-              type="button"
-              onClick={() => setShowAIConfig((v) => !v)}
-              title={t.translate_ai_config_title}
-              className={`toolbar-icon-button ai-config-button cursor-pointer ${showAIConfig ? 'toolbar-icon-button-active' : ''}`}
-            >
-              <GearIcon className="h-3.5 w-3.5" />
-            </button>
-
-            {showAIConfig && (
-              <div className="floating-panel ai-config-panel absolute top-full right-0 mt-2 z-50 w-[480px] p-4 flex flex-col gap-3">
-                <h2 className="popover-title">{t.translate_ai_config_title}</h2>
-                <ModelSelector />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── Search command bar ────────────────────────────────────────── */}
-        <DictionarySearchPanel
-          term={term}
-          onTermChange={(v) => { setTerm(v); if (error) setError(null) }}
-          context={context}
-          onContextChange={setContext}
-          sourceLang={sourceLang}
-          onSourceLangChange={setSourceLang}
-          targetLang={targetLang}
-          onTargetLangChange={setTargetLang}
-          isLoading={isLoading}
-          canSubmit={Boolean(model)}
-          error={error}
-          maxTermChars={MAX_DICTIONARY_TERM_CHARS}
-          maxContextChars={MAX_DICTIONARY_CONTEXT_CHARS}
-          onSubmit={() => {
-            void runLookup()
-          }}
-          t={t}
-        />
-
-        {/* ── Result + History (responsive: stacked on small screens) ──── */}
-        <div className="grid flex-1 min-h-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_300px]">
-          <div className="surface-panel min-h-0 order-2 lg:order-1">
-            <DictionaryResultPanel
-              entry={selectedEntry}
-              copied={copied}
-              isEnriching={isEnriching}
-              onCopy={() => {
-                void handleCopy()
-              }}
-              onFavorite={() => {
-                if (selectedEntry) toggleDictionaryFavorite(selectedEntry.id)
-              }}
-              onReuse={handleReuse}
-              onSelectionLookupComplete={handleSelectionLookupComplete}
+          {/* Search bar row */}
+          <div className="flex-shrink-0 px-4 py-3" style={{borderBottom:'1px solid var(--vzn-border)'}}>
+            <DictionarySearchPanel
+              term={term}
+              onTermChange={v=>{setTerm(v);if(error)setError(null)}}
+              context={context}
+              onContextChange={setContext}
+              sourceLang={sourceLang}
+              onSourceLangChange={setSourceLang}
+              targetLang={targetLang}
+              onTargetLangChange={setTargetLang}
+              isLoading={isLoading}
+              canSubmit={Boolean(model)}
+              error={error}
+              maxTermChars={MAX_DICTIONARY_TERM_CHARS}
+              maxContextChars={MAX_DICTIONARY_CONTEXT_CHARS}
+              onSubmit={()=>void runLookup()}
               t={t}
             />
           </div>
 
-          <div className="order-1 min-h-0 lg:order-2 lg:flex lg:flex-col">
-            <DictionaryHistoryPanel
-              entries={dictionaryEntries}
-              selectedEntryId={selectedEntry?.id ?? null}
-              activeTab={activeListTab}
-              onTabChange={setActiveListTab}
-              onSelect={setSelectedEntryId}
-              onToggleFavorite={toggleDictionaryFavorite}
-              onDeleteSelected={() => {
-                if (!selectedEntry) return
-                deleteDictionaryEntry(selectedEntry.id)
-                setSelectedEntryId(null)
-              }}
-              onClearHistory={clearDictionaryHistory}
-              t={t}
-            />
+          {/* Content: result + history */}
+          <div className="flex flex-1 min-h-0 overflow-hidden p-3 gap-3">
+            <div className="glass-panel flex-1 min-h-0 overflow-hidden order-2 lg:order-1">
+              <DictionaryResultPanel
+                entry={selectedEntry}
+                copied={copied}
+                isEnriching={isEnriching}
+                onCopy={()=>void handleCopy()}
+                onFavorite={()=>{if(selectedEntry)toggleDictionaryFavorite(selectedEntry.id)}}
+                onReuse={handleReuse}
+                onSelectionLookupComplete={handleSelectionLookupComplete}
+                t={t}
+              />
+            </div>
+            <div className="w-full lg:w-[280px] flex-shrink-0 order-1 lg:order-2">
+              <DictionaryHistoryPanel
+                entries={dictionaryEntries}
+                selectedEntryId={selectedEntry?.id??null}
+                activeTab={activeListTab}
+                onTabChange={setActiveListTab}
+                onSelect={setSelectedEntryId}
+                onToggleFavorite={toggleDictionaryFavorite}
+                onDeleteSelected={()=>{if(!selectedEntry)return;deleteDictionaryEntry(selectedEntry.id);setSelectedEntryId(null)}}
+                onClearHistory={clearDictionaryHistory}
+                t={t}
+              />
+            </div>
           </div>
+
         </div>
       </div>
     </div>

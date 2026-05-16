@@ -33,6 +33,7 @@ function App() {
     setKeyStatus,
     setLocaleFromSystem,
     fontSize,
+    theme,
     selectedProvider,
     selectedModels,
     ttsMode,
@@ -56,6 +57,19 @@ function App() {
   useEffect(() => {
     document.documentElement.style.fontSize = FONT_SIZE_MAP[fontSize ?? 'medium']
   }, [fontSize])
+
+  // Apply dark/light class based on user theme preference or OS setting
+  useEffect(() => {
+    const applyTheme = (dark: boolean) => document.documentElement.classList.toggle('dark', dark)
+    if (theme === 'light')  { applyTheme(false); return }
+    if (theme === 'dark')   { applyTheme(true);  return }
+    // system: follow OS
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    applyTheme(mq.matches)
+    const handler = (e: MediaQueryListEvent) => applyTheme(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [theme])
 
   // Sync active provider/model to main process so the local server's /api/config
   // always reflects the user's current selection in the app.

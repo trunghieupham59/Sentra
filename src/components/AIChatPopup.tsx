@@ -55,14 +55,15 @@ function stripTrailingEllipsis(label: string): string {
  * surrounding label text doesn't reflow as the dots animate.
  */
 function BouncingDots({ tone = 'gray' }: { tone?: 'gray' | 'white' } = {}) {
-  const colour =
-    tone === 'white' ? 'bg-white/85'
-    : 'bg-gray-400 dark:bg-gray-500'
+  const dotClass = `thinking-dot h-[5px] w-[5px] rounded-full ${tone === 'white' ? 'bg-white/85' : ''}`
+  const dotStyle = (delay: string) => tone === 'white'
+    ? { animationDelay: delay }
+    : { animationDelay: delay, background: 'var(--vzn-text-soft)' }
   return (
     <span className="inline-flex items-end gap-[3px] pb-[2px]" aria-hidden="true">
-      <span className={`thinking-dot h-[5px] w-[5px] rounded-full ${colour}`} style={{ animationDelay: '0ms' }} />
-      <span className={`thinking-dot h-[5px] w-[5px] rounded-full ${colour}`} style={{ animationDelay: '160ms' }} />
-      <span className={`thinking-dot h-[5px] w-[5px] rounded-full ${colour}`} style={{ animationDelay: '320ms' }} />
+      <span className={dotClass} style={dotStyle('0ms')} />
+      <span className={dotClass} style={dotStyle('160ms')} />
+      <span className={dotClass} style={dotStyle('320ms')} />
     </span>
   )
 }
@@ -546,8 +547,7 @@ export function AIChatPopup() {
       onWheel={handleWheel}
     >
       <section
-        className="quick-chat-panel titlebar-drag relative flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white/95
-                   shadow-2xl shadow-gray-950/20 backdrop-blur-xl"
+        className="quick-chat-panel titlebar-drag relative flex h-full flex-col overflow-hidden"
         aria-label={t.ai_chat_popup_title}
       >
         <div className="quick-chat-top-edge pointer-events-none absolute inset-x-0 top-0 h-px" />
@@ -619,10 +619,10 @@ export function AIChatPopup() {
         >
           {!hasKey ? (
             <EmptyContainer>
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100">
-                <AppLogoIcon size={32} />
+              <div className="chat-logo-ring flex h-12 w-12 items-center justify-center">
+                <AppLogoIcon size={28} />
               </div>
-              <p className="max-w-sm text-sm leading-6 text-gray-700">{t.chat_error_no_key}</p>
+              <p className="max-w-sm text-sm leading-6" style={{ color: 'var(--vzn-text-muted)' }}>{t.chat_error_no_key}</p>
               <button
                 type="button"
                 onClick={handleOpenSettings}
@@ -640,14 +640,12 @@ export function AIChatPopup() {
             </EmptyContainer>
           ) : !activeQuestion && !isSending ? (
             <EmptyContainer>
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white">
-                <AppLogoIcon size={42} />
+              <div className="chat-logo-ring flex h-14 w-14 items-center justify-center">
+                <AppLogoIcon size={36} />
               </div>
               <div className="text-center">
-                <p className="ui-kicker">
-                  {t.ai_chat_popup_short_label}
-                </p>
-                <h2 className="mt-0.5 text-xl font-semibold text-gray-900">
+                <p className="ui-kicker">{t.ai_chat_popup_short_label}</p>
+                <h2 className="mt-1 text-xl font-bold" style={{ color: 'var(--vzn-text-strong)' }}>
                   {t.ai_chat_popup_title}
                 </h2>
               </div>
@@ -883,18 +881,13 @@ function QAEntry({
   regenerateLabel: string
 }) {
   return (
-    <div
-      className={`quick-chat-answer-card titlebar-no-drag overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm shadow-gray-900/5
-                  ${muted ? 'opacity-80' : ''}`}
-    >
+    <div className={`quick-chat-answer-card titlebar-no-drag overflow-hidden ${muted ? 'opacity-70' : ''}`}>
       <div className="quick-chat-question-row ui-caption flex items-start gap-2 border-b px-5 py-2.5 leading-5">
-        <span className="ui-token-badge mt-0.5 h-4">
-          Q
-        </span>
+        <span className="ui-token-badge mt-0.5 h-4">Q</span>
         <p className="min-w-0 flex-1 select-text break-words">{question}</p>
       </div>
       <div className="px-5 py-4">
-        <MarkdownText text={answer} className="ui-reader-text leading-7 text-gray-800" />
+        <MarkdownText text={answer} className="ui-reader-text leading-7" />
       </div>
       <CardActions
         isCopied={isCopied}
@@ -946,7 +939,7 @@ function ActiveQACard({
   const showActions = Boolean(response.trim() || error) && !isSending
 
   return (
-    <div className="quick-chat-answer-card titlebar-no-drag flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm shadow-gray-900/5">
+    <div className="quick-chat-answer-card titlebar-no-drag flex h-full flex-col overflow-hidden">
       <div className="quick-chat-question-row ui-caption flex items-start gap-2 border-b px-5 py-2.5 leading-5">
         <span className="ui-token-badge mt-0.5 h-4">
           Q

@@ -38,8 +38,8 @@ export function SettingsModal() {
         {/* Modal header */}
         <div className="modal-header flex items-center justify-between gap-4 px-5 py-3 border-b flex-shrink-0">
           <div className="min-w-0">
-            <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-50">{t.settings_title}</h1>
-            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400 truncate">{t.settings_subtitle}</p>
+            <h1 className="text-sm font-bold" style={{ color: 'var(--vzn-text-strong)' }}>{t.settings_title}</h1>
+            <p className="mt-0.5 text-xs truncate" style={{ color: 'var(--vzn-text-soft)' }}>{t.settings_subtitle}</p>
           </div>
           <button
             type="button"

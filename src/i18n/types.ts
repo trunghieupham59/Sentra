@@ -275,6 +275,11 @@ export interface Translations {
   settings_font_size_small: string
   settings_font_size_medium: string
   settings_font_size_large: string
+  settings_theme: string
+  settings_theme_desc: string
+  settings_theme_light: string
+  settings_theme_dark: string
+  settings_theme_system: string
   settings_furigana: string
   settings_furigana_desc: string
   // Settings — Speech-to-Text section

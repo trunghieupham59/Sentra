@@ -45,8 +45,8 @@ app.setName('Viezan')
 
 // ── Window constants ──────────────────────────────────────────────────────────
 /** HC-NEW-11: Named color constants for window background (avoids magic hex strings) */
-const WIN_BG_DARK  = '#111318'
-const WIN_BG_LIGHT = '#f3f6f8'
+const WIN_BG_DARK  = '#0B0B14'
+const WIN_BG_LIGHT = '#EEF0F8'
 const QUICK_CHAT_WIDTH = 860
 const QUICK_CHAT_HEIGHT = 540
 

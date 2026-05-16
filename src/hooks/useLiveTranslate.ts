@@ -288,13 +288,13 @@ export function useLiveTranslate() {
   // Object.values(...).some() is cheap enough that useMemo overhead dwarfs
   // the saving on every render.
   const hasAnyKey    = Object.values(keyStatus).some(Boolean)
-  const isMac        = window.api.platform === 'darwin'
+  const isMac        = window.api?.platform === 'darwin'
 
   // ── Check Screen Recording permission ────────────────────────────────────────
   const checkScreenPermission = useCallback(async () => {
     if (!isMac) { setScreenPermission('granted'); return }
     try {
-      const status = await window.api.checkScreenPermission()
+      const status = await window.api?.checkScreenPermission()
       setScreenPermission(status)
     } catch {
       setScreenPermission('unknown')
@@ -388,7 +388,7 @@ export function useLiveTranslate() {
       const cappedPrev = prev && prev.length > MAX_PREVIOUS_TEXT_CHARS
         ? prev.slice(-MAX_PREVIOUS_TEXT_CHARS)
         : prev
-      stt = await window.api.transcribeAudio({
+      stt = await window.api?.transcribeAudio({
         audioData:    buf,
         mimeType,
         language:     sourceLang === 'auto' ? undefined : sourceLang,
@@ -599,7 +599,7 @@ export function useLiveTranslate() {
       // Push the raw sentence to subtitle window so it can show the source text above translation.
       // Also pass segId so the subtitle window can create the entry immediately with a placeholder.
       if (showSubtitlesRef.current) {
-        void window.api.subtitle.setSourceText(sentenceText, segId)
+        void window.api?.subtitle?.setSourceText(sentenceText, segId)
       }
 
       // Capture the chunk's generation so we can skip writing translation
@@ -626,7 +626,7 @@ export function useLiveTranslate() {
 
           if (showSubtitlesRef.current) {
             try {
-              txResult = await window.api.translateStream({
+              txResult = await window.api?.translateStream({
                 provider: selectedProvider,
                 model: selectedModels[selectedProvider],
                 sourceText: capturedSourceText,
@@ -639,10 +639,10 @@ export function useLiveTranslate() {
               txResult = { success: false }
             }
             if (!txResult.success) {
-              txResult = await window.api.translate(batchParams)
+              txResult = await window.api?.translate(batchParams)
             }
           } else {
-            txResult = await window.api.translate(batchParams)
+            txResult = await window.api?.translate(batchParams)
           }
 
           // Re-check mounted AND generation after awaited API calls (can take
@@ -1433,30 +1433,30 @@ export function useLiveTranslate() {
   // ── Subtitle IPC integration ───────────────────────────────────────────────
   // Register onClosed listener once so the button syncs when user clicks ✕ in the OS window
   useEffect(() => {
-    const cleanup = window.api.subtitle.onClosed(() => setShowSubtitles(false))
-    return cleanup
+    const cleanup = window.api?.subtitle?.onClosed(() => setShowSubtitles(false))
+    return () => cleanup?.()
   }, [])
 
   // Open / close the OS subtitle window whenever the toggle changes
   useEffect(() => {
     if (showSubtitles) {
-      window.api.subtitle.show()
+      window.api?.subtitle?.show()
     } else {
-      window.api.subtitle.hide()
+      window.api?.subtitle?.hide()
     }
   }, [showSubtitles])
 
   // Push latest translation text to the subtitle window whenever it changes
   useEffect(() => {
     if (showSubtitles) {
-      window.api.subtitle.update(latestSubtitle, isTranslating)
+      window.api?.subtitle?.update(latestSubtitle, isTranslating)
     }
   }, [latestSubtitle, isTranslating, showSubtitles])
 
   // Apply appearance settings to the subtitle window whenever they change
   useEffect(() => {
     if (showSubtitles) {
-      window.api.subtitle.setStyle(subtitleSettings)
+      window.api?.subtitle?.setStyle(subtitleSettings)
     }
   }, [subtitleSettings, showSubtitles])
 
@@ -1474,14 +1474,14 @@ export function useLiveTranslate() {
     const model     = selectedModels[provider] ?? ''
     const mode = audioMode
     const lang = targetLang
-    window.api.fetchModels(provider)
+    window.api?.fetchModels(provider)
       .then((result) => {
         const availableModels = (result?.models ?? []) as { id: string; name: string }[]
         cachedSubtitleModelsRef.current = availableModels
-        void window.api.subtitle.pushState({ selectedProvider: provider, selectedModel: model, isActive, isTranscribing, isTranslating, availableModels, audioMode: mode, targetLang: lang, locale })
+        void window.api?.subtitle?.pushState({ selectedProvider: provider, selectedModel: model, isActive, isTranscribing, isTranslating, availableModels, audioMode: mode, targetLang: lang, locale })
       })
       .catch(() => {
-        void window.api.subtitle.pushState({ selectedProvider: provider, selectedModel: model, isActive, isTranscribing, isTranslating, availableModels: cachedSubtitleModelsRef.current, audioMode: mode, targetLang: lang, locale })
+        void window.api?.subtitle?.pushState({ selectedProvider: provider, selectedModel: model, isActive, isTranscribing, isTranslating, availableModels: cachedSubtitleModelsRef.current, audioMode: mode, targetLang: lang, locale })
       })
   }, [showSubtitles, selectedProvider, selectedModels, audioMode, targetLang])
 
@@ -1489,7 +1489,7 @@ export function useLiveTranslate() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: stable fields read directly, only status changes trigger this
   useEffect(() => {
     if (!showSubtitles) return
-    void window.api.subtitle.pushState({
+    void window.api?.subtitle?.pushState({
       selectedProvider,
       selectedModel: selectedModels[selectedProvider] ?? '',
       isActive,
@@ -1505,34 +1505,34 @@ export function useLiveTranslate() {
   // Listen for actions sent FROM the subtitle window (start/stop, provider/model/style changes)
   // biome-ignore lint/correctness/useExhaustiveDependencies: selectedProvider needed for setSelectedModel scope
   useEffect(() => {
-    const cleanupStart    = window.api.subtitle.onStart(() => { if (!activeRef.current) void handleStart() })
-    const cleanupStop     = window.api.subtitle.onStop(() => { if (activeRef.current) handleStop() })
-    const cleanupProvider = window.api.subtitle.onSetProvider((provider) => {
+    const cleanupStart    = window.api?.subtitle?.onStart(() => { if (!activeRef.current) void handleStart() })
+    const cleanupStop     = window.api?.subtitle?.onStop(() => { if (activeRef.current) handleStop() })
+    const cleanupProvider = window.api?.subtitle?.onSetProvider((provider) => {
       setSelectedProvider(provider as Provider)
     })
-    const cleanupModel    = window.api.subtitle.onSetModel((model) => {
+    const cleanupModel    = window.api?.subtitle?.onSetModel((model) => {
       setSelectedModel(selectedProvider as Provider, model)
     })
-    const cleanupAudioMode = window.api.subtitle.onSetAudioMode((mode) => {
+    const cleanupAudioMode = window.api?.subtitle?.onSetAudioMode((mode) => {
       setAudioMode(mode as 'mic' | 'system' | 'both')
     })
-    const cleanupTargetLang = window.api.subtitle.onSetTargetLang((lang) => {
+    const cleanupTargetLang = window.api?.subtitle?.onSetTargetLang((lang) => {
       setTargetLang(lang)
     })
-    const cleanupStyle    = window.api.subtitle.onStyleUpdate((style) => {
+    const cleanupStyle    = window.api?.subtitle?.onStyleUpdate((style) => {
       setSubtitleSettings(style)
     })
     // "Mới" button → save current session to history, then reset for a new one
-    const cleanupClear    = window.api.subtitle.onClear(() => { handleNewSession() })
+    const cleanupClear    = window.api?.subtitle?.onClear(() => { handleNewSession() })
     return () => {
-      cleanupStart()
-      cleanupStop()
-      cleanupProvider()
-      cleanupModel()
-      cleanupAudioMode()
-      cleanupTargetLang()
-      cleanupStyle()
-      cleanupClear()
+      cleanupStart?.()
+      cleanupStop?.()
+      cleanupProvider?.()
+      cleanupModel?.()
+      cleanupAudioMode?.()
+      cleanupTargetLang?.()
+      cleanupStyle?.()
+      cleanupClear?.()
     }
   }, [handleStart, handleStop, handleClear, handleNewSession, setSelectedProvider, setSelectedModel, selectedProvider, setTargetLang])
 
@@ -1573,7 +1573,7 @@ export function useLiveTranslate() {
         for (const track of streamRef.current.getTracks()) track.stop()
       }
       // Close the OS subtitle window when leaving the page
-      window.api.subtitle.hide()
+      window.api?.subtitle?.hide()
     }
   }, [])
 

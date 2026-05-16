@@ -19,6 +19,8 @@ export function PreferencesSection() {
   const setLocaleFromSystem = useAppStore((state) => state.setLocaleFromSystem)
   const fontSize = useAppStore((state) => state.fontSize)
   const setFontSize = useAppStore((state) => state.setFontSize)
+  const theme = useAppStore((state) => state.theme)
+  const setTheme = useAppStore((state) => state.setTheme)
   const t = useT()
 
   const handleToggleLocaleAuto = () => {
@@ -68,6 +70,26 @@ export function PreferencesSection() {
             <div className="pointer-events-none absolute right-2.5 inset-y-0 flex items-center">
               <ChevronDownIcon className="w-3.5 h-3.5 text-gray-400" />
             </div>
+          </div>
+        </div>
+
+        {/* Appearance / Theme */}
+        <div className="flex items-center justify-between px-4 py-3.5 gap-4">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.settings_theme}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.settings_theme_desc}</p>
+          </div>
+          <div className="segmented-control flex-shrink-0">
+            {(['light', 'system', 'dark'] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setTheme(v)}
+                className={`btn-segment px-3 text-xs ${theme === v ? 'btn-segment-active' : ''}`}
+              >
+                {v === 'light' ? t.settings_theme_light : v === 'dark' ? t.settings_theme_dark : t.settings_theme_system}
+              </button>
+            ))}
           </div>
         </div>
 
