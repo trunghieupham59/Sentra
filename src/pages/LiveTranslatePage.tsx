@@ -187,12 +187,12 @@ export function LiveTranslatePage() {
   return (
     <div className="app-page relative">
 
-      {/* ── Main scrollable area ── */}
-      <div className="flex-1 flex flex-col min-h-0">
-        <div className="app-workspace">
+      {/* ── Main area ── */}
+      <div className="app-workspace">
+        <div className="glass-panel flex-1 min-h-0 flex flex-col overflow-hidden">
 
-          {/* Row 1: source, target, start/stop, settings */}
-          <div className="app-topbar">
+          {/* Controls: source lang | target lang + start/stop + settings */}
+          <div className="translate-panel-header">
 
             {/* Source language — always auto-detect */}
             <div className="flex-1 min-w-0 overflow-hidden">
@@ -483,7 +483,10 @@ export function LiveTranslatePage() {
             </div>
             </div>
           </div>
-          {/* ── End Row 1 ── */}
+          {/* ── End controls ── */}
+
+          {/* ── Body: notices + panels ── */}
+          <div className="flex flex-1 min-h-0 flex-col overflow-hidden p-3 gap-2">
 
           {/* Notices */}
           {!hasOpenAIKey && (
@@ -500,36 +503,36 @@ export function LiveTranslatePage() {
           <div className="app-panel-grid">
 
             {/* Left: Nguyên Bản */}
-            <div className="surface-panel h-full">
+            <div className="glass-panel h-full flex flex-col">
               {/* Status indicator bar (only when active) */}
               {isActive && (
                 <div className="flex-shrink-0 flex items-center px-4 pt-2 pb-1">
                   <span className="flex items-center gap-1.5 select-none">
                     {isTranscribing ? (
                       <>
-                        <SpinnerIcon className="w-2.5 h-2.5 animate-spin text-gray-500 flex-shrink-0" />
-                        <span className="ui-micro font-medium text-gray-500 dark:text-gray-400">{t.voice_transcribing}</span>
+                        <span className="flex-shrink-0" style={{color:'var(--vzn-text-muted)'}}><SpinnerIcon className="w-2.5 h-2.5 animate-spin" /></span>
+                        <span className="ui-micro font-medium" style={{color:'var(--vzn-text-muted)'}}>{t.voice_transcribing}</span>
                       </>
                     ) : isTranslating ? (
                       <>
-                        <SpinnerIcon className="w-2.5 h-2.5 animate-spin text-gray-500 flex-shrink-0" />
-                        <span className="ui-micro font-medium text-gray-500 dark:text-gray-400">{t.live_status_translating}</span>
+                        <span className="flex-shrink-0" style={{color:'var(--vzn-text-muted)'}}><SpinnerIcon className="w-2.5 h-2.5 animate-spin" /></span>
+                        <span className="ui-micro font-medium" style={{color:'var(--vzn-text-muted)'}}>{t.live_status_translating}</span>
                       </>
                     ) : pendingText ? (
                       <>
                         <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gray-400 opacity-75" />
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-gray-500" />
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{background:'var(--vzn-text-soft)'}} />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{background:'var(--vzn-text-muted)'}} />
                         </span>
-                        <span className="ui-micro font-medium text-gray-500 dark:text-gray-400">{t.voice_whisper_mode}</span>
+                        <span className="ui-micro font-medium" style={{color:'var(--vzn-text-muted)'}}>{t.voice_whisper_mode}</span>
                       </>
                     ) : (
                       <>
                         <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gray-400 opacity-75" />
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-gray-500" />
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{background:'var(--vzn-text-soft)'}} />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{background:'var(--vzn-text-muted)'}} />
                         </span>
-                        <span className="ui-micro font-medium text-gray-600 dark:text-gray-400">{t.live_status_listening}</span>
+                        <span className="ui-micro font-medium" style={{color:'var(--vzn-text-muted)'}}>{t.live_status_listening}</span>
                       </>
                     )}
                   </span>
@@ -549,27 +552,27 @@ export function LiveTranslatePage() {
                     ))}
                     {isActive && pendingText && (
                       <div className="flex items-start gap-2 opacity-50">
-                        <span className="ui-badge-xs mt-0.5 flex-shrink-0 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                        <span className="ui-badge-xs mt-0.5 flex-shrink-0" style={{color:'var(--vzn-text-muted)'}}>
                           {segments.length > 0
                             ? (speakerNameMap[segments[segments.length - 1].speaker] || segments[segments.length - 1].speaker)
                             : t.live_speaker_default}
                         </span>
-                        <span className="ui-reader-text text-gray-500 dark:text-gray-500 italic">
+                        <span className="ui-reader-text italic" style={{color:'var(--vzn-text-muted)'}}>
                           {pendingText}
-                          <span className="not-italic inline-block ml-0.5 w-0.5 h-4 bg-gray-400 dark:bg-gray-600 animate-pulse align-middle" />
+                          <span className="not-italic inline-block ml-0.5 w-0.5 h-4 animate-pulse align-middle" style={{background:'var(--vzn-text-soft)'}} />
                         </span>
                       </div>
                     )}
                     {isActive && !pendingText && (
                       <div className="flex items-center gap-2 pl-1">
-                        <span className="inline-block w-0.5 h-4 bg-gray-400 dark:bg-gray-600 animate-pulse" />
+                        <span className="inline-block w-0.5 h-4 animate-pulse" style={{background:'var(--vzn-text-soft)'}} />
                       </div>
                     )}
                   </>
                 ) : rawTranscript ? (
                   <p className="ui-reader-text whitespace-pre-wrap p-1">
                     {rawTranscript}
-                    {isActive && <span className="inline-block ml-0.5 w-0.5 h-4 bg-gray-400 dark:bg-gray-600 animate-pulse align-middle" />}
+                    {isActive && <span className="inline-block ml-0.5 w-0.5 h-4 animate-pulse align-middle" style={{background:'var(--vzn-text-soft)'}} />}
                   </p>
                 ) : (
                   <EmptyPanel
@@ -602,7 +605,7 @@ export function LiveTranslatePage() {
                   {copiedRaw ? <CheckIcon className="w-4 h-4" /> : <CopyIcon className="w-4 h-4" />}
                 </button>
                 {wordCount > 0 && (
-                  <span className="text-xs text-gray-400 tabular-nums select-none">
+                  <span className="text-xs tabular-nums select-none" style={{color:'var(--vzn-text-muted)'}}>
                     {wordCount.toLocaleString()} {t.live_words}
                   </span>
                 )}
@@ -610,26 +613,12 @@ export function LiveTranslatePage() {
             </div>
 
             {/* Right: Bản Dịch */}
-            <div className="surface-panel h-full">
+            <div className="glass-panel h-full flex flex-col">
               {/* STT provider badge — top-right, only when active */}
               {isActive && (
                 <div className="flex-shrink-0 flex items-center justify-end px-4 pt-2 pb-1">
-                  <span className={[
-                    'ui-badge-xs gap-1.5 select-none',
-                    activeSttProvider === 'whisper'
-                      ? 'bg-gray-100 text-gray-700 dark:bg-gray-900/40 dark:text-gray-300'
-                      : activeSttProvider === 'gemini'
-                        ? 'bg-gray-100 text-gray-700 dark:bg-gray-900/40 dark:text-gray-300'
-                        : activeSttProvider === 'groq'
-                          ? 'bg-gray-100 text-gray-700 dark:bg-gray-900/40 dark:text-gray-300'
-                          : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
-                  ].join(' ')}>
-                    <span className={[
-                      'w-1.5 h-1.5 rounded-full flex-shrink-0',
-                      activeSttProvider === 'whisper' ? 'bg-gray-500' :
-                      activeSttProvider === 'gemini'  ? 'bg-gray-500' :
-                      activeSttProvider === 'groq'    ? 'bg-gray-500' : 'bg-gray-400',
-                    ].join(' ')} />
+                  <span className="ui-badge-xs gap-1.5 select-none" style={{background:'var(--vzn-surface-muted)',color:'var(--vzn-text-soft)'}}>
+                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{background:'var(--vzn-text-muted)'}} />
                     {activeSttProvider === 'whisper' ? 'Whisper' :
                      activeSttProvider === 'gemini'  ? 'Gemini' :
                      activeSttProvider === 'groq'    ? 'Groq (free)' :
@@ -650,13 +639,13 @@ export function LiveTranslatePage() {
                     ))}
                     {isActive && isTranslating && (
                       <div className="flex items-center gap-2 pl-1">
-                        <SpinnerIcon className="w-3 h-3 animate-spin text-gray-400" />
-                        <span className="text-xs text-gray-400 italic">{t.live_status_translating}</span>
+                        <span style={{color:'var(--vzn-text-muted)'}}><SpinnerIcon className="w-3 h-3 animate-spin" /></span>
+                        <span className="text-xs italic" style={{color:'var(--vzn-text-muted)'}}>{t.live_status_translating}</span>
                       </div>
                     )}
                     {isActive && !isTranslating && (
                       <div className="flex items-center gap-2 pl-1">
-                        <span className="inline-block w-0.5 h-4 bg-gray-300 dark:bg-gray-700 animate-pulse" />
+                        <span className="inline-block w-0.5 h-4 animate-pulse" style={{background:'var(--vzn-border)'}} />
                       </div>
                     )}
                   </>
@@ -700,9 +689,12 @@ export function LiveTranslatePage() {
           </div>
           {/* ── End two panels ── */}
 
+          </div>
+          {/* ── End body ── */}
         </div>
+        {/* ── End surface panel ── */}
       </div>
-      {/* ── End main scrollable area ── */}
+      {/* ── End main area ── */}
 
       {/* ── Summary popup ── */}
       {showSummaryPopup && (

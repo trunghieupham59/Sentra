@@ -31,6 +31,8 @@ export interface SettingsSlice {
   ttsMode: TtsMode
   ttsVoice: TtsVoice
   fontSize: 'small' | 'medium' | 'large'
+  /** App colour theme — 'system' follows OS preference */
+  theme: 'light' | 'dark' | 'system'
   /**
    * Preferred STT provider. Default 'auto' tries Whisper first then falls back
    * to Google Cloud STT (using the Gemini key), keeping voice input resilient
@@ -65,6 +67,7 @@ export interface SettingsSlice {
   setTtsMode: (mode: TtsMode) => void
   setTtsVoice: (voice: TtsVoice) => void
   setFontSize: (size: 'small' | 'medium' | 'large') => void
+  setTheme: (theme: 'light' | 'dark' | 'system') => void
   setSttProvider: (provider: SttProvider) => void
   setChatSendShortcut: (shortcut: ChatSendShortcut) => void
   setChatNewSessionShortcut: (shortcut: string) => void
@@ -95,6 +98,7 @@ export const createSettingsSlice = (set: SliceSet): SettingsSlice => ({
   ttsMode: 'free' as TtsMode,
   ttsVoice: 'nova' as TtsVoice,
   fontSize: 'medium' as const,
+  theme: 'system' as const,
   sttProvider: 'auto' as SttProvider,
   chatSendShortcut: DEFAULT_CHAT_SEND_SHORTCUT,
   chatNewSessionShortcut: DEFAULT_CHAT_NEW_SESSION_SHORTCUT,
@@ -121,6 +125,7 @@ export const createSettingsSlice = (set: SliceSet): SettingsSlice => ({
   setTtsMode: (mode) => set({ ttsMode: mode }),
   setTtsVoice: (voice) => set({ ttsVoice: voice }),
   setFontSize: (size) => set({ fontSize: size }),
+  setTheme: (theme) => set({ theme }),
   setSttProvider: (provider) => set({ sttProvider: provider }),
   setChatSendShortcut: (shortcut) => set({ chatSendShortcut: shortcut }),
   setChatNewSessionShortcut: (shortcut) => set({ chatNewSessionShortcut: shortcut }),

@@ -14,9 +14,12 @@ import {
   GearIcon,
   ImageIcon,
   LightbulbIcon,
+  PencilIcon,
   PlusIcon,
+  SearchIcon,
   SendIcon,
   StopSquareIcon,
+  TranslateIcon,
   TrashIcon,
   XIcon,
 } from '../components/ui/icons'
@@ -1417,18 +1420,16 @@ export function ChatPage() {
           </div>
 
           {messages.length === 0 ? (
-            /* ── Empty state: centered layout (ChatGPT-style) ── */
-            <div className="flex-1 flex flex-col items-center justify-center gap-10 px-4 pb-8 overflow-y-auto">
-              {/* Logo + description — generous breathing room */}
-              <div className="flex flex-col items-center gap-5 text-center select-none">
-                <div className="relative">
-                  <AppLogoIcon size={84} />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <h2 className="text-2xl font-semibold tracking-tight" style={{ color: 'var(--vzn-text-strong)' }}>
+            /* ── Empty state: compact centered layout ── */
+            <div className="flex-1 flex flex-col items-center justify-center gap-7 px-4 pb-6 overflow-y-auto">
+              {/* Logo + heading */}
+              <div className="flex flex-col items-center gap-3 text-center select-none">
+                <AppLogoIcon size={52} />
+                <div className="flex flex-col gap-1">
+                  <h2 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--vzn-text-strong)' }}>
                     {t.chat_empty_title}
                   </h2>
-                  <p className="ui-caption mx-auto max-w-[360px] leading-relaxed">
+                  <p className="ui-caption mx-auto max-w-[320px] leading-relaxed">
                     {t.chat_empty_desc}
                   </p>
                 </div>
@@ -1446,11 +1447,41 @@ export function ChatPage() {
                 )}
               </div>
 
-              {/* Composer + keyboard hints — column flex so the hints sit
-                   right under the input without a separate gap stop. */}
-              <div className="flex w-full max-w-2xl flex-col items-center gap-3">
+              {/* Composer + suggestion chips */}
+              <div className="flex w-full max-w-2xl flex-col gap-3">
                 <div className={`chat-composer w-full ${isDraggingOver ? 'chat-composer-drop' : ''}`}>
                   {inputArea}
+                </div>
+
+                {/* Model indicator — subtle line below composer */}
+                <div className="flex items-center justify-center gap-1.5 select-none">
+                  <ProviderIcon provider={selectedProvider} size={11} />
+                  <span className="ui-micro">{currentModelLabel}</span>
+                </div>
+
+                {/* Suggestion chips — 2×2 grid */}
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { icon: <TranslateIcon className="h-4 w-4" />, label: t.chat_suggest_translate, prompt: t.chat_suggest_translate_prompt },
+                    { icon: <SearchIcon className="h-4 w-4" />, label: t.chat_suggest_research, prompt: t.chat_suggest_research_prompt },
+                    { icon: <LightbulbIcon className="h-4 w-4" />, label: t.chat_suggest_explain, prompt: t.chat_suggest_explain_prompt },
+                    { icon: <PencilIcon className="h-4 w-4" />, label: t.chat_suggest_write, prompt: t.chat_suggest_write_prompt },
+                  ] as const).map(({ icon, label, prompt }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      className="chat-suggest-chip group"
+                      onClick={() => {
+                        setInputText(prompt)
+                        textareaRef.current?.focus()
+                      }}
+                    >
+                      <span className="chat-suggest-icon">{icon}</span>
+                      <span className="text-xs font-semibold leading-snug" style={{ color: 'var(--vzn-text)' }}>
+                        {label}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>

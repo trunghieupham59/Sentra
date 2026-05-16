@@ -275,6 +275,11 @@ export interface Translations {
   settings_font_size_small: string
   settings_font_size_medium: string
   settings_font_size_large: string
+  settings_theme: string
+  settings_theme_desc: string
+  settings_theme_light: string
+  settings_theme_dark: string
+  settings_theme_system: string
   settings_furigana: string
   settings_furigana_desc: string
   // Settings — Speech-to-Text section
@@ -520,6 +525,19 @@ export interface Translations {
   chat_voice_stop: string
   chat_empty_title: string
   chat_empty_desc: string
+  chat_session_panel_empty: string
+  chat_suggest_translate: string
+  chat_suggest_translate_desc: string
+  chat_suggest_translate_prompt: string
+  chat_suggest_research: string
+  chat_suggest_research_desc: string
+  chat_suggest_research_prompt: string
+  chat_suggest_explain: string
+  chat_suggest_explain_desc: string
+  chat_suggest_explain_prompt: string
+  chat_suggest_write: string
+  chat_suggest_write_desc: string
+  chat_suggest_write_prompt: string
   chat_system_prompt: string
 
   chat_system_prompt_placeholder: string

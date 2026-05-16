@@ -171,9 +171,9 @@ export function SettingsPage() {
 
   return (
     <div className="settings-shell">
-      <aside className="hidden md:flex min-h-0 flex-col border-r border-gray-200/80 bg-white/65 dark:border-white/10 dark:bg-neutral-950/50">
-        <nav className="flex-1 overflow-auto p-2" aria-label={t.settings_title}>
-          <div className="space-y-1">
+      <aside className="hidden md:flex min-h-0 flex-col" style={{ borderRight: '1px solid var(--vzn-border)', background: 'var(--vzn-surface-muted)' }}>
+        <nav className="flex-1 overflow-auto p-2.5" aria-label={t.settings_title}>
+          <div className="space-y-0.5">
             {sections.map(({ id, label, description, Icon }) => {
               const active = activeSection === id
               return (
@@ -182,13 +182,16 @@ export function SettingsPage() {
                   type="button"
                   onClick={() => scrollToSection(id)}
                   title={description}
-                  className={[
-                    'btn-secondary btn-nav-item',
-                    active
-                      ? 'btn-active'
-                      : 'border-transparent bg-transparent text-gray-600 dark:bg-transparent dark:text-gray-400 dark:hover:bg-white/5',
-                  ].join(' ')}
+                  className="btn-nav-item flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all"
+                  style={{
+                    background: active ? 'var(--vzn-accent-soft)' : 'transparent',
+                    color: active ? 'var(--vzn-accent)' : 'var(--vzn-text-muted)',
+                    border: active ? '1px solid var(--vzn-accent-border)' : '1px solid transparent',
+                    boxShadow: active ? 'var(--vzn-shadow-glow)' : 'none',
+                  }}
                   aria-current={active ? 'true' : undefined}
+                  onMouseEnter={(e) => { if (!active) { e.currentTarget.style.background = 'var(--vzn-surface-subtle)'; e.currentTarget.style.color = 'var(--vzn-text)'; } }}
+                  onMouseLeave={(e) => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--vzn-text-muted)'; } }}
                 >
                   <Icon className="w-4 h-4 flex-shrink-0" />
                   <span className="min-w-0 truncate">{label}</span>
@@ -200,7 +203,7 @@ export function SettingsPage() {
       </aside>
 
       <div className="flex min-h-0 flex-col">
-        <div className="md:hidden border-b border-gray-200 bg-white/90 dark:border-white/10 dark:bg-neutral-950/90">
+        <div className="md:hidden" style={{ borderBottom: '1px solid var(--vzn-border)', background: 'var(--vzn-surface-muted)' }}>
           <nav className="overflow-x-auto px-3 py-2" aria-label={t.settings_title}>
             <div className="flex gap-1">
               {sections.map(({ id, label, description, Icon }) => {
@@ -211,12 +214,12 @@ export function SettingsPage() {
                     type="button"
                     onClick={() => scrollToSection(id)}
                     title={description}
-                    className={[
-                      'btn-secondary btn-sm whitespace-nowrap shadow-none',
-                      active
-                        ? 'btn-active'
-                        : 'border-transparent bg-transparent text-gray-500 dark:bg-transparent dark:text-gray-400 dark:hover:bg-white/5',
-                    ].join(' ')}
+                    className="btn-sm whitespace-nowrap rounded-lg flex items-center gap-1.5"
+                    style={{
+                      background: active ? 'var(--vzn-accent-soft)' : 'transparent',
+                      color: active ? 'var(--vzn-accent)' : 'var(--vzn-text-muted)',
+                      border: active ? '1px solid var(--vzn-accent-border)' : '1px solid transparent',
+                    }}
                     aria-current={active ? 'true' : undefined}
                   >
                     <Icon className="w-3.5 h-3.5 flex-shrink-0" />

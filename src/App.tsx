@@ -157,6 +157,7 @@ function App() {
       <div className="app-body">
         <Sidebar />
 
+
         <main className="app-main">
           <Suspense fallback={<PageFallback />}>
             {activePage === 'translate' ? (
