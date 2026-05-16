@@ -140,6 +140,10 @@ export interface Translations {
   dictionary_error_invalid_response: string
   dictionary_error_truncated: string
   dictionary_error_same_lang: string
+  /** Confirmation message shown before clearing all non-favorite history entries */
+  dictionary_clear_history_confirm: string
+  /** Accessible label on the pulsing dot shown while detail enrichment is in progress */
+  dictionary_enriching: string
 
   // Language selector
   lang_auto: string

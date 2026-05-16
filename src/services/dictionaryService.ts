@@ -140,9 +140,19 @@ export function parseDictionaryResponse(reply: string): DictionaryLookupResult {
   return { success: true, result }
 }
 
-/** Escape user input embedded inside the prompt to limit prompt-injection surface. */
+/**
+ * Sanitize user input before embedding in the prompt.
+ * Collapses newlines to spaces to prevent multi-line injection (e.g. a term
+ * containing "\nIgnore above instructions") and strips backticks / carriage
+ * returns. The output is always validated by parseDictionaryResponse, but
+ * preventing line breaks limits the blast radius for confusing the model.
+ */
 function escapeForPrompt(value: string): string {
-  return value.replace(/[`]/g, "'").replace(/\r/g, '')
+  return value
+    .replace(/\r/g, '')
+    .replace(/\n+/g, ' ')
+    .replace(/[`]/g, "'")
+    .trim()
 }
 
 function buildDictionaryPrompt(params: DictionaryLookupParams): string {

@@ -62,6 +62,12 @@ export function DictionarySearchPanel({
     inputRef.current?.focus()
   }, [])
 
+  // Auto-open the context box when context becomes non-empty from the outside
+  // (e.g. when a history entry with context is selected).
+  useEffect(() => {
+    if (context) setContextOpen(true)
+  }, [context])
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     onSubmit()

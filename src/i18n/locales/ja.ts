@@ -112,6 +112,8 @@ const ja: Translations = {
   dictionary_error_invalid_response: 'プロバイダーから無効な辞書項目が返されました。',
   dictionary_error_truncated: '応答が途中で切れました。再試行するか文脈を短くしてください。',
   dictionary_error_same_lang: 'ソース言語とターゲット言語は異なる必要があります。',
+  dictionary_clear_history_confirm: 'お気に入り以外の履歴をすべて消去しますか？この操作は元に戻せません。',
+  dictionary_enriching: '詳細を補完中…',
   lang_auto: '自動検出',
   lang_names: {
     auto: '自動検出',

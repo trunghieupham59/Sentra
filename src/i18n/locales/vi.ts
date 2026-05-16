@@ -112,6 +112,8 @@ const vi: Translations = {
   dictionary_error_invalid_response: 'Provider trả về mục từ không hợp lệ.',
   dictionary_error_truncated: 'Phản hồi bị cắt ngắn. Vui lòng thử lại hoặc rút gọn ngữ cảnh.',
   dictionary_error_same_lang: 'Ngôn ngữ nguồn và đích phải khác nhau.',
+  dictionary_clear_history_confirm: 'Xóa tất cả mục lịch sử không yêu thích? Không thể hoàn tác.',
+  dictionary_enriching: 'Đang bổ sung chi tiết…',
   lang_auto: 'Tự động nhận dạng',
   lang_names: {
     auto: 'Tự động nhận dạng',
