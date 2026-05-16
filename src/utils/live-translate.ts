@@ -86,6 +86,27 @@ export function isHallucination(text: string): boolean {
 }
 
 /**
+ * Count "words" in a transcript that may contain mixed CJK and Latin/Cyrillic text.
+ *
+ * Latin/Cyrillic text is tokenised on whitespace (standard word count).
+ * CJK scripts (Hiragana, Katakana, CJK Extension A, Han, Hangul) have no
+ * whitespace word boundaries — splitting on /\s+/ would count entire
+ * sentences as a single "word". For those, each CJK glyph counts as one word.
+ *
+ * `· · ·` is stripped first — it is the legacy speaker-divider glyph and
+ * should never contribute to word totals.
+ */
+const CJK_GLYPH_RE = /[぀-ヿ㐀-䶿一-鿿가-힯]/g
+export function countWords(text: string): number {
+  if (!text) return 0
+  const cleaned = text.replace(/· · ·/g, '')
+  const cjkChars = cleaned.match(CJK_GLYPH_RE)?.length ?? 0
+  const nonCjk = cleaned.replace(CJK_GLYPH_RE, ' ')
+  const latinWords = nonCjk.split(/\s+/).filter(Boolean).length
+  return cjkChars + latinWords
+}
+
+/**
  * Jaccard similarity on word-bag: ratio of shared words to total unique words.
  *
  * Used to detect near-duplicate Whisper outputs between consecutive chunks.

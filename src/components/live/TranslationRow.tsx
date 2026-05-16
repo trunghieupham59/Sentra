@@ -8,7 +8,7 @@
  */
 import { useTypewriter } from '../../hooks/useTypewriter'
 import { SpeakerBadge } from './SpeakerBadge'
-import { SPEAKER_COLORS } from './speakerColors'
+import { getSpeakerColorClass } from './speakerColors'
 
 interface TranslationRowProps {
   speaker: string
@@ -18,8 +18,7 @@ interface TranslationRowProps {
 
 export function TranslationRow({ speaker, text, speakerNameMap }: TranslationRowProps) {
   const displayName = speakerNameMap[speaker] || speaker
-  const colorIdx = (Number(speaker.replace(/\D/g, '')) - 1) % SPEAKER_COLORS.length
-  const colorClass = SPEAKER_COLORS[Math.max(0, colorIdx)]
+  const colorClass = getSpeakerColorClass(speaker)
 
   // Typewriter with slight delay so translation appears after transcript
   const displayedText = useTypewriter(text, 55)

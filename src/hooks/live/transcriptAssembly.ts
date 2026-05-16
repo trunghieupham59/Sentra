@@ -12,7 +12,13 @@ export interface TranscriptAssemblyResult extends TranscriptAssemblyState {
 
 export function appendRawTranscript(previous: string, nextText: string, maxChars: number): string {
   const updated = previous ? `${previous} ${nextText}` : nextText
-  return updated.length > maxChars ? updated.slice(-maxChars) : updated
+  if (updated.length <= maxChars) return updated
+  // Hard-truncate to the last `maxChars`, then advance to the next whitespace
+  // so we never resume mid-word. Falls back to the hard cut if no whitespace
+  // exists in the truncated window (rare — e.g. one continuous CJK run).
+  const sliced = updated.slice(-maxChars)
+  const firstSpace = sliced.search(/\s/)
+  return firstSpace >= 0 ? sliced.slice(firstSpace + 1) : sliced
 }
 
 export function getWhisperParts(newText: string, segmentTexts?: string[]): string[] {

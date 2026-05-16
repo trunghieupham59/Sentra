@@ -7,7 +7,7 @@
  */
 import { useTypewriter } from '../../hooks/useTypewriter'
 import { SpeakerBadge } from './SpeakerBadge'
-import { SPEAKER_COLORS } from './speakerColors'
+import { getSpeakerColorClass } from './speakerColors'
 
 interface SegmentRowProps {
   speaker: string
@@ -18,8 +18,7 @@ interface SegmentRowProps {
 
 export function SegmentRow({ speaker, text, speakerNameMap, onRename }: SegmentRowProps) {
   const displayName = speakerNameMap[speaker] || speaker
-  const colorIdx = (Number(speaker.replace(/\D/g, '')) - 1) % SPEAKER_COLORS.length
-  const colorClass = SPEAKER_COLORS[Math.max(0, colorIdx)]
+  const colorClass = getSpeakerColorClass(speaker)
 
   // Typewriter effect — reveals text word by word when segment first appears
   const displayedText = useTypewriter(text)
