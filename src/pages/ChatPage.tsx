@@ -1,25 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useShallow } from 'zustand/react/shallow'
-import { AppLogoIcon } from '../components/AppLogo'
 import { MessageBubble } from '../components/chat/MessageBubble'
 import { ResearchStepsPanel } from '../components/chat/ResearchStepsPanel'
-import { SystemPromptDropdown } from '../components/chat/SystemPromptDropdown'
 import { ModelSelector } from '../components/ModelSelector'
-import { ProviderIcon } from '../components/ProviderIcon'
 import { DragOverlay } from '../components/ui/DragOverlay'
 import { ImagePreviewThumbnail } from '../components/ui/ImagePreviewThumbnail'
 import {
   ArrowRightIcon,
+  CheckIcon,
   ChevronDownIcon,
-  ImageIcon,
+  GlobeIcon,
+  ImageSparkleIcon,
   LightbulbIcon,
+  PaperclipIcon,
   PencilIcon,
   PlusIcon,
-  SearchIcon,
   SendIcon,
   StopSquareIcon,
-  TranslateIcon,
+  TelescopeIcon,
   TrashIcon,
+  TranslateIcon,
   XIcon,
 } from '../components/ui/icons'
 
@@ -37,7 +38,6 @@ import { localizeChatError, localizeChatException } from '../utils/chatErrors'
 import { createClientId } from '../utils/id'
 import { extractImageFromClipboard, resizeImageFile } from '../utils/imageUtils'
 import { eventMatchesShortcut, formatShortcutLabel, shouldSendChatMessage } from '../utils/keyboardShortcuts'
-import { formatModelName } from '../utils/modelDisplay'
 import { estimateUsageCost } from '../utils/usageCost'
 
 
@@ -182,12 +182,12 @@ export function ChatPage() {
   const {
     selectedProvider, selectedModels, keyStatus,
     chatSendShortcut, chatNewSessionShortcut,
-    chatSessions, activeChatSessionId, chatSystemPrompt, systemPromptPresets,
+    chatSessions, activeChatSessionId, chatSystemPrompt,
     createChatSession, setActiveChatSession, addChatMessage, updateChatMessage,
-    addChatSessionCost, clearChatSession, setChatSystemPrompt, addSystemPromptPreset, openSettings,
+    addChatSessionCost, clearChatSession, openSettings,
     recordUsageCost, setDeepResearchResumeState,
-    setChatSessionDraft, setChatSessionDeepResearchMode,
-    setChatPendingDraft, setChatPendingDeepResearchMode,
+    setChatSessionDraft, setChatSessionDeepResearchMode, setChatSessionWebSearchMode, setChatSessionImageMode,
+    setChatPendingDraft, setChatPendingDeepResearchMode, setChatPendingWebSearchMode, setChatPendingImageMode,
   } = useAppStore(
     useShallow((s) => ({
       selectedProvider: s.selectedProvider,
@@ -198,7 +198,6 @@ export function ChatPage() {
       chatSessions: s.chatSessions,
       activeChatSessionId: s.activeChatSessionId,
       chatSystemPrompt: s.chatSystemPrompt,
-      systemPromptPresets: s.systemPromptPresets,
       createChatSession: s.createChatSession,
       setActiveChatSession: s.setActiveChatSession,
       addChatMessage: s.addChatMessage,
@@ -212,8 +211,12 @@ export function ChatPage() {
       setDeepResearchResumeState: s.setDeepResearchResumeState,
       setChatSessionDraft: s.setChatSessionDraft,
       setChatSessionDeepResearchMode: s.setChatSessionDeepResearchMode,
+      setChatSessionWebSearchMode: s.setChatSessionWebSearchMode,
+      setChatSessionImageMode: s.setChatSessionImageMode,
       setChatPendingDraft: s.setChatPendingDraft,
       setChatPendingDeepResearchMode: s.setChatPendingDeepResearchMode,
+      setChatPendingWebSearchMode: s.setChatPendingWebSearchMode,
+      setChatPendingImageMode: s.setChatPendingImageMode,
     })),
   )
 
@@ -259,8 +262,16 @@ export function ChatPage() {
   const [attachImageError, setAttachImageError] = useState<string | null>(null)
   /** Visual feedback state when user drags a file over the chat area */
   const [isDraggingOver, setIsDraggingOver] = useState(false)
-  /** Controls visibility of the AI config popup */
-  const [showAIConfig, setShowAIConfig] = useState(false)
+  /** Plus menu (attach/tools) popup */
+  const [showPlusMenu, setShowPlusMenu] = useState(false)
+  const [plusMenuPos, setPlusMenuPos] = useState<{ bottom: number; left: number }>({ bottom: 0, left: 0 })
+  const plusBtnRef = useRef<HTMLButtonElement>(null)
+  const plusMenuRef = useRef<HTMLDivElement>(null)
+  /** Mode dropdown (Tự động / Tìm kiếm / Nghiên cứu) */
+  const [showModeMenu, setShowModeMenu] = useState(false)
+  const [modeMenuPos, setModeMenuPos] = useState<{ bottom: number; left: number }>({ bottom: 0, left: 0 })
+  const modeBtnRef = useRef<HTMLButtonElement>(null)
+  const modeMenuRef = useRef<HTMLDivElement>(null)
   /** Whether Deep Research multi-step pipeline is active — persisted per session */
   const [deepResearchMode, setDeepResearchModeLocal] = useState(() => {
     const s = useAppStore.getState()
@@ -279,8 +290,42 @@ export function ChatPage() {
     })
   }, [setChatSessionDeepResearchMode, setChatPendingDeepResearchMode])
 
-  // Active preset = the preset whose content matches chatSystemPrompt
-  const activePreset = systemPromptPresets.find((p) => p.content === chatSystemPrompt) ?? null
+  /** Whether Web Search mode is active — always forces a web search, persisted per session */
+  const [webSearchMode, setWebSearchModeLocal] = useState(() => {
+    const s = useAppStore.getState()
+    if (s.activeChatSessionId) {
+      return s.chatSessions.find((x) => x.id === s.activeChatSessionId)?.webSearchMode ?? false
+    }
+    return s.chatPendingWebSearchMode
+  })
+  const setWebSearchMode = useCallback((updater: boolean | ((v: boolean) => boolean)) => {
+    setWebSearchModeLocal((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      const sid = useAppStore.getState().activeChatSessionId
+      if (sid) setChatSessionWebSearchMode(sid, next)
+      else setChatPendingWebSearchMode(next)
+      return next
+    })
+  }, [setChatSessionWebSearchMode, setChatPendingWebSearchMode])
+
+  /** Image Mode — tạo ảnh từ text hoặc sửa ảnh đính kèm bằng AI, persisted per session */
+  const [imageMode, setImageModeLocal] = useState(() => {
+    const s = useAppStore.getState()
+    if (s.activeChatSessionId) {
+      return s.chatSessions.find((x) => x.id === s.activeChatSessionId)?.imageMode ?? false
+    }
+    return s.chatPendingImageMode
+  })
+  const setImageMode = useCallback((updater: boolean | ((v: boolean) => boolean)) => {
+    setImageModeLocal((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      const sid = useAppStore.getState().activeChatSessionId
+      if (sid) setChatSessionImageMode(sid, next)
+      else setChatPendingImageMode(next)
+      return next
+    })
+  }, [setChatSessionImageMode, setChatPendingImageMode])
+
   const platform = window.api?.platform
   const newChatShortcutLabel = formatShortcutLabel(chatNewSessionShortcut, platform)
 
@@ -298,8 +343,6 @@ export function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  /** Ref for AI config popup — used for click-outside detection */
-  const aiConfigRef = useRef<HTMLDivElement>(null)
 
   // Active session
   const activeSession = chatSessions.find((s) => s.id === activeChatSessionId) ?? null
@@ -347,24 +390,56 @@ export function ChatPage() {
       const session = s.chatSessions.find((x) => x.id === activeChatSessionId)
       setInputTextLocal(session?.draftInput ?? '')
       setDeepResearchModeLocal(session?.deepResearchMode ?? false)
+      setWebSearchModeLocal(session?.webSearchMode ?? false)
+      setImageModeLocal(session?.imageMode ?? false)
     } else {
       setInputTextLocal(s.chatPendingDraft)
       setDeepResearchModeLocal(s.chatPendingDeepResearchMode)
+      setWebSearchModeLocal(s.chatPendingWebSearchMode)
+      setImageModeLocal(s.chatPendingImageMode)
     }
     setAttachedImage(null)
   }, [activeChatSessionId])
 
-  // ── Close AI config popup on outside click ──
+  // ── Plus menu (attach/tools popup) ──
+  const openPlusMenu = () => {
+    if (plusBtnRef.current) {
+      const rect = plusBtnRef.current.getBoundingClientRect()
+      setPlusMenuPos({ bottom: window.innerHeight - rect.top + 6, left: rect.left })
+    }
+    setShowPlusMenu(true)
+  }
   useEffect(() => {
-    if (!showAIConfig) return
-    const handleOutside = (e: MouseEvent) => {
-      if (aiConfigRef.current && !aiConfigRef.current.contains(e.target as Node)) {
-        setShowAIConfig(false)
+    if (!showPlusMenu) return
+    const handler = (e: MouseEvent) => {
+      const t = e.target as Node
+      if (!plusBtnRef.current?.contains(t) && !plusMenuRef.current?.contains(t)) {
+        setShowPlusMenu(false)
       }
     }
-    document.addEventListener('mousedown', handleOutside)
-    return () => document.removeEventListener('mousedown', handleOutside)
-  }, [showAIConfig])
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showPlusMenu])
+
+  // ── Mode dropdown (Tự động / Tìm kiếm / Nghiên cứu) ──
+  const openModeMenu = () => {
+    if (modeBtnRef.current) {
+      const rect = modeBtnRef.current.getBoundingClientRect()
+      setModeMenuPos({ bottom: window.innerHeight - rect.top + 6, left: rect.left })
+    }
+    setShowModeMenu(true)
+  }
+  useEffect(() => {
+    if (!showModeMenu) return
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node
+      if (!modeBtnRef.current?.contains(target) && !modeMenuRef.current?.contains(target)) {
+        setShowModeMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showModeMenu])
 
   // ── Ensure active session exists for current provider/model ──
   const ensureSession = useCallback(() => {
@@ -727,6 +802,108 @@ export function ChatPage() {
       return
     }
 
+    // ── Image Mode path (generate or edit) ───────────────────────────────────
+    // Only available when the user explicitly enables Image Mode.
+    // - With attached image + text prompt → edit the image.
+    // - Without attached image → generate a new image from the text prompt.
+    if (imageMode && (text || attachedImage)) {
+      addChatMessage(sessionId, userMsg)
+      setInputText('')
+      const capturedImage = attachedImage
+      setAttachedImage(null)
+      const imgController = new AbortController()
+      abortControllerRef.current = imgController
+      setIsSending(true)
+
+      const assistantMsgId = createClientId('msg-a')
+      addChatMessage(sessionId, {
+        id: assistantMsgId,
+        role: 'assistant',
+        content: [{ type: 'text', text: '' }],
+        timestamp: Date.now(),
+        isLoading: true,
+      })
+
+      try {
+        const isEdit = Boolean(capturedImage && text)
+        let result: Awaited<ReturnType<typeof chatService.editImage>>
+
+        if (isEdit && capturedImage) {
+          if (typeof window.api.editChatImage !== 'function') {
+            updateChatMessage(sessionId, assistantMsgId, {
+              isLoading: false,
+              error: t.chat_error_image_edit_reload_required,
+            })
+            return
+          }
+          result = await chatService.editImage({
+            provider: selectedProvider,
+            model: selectedModels[selectedProvider],
+            prompt: text,
+            imageBase64: capturedImage.base64,
+            imageMimeType: capturedImage.mimeType,
+          })
+        } else {
+          if (typeof window.api.generateChatImage !== 'function') {
+            updateChatMessage(sessionId, assistantMsgId, {
+              isLoading: false,
+              error: t.chat_error_image_generate_reload_required,
+            })
+            return
+          }
+          result = await chatService.generateImage({
+            provider: selectedProvider,
+            model: selectedModels[selectedProvider],
+            prompt: text || '',
+          })
+        }
+
+        if (imgController.signal.aborted) {
+          updateChatMessage(sessionId, assistantMsgId, { isLoading: false })
+        } else if (result.success && result.imageBase64 && result.imageMimeType) {
+          const outputLabel = isEdit ? t.chat_image_edit_done : t.chat_image_generate_done
+          updateChatMessage(sessionId, assistantMsgId, {
+            content: [
+              {
+                type: 'image',
+                imageBase64: result.imageBase64,
+                imageMimeType: result.imageMimeType,
+                imagePreviewUrl: buildImageDataUrl(result.imageBase64, result.imageMimeType),
+                imageFileName: `${isEdit ? 'edited' : 'generated'}-image-${Date.now()}.${imageExtensionFromMime(result.imageMimeType)}`,
+              },
+              { type: 'text', text: outputLabel },
+            ],
+            isLoading: false,
+          })
+          recordChatCost(sessionId, assistantMsgId, text, outputLabel)
+        } else {
+          updateChatMessage(sessionId, assistantMsgId, {
+            isLoading: false,
+            error: localizeChatError(
+              t,
+              result,
+              isEdit ? t.chat_error_failed_image_edit : t.chat_error_image_generate_failed,
+            ),
+          })
+        }
+      } catch (err) {
+        if (imgController.signal.aborted) {
+          updateChatMessage(sessionId, assistantMsgId, { isLoading: false })
+        } else {
+          updateChatMessage(sessionId, assistantMsgId, {
+            isLoading: false,
+            error: localizeChatException(
+              t, err,
+              t.chat_error_image_generate_failed,
+            ),
+          })
+        }
+      } finally {
+        if (abortControllerRef.current === imgController) abortControllerRef.current = null
+        setIsSending(false)
+      }
+      return
+    }
 
     addChatMessage(sessionId, userMsg)
     setDeepResearchResumeState(sessionId, null)
@@ -772,6 +949,7 @@ export function ChatPage() {
           messages: ipcHistory,
           systemPrompt: chatSystemPrompt || undefined,
           carefulReasoning: true,
+          forceWebSearch: webSearchMode,
           uiText: {
 
             webSearchStepLabelPrefix: t.chat_smart_thinking_step_label_prefix,
@@ -1031,6 +1209,8 @@ export function ChatPage() {
     isSending,
     hasKey,
     deepResearchMode,
+    webSearchMode,
+    imageMode,
     ensureSession,
     addChatMessage,
     updateChatMessage,
@@ -1125,8 +1305,6 @@ export function ChatPage() {
   }, [])
 
   const messages = activeSession?.messages ?? []
-  const currentModel = selectedModels[selectedProvider]
-  const currentModelLabel = formatModelName(selectedProvider, currentModel)
   const canResumeDeepResearch = Boolean(
     !isSending
     && !inputText.trim()
@@ -1138,31 +1316,13 @@ export function ChatPage() {
   /** Shared input area — reused in both empty-state and messages-state layouts */
   const inputArea = (
     <div className="flex flex-col">
-      {/* Image attach error */}
+      {/* Error row */}
       {attachImageError && (
         <div className="px-4 pt-2 flex items-center gap-2">
           <p className="ui-error-text text-xs">{attachImageError}</p>
-          <button
-            type="button"
-            onClick={() => setAttachImageError(null)}
-            className="btn-icon btn-icon-xs btn-icon-danger"
-            aria-label={t.translate_error_dismiss}
-          >
+          <button type="button" onClick={() => setAttachImageError(null)} className="btn-icon btn-icon-xs btn-icon-danger" aria-label={t.translate_error_dismiss}>
             <XIcon className="w-3 h-3" />
           </button>
-        </div>
-      )}
-
-      {/* Active mode pills row — only renders when Deep Research is on */}
-      {deepResearchMode && (
-        <div className="flex items-center gap-1.5 px-4 pt-3">
-          <span className="chat-pill chat-pill-neutral">
-            <LightbulbIcon className="h-2.5 w-2.5" />
-            <span>{t.chat_deep_research_badge}</span>
-          </span>
-          <span className="ui-micro">
-            {t.chat_deep_research_hint}
-          </span>
         </div>
       )}
 
@@ -1181,138 +1341,208 @@ export function ChatPage() {
         <div className="voice-recording-panel mx-3 mt-2 flex items-center gap-3 px-4 py-2">
           <div className="flex items-end gap-[3px] h-5">
             {[1, 2, 3, 4, 5].map((i) => (
-              <span
-                key={i}
-                className="voice-recording-bar"
-                style={{ height: `${VOICE_BAR_HEIGHT_BASE_PX + (i % 3) * VOICE_BAR_HEIGHT_STEP_PX}px`, animationDuration: `${VOICE_BAR_DURATION_BASE_S + i * VOICE_BAR_DURATION_STEP_S}s`, animationDelay: `${i * VOICE_BAR_DELAY_STEP_S}s` }}
-              />
+              <span key={i} className="voice-recording-bar" style={{ height: `${VOICE_BAR_HEIGHT_BASE_PX + (i % 3) * VOICE_BAR_HEIGHT_STEP_PX}px`, animationDuration: `${VOICE_BAR_DURATION_BASE_S + i * VOICE_BAR_DURATION_STEP_S}s`, animationDelay: `${i * VOICE_BAR_DELAY_STEP_S}s` }} />
             ))}
           </div>
-          <span
-            className={`text-xs font-medium ${isVoiceInterim ? 'italic' : 'voice-recording-text'}`}
-            style={isVoiceInterim ? { color: 'var(--vzn-text-soft)' } : undefined}
-          >
+          <span className={`text-xs font-medium ${isVoiceInterim ? 'italic' : 'voice-recording-text'}`} style={isVoiceInterim ? { color: 'var(--vzn-text-soft)' } : undefined}>
             {inputText || '…'}
           </span>
         </div>
       )}
 
-      {/* Textarea */}
-      <div className="px-3 pt-2">
+      {/* Textarea row */}
+      <div className="px-3 pt-2.5 pb-1">
         <textarea
           ref={textareaRef}
           value={inputText}
-          onChange={(e) => {
-            setInputText(e.target.value)
-            if (isVoiceActive) resetVoicePrefix()
-          }}
+          onChange={(e) => { setInputText(e.target.value); if (isVoiceActive) resetVoicePrefix() }}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           placeholder={t.chat_placeholder}
           rows={1}
           disabled={isSending}
-          className={`chat-input-field ${isVoiceInterim ? 'italic' : ''}`}
-          style={{
-            maxHeight: `${CHAT_TEXTAREA_MAX_HEIGHT_PX}px`,
-            overflowY: 'auto',
-            ...(isVoiceInterim ? { color: 'var(--vzn-text-soft)' } : null),
-          }}
+          className={`chat-input-field w-full ${isVoiceInterim ? 'italic' : ''}`}
+          style={{ maxHeight: `${CHAT_TEXTAREA_MAX_HEIGHT_PX}px`, overflowY: 'auto', padding: '3px 0', ...(isVoiceInterim ? { color: 'var(--vzn-text-soft)' } : null) }}
         />
       </div>
 
-      {/* Action toolbar */}
-      <div className="flex items-center gap-1 px-2 pb-2">
-        <VoiceRecorder
-          sourceLang="auto"
-          onTranscript={handleVoiceTranscript}
-          onRecordingChange={handleVoiceRecordingChange}
-          titleRecord={t.chat_voice_record}
-          titleStop={t.chat_voice_stop}
-          labelTranscribing="…"
-          labelRecording="…"
-        />
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          title={t.chat_attach_image}
-          className="chat-action-button"
-        >
-          <ImageIcon className="w-4 h-4" />
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) handleImageSelect(file)
-            e.target.value = ''
-          }}
-        />
-        {/*
-         * Deep Research toggle — Smart Thinking is automatic, and Careful
-         * Reasoning is always on by default (handled in the IPC layer), so
-         * Deep Research is the only chat-mode toggle exposed in the toolbar.
-         */}
-        <button
-          type="button"
-          onClick={() => setDeepResearchMode((v) => !v)}
-          title={deepResearchMode ? t.chat_deep_research_disable : t.chat_deep_research_enable}
-          className={`chat-action-button ${deepResearchMode ? 'chat-action-button-active-neutral' : ''}`}
-        >
-          <LightbulbIcon className="w-4 h-4" />
-        </button>
+      {/* Bottom controls bar: [+ | Ảnh | Tự động ▼]  ···  [model | voice | send] */}
+      <div className="flex items-center justify-between px-2 pb-1.5">
 
-        <div className="flex-1" />
+        {/* Left: attach + mode toggles */}
+        <div className="flex items-center gap-0.5">
 
-        {/* Char counter — subtle, only when getting close to long text */}
-        {inputText.length > 600 && (
-          <span className="ui-micro tabular-nums px-1">
-            {inputText.length}
-          </span>
-        )}
+          {/* + button — attach file */}
+          <button
+            ref={plusBtnRef}
+            type="button"
+            onClick={showPlusMenu ? () => setShowPlusMenu(false) : openPlusMenu}
+            title={t.chat_attach_image}
+            className={`chat-action-button flex-shrink-0 ${showPlusMenu ? 'chat-action-button-active-neutral' : ''}`}
+          >
+            <PlusIcon />
+          </button>
 
-        {/*
-         * Send / Stop / Resume morphing button.
-         *
-         * The primary action always occupies the same slot in the composer:
-         * Send for a new prompt, Stop while work is running, Resume when a
-         * stopped Deep Research checkpoint is waiting and the draft is empty.
-         */}
-        {isSending ? (
+          {/* Ảnh — image mode toggle */}
           <button
             type="button"
-            onClick={handleStop}
-            title={t.chat_stop}
-            aria-label={t.chat_stop}
-            className="chat-stop-button"
+            className={`chat-mode-pill ${imageMode ? 'chat-mode-pill-active' : ''}`}
+            onClick={() => {
+              const next = !imageMode
+              setImageMode(next)
+              if (next) { setWebSearchMode(false); setDeepResearchMode(false) }
+              textareaRef.current?.focus()
+            }}
+            title={t.chat_menu_image_mode}
           >
-            <StopSquareIcon className="w-5 h-5" />
+            <ImageSparkleIcon className="h-3.5 w-3.5 flex-shrink-0" />
+            <span>{t.chat_mode_chip_image}</span>
           </button>
-        ) : canResumeDeepResearch ? (
+
+          {/* Tự động ▼ — processing mode dropdown */}
           <button
+            ref={modeBtnRef}
             type="button"
-            onClick={handleResumeDeepResearch}
-            title={t.chat_deep_research_resume}
-            aria-label={t.chat_deep_research_resume}
-            className="chat-resume-button"
+            className={`chat-mode-pill ${(webSearchMode || deepResearchMode) ? 'chat-mode-pill-active' : ''}`}
+            onClick={showModeMenu ? () => setShowModeMenu(false) : openModeMenu}
           >
-            <span className="chat-primary-action-label">{t.chat_deep_research_resume_short}</span>
-            <ArrowRightIcon className="h-3.5 w-3.5" />
+            {deepResearchMode
+              ? <TelescopeIcon className="h-3.5 w-3.5 flex-shrink-0" />
+              : webSearchMode
+                ? <GlobeIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                : null}
+            <span>
+              {deepResearchMode
+                ? t.chat_mode_chip_research
+                : webSearchMode
+                  ? t.chat_mode_chip_web
+                  : t.settings_mode_auto}
+            </span>
+            <ChevronDownIcon className={`w-3 h-3 flex-shrink-0 transition-transform duration-150 ${showModeMenu ? 'rotate-180' : ''}`} />
           </button>
-        ) : (
-          <button
-            type="button"
-            onClick={handleSend}
-            disabled={(!inputText.trim() && !attachedImage) || !hasKey}
-            title={t.chat_send}
-            className="chat-send-button"
-          >
-            <SendIcon />
-          </button>
-        )}
+        </div>
+
+        {/* Right: char count · model · voice · send */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {inputText.length > 600 && (
+            <span className="ui-micro tabular-nums">{inputText.length}</span>
+          )}
+          <ModelSelector compact />
+          <span className="w-px h-3.5 flex-shrink-0" style={{ background: 'var(--vzn-border-strong)' }} />
+          <VoiceRecorder
+            sourceLang="auto"
+            onTranscript={handleVoiceTranscript}
+            onRecordingChange={handleVoiceRecordingChange}
+            titleRecord={t.chat_voice_record}
+            titleStop={t.chat_voice_stop}
+            labelTranscribing="…"
+            labelRecording="…"
+          />
+          {isSending ? (
+            <button type="button" onClick={handleStop} title={t.chat_stop} aria-label={t.chat_stop} className="chat-stop-button">
+              <StopSquareIcon className="w-5 h-5" />
+            </button>
+          ) : canResumeDeepResearch ? (
+            <button type="button" onClick={handleResumeDeepResearch} title={t.chat_deep_research_resume} aria-label={t.chat_deep_research_resume} className="chat-resume-button">
+              <span className="chat-primary-action-label">{t.chat_deep_research_resume_short}</span>
+              <ArrowRightIcon className="h-3.5 w-3.5" />
+            </button>
+          ) : (
+            <button type="button" onClick={handleSend} disabled={(!inputText.trim() && !attachedImage) || !hasKey} title={t.chat_send} className="chat-send-button">
+              <SendIcon />
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => { const file = e.target.files?.[0]; if (file) handleImageSelect(file); e.target.value = '' }}
+      />
+
+      {/* + Menu portal — attach file only */}
+      {showPlusMenu && createPortal(
+        <div
+          ref={plusMenuRef}
+          className="floating-panel overflow-hidden"
+          style={{ position: 'fixed', bottom: plusMenuPos.bottom, left: plusMenuPos.left, width: 220, zIndex: 9999 }}
+        >
+          <button
+            type="button"
+            className="btn-menu-item justify-start gap-3"
+            onClick={() => { fileInputRef.current?.click(); setShowPlusMenu(false) }}
+          >
+            <PaperclipIcon className="w-[18px] h-[18px] flex-shrink-0 text-[--vzn-text-muted]" />
+            <span>{t.chat_menu_attach_files}</span>
+          </button>
+        </div>,
+        document.body
+      )}
+
+      {/* Mode dropdown portal — Tự động / Tìm kiếm / Nghiên cứu */}
+      {showModeMenu && createPortal(
+        <div
+          ref={modeMenuRef}
+          className="floating-panel overflow-hidden"
+          style={{ position: 'fixed', bottom: modeMenuPos.bottom, left: modeMenuPos.left, width: 220, zIndex: 9999 }}
+        >
+          {/* Tự động — no special mode */}
+          <button
+            type="button"
+            className="btn-menu-item justify-start gap-3"
+            onClick={() => {
+              setWebSearchMode(false)
+              setDeepResearchMode(false)
+              setShowModeMenu(false)
+              textareaRef.current?.focus()
+            }}
+          >
+            <span className="w-[18px] h-[18px] flex-shrink-0 flex items-center justify-center">
+              {!webSearchMode && !deepResearchMode && <CheckIcon className="w-4 h-4 text-[--vzn-accent]" />}
+            </span>
+            <span className="flex-1 text-left">{t.settings_mode_auto}</span>
+          </button>
+
+          {/* Tìm kiếm trên mạng */}
+          <button
+            type="button"
+            className="btn-menu-item justify-start gap-3"
+            onClick={() => {
+              setWebSearchMode(true)
+              setDeepResearchMode(false)
+              setImageMode(false)
+              setShowModeMenu(false)
+              textareaRef.current?.focus()
+            }}
+          >
+            <GlobeIcon className={`w-[18px] h-[18px] flex-shrink-0 ${webSearchMode ? 'text-[--vzn-accent]' : 'text-[--vzn-text-muted]'}`} />
+            <span className="flex-1 text-left">{t.chat_menu_web_search}</span>
+            {webSearchMode && <CheckIcon className="w-4 h-4 flex-shrink-0 text-[--vzn-accent]" />}
+          </button>
+
+          {/* Nghiên cứu chuyên sâu */}
+          <button
+            type="button"
+            className="btn-menu-item justify-start gap-3"
+            onClick={() => {
+              setDeepResearchMode(true)
+              setWebSearchMode(false)
+              setImageMode(false)
+              setShowModeMenu(false)
+              textareaRef.current?.focus()
+            }}
+          >
+            <TelescopeIcon className={`w-[18px] h-[18px] flex-shrink-0 ${deepResearchMode ? 'text-[--vzn-accent]' : 'text-[--vzn-text-muted]'}`} />
+            <span className="flex-1 text-left">{t.chat_menu_deep_research}</span>
+            {deepResearchMode && <CheckIcon className="w-4 h-4 flex-shrink-0 text-[--vzn-accent]" />}
+          </button>
+        </div>,
+        document.body
+      )}
     </div>
   )
 
@@ -1337,150 +1567,91 @@ export function ChatPage() {
       <div className="flex-1 flex flex-col min-h-0">
         <div className="app-workspace">
 
-          {/* ── Top action bar: model badge (opens config) + actions ── */}
-          <div className="app-topbar gap-1.5">
-            {/* Model badge — single trigger for AI config popup */}
-            <div className="relative" ref={aiConfigRef}>
-              <button
-                type="button"
-                onClick={() => setShowAIConfig((v) => !v)}
-                title={t.translate_ai_config_title}
-                className={`chat-model-badge ${showAIConfig ? 'chat-model-badge-active' : ''}`}
-              >
-                <ProviderIcon provider={selectedProvider} size={14} />
-                <span className="max-w-[160px] truncate">{currentModelLabel}</span>
-                <ChevronDownIcon className="w-3 h-3 opacity-60" />
-              </button>
+          {messages.length === 0 ? (
+            /* ── Empty state — ChatGPT style ── */
+            <div className="flex-1 flex flex-col items-center justify-center gap-6 px-4 pb-8 overflow-y-auto">
 
-              {/* AI config popup */}
-              {showAIConfig && (
-                <div className="floating-panel ai-config-panel absolute top-full left-0 mt-2 z-50 w-[440px] p-4 flex flex-col gap-4 fade-in">
-                  <h2 className="popover-title">
-                    {t.translate_ai_config_title}
-                  </h2>
-                  <div className="flex flex-col gap-3">
-                    <ModelSelector />
-                    <SystemPromptDropdown
-                      chatSystemPrompt={chatSystemPrompt}
-                      systemPromptPresets={systemPromptPresets}
-                      activePreset={activePreset}
-                      onSetChatSystemPrompt={setChatSystemPrompt}
-                      onNavigateSettings={() => { openSettings(); setShowAIConfig(false) }}
-                      onAddPreset={addSystemPromptPreset}
-                      t={t}
-                    />
-                  </div>
+              {/* Greeting heading */}
+              <h1
+                className="text-[28px] font-semibold tracking-tight text-center select-none leading-tight"
+                style={{ color: 'var(--vzn-text-strong)' }}
+              >
+                {t.chat_empty_desc}
+              </h1>
+
+              {!hasKey && (
+                <div className="flex flex-col items-center gap-2">
+                  <p className="text-sm" style={{ color: 'var(--vzn-text-muted)' }}>{t.chat_error_no_key}</p>
+                  <button type="button" onClick={() => openSettings()} className="btn-primary btn-sm">
+                    {t.chat_error_open_settings}
+                  </button>
                 </div>
               )}
-            </div>
 
-            {/* Active session turn count — subtle informational text */}
-            {messages.length > 0 && (
-              <span className="ui-meta ml-1 hidden font-medium md:inline">
-                · {messages.filter((m) => m.role === 'user').length} {t.history_chat_messages}
-              </span>
-            )}
-
-            <div className="flex-1" />
-
-            {/* New chat */}
-            <button
-              type="button"
-              onClick={handleNewChat}
-              title={newChatShortcutLabel ? `${t.chat_new_session} (${newChatShortcutLabel})` : t.chat_new_session}
-              className="toolbar-pill-button cursor-pointer whitespace-nowrap"
-            >
-              <PlusIcon />
-              <span>{t.chat_new_session}</span>
-            </button>
-
-            {/* Clear — only when there are messages */}
-            {messages.length > 0 && (
-              <button
-                type="button"
-                onClick={handleClear}
-                title={t.chat_clear}
-                className="toolbar-pill-button toolbar-pill-danger cursor-pointer whitespace-nowrap"
-              >
-                <TrashIcon />
-                <span>{t.chat_clear}</span>
-              </button>
-            )}
-          </div>
-
-          {messages.length === 0 ? (
-            /* ── Empty state: compact centered layout ── */
-            <div className="flex-1 flex flex-col items-center justify-center gap-7 px-4 pb-6 overflow-y-auto">
-              {/* Logo + heading */}
-              <div className="flex flex-col items-center gap-3 text-center select-none">
-                <AppLogoIcon size={52} />
-                <div className="flex flex-col gap-1">
-                  <h2 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--vzn-text-strong)' }}>
-                    {t.chat_empty_title}
-                  </h2>
-                  <p className="ui-caption mx-auto max-w-[320px] leading-relaxed">
-                    {t.chat_empty_desc}
-                  </p>
-                </div>
-                {!hasKey && (
-                  <div className="flex flex-col items-center gap-2 mt-1">
-                    <p className="text-xs" style={{ color: 'var(--vzn-text-muted)' }}>{t.chat_error_no_key}</p>
-                    <button
-                      type="button"
-                      onClick={() => openSettings()}
-                      className="btn-primary btn-sm"
-                    >
-                      {t.chat_error_open_settings}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Composer + suggestion chips */}
-              <div className="flex w-full max-w-2xl flex-col gap-3">
-                <div className={`chat-composer w-full ${isDraggingOver ? 'chat-composer-drop' : ''}`}>
-                  {inputArea}
-                </div>
-
-                {/* Suggestion chips — 2×2 grid */}
-                <div className="grid grid-cols-2 gap-2">
+              {/* Suggestion chips — 2×2 grid like ChatGPT */}
+              {hasKey && (
+                <div className="w-full max-w-2xl grid grid-cols-2 gap-3">
                   {([
-                    { icon: <TranslateIcon className="h-4 w-4" />, label: t.chat_suggest_translate, prompt: t.chat_suggest_translate_prompt },
-                    { icon: <SearchIcon className="h-4 w-4" />, label: t.chat_suggest_research, prompt: t.chat_suggest_research_prompt },
-                    { icon: <LightbulbIcon className="h-4 w-4" />, label: t.chat_suggest_explain, prompt: t.chat_suggest_explain_prompt },
-                    { icon: <PencilIcon className="h-4 w-4" />, label: t.chat_suggest_write, prompt: t.chat_suggest_write_prompt },
-                  ] as const).map(({ icon, label, prompt }) => (
+                    { icon: <TranslateIcon className="w-4 h-4" />, title: t.chat_suggest_translate, desc: t.chat_suggest_translate_desc, prompt: t.chat_suggest_translate_prompt },
+                    { icon: <TelescopeIcon className="w-4 h-4" />, title: t.chat_suggest_research, desc: t.chat_suggest_research_desc, prompt: t.chat_suggest_research_prompt },
+                    { icon: <LightbulbIcon className="w-4 h-4" />, title: t.chat_suggest_explain, desc: t.chat_suggest_explain_desc, prompt: t.chat_suggest_explain_prompt },
+                    { icon: <PencilIcon className="w-4 h-4" />, title: t.chat_suggest_write, desc: t.chat_suggest_write_desc, prompt: t.chat_suggest_write_prompt },
+                  ] as const).map((item) => (
                     <button
-                      key={label}
+                      key={item.title}
                       type="button"
-                      className="chat-suggest-chip group"
+                      className="chat-suggest-chip"
                       onClick={() => {
-                        setInputText(prompt)
-                        textareaRef.current?.focus()
+                        setInputText(item.prompt)
+                        setTimeout(() => textareaRef.current?.focus(), 0)
                       }}
                     >
-                      <span className="chat-suggest-icon">{icon}</span>
-                      <span className="text-xs font-semibold leading-snug" style={{ color: 'var(--vzn-text)' }}>
-                        {label}
+                      <span className="chat-suggest-icon">{item.icon}</span>
+                      <span className="flex flex-col gap-0.5 min-w-0">
+                        <span className="text-sm font-semibold" style={{ color: 'var(--vzn-text-strong)' }}>{item.title}</span>
+                        <span className="text-xs leading-snug" style={{ color: 'var(--vzn-text-muted)' }}>{item.desc}</span>
                       </span>
                     </button>
                   ))}
                 </div>
+              )}
+
+              {/* Composer */}
+              <div className="w-full max-w-2xl">
+                <div className={`chat-composer w-full ${isDraggingOver ? 'chat-composer-drop' : ''}`}>
+                  {inputArea}
+                </div>
               </div>
             </div>
           ) : (
-            /* ── With messages: card layout ── */
-            <div className={`surface-panel flex-1 min-h-0 transition-colors duration-150 ${
-              isDraggingOver ? 'surface-panel-drop' : ''
-            }`}>
+            /* ── With messages: full-page ChatGPT style ── */
+            <div className={`flex-1 min-h-0 flex flex-col relative ${isDraggingOver ? 'surface-panel-drop' : ''}`}>
 
-              {/* Messages list — consecutive research-step messages are
-               *  collapsed into a single ResearchStepsPanel so a Deep Research
-               *  reply with 6–10 internal phases shows up as ONE tidy
-               *  "Đã suy nghĩ · 8 bước" card rather than a wall of nested UI.
-               *  See ResearchStepsPanel.tsx for the rationale and behaviour. */}
+              {/* Floating action buttons — top-right overlay */}
+              <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleNewChat}
+                  title={newChatShortcutLabel ? `${t.chat_new_session} (${newChatShortcutLabel})` : t.chat_new_session}
+                  className="toolbar-pill-button cursor-pointer whitespace-nowrap"
+                >
+                  <PlusIcon />
+                  <span>{t.chat_new_session}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  title={t.chat_clear}
+                  className="toolbar-pill-button toolbar-pill-danger cursor-pointer whitespace-nowrap"
+                >
+                  <TrashIcon />
+                  <span>{t.chat_clear}</span>
+                </button>
+              </div>
+
+              {/* Messages list — scrollable, max-width centered */}
               <div className="flex-1 overflow-y-auto">
-                <div className="px-4 py-5 space-y-4">
+                <div className="max-w-3xl mx-auto px-4 pt-12 pb-4 space-y-6">
                   {(() => {
                     const lastAssistantIdx = messages.reduce(
                       (acc, m, i) => (m.role === 'assistant' ? i : acc), -1
@@ -1533,16 +1704,15 @@ export function ChatPage() {
                 </div>
               </div>
 
-              {/* Input — panel footer, wrapped as composer card */}
+              {/* Input — sticky footer, max-width centered */}
               <div
-                className="flex-shrink-0 px-3 pb-3 pt-1 border-t"
-                style={{
-                  borderColor: 'var(--vzn-border)',
-                  background: 'color-mix(in srgb, var(--vzn-surface) 70%, transparent)',
-                }}
+                className="flex-shrink-0 px-4 pb-4 pt-2"
+                style={{ background: 'color-mix(in srgb, var(--vzn-bg) 85%, transparent)' }}
               >
-                <div className="chat-composer">
-                  {inputArea}
+                <div className="max-w-3xl mx-auto">
+                  <div className="chat-composer">
+                    {inputArea}
+                  </div>
                 </div>
               </div>
             </div>

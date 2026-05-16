@@ -519,6 +519,10 @@ export interface Translations {
   chat_error_open_settings: string
   chat_attach_image: string
   chat_remove_image: string
+  chat_menu_attach_files: string
+  chat_menu_deep_research: string
+  chat_menu_web_search: string
+  chat_menu_instructions: string
   chat_copy: string
   chat_copied: string
   chat_voice_record: string
@@ -538,6 +542,10 @@ export interface Translations {
   chat_suggest_write: string
   chat_suggest_write_desc: string
   chat_suggest_write_prompt: string
+
+  chat_mode_chip_image: string
+  chat_mode_chip_web: string
+  chat_mode_chip_research: string
   chat_system_prompt: string
 
   chat_system_prompt_placeholder: string
@@ -546,6 +554,8 @@ export interface Translations {
   /** HC-NEW-04: Description for the "None" option in SystemPromptDropdown */
   chat_system_prompt_none_desc: string
   chat_regenerate: string
+  chat_feedback_good: string
+  chat_feedback_bad: string
   chat_download_image: string
   chat_open_image: string
   chat_image_preview: string
@@ -817,6 +827,16 @@ export interface Translations {
   chat_smart_thinking_disable: string
   chat_smart_thinking_hint: string
   chat_smart_thinking_badge: string
+
+  chat_web_search_badge: string
+  chat_web_search_hint: string
+
+  chat_image_mode_badge: string
+  chat_image_mode_hint: string
+  chat_image_generate_done: string
+  chat_error_image_generate_failed: string
+  chat_error_image_generate_reload_required: string
+  chat_menu_image_mode: string
 
   chat_smart_thinking_searching: string
   chat_smart_thinking_step_label_prefix: string

@@ -76,6 +76,10 @@ export const chatSection = {
   editChatImage: (params: ChatImageEditParams) =>
     ipcRenderer.invoke('chat:image-edit', params),
 
+  // AI Chat image generation — generates a new image from a text prompt.
+  generateChatImage: (params: { provider: string; model: string; prompt: string }) =>
+    ipcRenderer.invoke('chat:image-generate', params),
+
   chatStream: (params: ChatParams & { requestId: string }) =>
     ipcRenderer.invoke('chat:stream', params),
 

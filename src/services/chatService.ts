@@ -183,6 +183,13 @@ export const chatService = {
       errorCode: 'PRELOAD_OUTDATED',
     }),
 
+  generateImage: (params: { provider: string; model: string; prompt: string }): Promise<ChatImageEditResult> =>
+    window.api.generateChatImage?.(params) ?? Promise.resolve({
+      success: false,
+      error: 'Image generation bridge is unavailable. Restart Viezan and try again.',
+      errorCode: 'PRELOAD_OUTDATED',
+    }),
+
   /** Stream a conversational message and receive provider tokens as they arrive. */
   stream: async (params: ChatParams, callbacks: ChatStreamCallbacks = {}): Promise<ChatResult> => {
     if (

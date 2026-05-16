@@ -20,7 +20,7 @@ import {
   CHAT_IMAGE_EDIT_RESPONSE_MODALITIES,
   CHAT_IMAGE_EDIT_SUPPORTED_MIME_TYPES,
   GEMINI_IMAGE_MODEL_RETRY_ERROR_MARKERS,
-  MAX_CHAT_IMAGE_EDIT_MODEL_ID_CHARS,
+  MAX_CHAT_IMAGE_EDIT_MODEL_ID_CHARS,OPENAI_IMAGE_EDIT_OPTIONS 
 } from './chatConfig'
 import { CHAT_IMAGE_EDIT_VALIDATION_MESSAGES, CHAT_RUNTIME_MESSAGES } from './chatMessages'
 import { buildChatImageEditPrompt } from './chatPrompts'
@@ -32,12 +32,11 @@ import {
   OPENAI_IMAGE_EDIT_MODEL,
 } from './ipcConstants'
 import { invalidIpcInput, isNonEmptyString, isRecord } from './ipcValidation'
-import { isValidProvider, unknownProviderError } from './providers/types'
-import {
-  type ChatImageEditFn,
-  type ChatImageEditResultPayload,
+import type {
+  ChatImageEditFn,
+  ChatImageEditResultPayload,
 } from './providers/chatProviderTypes'
-import { OPENAI_IMAGE_EDIT_OPTIONS } from './chatConfig'
+import { isValidProvider, unknownProviderError } from './providers/types'
 
 // ── IPC payload typing ───────────────────────────────────────────────────────
 
@@ -286,4 +285,119 @@ export async function editChatImageWithGemini(
 export const CHAT_IMAGE_EDIT_PROVIDERS: Record<string, ChatImageEditFn> = {
   gemini: editChatImageWithGemini,
   openai: editChatImageWithOpenAI,
+}
+
+// ── Image generation (text-to-image, no input image) ─────────────────────────
+
+export type ChatImageGenerateFn = (
+  apiKey: string,
+  model: string,
+  prompt: string,
+) => Promise<ChatImageEditResultPayload>
+
+export async function generateChatImageWithOpenAI(
+  apiKey: string,
+  _model: string,
+  prompt: string,
+): Promise<ChatImageEditResultPayload> {
+  const openaiModule = await import('openai')
+  const OpenAI = openaiModule.default
+  const client = new OpenAI({ apiKey, timeout: CHAT_IMAGE_EDIT_TIMEOUT_MS })
+
+  const response = await client.images.generate({
+    model: OPENAI_IMAGE_EDIT_MODEL,
+    prompt,
+    ...OPENAI_IMAGE_EDIT_OPTIONS,
+  })
+  const result = response.data?.[0]
+
+  if (result?.b64_json) {
+    return {
+      imageBase64: result.b64_json,
+      imageMimeType: CHAT_IMAGE_EDIT_DEFAULT_MIME_TYPE,
+      usedModel: OPENAI_IMAGE_EDIT_MODEL,
+    }
+  }
+
+  if (result?.url) {
+    const downloaded = await convertRemoteImageUrlToBase64(result.url)
+    return { ...downloaded, usedModel: OPENAI_IMAGE_EDIT_MODEL }
+  }
+
+  throw new Error(CHAT_RUNTIME_MESSAGES.openAiNoEditedImage)
+}
+
+async function requestGeminiImageGenerate(
+  apiKey: string,
+  imageModel: string,
+  prompt: string,
+): Promise<ChatImageEditResultPayload> {
+  const url = `${GEMINI_API_BASE}/models/${imageModel}:generateContent`
+  const body = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { responseModalities: CHAT_IMAGE_EDIT_RESPONSE_MODALITIES },
+  }
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), CHAT_IMAGE_EDIT_TIMEOUT_MS)
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': CHAT_IMAGE_EDIT_JSON_CONTENT_TYPE,
+      'x-goog-api-key': apiKey,
+    },
+    body: JSON.stringify(body),
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timer))
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(CHAT_RUNTIME_MESSAGES.geminiImageEditFailed(response.status, errorText))
+  }
+
+  const json = await response.json() as {
+    candidates?: Array<{ content?: { parts?: GeminiInlineDataPart[] } }>
+  }
+  const parts = json.candidates?.[0]?.content?.parts ?? []
+
+  for (const part of parts) {
+    const inlineData = part.inline_data ?? part.inlineData
+    if (inlineData?.data) {
+      const outputInlineData = inlineData as { mime_type?: string; mimeType?: string; data: string }
+      const outputMimeType = outputInlineData.mime_type ?? outputInlineData.mimeType
+      return {
+        imageBase64: outputInlineData.data,
+        imageMimeType: outputMimeType ?? CHAT_IMAGE_EDIT_DEFAULT_MIME_TYPE,
+        usedModel: imageModel,
+      }
+    }
+  }
+
+  const text = parts.map((part) => part.text).filter(Boolean).join('\n').trim()
+  throw new Error(
+    text ? CHAT_RUNTIME_MESSAGES.geminiTextWithoutImage(text) : CHAT_RUNTIME_MESSAGES.geminiNoEditedImage
+  )
+}
+
+export async function generateChatImageWithGemini(
+  apiKey: string,
+  _model: string,
+  prompt: string,
+): Promise<ChatImageEditResultPayload> {
+  let lastError: unknown
+  for (const imageModel of GEMINI_IMAGE_EDIT_MODELS) {
+    try {
+      return await requestGeminiImageGenerate(apiKey, imageModel, prompt)
+    } catch (error) {
+      lastError = error
+      if (!shouldTryNextGeminiImageModel(error)) break
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(String(lastError))
+}
+
+/** Provider → image-generate-fn registry (text-to-image). */
+export const CHAT_IMAGE_GENERATE_PROVIDERS: Record<string, ChatImageGenerateFn> = {
+  gemini: generateChatImageWithGemini,
+  openai: generateChatImageWithOpenAI,
 }

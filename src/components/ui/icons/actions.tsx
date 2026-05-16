@@ -186,3 +186,83 @@ export function TranslateIcon({ className = 'w-6 h-6' }: IconProps) {
     </svg>
   )
 }
+
+/** Globe / world icon — represents internet / web search. */
+export function GlobeIcon({ className = 'w-4 h-4' }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path strokeLinecap="round" d="M3.6 9h16.8M3.6 15h16.8" />
+      <path strokeLinecap="round" d="M12 3a14.5 14.5 0 010 18M12 3a14.5 14.5 0 000 18" />
+    </svg>
+  )
+}
+
+/** Wand / magic-wand icon — represents AI image generation. */
+export function WandIcon({ className = 'w-4 h-4' }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 4l5 5L8 21l-5-5L15 4z" />
+      <path strokeLinecap="round" d="M20 2l1 2M22 4l-2-1M3 16l-1 2M2 18l1-1" />
+    </svg>
+  )
+}
+
+/** Paperclip icon — used for attach file / add image button. */
+export function PaperclipIcon({ className = 'w-4 h-4' }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+    </svg>
+  )
+}
+
+/** Telescope icon — used for Deep Research mode (scientific investigation). */
+export function TelescopeIcon({ className = 'w-4 h-4' }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
+      {/* Main tube */}
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 20L20 6" />
+      {/* Eyepiece */}
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2 22l3.5-3.5" />
+      {/* Objective lens */}
+      <ellipse cx="19" cy="5.5" rx="2.5" ry="2.5" transform="rotate(-45 19 5.5)" />
+      {/* Tripod legs */}
+      <path strokeLinecap="round" d="M11 17l-2 4M13 17l0 4" />
+    </svg>
+  )
+}
+
+/** Image with sparkle icon — photo frame + AI star, for image generation mode. */
+export function ImageSparkleIcon({ className = 'w-4 h-4' }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
+      {/* Photo frame */}
+      <rect x="2" y="5" width="17" height="13" rx="2" />
+      {/* Mountain landscape inside frame */}
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2 14l4-4 3.5 3 4-5L19 14" />
+      {/* 4-point sparkle star — top-right corner */}
+      <path fill="currentColor" stroke="none"
+        d="M20.5 1.5l.6 1.9 1.9.6-1.9.6-.6 1.9-.6-1.9-1.9-.6 1.9-.6z" />
+    </svg>
+  )
+}
+
+export function ThumbsUpIcon({ className = 'w-3.5 h-3.5' }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M7 10v12" />
+      <path d="M15 5.88L14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88z" />
+    </svg>
+  )
+}
+
+export function ThumbsDownIcon({ className = 'w-3.5 h-3.5' }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M17 14V2" />
+      <path d="M9 18.12L10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88z" />
+    </svg>
+  )
+}

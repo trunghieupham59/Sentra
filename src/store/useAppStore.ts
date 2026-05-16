@@ -151,8 +151,11 @@ export const useAppStore = create<AppState>()(
         systemPromptPresets: state.systemPromptPresets,
         chatPendingDraft: state.chatPendingDraft,
         chatPendingDeepResearchMode: state.chatPendingDeepResearchMode,
+        chatPendingWebSearchMode: state.chatPendingWebSearchMode,
+        chatPendingImageMode: state.chatPendingImageMode,
 
         langUsage: state.langUsage,
+        recentModels: state.recentModels,
         dictionaryEntries: state.dictionaryEntries,
         costCurrency: state.costCurrency,
         apiKeyUsageTotals: state.apiKeyUsageTotals,

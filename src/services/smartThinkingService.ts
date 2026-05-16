@@ -100,6 +100,12 @@ export interface SmartThinkingParams {
    * the step-by-step discipline directive.
    */
   carefulReasoning?: boolean
+  /**
+   * When true, skip the AI classifier and always run a web search before
+   * answering. Used by "Web Search" mode where the user explicitly wants
+   * web results every time — no AI routing decision needed.
+   */
+  forceWebSearch?: boolean
 }
 
 
@@ -452,6 +458,7 @@ export const smartThinkingService = {
     callbacks,
     signal,
     carefulReasoning,
+    forceWebSearch,
   }: SmartThinkingParams): Promise<void> {
 
     const date = getCurrentLocaleDateTime()
@@ -466,9 +473,10 @@ export const smartThinkingService = {
     } = callbacks
 
     // ── Step 1: Classify (best-effort; failures fall through to no-search) ──
+    // When forceWebSearch=true, skip the AI classifier entirely and always search.
     let classify: ClassifyResult = {
-      needsWeb: false,
-      query: '',
+      needsWeb: forceWebSearch ?? false,
+      query: forceWebSearch ? question.slice(0, 200) : '',
       reason: '',
       answerFocus: '',
       sourceGuidance: '',
@@ -477,7 +485,7 @@ export const smartThinkingService = {
       reliabilityRequirement: '',
     }
 
-    if (hasWebSearchApi() && !signal?.aborted) {
+    if (!forceWebSearch && hasWebSearchApi() && !signal?.aborted) {
       try {
         const classifierContext = formatClassifierContext(messages, question)
         const result = await chatService.send({

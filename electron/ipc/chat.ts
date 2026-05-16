@@ -29,7 +29,7 @@
  */
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import { CHAT_IPC_CHANNELS } from './chatConfig'
-import { CHAT_IMAGE_EDIT_PROVIDERS, parseChatImageEditParams } from './chatImageEdit'
+import { CHAT_IMAGE_EDIT_PROVIDERS, CHAT_IMAGE_GENERATE_PROVIDERS, parseChatImageEditParams } from './chatImageEdit'
 import { CHAT_LOG_MESSAGES, CHAT_RUNTIME_MESSAGES } from './chatMessages'
 import { resolveChatOutputTokens } from './chatTokenResolver'
 import { parseChatParams } from './chatValidation'
@@ -37,13 +37,13 @@ import { classifyProviderError, noApiKeyResponse } from './errorUtils'
 import { isNonEmptyString, isRecord } from './ipcValidation'
 import { isLocalProvider, LOCAL_AI_PLACEHOLDER_KEY } from './localAi'
 import {
-  CHAT_STREAM_CANCELLED_MESSAGE,
-  isAbortError,
-} from './providers/chatProviderTypes'
-import {
   CHAT_PROVIDERS,
   CHAT_STREAM_PROVIDERS,
 } from './providers/chatProviderRegistry'
+import {
+  CHAT_STREAM_CANCELLED_MESSAGE,
+  isAbortError,
+} from './providers/chatProviderTypes'
 import { unknownProviderError } from './providers/types'
 import { withRetry } from './retry'
 import { getStoredApiKey } from './storage'
@@ -118,6 +118,7 @@ function sendChatStreamEvent(event: IpcMainInvokeEvent, payload: ChatStreamEvent
 export function registerChatHandlers(ipcMain: IpcMain) {
   registerChatSendHandler(ipcMain)
   registerChatImageEditHandler(ipcMain)
+  registerChatImageGenerateHandler(ipcMain)
   registerChatStreamHandler(ipcMain)
   registerChatStreamCancelHandler(ipcMain)
 }
@@ -178,6 +179,49 @@ function registerChatImageEditHandler(ipcMain: IpcMain) {
 
     try {
       const result = await withRetry(() => editFn(apiKey, model, prompt, imageBase64, imageMimeType))
+      return {
+        success: true,
+        imageBase64: result.imageBase64,
+        imageMimeType: result.imageMimeType,
+        usedProvider: provider,
+        usedModel: result.usedModel,
+      }
+    } catch (error: unknown) {
+      console.error(CHAT_LOG_MESSAGES.imageEditProviderError(provider), error)
+      return toChatFailure(error)
+    }
+  })
+}
+
+// ── chat:image-generate ───────────────────────────────────────────────────────
+
+function registerChatImageGenerateHandler(ipcMain: IpcMain) {
+  ipcMain.handle(CHAT_IPC_CHANNELS.imageGenerate, async (_event, rawParams: unknown) => {
+    if (!rawParams || typeof rawParams !== 'object') {
+      return { success: false, error: 'Invalid payload', errorCode: 'INVALID_INPUT' }
+    }
+    const p = rawParams as Record<string, unknown>
+    const provider = typeof p.provider === 'string' ? p.provider.trim() : ''
+    const model = typeof p.model === 'string' ? p.model.trim() : ''
+    const prompt = typeof p.prompt === 'string' ? p.prompt.trim() : ''
+    if (!provider || !model || !prompt) {
+      return { success: false, error: 'provider, model and prompt are required', errorCode: 'INVALID_INPUT' }
+    }
+
+    const generateFn = CHAT_IMAGE_GENERATE_PROVIDERS[provider]
+    if (!generateFn) {
+      return {
+        success: false,
+        error: CHAT_RUNTIME_MESSAGES.imageEditUnsupportedProvider,
+        errorCode: 'NO_IMAGE_EDIT',
+      }
+    }
+
+    const apiKey = getProviderCredential(provider)
+    if (!apiKey) return noApiKeyResponse(provider)
+
+    try {
+      const result = await withRetry(() => generateFn(apiKey, model, prompt))
       return {
         success: true,
         imageBase64: result.imageBase64,

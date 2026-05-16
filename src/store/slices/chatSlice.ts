@@ -36,6 +36,8 @@ export interface ChatSlice {
    */
   chatPendingDraft: string
   chatPendingDeepResearchMode: boolean
+  chatPendingWebSearchMode: boolean
+  chatPendingImageMode: boolean
 
   // Actions
   createChatSession: (provider: Provider, model: string) => string
@@ -49,10 +51,18 @@ export interface ChatSlice {
   setChatSessionDraft: (sessionId: string, draft: string) => void
   /** Persist the per-session Deep Research toggle. */
   setChatSessionDeepResearchMode: (sessionId: string, mode: boolean) => void
+  /** Persist the per-session Web Search toggle. */
+  setChatSessionWebSearchMode: (sessionId: string, mode: boolean) => void
+  /** Persist the per-session Image Mode toggle. */
+  setChatSessionImageMode: (sessionId: string, mode: boolean) => void
   /** Persist the empty-state composer draft (no active session). */
   setChatPendingDraft: (draft: string) => void
   /** Persist the empty-state Deep Research toggle (no active session). */
   setChatPendingDeepResearchMode: (mode: boolean) => void
+  /** Persist the empty-state Web Search toggle (no active session). */
+  setChatPendingWebSearchMode: (mode: boolean) => void
+  /** Persist the empty-state Image Mode toggle (no active session). */
+  setChatPendingImageMode: (mode: boolean) => void
   /**
    * Persist (or clear with `null`) the in-progress Deep Research pipeline
    * state on a session. Called from the deep-research orchestration after
@@ -78,6 +88,8 @@ export const createChatSlice = (set: SliceSet): ChatSlice => ({
   systemPromptPresets: [],
   chatPendingDraft: '',
   chatPendingDeepResearchMode: false,
+  chatPendingWebSearchMode: false,
+  chatPendingImageMode: false,
 
   createChatSession: (provider, model) => {
     const id = createClientId('chat')
@@ -94,6 +106,8 @@ export const createChatSlice = (set: SliceSet): ChatSlice => ({
         model,
         ...(state.chatPendingDraft ? { draftInput: state.chatPendingDraft } : {}),
         ...(state.chatPendingDeepResearchMode ? { deepResearchMode: true } : {}),
+      ...(state.chatPendingWebSearchMode ? { webSearchMode: true } : {}),
+      ...(state.chatPendingImageMode ? { imageMode: true } : {}),
       }
       return {
         // Prepend new session and enforce MAX_CHAT_SESSIONS cap — oldest sessions are trimmed
@@ -101,6 +115,8 @@ export const createChatSlice = (set: SliceSet): ChatSlice => ({
         activeChatSessionId: id,
         chatPendingDraft: '',
         chatPendingDeepResearchMode: false,
+        chatPendingWebSearchMode: false,
+        chatPendingImageMode: false,
       }
     })
     return id
@@ -222,9 +238,27 @@ export const createChatSlice = (set: SliceSet): ChatSlice => ({
       ),
     })),
 
+  setChatSessionWebSearchMode: (sessionId, mode) =>
+    set((state: ChatSlice) => ({
+      chatSessions: state.chatSessions.map((s) =>
+        s.id === sessionId ? { ...s, webSearchMode: mode || undefined } : s
+      ),
+    })),
+
+  setChatSessionImageMode: (sessionId, mode) =>
+    set((state: ChatSlice) => ({
+      chatSessions: state.chatSessions.map((s) =>
+        s.id === sessionId ? { ...s, imageMode: mode || undefined } : s
+      ),
+    })),
+
   setChatPendingDraft: (draft) => set({ chatPendingDraft: draft }),
 
   setChatPendingDeepResearchMode: (mode) => set({ chatPendingDeepResearchMode: mode }),
+
+  setChatPendingWebSearchMode: (mode) => set({ chatPendingWebSearchMode: mode }),
+
+  setChatPendingImageMode: (mode) => set({ chatPendingImageMode: mode }),
 
   setChatSystemPrompt: (prompt) => set({ chatSystemPrompt: prompt }),
 

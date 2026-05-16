@@ -471,6 +471,17 @@ export interface ChatSession {
    * navigation within the same session. Resets to off for new sessions.
    */
   deepResearchMode?: boolean
+  /**
+   * Per-session Web Search toggle state — always forces a web search before
+   * answering. Mutually exclusive with deepResearchMode and imageMode.
+   */
+  webSearchMode?: boolean
+  /**
+   * Per-session Image Mode toggle — routes messages to image generation
+   * (text-only) or image editing (with attachment). Mutually exclusive with
+   * webSearchMode and deepResearchMode.
+   */
+  imageMode?: boolean
 }
 
 
@@ -751,12 +762,16 @@ export interface WindowApi {
     carefulReasoning?: boolean
   }) => Promise<ChatResult>
   editChatImage?: (params: {
-
     provider: string
     model: string
     prompt: string
     imageBase64: string
     imageMimeType: string
+  }) => Promise<ChatImageEditResult>
+  generateChatImage?: (params: {
+    provider: string
+    model: string
+    prompt: string
   }) => Promise<ChatImageEditResult>
   chatStream: (params: {
     requestId: string

@@ -4,7 +4,7 @@ import { useAppStore, useT } from '../../store/useAppStore'
 import type { ChatMessage, ChatMessageContent } from '../../types'
 import { AppLogoIcon } from '../AppLogo'
 import { MarkdownText } from '../MarkdownText'
-import { CopyIcon, DownloadIcon, LightbulbIcon, RefreshIcon, SparklesIcon, SpinnerIcon, UserIcon, XIcon } from '../ui/icons'
+import { CopyIcon, DownloadIcon, LightbulbIcon, RefreshIcon, SparklesIcon, SpinnerIcon, ThumbsDownIcon, ThumbsUpIcon, UserIcon, XIcon } from '../ui/icons'
 import { UsageCostBadge } from '../ui/UsageCostBadge'
 
 /**
@@ -283,7 +283,7 @@ function MessageBubbleImpl({
   const showPinnedActions = !isUser && (isLastAssistant || Boolean(message.error))
 
   return (
-    <div className={`group flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'} items-end`}>
+    <div className={`group flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'} items-start`}>
       {/* Avatar */}
       <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center overflow-hidden shadow-sm
                        ${isUser
@@ -392,6 +392,28 @@ function MessageBubbleImpl({
             >
               <DownloadIcon className="w-3.5 h-3.5" />
             </button>
+          )}
+
+          {/* Thumbs up / down feedback — assistant messages only, not loading */}
+          {!isUser && !message.isLoading && textContent && (
+            <>
+              <button
+                type="button"
+                title={t.chat_feedback_good}
+                aria-label={t.chat_feedback_good}
+                className={MESSAGE_ACTION_BUTTON_CLASS}
+              >
+                <ThumbsUpIcon className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                title={t.chat_feedback_bad}
+                aria-label={t.chat_feedback_bad}
+                className={MESSAGE_ACTION_BUTTON_CLASS}
+              >
+                <ThumbsDownIcon className="w-3.5 h-3.5" />
+              </button>
+            </>
           )}
 
           {/* Regenerate button — only on last assistant message */}

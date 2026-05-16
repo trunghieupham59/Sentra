@@ -7,6 +7,7 @@ type ModelTokenRule =
 export const CHAT_IPC_CHANNELS = {
   send: 'chat:send',
   imageEdit: 'chat:image-edit',
+  imageGenerate: 'chat:image-generate',
   stream: 'chat:stream',
   streamEvent: 'chat:stream:event',
   streamCancel: 'chat:stream:cancel',

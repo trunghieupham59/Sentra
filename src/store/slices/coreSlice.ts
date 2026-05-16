@@ -28,6 +28,8 @@ export interface CoreSlice {
   // Provider/Model selection
   selectedProvider: Provider
   selectedModels: Record<Provider, string>
+  recentModels: Array<{ provider: Provider; modelId: string }>
+  recordModelUsage: (provider: Provider, modelId: string) => void
 
   // Active page
   activePage: AppPage
@@ -73,6 +75,7 @@ export const createCoreSlice = (set: SliceSet, get: SliceGet): CoreSlice => ({
   translateErrorCode: null,
   selectedProvider: DEFAULT_SETTINGS.defaultProvider,
   selectedModels: DEFAULT_SETTINGS.defaultModels,
+  recentModels: [],
   activePage: 'translate',
   settingsOpen: false,
   langUsage: {},
@@ -129,6 +132,13 @@ export const createCoreSlice = (set: SliceSet, get: SliceGet): CoreSlice => ({
     set({ selectedProvider: provider, translateError: null, translateErrorCode: null }),
   setSelectedModel: (provider, model) =>
     set((state: CoreSlice) => ({ selectedModels: { ...state.selectedModels, [provider]: model } })),
+  recordModelUsage: (provider, modelId) =>
+    set((state: CoreSlice) => {
+      const filtered = state.recentModels.filter(
+        (r) => !(r.provider === provider && r.modelId === modelId),
+      )
+      return { recentModels: [{ provider, modelId }, ...filtered].slice(0, 5) }
+    }),
 
   setActivePage: (page) => set({ activePage: page }),
   openSettings: () => set({ settingsOpen: true }),
