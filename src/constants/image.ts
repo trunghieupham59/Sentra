@@ -23,6 +23,14 @@ export const IMAGE_JPEG_QUALITY = 0.85
 export const MAX_IMAGE_BYTES = 900_000
 
 /**
+ * Hard upper bound for the raw, uncompressed image file a user can attach.
+ * Anything larger is rejected before we attempt to decode/resize — a 50 MP
+ * HEIC or RAW dropped into the composer can otherwise allocate hundreds of
+ * megabytes of canvas memory and freeze the renderer.
+ */
+export const MAX_IMAGE_INPUT_BYTES = 25 * 1024 * 1024 // 25 MB
+
+/**
  * Accepted MIME types string for <input type="file" accept="..."> on image pickers.
  * Used in TranslatePage and any other file-input that accepts images.
  */

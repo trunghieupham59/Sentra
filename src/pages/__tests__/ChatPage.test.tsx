@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { TRANSLATIONS } from '../../i18n'
 import { deepResearchService } from '../../services/deepResearchService'
 import { useAppStore } from '../../store/useAppStore'
 import type { ChatResult, ChatStreamEvent } from '../../types'
@@ -96,9 +97,10 @@ describe('ChatPage', () => {
 
   it('shows API key warning when no key is configured', () => {
     render(<ChatPage />)
-    // When no key, a warning message should appear in empty state
-    const warningText = document.querySelector('.text-gray-500, .text-gray-400')
-    expect(warningText).not.toBeNull()
+    // The warning message text (from t.chat_error_no_key) must be visible in
+    // the empty state. We assert by content rather than CSS class so the test
+    // survives design-token refactors.
+    expect(screen.getByText(TRANSLATIONS.en.chat_error_no_key)).toBeInTheDocument()
   })
 
   it('send button is disabled when no API key', () => {

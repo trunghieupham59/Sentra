@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { AppLogoIcon } from '../components/AppLogo'
 import { MessageBubble } from '../components/chat/MessageBubble'
 import { ResearchStepsPanel } from '../components/chat/ResearchStepsPanel'
@@ -21,7 +22,7 @@ import {
 } from '../components/ui/icons'
 
 import { VoiceRecorder } from '../components/VoiceRecorder'
-import { MAX_CHAT_IMAGE_DIMENSION } from '../constants/image'
+import { MAX_CHAT_IMAGE_DIMENSION, MAX_IMAGE_INPUT_BYTES } from '../constants/image'
 import { COPY_FEEDBACK_DURATION_MS } from '../constants/ui'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import { chatService } from '../services/chatService'
@@ -172,6 +173,10 @@ const VOICE_BAR_DELAY_STEP_S    = 0.05 // s between each bar's animation start
 
 // ─── Main ChatPage ────────────────────────────────────────────────────────────
 export function ChatPage() {
+  // Subscribe with `useShallow` so ChatPage only re-renders when one of the
+  // listed slices actually changes (instead of on every unrelated store mutation
+  // such as locale, history, usage cost, etc.). Actions are stable references in
+  // Zustand so they're safe to include without churn.
   const {
     selectedProvider, selectedModels, keyStatus,
     chatSendShortcut, chatNewSessionShortcut,
@@ -181,7 +186,34 @@ export function ChatPage() {
     recordUsageCost, setDeepResearchResumeState,
     setChatSessionDraft, setChatSessionDeepResearchMode,
     setChatPendingDraft, setChatPendingDeepResearchMode,
-  } = useAppStore()
+  } = useAppStore(
+    useShallow((s) => ({
+      selectedProvider: s.selectedProvider,
+      selectedModels: s.selectedModels,
+      keyStatus: s.keyStatus,
+      chatSendShortcut: s.chatSendShortcut,
+      chatNewSessionShortcut: s.chatNewSessionShortcut,
+      chatSessions: s.chatSessions,
+      activeChatSessionId: s.activeChatSessionId,
+      chatSystemPrompt: s.chatSystemPrompt,
+      systemPromptPresets: s.systemPromptPresets,
+      createChatSession: s.createChatSession,
+      setActiveChatSession: s.setActiveChatSession,
+      addChatMessage: s.addChatMessage,
+      updateChatMessage: s.updateChatMessage,
+      addChatSessionCost: s.addChatSessionCost,
+      clearChatSession: s.clearChatSession,
+      setChatSystemPrompt: s.setChatSystemPrompt,
+      addSystemPromptPreset: s.addSystemPromptPreset,
+      openSettings: s.openSettings,
+      recordUsageCost: s.recordUsageCost,
+      setDeepResearchResumeState: s.setDeepResearchResumeState,
+      setChatSessionDraft: s.setChatSessionDraft,
+      setChatSessionDeepResearchMode: s.setChatSessionDeepResearchMode,
+      setChatPendingDraft: s.setChatPendingDraft,
+      setChatPendingDeepResearchMode: s.setChatPendingDeepResearchMode,
+    })),
+  )
 
 
   const t = useT()
@@ -227,12 +259,6 @@ export function ChatPage() {
   const [isDraggingOver, setIsDraggingOver] = useState(false)
   /** Controls visibility of the AI config popup */
   const [showAIConfig, setShowAIConfig] = useState(false)
-<<<<<<< Updated upstream
-  /** Whether Deep Research multi-step pipeline is active */
-  const [deepResearchMode, setDeepResearchMode] = useState(false)
-=======
-  /** Controls visibility of the model picker dropdown */
-  const [showModelPicker, setShowModelPicker] = useState(false)
   /** Whether Deep Research multi-step pipeline is active — persisted per session */
   const [deepResearchMode, setDeepResearchModeLocal] = useState(() => {
     const s = useAppStore.getState()
@@ -250,7 +276,6 @@ export function ChatPage() {
       return next
     })
   }, [setChatSessionDeepResearchMode, setChatPendingDeepResearchMode])
->>>>>>> Stashed changes
 
   // Active preset = the preset whose content matches chatSystemPrompt
   const activePreset = systemPromptPresets.find((p) => p.content === chatSystemPrompt) ?? null
@@ -290,11 +315,14 @@ export function ChatPage() {
     updateChatMessage(sessionId, messageId, { cost })
   }, [addChatSessionCost, recordUsageCost, selectedProvider, selectedModels, updateChatMessage])
 
-  // Auto-scroll to bottom on new messages
+  // Auto-scroll to bottom on new messages.
+  // Use `instant` instead of `smooth` to avoid jank during streaming — when
+  // tokens land every ~60 ms a smooth scroll animation never settles and the
+  // browser ends up dropping frames on long replies.
   const msgCount = activeSession?.messages.length ?? 0
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll on new messages count
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
   }, [msgCount])
 
   // ── Auto-resize textarea ──
@@ -347,6 +375,14 @@ export function ChatPage() {
   // ── Image attachment ──
   const handleImageSelect = useCallback(async (file: File) => {
     setAttachImageError(null)
+    // Hard upper-bound check before decoding — a 50 MP RAW/HEIC dropped into
+    // the composer would otherwise allocate hundreds of megabytes of canvas
+    // memory inside resizeImageFile and freeze the renderer.
+    if (file.size > MAX_IMAGE_INPUT_BYTES) {
+      const maxMb = Math.round(MAX_IMAGE_INPUT_BYTES / (1024 * 1024))
+      setAttachImageError(t.image_translate_size_error(maxMb))
+      return
+    }
     try {
       // DUP-05: use shared resizeImageFile (fixed quality, no compression loop needed for chat)
       const result = await resizeImageFile(file, MAX_CHAT_IMAGE_DIMENSION)
@@ -356,7 +392,7 @@ export function ChatPage() {
       const msg = err instanceof Error ? err.message : t.image_translate_error_failed
       setAttachImageError(msg)
     }
-  }, [t.image_translate_error_failed])
+  }, [t.image_translate_error_failed, t.image_translate_size_error])
 
   const handleFileDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
@@ -667,7 +703,7 @@ export function ChatPage() {
     }
 
     const userMsg: ChatMessage = {
-      id: `msg-${Date.now()}-u`,
+      id: createClientId('msg-u'),
       role: 'user',
       content: userContent,
       timestamp: Date.now(),
@@ -716,7 +752,7 @@ export function ChatPage() {
       //   4. Streaming tokens — final answer fills the same bubble.
       // Reusing one bubble (instead of swapping between a step bubble and an answer bubble)
       // matches modern chat UIs and keeps the conversation flow visually stable.
-      const placeholderMsgId = `msg-${Date.now()}-a`
+      const placeholderMsgId = createClientId('msg-a')
       addChatMessage(sessionId, {
         id: placeholderMsgId,
         role: 'assistant',
@@ -831,7 +867,7 @@ export function ChatPage() {
     const shouldEditImage = Boolean(attachedImage && text && shouldRouteToImageEdit(text, true))
 
     if (attachedImage && shouldEditImage) {
-      const assistantMsgId = `msg-${Date.now()}-a`
+      const assistantMsgId = createClientId('msg-a')
       addChatMessage(sessionId, {
         id: assistantMsgId,
         role: 'assistant',
@@ -910,7 +946,7 @@ export function ChatPage() {
     // Smart Thinking does not support images; non-edit image prompts use vision chat.
 
     // Placeholder assistant message
-    const assistantMsgId = `msg-${Date.now()}-a`
+    const assistantMsgId = createClientId('msg-a')
     const assistantPlaceholder: ChatMessage = {
       id: assistantMsgId,
       role: 'assistant',
@@ -1150,7 +1186,10 @@ export function ChatPage() {
               />
             ))}
           </div>
-          <span className={`text-xs font-medium ${isVoiceInterim ? 'text-gray-400 italic' : 'voice-recording-text'}`}>
+          <span
+            className={`text-xs font-medium ${isVoiceInterim ? 'italic' : 'voice-recording-text'}`}
+            style={isVoiceInterim ? { color: 'var(--vzn-text-soft)' } : undefined}
+          >
             {inputText || '…'}
           </span>
         </div>
@@ -1170,9 +1209,12 @@ export function ChatPage() {
           placeholder={t.chat_placeholder}
           rows={1}
           disabled={isSending}
-          className={`chat-input-field
-                      ${isVoiceInterim ? 'italic text-gray-400 dark:text-gray-500' : ''}`}
-          style={{ maxHeight: `${CHAT_TEXTAREA_MAX_HEIGHT_PX}px`, overflowY: 'auto' }}
+          className={`chat-input-field ${isVoiceInterim ? 'italic' : ''}`}
+          style={{
+            maxHeight: `${CHAT_TEXTAREA_MAX_HEIGHT_PX}px`,
+            overflowY: 'auto',
+            ...(isVoiceInterim ? { color: 'var(--vzn-text-soft)' } : null),
+          }}
         />
       </div>
 
@@ -1383,7 +1425,7 @@ export function ChatPage() {
                   <AppLogoIcon size={84} />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <h2 className="text-2xl font-semibold tracking-tight text-gray-800 dark:text-gray-100">
+                  <h2 className="text-2xl font-semibold tracking-tight" style={{ color: 'var(--vzn-text-strong)' }}>
                     {t.chat_empty_title}
                   </h2>
                   <p className="ui-caption mx-auto max-w-[360px] leading-relaxed">
@@ -1392,7 +1434,7 @@ export function ChatPage() {
                 </div>
                 {!hasKey && (
                   <div className="flex flex-col items-center gap-2 mt-1">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.chat_error_no_key}</p>
+                    <p className="text-xs" style={{ color: 'var(--vzn-text-muted)' }}>{t.chat_error_no_key}</p>
                     <button
                       type="button"
                       onClick={() => openSettings()}
@@ -1478,8 +1520,13 @@ export function ChatPage() {
               </div>
 
               {/* Input — panel footer, wrapped as composer card */}
-              <div className="flex-shrink-0 px-3 pb-3 pt-1 border-t border-gray-200/80 dark:border-neutral-800
-                              bg-gray-50/70 dark:bg-neutral-950/40">
+              <div
+                className="flex-shrink-0 px-3 pb-3 pt-1 border-t"
+                style={{
+                  borderColor: 'var(--vzn-border)',
+                  background: 'color-mix(in srgb, var(--vzn-surface) 70%, transparent)',
+                }}
+              >
                 <div className="chat-composer">
                   {inputArea}
                 </div>

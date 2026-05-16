@@ -368,6 +368,8 @@ export interface Translations {
   image_translate_type_error: string
   /** Fallback error when image processing fails */
   image_translate_error_failed: string
+  /** Error shown when the attached image exceeds the hard size limit (MB-templated) */
+  image_translate_size_error: (maxMb: number) => string
 
   // History page
   history_title: string

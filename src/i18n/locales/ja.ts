@@ -613,6 +613,7 @@ const ja: Translations = {
   settings_web_search_desc_suffix: '無料。TavilyまたはBraveキーを追加して検索品質を向上させましょう。',
   settings_tts_el_delete_confirm: 'ElevenLabs APIキーを削除しますか？',
   image_translate_error_failed: '画像の処理に失敗しました',
+  image_translate_size_error: (maxMb) => `画像が ${maxMb} MB を超えています。より小さなファイルを選択してください。`,
   settings_close: '設定を閉じる',
   chat_deep_research_hint: '質問は多角的に調査されます',
   chat_deep_research_enable: 'Deep Researchを有効化',

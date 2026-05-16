@@ -613,6 +613,7 @@ const en: Translations = {
   settings_web_search_desc_suffix: 'free. Add a Tavily or Brave key to improve search quality.',
   settings_tts_el_delete_confirm: 'Delete ElevenLabs API key?',
   image_translate_error_failed: 'Failed to process image',
+  image_translate_size_error: (maxMb) => `Image exceeds ${maxMb} MB. Please choose a smaller file.`,
   settings_close: 'Close settings',
   chat_deep_research_hint: 'The question will be researched in depth',
   chat_deep_research_enable: 'Enable Deep Research Mode',

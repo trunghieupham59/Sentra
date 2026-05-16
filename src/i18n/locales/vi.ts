@@ -613,6 +613,7 @@ const vi: Translations = {
   settings_web_search_desc_suffix: 'miễn phí. Thêm key Tavily hoặc Brave để nâng chất lượng kết quả tìm kiếm.',
   settings_tts_el_delete_confirm: 'Xóa ElevenLabs API key?',
   image_translate_error_failed: 'Không thể xử lý ảnh',
+  image_translate_size_error: (maxMb) => `Ảnh vượt quá ${maxMb} MB. Vui lòng chọn ảnh nhỏ hơn.`,
   settings_close: 'Đóng cài đặt',
   chat_deep_research_hint: 'Câu hỏi sẽ được nghiên cứu đa chiều',
   chat_deep_research_enable: 'Bật Deep Research Mode',
