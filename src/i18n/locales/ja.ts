@@ -634,6 +634,7 @@ const ja: Translations = {
   chat_deep_research_image_context: '**画像コンテキスト:** {context}',
   chat_deep_research_image_terms: '**画像由来のキーワード:** {terms}',
   chat_deep_research_image_kb_label: '添付画像のコンテキスト',
+  chat_deep_research_image_only_prompt: '添付画像について深く調査してください。',
   chat_deep_research_complete: '**調査は十分です** — 重大なギャップは見つかりませんでした。統合に進みます。',
   chat_deep_research_gaps_found: '**追加調査が必要なギャップを{count}件検出:**',
   chat_deep_research_deeper_label: '[深掘り]',

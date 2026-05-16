@@ -179,12 +179,36 @@ export function ChatPage() {
     createChatSession, setActiveChatSession, addChatMessage, updateChatMessage,
     addChatSessionCost, clearChatSession, setChatSystemPrompt, addSystemPromptPreset, openSettings,
     recordUsageCost, setDeepResearchResumeState,
+    setChatSessionDraft, setChatSessionDeepResearchMode,
+    setChatPendingDraft, setChatPendingDeepResearchMode,
   } = useAppStore()
 
 
   const t = useT()
 
-  const [inputText, setInputText] = useState('')
+  /**
+   * Composer state — backed by the store so drafts and toggle survive page
+   * navigation (lazy-loaded ChatPage unmounts when user switches to
+   * Translate/etc.). Local `useState` is the source of truth at render time
+   * for typing perf; effects below sync it with whichever session — or the
+   * empty-state pending bucket — owns the draft right now.
+   *
+   * Mirrors ChatGPT/Claude behaviour: text drafts + mode toggle persist
+   * per-session; attached images stay ephemeral.
+   */
+  const [inputText, setInputTextLocal] = useState(() => {
+    const s = useAppStore.getState()
+    if (s.activeChatSessionId) {
+      return s.chatSessions.find((x) => x.id === s.activeChatSessionId)?.draftInput ?? ''
+    }
+    return s.chatPendingDraft
+  })
+  const setInputText = useCallback((text: string) => {
+    setInputTextLocal(text)
+    const sid = useAppStore.getState().activeChatSessionId
+    if (sid) setChatSessionDraft(sid, text)
+    else setChatPendingDraft(text)
+  }, [setChatSessionDraft, setChatPendingDraft])
   const [isSending, setIsSending] = useState(false)
   /**
    * AbortController for the in-flight chat request. Held in a ref (not state)
@@ -203,8 +227,30 @@ export function ChatPage() {
   const [isDraggingOver, setIsDraggingOver] = useState(false)
   /** Controls visibility of the AI config popup */
   const [showAIConfig, setShowAIConfig] = useState(false)
+<<<<<<< Updated upstream
   /** Whether Deep Research multi-step pipeline is active */
   const [deepResearchMode, setDeepResearchMode] = useState(false)
+=======
+  /** Controls visibility of the model picker dropdown */
+  const [showModelPicker, setShowModelPicker] = useState(false)
+  /** Whether Deep Research multi-step pipeline is active — persisted per session */
+  const [deepResearchMode, setDeepResearchModeLocal] = useState(() => {
+    const s = useAppStore.getState()
+    if (s.activeChatSessionId) {
+      return s.chatSessions.find((x) => x.id === s.activeChatSessionId)?.deepResearchMode ?? false
+    }
+    return s.chatPendingDeepResearchMode
+  })
+  const setDeepResearchMode = useCallback((updater: boolean | ((v: boolean) => boolean)) => {
+    setDeepResearchModeLocal((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      const sid = useAppStore.getState().activeChatSessionId
+      if (sid) setChatSessionDeepResearchMode(sid, next)
+      else setChatPendingDeepResearchMode(next)
+      return next
+    })
+  }, [setChatSessionDeepResearchMode, setChatPendingDeepResearchMode])
+>>>>>>> Stashed changes
 
   // Active preset = the preset whose content matches chatSystemPrompt
   const activePreset = systemPromptPresets.find((p) => p.content === chatSystemPrompt) ?? null
@@ -259,6 +305,24 @@ export function ChatPage() {
     el.style.height = 'auto'
     el.style.height = `${Math.min(el.scrollHeight, CHAT_TEXTAREA_MAX_HEIGHT_PX)}px`
   }, [inputText])
+
+  // ── Hydrate composer when the active session changes ──
+  // Sources of truth for draft/mode:
+  //   - active session exists → that session's `draftInput` / `deepResearchMode`
+  //   - no active session (empty state) → `chatPendingDraft` / `chatPendingDeepResearchMode`
+  // Reset attachedImage too — ephemeral by design, mirrors ChatGPT/Claude.
+  useEffect(() => {
+    const s = useAppStore.getState()
+    if (activeChatSessionId) {
+      const session = s.chatSessions.find((x) => x.id === activeChatSessionId)
+      setInputTextLocal(session?.draftInput ?? '')
+      setDeepResearchModeLocal(session?.deepResearchMode ?? false)
+    } else {
+      setInputTextLocal(s.chatPendingDraft)
+      setDeepResearchModeLocal(s.chatPendingDeepResearchMode)
+    }
+    setAttachedImage(null)
+  }, [activeChatSessionId])
 
   // ── Close AI config popup on outside click ──
   useEffect(() => {
@@ -329,7 +393,7 @@ export function ChatPage() {
     // History = all messages up to (not including) the last assistant message
     const historyMessages = msgs
       .slice(0, lastAssistantIdx.i)
-      .filter((m) => !m.isLoading && !m.error && !m.isResearchStep)
+      .filter((m) => !m.isLoading && !m.error && !m.isResearchStep && !m.isSmartThinkingStep)
 
     if (historyMessages.length === 0) return
 
@@ -617,7 +681,7 @@ export function ChatPage() {
       setAttachedImage(null)
       await runDeepResearchPipeline({
         sessionId,
-        question: text || 'Research the attached image in depth.',
+        question: text || t.chat_deep_research_image_only_prompt,
         images: attachedImage
           ? [{ imageBase64: attachedImage.base64, imageMimeType: attachedImage.mimeType }]
           : [],
@@ -705,16 +769,15 @@ export function ChatPage() {
                 researchStepLabel: undefined,
               })
             },
-            onStepError: (_msgId, error) => {
+            onStepError: (_msgId, _error) => {
               // Soft fallback: keep showing "Thinking…" so the model can still
-              // answer from internal knowledge. We log the error to the bubble
-              // only as a tooltip-friendly signal; the visible spinner stays.
+              // answer from internal knowledge. The web-search failure itself
+              // is not surfaced — only a final answer error would be.
               updateChatMessage(sessionId, placeholderMsgId, {
                 content: [{ type: 'text', text: '' }],
                 isLoading: true,
                 isSmartThinkingStep: false,
                 researchStepLabel: undefined,
-                error: localizeChatException(t, error, t.chat_error_failed_response),
               })
             },
             onAnswerStart: () => placeholderMsgId,
@@ -782,6 +845,9 @@ export function ChatPage() {
           isLoading: false,
           error: t.chat_error_image_edit_reload_required,
         })
+        if (abortControllerRef.current === sendController) {
+          abortControllerRef.current = null
+        }
         setIsSending(false)
         return
       }
@@ -795,7 +861,12 @@ export function ChatPage() {
           imageMimeType: attachedImage.mimeType,
         })
 
-        if (result.success && result.imageBase64 && result.imageMimeType) {
+        // The edit IPC does not yet accept an AbortSignal — if the user clicked
+        // Stop while the backend was running, finalise the bubble silently and
+        // discard the result instead of overwriting with edited content.
+        if (sendController.signal.aborted) {
+          updateChatMessage(sessionId, assistantMsgId, { isLoading: false })
+        } else if (result.success && result.imageBase64 && result.imageMimeType) {
           const outputLabel = t.chat_image_edit_done
           updateChatMessage(sessionId, assistantMsgId, {
             content: [
@@ -818,11 +889,18 @@ export function ChatPage() {
           })
         }
       } catch (err) {
-        updateChatMessage(sessionId, assistantMsgId, {
-          isLoading: false,
-          error: localizeChatException(t, err, t.chat_error_failed_image_edit),
-        })
+        if (sendController.signal.aborted) {
+          updateChatMessage(sessionId, assistantMsgId, { isLoading: false })
+        } else {
+          updateChatMessage(sessionId, assistantMsgId, {
+            isLoading: false,
+            error: localizeChatException(t, err, t.chat_error_failed_image_edit),
+          })
+        }
       } finally {
+        if (abortControllerRef.current === sendController) {
+          abortControllerRef.current = null
+        }
         setIsSending(false)
       }
       return
@@ -924,6 +1002,7 @@ export function ChatPage() {
     recordChatCost,
     runDeepResearchPipeline,
     setDeepResearchResumeState,
+    setInputText,
     t,
   ])
 
@@ -1161,10 +1240,9 @@ export function ChatPage() {
           <button
             type="button"
             onClick={handleStop}
-            disabled={!abortControllerRef.current}
             title={t.chat_stop}
             aria-label={t.chat_stop}
-            className="chat-stop-button disabled:opacity-60 disabled:cursor-not-allowed"
+            className="chat-stop-button"
           >
             <StopSquareIcon className="w-5 h-5" />
           </button>
@@ -1199,7 +1277,10 @@ export function ChatPage() {
       role="application"
       aria-label={t.chat_attach_image}
       className="app-page relative"
-      onDragOver={(e) => { e.preventDefault(); setIsDraggingOver(true) }}
+      onDragOver={(e) => {
+        e.preventDefault()
+        if (!isDraggingOver) setIsDraggingOver(true)
+      }}
       onDragLeave={handleDragLeave}
       onDrop={handleFileDrop}
     >

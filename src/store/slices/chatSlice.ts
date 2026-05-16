@@ -29,6 +29,13 @@ export interface ChatSlice {
   activeChatSessionId: string | null
   chatSystemPrompt: string
   systemPromptPresets: SystemPromptPreset[]
+  /**
+   * Composer draft + mode used while no session is active yet (empty state).
+   * On first `createChatSession`, these are absorbed into the new session
+   * (so the user's pre-send work doesn't vanish) and cleared.
+   */
+  chatPendingDraft: string
+  chatPendingDeepResearchMode: boolean
 
   // Actions
   createChatSession: (provider: Provider, model: string) => string
@@ -38,6 +45,14 @@ export interface ChatSlice {
   updateChatMessage: (sessionId: string, messageId: string, updates: Partial<ChatMessage>) => void
   addChatSessionCost: (sessionId: string, cost: UsageCost) => void
   clearChatSession: (sessionId: string) => void
+  /** Persist the per-session composer draft text. */
+  setChatSessionDraft: (sessionId: string, draft: string) => void
+  /** Persist the per-session Deep Research toggle. */
+  setChatSessionDeepResearchMode: (sessionId: string, mode: boolean) => void
+  /** Persist the empty-state composer draft (no active session). */
+  setChatPendingDraft: (draft: string) => void
+  /** Persist the empty-state Deep Research toggle (no active session). */
+  setChatPendingDeepResearchMode: (mode: boolean) => void
   /**
    * Persist (or clear with `null`) the in-progress Deep Research pipeline
    * state on a session. Called from the deep-research orchestration after
@@ -61,23 +76,33 @@ export const createChatSlice = (set: SliceSet): ChatSlice => ({
   activeChatSessionId: null,
   chatSystemPrompt: '',
   systemPromptPresets: [],
+  chatPendingDraft: '',
+  chatPendingDeepResearchMode: false,
 
   createChatSession: (provider, model) => {
     const id = createClientId('chat')
-    const session: ChatSession = {
-      id,
-      title: 'New Chat',
-      messages: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      provider,
-      model,
-    }
-    set((state: ChatSlice) => ({
-      // Prepend new session and enforce MAX_CHAT_SESSIONS cap — oldest sessions are trimmed
-      chatSessions: [session, ...state.chatSessions].slice(0, MAX_CHAT_SESSIONS),
-      activeChatSessionId: id,
-    }))
+    set((state: ChatSlice) => {
+      // Absorb any pending empty-state draft/toggle so user work survives the
+      // transition from "no session" to "new session".
+      const session: ChatSession = {
+        id,
+        title: 'New Chat',
+        messages: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        provider,
+        model,
+        ...(state.chatPendingDraft ? { draftInput: state.chatPendingDraft } : {}),
+        ...(state.chatPendingDeepResearchMode ? { deepResearchMode: true } : {}),
+      }
+      return {
+        // Prepend new session and enforce MAX_CHAT_SESSIONS cap — oldest sessions are trimmed
+        chatSessions: [session, ...state.chatSessions].slice(0, MAX_CHAT_SESSIONS),
+        activeChatSessionId: id,
+        chatPendingDraft: '',
+        chatPendingDeepResearchMode: false,
+      }
+    })
     return id
   },
 
@@ -161,6 +186,7 @@ export const createChatSlice = (set: SliceSet): ChatSlice => ({
               // pipeline — the user is starting over so the resume snapshot
               // is no longer relevant.
               deepResearchResumeState: undefined,
+              draftInput: undefined,
               updatedAt: Date.now(),
             }
           : s
@@ -180,6 +206,25 @@ export const createChatSlice = (set: SliceSet): ChatSlice => ({
       ),
     })),
 
+  setChatSessionDraft: (sessionId, draft) =>
+    set((state: ChatSlice) => ({
+      chatSessions: state.chatSessions.map((s) =>
+        // Intentionally do NOT bump `updatedAt` — drafts are pre-send work and
+        // shouldn't reorder sessions in the sidebar or look "active" in history.
+        s.id === sessionId ? { ...s, draftInput: draft || undefined } : s
+      ),
+    })),
+
+  setChatSessionDeepResearchMode: (sessionId, mode) =>
+    set((state: ChatSlice) => ({
+      chatSessions: state.chatSessions.map((s) =>
+        s.id === sessionId ? { ...s, deepResearchMode: mode || undefined } : s
+      ),
+    })),
+
+  setChatPendingDraft: (draft) => set({ chatPendingDraft: draft }),
+
+  setChatPendingDeepResearchMode: (mode) => set({ chatPendingDeepResearchMode: mode }),
 
   setChatSystemPrompt: (prompt) => set({ chatSystemPrompt: prompt }),
 

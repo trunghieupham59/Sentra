@@ -635,6 +635,7 @@ const vi: Translations = {
   chat_deep_research_image_context: '**Ngữ cảnh ảnh:** {context}',
   chat_deep_research_image_terms: '**Từ khóa từ ảnh:** {terms}',
   chat_deep_research_image_kb_label: 'Ngữ cảnh ảnh đính kèm',
+  chat_deep_research_image_only_prompt: 'Nghiên cứu chuyên sâu về ảnh đính kèm.',
   chat_deep_research_complete: '**Nghiên cứu đã đầy đủ** — Không phát hiện khoảng trống đáng kể. Tiến hành tổng hợp.',
   chat_deep_research_gaps_found: '**Phát hiện {count} khoảng trống cần bổ sung:**',
   chat_deep_research_deeper_label: '[Sâu hơn]',

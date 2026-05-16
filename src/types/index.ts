@@ -460,6 +460,17 @@ export interface ChatSession {
    * new question. Drives the "Tiếp tục nghiên cứu" UX in `ResearchStepsPanel`.
    */
   deepResearchResumeState?: DeepResearchResumeState
+  /**
+   * Per-session composer draft — preserves text the user typed but hasn't
+   * sent yet across page navigation (Chat → Translate → Chat). Matches the
+   * ChatGPT/Claude pattern. Attachments are intentionally NOT persisted.
+   */
+  draftInput?: string
+  /**
+   * Per-session Deep Research toggle state — preserves the mode across page
+   * navigation within the same session. Resets to off for new sessions.
+   */
+  deepResearchMode?: boolean
 }
 
 

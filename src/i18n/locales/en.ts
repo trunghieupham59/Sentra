@@ -635,6 +635,7 @@ const en: Translations = {
   chat_deep_research_image_context: '**Image context:** {context}',
   chat_deep_research_image_terms: '**Image search terms:** {terms}',
   chat_deep_research_image_kb_label: 'Attached image context',
+  chat_deep_research_image_only_prompt: 'Research the attached image in depth.',
   chat_deep_research_complete: '**Research is sufficient** — no significant gaps detected. Proceeding to synthesis.',
   chat_deep_research_gaps_found: '**Found {count} gaps that still need follow-up:**',
   chat_deep_research_deeper_label: '[Deeper]',

@@ -742,6 +742,8 @@ export interface Translations {
   chat_deep_research_image_terms: string
   /** Knowledge-base label for image context (Phase 1) */
   chat_deep_research_image_kb_label: string
+  /** Fallback prompt used when Deep Research is triggered with only an image (no text) */
+  chat_deep_research_image_only_prompt: string
   /** Gap analysis: research is sufficient */
   chat_deep_research_complete: string
   /** Gap analysis: gaps found header — template `{count}` */
