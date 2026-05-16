@@ -1,160 +1,139 @@
-import type { ReactNode } from 'react'
-import { PROVIDERS } from '../constants/providers'
 import { useAppStore, useT } from '../store/useAppStore'
-import type { Provider } from '../types'
+import type { AppPage } from '../types'
 import { AppLogoIcon } from './AppLogo'
-import { BookIcon, ChatBubbleIcon, ChevronLeftIcon, ClockIcon, GearIcon, MicrophoneIcon, TranslateIcon } from './ui/icons'
+import { BookIcon, ChatBubbleIcon, ClockIcon, GearIcon, MicrophoneIcon, TranslateIcon } from './ui/icons'
 
-interface SidebarItemProps {
-  icon: ReactNode
+interface NavItemProps {
+  icon: React.ReactNode
   label: string
   active?: boolean
   badge?: boolean
-  collapsed?: boolean
   onClick: () => void
 }
 
-function SidebarItem({ icon, label, active, badge, collapsed, onClick }: SidebarItemProps) {
+function NavItem({ icon, label, active, badge, onClick }: NavItemProps) {
   return (
-    <div className="relative w-full">
+    <div className="relative">
       <button
         type="button"
         onClick={onClick}
+        title={label}
         aria-label={label}
         aria-current={active ? 'page' : undefined}
-        // Native OS tooltip in collapsed mode — appears outside the app surface, never overlaps content.
-        title={collapsed ? label : undefined}
-        className={`btn-secondary btn-nav-item relative ${collapsed ? 'btn-nav-item-collapsed' : ''} ${
-          active
-            ? 'btn-active'
-            : 'border-transparent bg-transparent text-gray-500 dark:bg-transparent dark:text-gray-400 dark:hover:bg-white/5'
-        }`}
+        className={`sidebar-nav-btn${active ? ' active' : ''}`}
       >
-        <span className={`flex items-center justify-center rounded-lg ${collapsed ? 'h-8 w-8' : ''}`}>
-          {icon}
-        </span>
-        {!collapsed && (
-          <span className="min-w-0 truncate text-sm font-semibold">{label}</span>
-        )}
+        {icon}
         {badge && (
-          <span className={`absolute top-1.5 ${collapsed ? 'right-1.5' : 'right-2.5'} w-2 h-2 bg-gray-400 rounded-full border-2 border-white dark:border-neutral-950`} />
+          <span
+            aria-label="Setup required"
+            style={{
+              position: 'absolute',
+              top: 7,
+              right: 7,
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: 'var(--vzn-warning)',
+              border: '1.5px solid var(--vzn-sidebar-bg)',
+            }}
+          />
         )}
       </button>
     </div>
   )
 }
 
+/** Search icon — inline to avoid extra import */
+function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="9" cy="9" r="5.5" />
+      <path d="M15 15l2.5 2.5" />
+    </svg>
+  )
+}
+
 export function Sidebar() {
-  const { activePage, setActivePage, clearTranslation, keyStatus, openSettings, sidebarCollapsed, toggleSidebar } = useAppStore()
+  const { activePage, setActivePage, clearTranslation, keyStatus, openSettings } = useAppStore()
   const t = useT()
 
-  const hasAnyKey = PROVIDERS.some((p) => keyStatus[p.id as Provider])
-  const collapsed = sidebarCollapsed
+  const hasAnyKey = Object.values(keyStatus).some(Boolean)
 
-  const handleNewTranslate = () => {
-    clearTranslation()
-    setActivePage('translate')
+  const navigate = (page: AppPage, extra?: () => void) => {
+    extra?.()
+    setActivePage(page)
+  }
+
+  const openCommandPalette = () => {
+    window.dispatchEvent(new CustomEvent('viezan:open-command-palette'))
   }
 
   return (
-    <aside className={`app-sidebar relative flex flex-col ${collapsed ? 'items-center w-[76px]' : 'items-stretch w-[188px]'} pt-3 pb-3 px-3 gap-2 flex-shrink-0
-                      border-r border-white/70 bg-white/70 backdrop-blur dark:border-white/10 dark:bg-neutral-950/55
-                      transition-[width] duration-200 ease-out`}>
-
-      {/* App icon + collapse toggle */}
-      <div className={`mb-1 flex h-11 items-center ${collapsed ? 'justify-center px-0' : 'justify-between pl-2 pr-1'} gap-2`}>
-        {collapsed ? (
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            aria-label={t.nav_expand_sidebar}
-            title={t.nav_expand_sidebar}
-            className="btn-icon btn-icon-lg border-transparent bg-transparent shadow-none dark:bg-transparent"
-          >
-            <AppLogoIcon size={34} />
-          </button>
-        ) : (
-          <div className="flex items-center gap-3 min-w-0">
-            <AppLogoIcon size={34} />
-            <div className="min-w-0">
-              <div className="truncate text-sm font-bold text-gray-950 dark:text-gray-50">Viezan</div>
-            </div>
-          </div>
-        )}
-        {!collapsed && (
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            aria-label={t.nav_collapse_sidebar}
-            title={t.nav_collapse_sidebar}
-            className="btn-icon btn-icon-sm border-transparent bg-transparent shadow-none dark:bg-transparent"
-          >
-            <ChevronLeftIcon className="w-4 h-4" />
-          </button>
-        )}
+    <aside className="app-sidebar" aria-label="Navigation">
+      {/* Logo */}
+      <div className="sidebar-brand-surface" title="Viezan">
+        <AppLogoIcon size={28} />
       </div>
 
       {/* Divider */}
-      <div className={`app-sidebar-divider ${collapsed ? 'mx-auto w-8' : 'mx-0 w-full'} h-px mb-0.5`} />
+      <div className="app-sidebar-divider" />
 
-      {/* Chat with AI */}
-      <SidebarItem
+      {/* Navigation */}
+      <NavItem
         label={t.nav_chat}
         active={activePage === 'chat'}
-        collapsed={collapsed}
-        onClick={() => setActivePage('chat')}
-        icon={<ChatBubbleIcon className="w-5 h-5" />}
+        onClick={() => navigate('chat')}
+        icon={<ChatBubbleIcon className="w-[18px] h-[18px]" />}
       />
-
-      {/* Translate */}
-      <SidebarItem
+      <NavItem
         label={t.nav_translate}
         active={activePage === 'translate'}
-        collapsed={collapsed}
-        onClick={handleNewTranslate}
-        icon={<TranslateIcon className="w-5 h-5" />}
+        onClick={() => navigate('translate', clearTranslation)}
+        icon={<TranslateIcon className="w-[18px] h-[18px]" />}
       />
-
-      {/* Dictionary */}
-      <SidebarItem
-        label={t.nav_dictionary}
-        active={activePage === 'dictionary'}
-        collapsed={collapsed}
-        onClick={() => setActivePage('dictionary')}
-        icon={<BookIcon className="w-5 h-5" />}
-      />
-
-      {/* Live Translate */}
-      <SidebarItem
+      <NavItem
         label={t.nav_live_translate}
         active={activePage === 'live'}
-        collapsed={collapsed}
-        onClick={() => setActivePage('live')}
-        icon={<MicrophoneIcon className="w-5 h-5" />}
+        onClick={() => navigate('live')}
+        icon={<MicrophoneIcon className="w-[18px] h-[18px]" />}
       />
-
-      {/* History */}
-      <SidebarItem
+      <NavItem
+        label={t.nav_dictionary}
+        active={activePage === 'dictionary'}
+        onClick={() => navigate('dictionary')}
+        icon={<BookIcon className="w-[18px] h-[18px]" />}
+      />
+      <NavItem
         label={t.nav_history}
         active={activePage === 'history'}
-        collapsed={collapsed}
-        onClick={() => setActivePage('history')}
-        icon={<ClockIcon className="w-5 h-5" />}
+        onClick={() => navigate('history')}
+        icon={<ClockIcon className="w-[18px] h-[18px]" />}
       />
 
       {/* Spacer */}
-      <div className="flex-1" />
+      <div style={{ flex: 1 }} />
+
+      {/* Command palette trigger */}
+      <button
+        type="button"
+        title="Command palette (⌘K)"
+        aria-label="Open command palette"
+        className="sidebar-nav-btn"
+        style={{ marginBottom: 2 }}
+        onClick={openCommandPalette}
+      >
+        <SearchIcon className="w-[18px] h-[18px]" />
+      </button>
 
       {/* Divider */}
-      <div className={`app-sidebar-divider ${collapsed ? 'mx-auto w-8' : 'mx-0 w-full'} h-px mb-0.5`} />
+      <div className="app-sidebar-divider" />
 
       {/* Settings */}
-      <SidebarItem
+      <NavItem
         label={t.nav_settings}
         badge={!hasAnyKey}
-        collapsed={collapsed}
         onClick={openSettings}
-        icon={<GearIcon className="w-5 h-5" />}
+        icon={<GearIcon className="w-[18px] h-[18px]" />}
       />
     </aside>
   )
