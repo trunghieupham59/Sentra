@@ -11,7 +11,6 @@ import { ImagePreviewThumbnail } from '../components/ui/ImagePreviewThumbnail'
 import {
   ArrowRightIcon,
   ChevronDownIcon,
-  GearIcon,
   ImageIcon,
   LightbulbIcon,
   PencilIcon,
@@ -1338,19 +1337,42 @@ export function ChatPage() {
       <div className="flex-1 flex flex-col min-h-0">
         <div className="app-workspace">
 
-          {/* ── Top action bar: model badge + actions + settings icon ── */}
+          {/* ── Top action bar: model badge (opens config) + actions ── */}
           <div className="app-topbar gap-1.5">
-            {/* Model badge — quick visual feedback of current AI; clicking opens settings popup */}
-            <button
-              type="button"
-              onClick={() => setShowAIConfig((v) => !v)}
-              title={t.translate_ai_config_title}
-              className="chat-model-badge"
-            >
-              <ProviderIcon provider={selectedProvider} size={14} />
-              <span className="max-w-[160px] truncate">{currentModelLabel}</span>
-              <ChevronDownIcon className="w-3 h-3 opacity-60" />
-            </button>
+            {/* Model badge — single trigger for AI config popup */}
+            <div className="relative" ref={aiConfigRef}>
+              <button
+                type="button"
+                onClick={() => setShowAIConfig((v) => !v)}
+                title={t.translate_ai_config_title}
+                className={`chat-model-badge ${showAIConfig ? 'chat-model-badge-active' : ''}`}
+              >
+                <ProviderIcon provider={selectedProvider} size={14} />
+                <span className="max-w-[160px] truncate">{currentModelLabel}</span>
+                <ChevronDownIcon className="w-3 h-3 opacity-60" />
+              </button>
+
+              {/* AI config popup */}
+              {showAIConfig && (
+                <div className="floating-panel ai-config-panel absolute top-full left-0 mt-2 z-50 w-[440px] p-4 flex flex-col gap-4 fade-in">
+                  <h2 className="popover-title">
+                    {t.translate_ai_config_title}
+                  </h2>
+                  <div className="flex flex-col gap-3">
+                    <ModelSelector />
+                    <SystemPromptDropdown
+                      chatSystemPrompt={chatSystemPrompt}
+                      systemPromptPresets={systemPromptPresets}
+                      activePreset={activePreset}
+                      onSetChatSystemPrompt={setChatSystemPrompt}
+                      onNavigateSettings={() => { openSettings(); setShowAIConfig(false) }}
+                      onAddPreset={addSystemPromptPreset}
+                      t={t}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Active session turn count — subtle informational text */}
             {messages.length > 0 && (
@@ -1384,39 +1406,6 @@ export function ChatPage() {
                 <span>{t.chat_clear}</span>
               </button>
             )}
-
-            {/* AI Config settings icon + popup */}
-            <div className="relative" ref={aiConfigRef}>
-              <button
-                type="button"
-                onClick={() => setShowAIConfig((v) => !v)}
-                title={t.translate_ai_config_title}
-                className={`toolbar-icon-button ai-config-button cursor-pointer ${showAIConfig ? 'toolbar-icon-button-active' : ''}`}
-              >
-                <GearIcon className="w-3.5 h-3.5" />
-              </button>
-
-              {/* Settings popup */}
-              {showAIConfig && (
-                <div className="floating-panel ai-config-panel absolute top-full right-0 mt-2 z-50 w-[440px] p-4 flex flex-col gap-4 fade-in">
-                  <h2 className="popover-title">
-                    {t.translate_ai_config_title}
-                  </h2>
-                  <div className="flex flex-col gap-3">
-                    <ModelSelector />
-                    <SystemPromptDropdown
-                      chatSystemPrompt={chatSystemPrompt}
-                      systemPromptPresets={systemPromptPresets}
-                      activePreset={activePreset}
-                      onSetChatSystemPrompt={setChatSystemPrompt}
-                      onNavigateSettings={() => { openSettings(); setShowAIConfig(false) }}
-                      onAddPreset={addSystemPromptPreset}
-                      t={t}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
 
           {messages.length === 0 ? (
@@ -1451,12 +1440,6 @@ export function ChatPage() {
               <div className="flex w-full max-w-2xl flex-col gap-3">
                 <div className={`chat-composer w-full ${isDraggingOver ? 'chat-composer-drop' : ''}`}>
                   {inputArea}
-                </div>
-
-                {/* Model indicator — subtle line below composer */}
-                <div className="flex items-center justify-center gap-1.5 select-none">
-                  <ProviderIcon provider={selectedProvider} size={11} />
-                  <span className="ui-micro">{currentModelLabel}</span>
                 </div>
 
                 {/* Suggestion chips — 2×2 grid */}

@@ -23,7 +23,7 @@ function PageFallback() {
 
 function App() {
   const {
-    activePage, localeAuto, setKeyStatus, setLocaleFromSystem, fontSize,
+    activePage, localeAuto, setKeyStatus, setLocaleFromSystem, fontSize, theme,
     selectedProvider, selectedModels, ttsMode, ttsVoice,
     createChatSession, setActiveChatSession, addChatMessage,
     setActivePage, openSettings,
@@ -31,17 +31,24 @@ function App() {
 
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false)
 
-  // Apply dark class from OS preference + watch for changes
+  // Apply dark class based on user preference or OS preference
   useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const apply = (dark: boolean) => {
-      document.documentElement.classList.toggle('dark', dark)
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark')
+      return
     }
+    if (theme === 'light') {
+      document.documentElement.classList.remove('dark')
+      return
+    }
+    // 'system' — follow OS preference
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const apply = (dark: boolean) => document.documentElement.classList.toggle('dark', dark)
     apply(mq.matches)
     const handler = (e: MediaQueryListEvent) => apply(e.matches)
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
-  }, [])
+  }, [theme])
 
   // Auto-detect system locale on startup
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally run only once on mount

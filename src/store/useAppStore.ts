@@ -131,6 +131,7 @@ export const useAppStore = create<AppState>()(
         ttsMode: state.ttsMode,
         ttsVoice: state.ttsVoice,
         fontSize: state.fontSize,
+        theme: state.theme,
         sttProvider: state.sttProvider,
         chatSendShortcut: state.chatSendShortcut,
         chatNewSessionShortcut: state.chatNewSessionShortcut,
