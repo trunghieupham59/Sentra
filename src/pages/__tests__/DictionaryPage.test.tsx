@@ -209,7 +209,8 @@ describe('DictionaryPage', () => {
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     ))
     expect(await screen.findByRole('dialog', { name: /Look up selection|Tra phần đã chọn|選択部分を検索/i })).toBeInTheDocument()
-    expect(screen.getByText('Làm cho cách làm hoặc sản phẩm tốt hơn.')).toBeInTheDocument()
+    // The text now appears in both the dialog and the persisted history entry.
+    expect(screen.getAllByText('Làm cho cách làm hoặc sản phẩm tốt hơn.').length).toBeGreaterThan(0)
   })
 
   it('renders a preview result before detail enrichment completes', async () => {

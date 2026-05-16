@@ -136,9 +136,13 @@ export function DictionaryPage() {
 
   // Reset selection when the language pair changes — the old entry belongs to a
   // different language context and showing it alongside new-pair search settings
-  // is confusing. Intentionally not in the auto-selection effect below so the
-  // two concerns stay independent.
+  // is confusing. We skip the initial render by storing the mount-time pair in
+  // a ref; only genuine changes trigger the reset.
+  const langPairRef = useRef(`${sourceLang}:${targetLang}`)
   useEffect(() => {
+    const current = `${sourceLang}:${targetLang}`
+    if (langPairRef.current === current) return
+    langPairRef.current = current
     setSelectedEntryId(null)
   }, [sourceLang, targetLang])
 
