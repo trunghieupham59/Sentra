@@ -73,7 +73,7 @@
     "electron": "^41.6.1",
     "electron-builder": "^26.8.1",
     "esbuild": "^0.28.0",
-    "jscpd": "^4.1.0",
+    "jscpd": "^4.2.5",
     "jsdom": "^29.1.1",
     "markdownlint-cli2": "^0.22.1",
     "playwright": "^1.60.0",
