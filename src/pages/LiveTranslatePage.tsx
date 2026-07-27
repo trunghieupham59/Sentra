@@ -956,11 +956,7 @@ export function LiveTranslatePage() {
       {/* Pipeline error toast */}
       {pipelineError && (
         <div className="pointer-events-none absolute bottom-14 inset-x-0 flex justify-center px-4 z-50">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg
-                          bg-gray-50 dark:bg-gray-950/60
-                          border border-gray-200 dark:border-gray-700/60
-                          text-gray-700 dark:text-gray-300
-                          text-xs font-medium shadow-md
+          <div className="ui-error-box flex items-center gap-2 text-xs font-medium shadow-md
                           animate-[fadeIn_0.15s_ease-out]">
             <AlertTriangleIcon className="w-3.5 h-3.5 flex-shrink-0" />
             {pipelineError}
@@ -973,13 +969,11 @@ export function LiveTranslatePage() {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-function Notice({ children, variant = 'warning' }: { children: React.ReactNode; variant?: 'warning' | 'error' }) {
-  const cls = variant === 'error'
-    ? 'ui-error-box'
-    : 'bg-gray-50 dark:bg-gray-950/30 border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300'
+function Notice({ children }: { children: React.ReactNode; variant?: 'warning' | 'error' }) {
+  const cls = 'ui-error-box'
   return (
     <div className={`flex-shrink-0 flex items-start gap-2 p-3 rounded-lg border text-sm ${cls}`}>
-      <AlertTriangleIcon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${variant === 'error' ? 'ui-error-icon' : ''}`} />
+      <AlertTriangleIcon className="ui-error-icon mt-0.5 h-4 w-4 flex-shrink-0" />
       <span>{children}</span>
     </div>
   )

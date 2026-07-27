@@ -1,4 +1,4 @@
-import { act, render, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '../App'
 import { useAppStore } from '../store/useAppStore'
@@ -10,6 +10,8 @@ describe('App quick chat bridge', () => {
       useAppStore.setState({
         activePage: 'translate',
         settingsOpen: false,
+        sidebarCollapsed: false,
+        aiChatSidebarCollapsed: false,
         chatSessions: [],
         activeChatSessionId: null,
         selectedProvider: 'local',
@@ -52,5 +54,25 @@ describe('App quick chat bridge', () => {
       { role: 'user', content: [{ type: 'text', text: 'Summarize this release' }] },
       { role: 'assistant', content: [{ type: 'text', text: 'Release summary is ready.' }] },
     ])
+  })
+
+  it('composes primary navigation and AI Chat navigation as separate landmarks', async () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1200 })
+    act(() => {
+      useAppStore.setState({ activePage: 'translate', locale: 'en' })
+    })
+
+    render(<App />)
+
+    const primaryNavigation = screen.getByRole('navigation', { name: 'Main navigation' })
+    expect(primaryNavigation).toHaveAttribute('data-collapsed', 'false')
+    expect(screen.queryByRole('complementary', { name: 'AI Chat conversations' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'AI Chat' }))
+    await waitFor(() => {
+      expect(screen.getByRole('complementary', { name: 'AI Chat conversations' }))
+        .toHaveAttribute('data-collapsed', 'false')
+    })
+    expect(primaryNavigation).toHaveAttribute('data-collapsed', 'false')
   })
 })

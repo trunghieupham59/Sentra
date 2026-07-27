@@ -1,0 +1,9 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+
+# Project-level defaults. Codex loads this layer only after the repository is
+# trusted; personal model/provider/auth settings stay in the user config.
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+network_access = false

@@ -8,6 +8,8 @@ export interface Translations {
   nav_new_chat: string
   nav_chat: string
   nav_dictionary: string
+  nav_command_palette: string
+  nav_primary_sidebar: string
   /** Tooltip / aria-label on the sidebar collapse button */
   nav_collapse_sidebar: string
   /** Tooltip / aria-label on the sidebar expand button */
@@ -83,6 +85,14 @@ export interface Translations {
   model_loading: string
   model_load_error: string
   model_refresh: string
+  model_picker_model: string
+  model_picker_provider: string
+  model_picker_advanced: string
+  model_picker_search_placeholder: string
+  model_picker_recent: string
+  model_picker_no_results: string
+  model_picker_back: string
+  model_picker_model_id: string
 
   // Markdown chart renderer
   markdown_chart_value: string
@@ -530,6 +540,14 @@ export interface Translations {
   chat_empty_title: string
   chat_empty_desc: string
   chat_session_panel_empty: string
+  chat_sidebar_label: string
+  chat_sidebar_search: string
+  chat_sidebar_recent: string
+  chat_sidebar_no_results: string
+  chat_sidebar_collapse: string
+  chat_sidebar_expand: string
+  chat_sidebar_switch_sessions: string
+  chat_sidebar_conversations: string
   chat_suggest_translate: string
   chat_suggest_translate_desc: string
   chat_suggest_translate_prompt: string
@@ -559,6 +577,7 @@ export interface Translations {
   chat_download_image: string
   chat_open_image: string
   chat_image_preview: string
+  chat_image_actions: string
   chat_close_image_preview: string
   chat_image_edit_done: string
 

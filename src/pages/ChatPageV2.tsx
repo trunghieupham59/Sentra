@@ -161,7 +161,7 @@ function SessionPanel({ sessions, activeChatSessionId, onSelect, onNew, onDelete
                 key={session.id}
                 type="button"
                 onClick={() => onSelect(session.id)}
-                className="group relative flex w-full cursor-pointer flex-col gap-0.5 rounded-lg px-3 py-2.5 text-left transition-all duration-150 outline-none focus-visible:ring-2"
+                className="group relative flex w-full cursor-pointer flex-col gap-0.5 rounded-lg px-3 py-2.5 text-left transition-all duration-150 outline-none"
                 style={{
                   background: isActive ? 'var(--vzn-accent-soft)' : 'transparent',
                   boxShadow: isActive ? 'inset 2px 0 0 var(--vzn-accent)' : 'none',

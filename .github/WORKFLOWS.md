@@ -37,7 +37,7 @@ Tài liệu tổng quan về toàn bộ pipeline CI/CD và automation của Viez
 
 | File                                       | Mục đích                                                                    |
 | ------------------------------------------ | --------------------------------------------------------------------------- |
-| `workflows/ci.yml`                         | Lint (Biome) + TypeCheck + Vitest + build matrix mac/win/linux              |
+| `workflows/ci.yml`                         | Lint (Biome + Atomic boundaries) + TypeCheck + Vitest + build matrix        |
 | `workflows/codeql.yml`                     | Phân tích bảo mật JS/TS định kỳ + theo PR                                   |
 | `workflows/dependency-review.yml`          | Chặn dependency có CVE / license không tương thích trong PR                 |
 | `workflows/pr-title.yml`                   | Bắt buộc tiêu đề PR theo Conventional Commits                               |

@@ -186,9 +186,7 @@ export function CredentialStatusMessage({ message, tone }: CredentialStatusMessa
       'px-3 py-2 rounded-lg text-xs font-medium',
       tone === 'success'
         ? 'bg-gray-50 text-gray-700 dark:bg-gray-900/20 dark:text-gray-300 border border-gray-200 dark:border-gray-700'
-        : tone === 'warning'
-          ? 'bg-gray-50 text-gray-700 dark:bg-gray-900/20 dark:text-gray-300 border border-gray-200'
-          : 'ui-error-box text-xs font-medium',
+        : 'ui-error-box text-xs font-medium',
     ].join(' ')}>
       {message}
     </div>

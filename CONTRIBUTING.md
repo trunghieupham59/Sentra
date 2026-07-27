@@ -35,7 +35,11 @@ Viezan/
 │       └── storage.ts        # Local data persistence
 └── src/                      # Renderer process (React)
     ├── pages/                # Full-page components
-    ├── components/           # Reusable UI components
+    ├── components/           # Atomic UI layers + feature components
+    │   ├── ui/atoms/         # Primitive reusable controls and icons
+    │   ├── ui/molecules/     # Small props-driven compositions
+    │   ├── organisms/        # App/feature sections
+    │   └── templates/        # Layout-only page shells
     ├── hooks/                # Custom React hooks
     ├── store/                # Zustand global state
     ├── constants/            # Config & static data

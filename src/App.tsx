@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { CommandPalette } from './components/CommandPalette'
+import { AIChatSidebar, CommandPalette, PrimaryNavigationSidebar } from './components/organisms'
 import { SettingsModal } from './components/SettingsModal'
-import { Sidebar } from './components/Sidebar'
+import { AppShell } from './components/templates'
 import { PROVIDERS } from './constants/providers'
 import { flushPersistedStore, useAppStore } from './store/useAppStore'
 import type { Provider, QuickChatSeedPayload } from './types'
@@ -14,8 +14,6 @@ const HistoryPage = lazy(() => import('./pages/HistoryPage').then(m => ({ defaul
 const DictionaryPage = lazy(() => import('./pages/DictionaryPage').then(m => ({ default: m.DictionaryPage })))
 
 const FONT_SIZE_MAP = { small: '13px', medium: '15px', large: '17px' } as const
-
-const MACOS_TITLEBAR_HEIGHT_PX = 40
 
 function PageFallback() {
   return <div className="app-page" aria-hidden="true" />
@@ -42,6 +40,10 @@ function App() {
       return
     }
     // 'system' — follow OS preference
+    if (typeof window.matchMedia !== 'function') {
+      document.documentElement.classList.remove('dark')
+      return
+    }
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     const apply = (dark: boolean) => document.documentElement.classList.toggle('dark', dark)
     apply(mq.matches)
@@ -148,44 +150,31 @@ function App() {
   const isMac = window.api?.platform === 'darwin'
 
   return (
-    <div className="app-shell">
-      {/* macOS traffic-light drag region */}
-      {isMac && (
+    <AppShell
+      showMacTitlebar={isMac}
+      primaryNavigation={<PrimaryNavigationSidebar />}
+      contextSidebar={activePage === 'chat' ? <AIChatSidebar /> : undefined}
+      overlays={
         <>
-          <div
-            className="titlebar-drag app-titlebar-drag flex-shrink-0 w-full"
-            style={{ height: MACOS_TITLEBAR_HEIGHT_PX }}
-          />
-          <div className="app-titlebar-divider flex-shrink-0 w-full border-b" />
+          <SettingsModal />
+          <CommandPalette open={cmdPaletteOpen} onClose={() => setCmdPaletteOpen(false)} />
         </>
-      )}
-
-      {/* Body: sidebar + main */}
-      <div className="app-body">
-        <Sidebar />
-
-
-        <main className="app-main">
-          <Suspense fallback={<PageFallback />}>
-            {activePage === 'translate' ? (
-              <TranslatePage />
-            ) : activePage === 'live' ? (
-              <LiveTranslatePage />
-            ) : activePage === 'chat' ? (
-              <ChatPage />
-            ) : activePage === 'dictionary' ? (
-              <DictionaryPage />
-            ) : (
-              <HistoryPage />
-            )}
-          </Suspense>
-        </main>
-      </div>
-
-      {/* Modals */}
-      <SettingsModal />
-      <CommandPalette open={cmdPaletteOpen} onClose={() => setCmdPaletteOpen(false)} />
-    </div>
+      }
+    >
+      <Suspense fallback={<PageFallback />}>
+        {activePage === 'translate' ? (
+          <TranslatePage />
+        ) : activePage === 'live' ? (
+          <LiveTranslatePage />
+        ) : activePage === 'chat' ? (
+          <ChatPage />
+        ) : activePage === 'dictionary' ? (
+          <DictionaryPage />
+        ) : (
+          <HistoryPage />
+        )}
+      </Suspense>
+    </AppShell>
   )
 }
 

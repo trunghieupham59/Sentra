@@ -40,6 +40,17 @@
     --vzn-accent-border: rgba(91, 91, 214, 0.22);
     --vzn-accent-glow:   rgba(91, 91, 214, 0.14);
 
+    /* ── Semantic actions ─────────────────────────────────────────────── */
+    --vzn-action:        #2563EB;
+    --vzn-action-hover:  #1D4ED8;
+    --vzn-action-active: #1E40AF;
+    --vzn-action-soft:   #EFF6FF;
+    --vzn-action-border: #93C5FD;
+    --vzn-action-fg:     #FFFFFF;
+    --vzn-disabled-bg:     #E8E8F0;
+    --vzn-disabled-border: rgba(0, 0, 0, 0.08);
+    --vzn-disabled-fg:     #8080A0;
+
     /* ── Semantic ───────────────────────────────────────────────────────── */
     --vzn-success:        #059669;
     --vzn-success-soft:   #ECFDF5;
@@ -53,7 +64,6 @@
     --vzn-danger-border:  #FCA5A5;
 
     /* ── System ─────────────────────────────────────────────────────────── */
-    --vzn-focus-ring:    rgba(91, 91, 214, 0.22);
     --vzn-shadow-sm:     0 1px 3px rgba(0, 0, 0, 0.07), 0 1px 2px rgba(0, 0, 0, 0.05);
     --vzn-shadow-md:     0 4px 16px rgba(0, 0, 0, 0.10), 0 2px 6px rgba(0, 0, 0, 0.07);
     --vzn-shadow-lg:     0 16px 48px rgba(0, 0, 0, 0.14), 0 4px 16px rgba(0, 0, 0, 0.08);
@@ -73,6 +83,11 @@
     --vzn-sidebar-width:  60px;
     --vzn-workspace-pad:  18px;
     --vzn-panel-gap:      12px;
+
+    /* ── Atomic controls ───────────────────────────────────────────────── */
+    --vzn-control-height-sm: 32px;
+    --vzn-control-height-md: 36px;
+    --vzn-control-height-lg: 40px;
   }
 
   /* ── Dark mode ────────────────────────────────────────────────────────── */
@@ -106,6 +121,16 @@
     --vzn-accent-border: rgba(129, 140, 248, 0.26);
     --vzn-accent-glow:   rgba(99, 102, 241, 0.20);
 
+    --vzn-action:        #60A5FA;
+    --vzn-action-hover:  #93C5FD;
+    --vzn-action-active: #3B82F6;
+    --vzn-action-soft:   rgba(96, 165, 250, 0.14);
+    --vzn-action-border: rgba(96, 165, 250, 0.38);
+    --vzn-action-fg:     #0B1220;
+    --vzn-disabled-bg:     rgba(255, 255, 255, 0.07);
+    --vzn-disabled-border: rgba(255, 255, 255, 0.08);
+    --vzn-disabled-fg:     #62627A;
+
     --vzn-success:        #4ADE80;
     --vzn-success-soft:   rgba(74, 222, 128, 0.10);
     --vzn-success-border: rgba(74, 222, 128, 0.28);
@@ -117,7 +142,6 @@
     --vzn-danger-soft:    rgba(255, 107, 122, 0.14);
     --vzn-danger-border:  rgba(255, 107, 122, 0.30);
 
-    --vzn-focus-ring:  rgba(129, 140, 248, 0.30);
     --vzn-shadow-sm:   0 1px 4px rgba(0,0,0,0.50), 0 0 0 1px rgba(255,255,255,0.04);
     --vzn-shadow-md:   0 8px 28px rgba(0,0,0,0.58), 0 0 0 1px rgba(255,255,255,0.05);
     --vzn-shadow-lg:   0 24px 64px rgba(0,0,0,0.70), 0 0 0 1px rgba(255,255,255,0.06);
@@ -148,6 +172,8 @@
   }
 
   textarea, input, [contenteditable] { user-select: text; }
+  /* Product requirement: focus must not add a frame around app controls. */
+  *:focus { outline: none !important; }
   .titlebar-drag    { -webkit-app-region: drag; }
   .titlebar-no-drag { -webkit-app-region: no-drag; }
 }
@@ -156,6 +182,116 @@
    COMPONENT LAYER
    ═══════════════════════════════════════════════════════════════════════════ */
 @layer components {
+  /* Atomic Button — size, shape, semantic colour, and emphasis contract. */
+  .ui-button {
+    --vzn-button-bg: var(--vzn-surface);
+    --vzn-button-border: var(--vzn-border);
+    --vzn-button-fg: var(--vzn-text-muted);
+    --vzn-button-hover-bg: var(--vzn-surface-muted);
+    --vzn-button-hover-border: var(--vzn-border-strong);
+    --vzn-button-hover-fg: var(--vzn-text-strong);
+    display: inline-flex;
+    box-sizing: border-box;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    gap: var(--vzn-space-1-5);
+    border: 1px solid var(--vzn-button-border) !important;
+    background: var(--vzn-button-bg) !important;
+    color: var(--vzn-button-fg) !important;
+    font: inherit;
+    font-size: var(--vzn-font-size-md);
+    font-weight: var(--vzn-weight-semibold);
+    line-height: 1;
+    cursor: pointer;
+    transition: background var(--vzn-duration-fast) var(--vzn-ease-standard), border-color var(--vzn-duration-fast) var(--vzn-ease-standard), color var(--vzn-duration-fast) var(--vzn-ease-standard), box-shadow var(--vzn-duration-fast) var(--vzn-ease-standard);
+  }
+  .ui-button:hover:not(:disabled) {
+    border-color: var(--vzn-button-hover-border) !important;
+    background: var(--vzn-button-hover-bg) !important;
+    color: var(--vzn-button-hover-fg) !important;
+  }
+  .ui-button.ui-button-pill { border-radius: var(--vzn-radius-pill); padding-inline: var(--vzn-space-3); }
+  .ui-button.ui-button-rect { border-radius: var(--vzn-radius-control); padding-inline: var(--vzn-space-3); }
+  .ui-button.ui-button-icon { border-radius: var(--vzn-radius-control); }
+  .ui-button.ui-button-xs { height: var(--vzn-control-height-xs); min-height: var(--vzn-control-height-xs); font-size: var(--vzn-font-size-sm); }
+  .ui-button.ui-button-sm { height: var(--vzn-control-height-sm); min-height: var(--vzn-control-height-sm); }
+  .ui-button.ui-button-md { height: var(--vzn-control-height-md); min-height: var(--vzn-control-height-md); }
+  .ui-button.ui-button-lg { height: var(--vzn-control-height-lg); min-height: var(--vzn-control-height-lg); }
+  .ui-button.ui-button-icon.ui-button-xs { width: var(--vzn-control-height-xs); padding: 0; }
+  .ui-button.ui-button-icon.ui-button-sm { width: var(--vzn-control-height-sm); padding: 0; }
+  .ui-button.ui-button-icon.ui-button-md { width: var(--vzn-control-height-md); padding: 0; }
+  .ui-button.ui-button-icon.ui-button-lg { width: var(--vzn-control-height-lg); padding: 0; }
+
+  .ui-button.ui-button-appearance-ghost { --vzn-button-bg: transparent; --vzn-button-border: transparent; }
+  .ui-button.ui-button-appearance-soft { --vzn-button-border: transparent; }
+
+  .ui-button.ui-button-variant-neutral.ui-button-appearance-solid {
+    --vzn-button-bg: var(--vzn-surface-hover); --vzn-button-border: var(--vzn-surface-hover); --vzn-button-fg: var(--vzn-text-strong);
+  }
+  .ui-button.ui-button-variant-neutral.ui-button-appearance-soft {
+    --vzn-button-bg: var(--vzn-surface-subtle); --vzn-button-fg: var(--vzn-text);
+  }
+  .ui-button.ui-button-variant-neutral.ui-button-appearance-ghost {
+    --vzn-button-fg: var(--vzn-text-muted);
+  }
+  .ui-button.ui-button-variant-primary {
+    --vzn-button-fg: var(--vzn-action-text); --vzn-button-border: var(--vzn-action-border); --vzn-button-bg: var(--vzn-surface); --vzn-button-hover-bg: var(--vzn-action-soft); --vzn-button-hover-border: var(--vzn-action-border); --vzn-button-hover-fg: var(--vzn-action-text);
+  }
+  .ui-button.ui-button-variant-primary.ui-button-appearance-solid {
+    --vzn-button-bg: var(--vzn-action); --vzn-button-border: var(--vzn-action); --vzn-button-fg: var(--vzn-action-fg); --vzn-button-hover-bg: var(--vzn-action-hover); --vzn-button-hover-border: var(--vzn-action-hover); --vzn-button-hover-fg: var(--vzn-action-fg);
+  }
+  .ui-button.ui-button-variant-primary.ui-button-appearance-soft {
+    --vzn-button-bg: var(--vzn-action-soft); --vzn-button-border: transparent; --vzn-button-fg: var(--vzn-action-text); --vzn-button-hover-bg: var(--vzn-action-soft-hover);
+  }
+  .ui-button.ui-button-variant-primary.ui-button-appearance-ghost {
+    --vzn-button-bg: transparent; --vzn-button-border: transparent; --vzn-button-fg: var(--vzn-action-text);
+  }
+  .ui-button.ui-button-variant-danger {
+    --vzn-button-bg: var(--vzn-surface); --vzn-button-border: var(--vzn-danger-border); --vzn-button-fg: var(--vzn-danger); --vzn-button-hover-bg: var(--vzn-danger-soft-hover); --vzn-button-hover-border: var(--vzn-danger-border); --vzn-button-hover-fg: var(--vzn-danger);
+  }
+  .ui-button.ui-button-variant-danger.ui-button-appearance-solid {
+    --vzn-button-bg: var(--vzn-danger); --vzn-button-border: var(--vzn-danger); --vzn-button-fg: var(--vzn-text-inverse); --vzn-button-hover-bg: var(--vzn-danger-hover); --vzn-button-hover-border: var(--vzn-danger-hover); --vzn-button-hover-fg: var(--vzn-text-inverse);
+  }
+  .ui-button.ui-button-variant-danger.ui-button-appearance-soft {
+    --vzn-button-bg: var(--vzn-danger-soft); --vzn-button-border: transparent; --vzn-button-fg: var(--vzn-danger);
+  }
+  .ui-button.ui-button-variant-danger.ui-button-appearance-ghost {
+    --vzn-button-bg: transparent; --vzn-button-border: transparent; --vzn-button-fg: var(--vzn-danger);
+  }
+  .ui-button:disabled {
+    border-color: var(--vzn-disabled-border) !important;
+    background: var(--vzn-disabled-bg) !important;
+    color: var(--vzn-disabled-fg) !important;
+    box-shadow: none !important;
+    cursor: not-allowed !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  /* Atomic Input — shares the control grid and interaction language. */
+  .ui-input {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid var(--vzn-border);
+    border-radius: var(--vzn-radius-control);
+    background: var(--vzn-surface);
+    color: var(--vzn-text-strong);
+    font-family: var(--vzn-font-sans);
+    font-size: var(--vzn-font-size-md);
+    line-height: var(--vzn-line-normal);
+    transition: border-color var(--vzn-duration-fast) var(--vzn-ease-standard), background var(--vzn-duration-fast) var(--vzn-ease-standard), box-shadow var(--vzn-duration-fast) var(--vzn-ease-standard);
+  }
+  .ui-input-sm { height: var(--vzn-control-height-sm); padding-inline: var(--vzn-space-2); }
+  .ui-input-md { height: var(--vzn-control-height-md); padding-inline: var(--vzn-space-3); }
+  .ui-input-lg { height: var(--vzn-control-height-lg); padding-inline: var(--vzn-space-3); }
+  .ui-input::placeholder { color: var(--vzn-text-disabled); }
+  .ui-input:hover:not(:disabled) { border-color: var(--vzn-border-strong); }
+  .ui-input:focus-visible { border-color: var(--vzn-action-border); box-shadow: 0 0 0 3px var(--vzn-action-soft); }
+  .ui-input[aria-invalid="true"] { border-color: var(--vzn-danger-border); box-shadow: 0 0 0 3px var(--vzn-danger-soft); }
+  .ui-input:disabled { border-color: var(--vzn-disabled-border); background: var(--vzn-disabled-bg); color: var(--vzn-disabled-fg); cursor: not-allowed; }
+
 
   /* ── App shell ─────────────────────────────────────────────────────────
    * The nebula gradient background lives here.                           */
@@ -271,10 +407,6 @@
     color: var(--vzn-text);
     border-color: var(--vzn-border);
   }
-  .sidebar-nav-btn:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--vzn-focus-ring);
-  }
   .sidebar-nav-btn.active {
     background: var(--vzn-accent-soft);
     color: var(--vzn-accent);
@@ -309,10 +441,6 @@
     background: var(--vzn-surface-subtle);
     color: var(--vzn-text);
     border-color: var(--vzn-border);
-  }
-  .nav-item:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--vzn-focus-ring);
   }
   .nav-item.active {
     background: var(--vzn-accent-soft);
@@ -354,11 +482,6 @@
       0 1px 0 rgba(255, 255, 255, 1.0) inset,
       0 10px 30px rgba(0, 0, 0, 0.09);
   }
-  .glass-panel:focus-within {
-    border-color: var(--vzn-accent-border);
-    box-shadow: 0 0 0 3px var(--vzn-focus-ring), var(--vzn-shadow-md);
-  }
-
   /* Aliases for backward compatibility */
   .surface-panel  {
     display: flex; flex-direction: column;
@@ -510,7 +633,6 @@
     transition: all 0.15s ease; cursor: pointer; user-select: none;
     border-radius: var(--vzn-radius-sm); outline: none; font-size: 13px;
   }
-  .btn-base:focus-visible { box-shadow: 0 0 0 3px var(--vzn-focus-ring); }
   .btn-base:disabled { opacity: 0.40; cursor: not-allowed; }
 
   /* Primary – indigo gradient */
@@ -536,7 +658,6 @@
     box-shadow: 0 1px 4px rgba(0,0,0,0.15), var(--vzn-shadow-glow);
   }
   .btn-primary:disabled { opacity: 0.40; cursor: not-allowed; }
-  .btn-primary:focus-visible { box-shadow: 0 0 0 3px var(--vzn-focus-ring); }
 
   /* Secondary – glass */
   .btn-secondary {
@@ -550,7 +671,6 @@
   }
   .btn-secondary:hover:not(:disabled) { background: var(--vzn-surface-hover); border-color: var(--vzn-border-strong); color: var(--vzn-text-strong); }
   .btn-secondary:disabled { opacity: 0.40; cursor: not-allowed; }
-  .btn-secondary:focus-visible { box-shadow: 0 0 0 3px var(--vzn-focus-ring); }
 
   /* Soft */
   .btn-soft {
@@ -564,7 +684,6 @@
   }
   .btn-soft:hover:not(:disabled) { box-shadow: var(--vzn-shadow-glow); color: var(--vzn-accent-hover); }
   .btn-soft:disabled { opacity: 0.40; cursor: not-allowed; }
-  .btn-soft:focus-visible { box-shadow: 0 0 0 3px var(--vzn-focus-ring); }
 
   /* Ghost */
   .btn-ghost {
@@ -578,7 +697,6 @@
   }
   .btn-ghost:hover:not(:disabled) { background: var(--vzn-surface-subtle); color: var(--vzn-text-strong); }
   .btn-ghost:disabled { opacity: 0.40; cursor: not-allowed; }
-  .btn-ghost:focus-visible { box-shadow: 0 0 0 3px var(--vzn-focus-ring); }
 
   /* Danger */
   .btn-danger {
@@ -592,7 +710,6 @@
   }
   .btn-danger:hover:not(:disabled) { color: var(--vzn-danger-hover); }
   .btn-danger:disabled { opacity: 0.40; cursor: not-allowed; }
-  .btn-danger:focus-visible { box-shadow: 0 0 0 3px rgba(255,107,122,0.22); }
 
   /* Link */
   .btn-link {
@@ -619,7 +736,6 @@
   }
   .btn-icon:hover:not(:disabled) { background: var(--vzn-surface-hover); border-color: var(--vzn-border-strong); color: var(--vzn-text-strong); }
   .btn-icon:disabled { opacity: 0.40; cursor: not-allowed; }
-  .btn-icon:focus-visible { box-shadow: 0 0 0 3px var(--vzn-focus-ring); }
   .btn-icon.btn-active, .btn-icon-active {
     background: var(--vzn-accent-soft) !important; border-color: var(--vzn-accent-border) !important; color: var(--vzn-accent) !important;
   }
@@ -649,7 +765,6 @@
   }
   .toolbar-icon-button:hover:not(:disabled) { background: var(--vzn-surface-hover); border-color: var(--vzn-border-strong); color: var(--vzn-text-strong); }
   .toolbar-icon-button:disabled { opacity: 0.40; cursor: not-allowed; }
-  .toolbar-icon-button:focus-visible { box-shadow: 0 0 0 3px var(--vzn-focus-ring); }
 
   .toolbar-pill-button {
     display: inline-flex; align-items: center; justify-content: center;
@@ -692,7 +807,6 @@
   }
   .btn-language-tab:hover:not(:disabled) { background: var(--vzn-surface-subtle); color: var(--vzn-text); }
   .btn-language-tab:disabled { opacity: 0.40; cursor: not-allowed; }
-  .btn-language-tab:focus-visible { box-shadow: 0 0 0 3px var(--vzn-focus-ring); }
   .btn-language-tab.active, .btn-language-tab[data-active="true"] { color: var(--vzn-accent); background: var(--vzn-accent-soft); }
   .btn-language-tab.active::after {
     content: ''; position: absolute; bottom: -1px; left: 8px; right: 8px;
@@ -784,11 +898,6 @@
   .field-input::placeholder, .field-textarea::placeholder,
   .search-field::placeholder { color: var(--vzn-text-soft); }
 
-  .field-input:focus, .field-textarea:focus,
-  .search-field:focus, .select-field:focus, .inline-pill-input:focus {
-    border-color: var(--vzn-accent);
-    box-shadow: 0 0 0 3px var(--vzn-focus-ring);
-  }
   .field-input:disabled, .field-textarea:disabled {
     background: var(--vzn-surface-muted);
     color: var(--vzn-text-disabled);
@@ -796,7 +905,6 @@
   }
   .field-input-sm, .field-textarea-sm { padding: 6px 10px !important; font-size: 12px !important; }
   .field-input-error { border-color: var(--vzn-danger) !important; }
-  .field-input-error:focus { box-shadow: 0 0 0 3px rgba(255,107,122,0.22) !important; }
   .field-input-muted { background: var(--vzn-surface-muted) !important; color: var(--vzn-text-disabled) !important; cursor: pointer !important; }
 
   .select-field {
@@ -837,7 +945,6 @@
   .toggle-switch-track-on  { background: var(--vzn-accent); box-shadow: none; }
   .toggle-switch-track-off { background: var(--vzn-surface-subtle); }
   .toggle-switch-thumb     { background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
-  .toggle-switch-track:focus-visible { box-shadow: 0 0 0 3px var(--vzn-focus-ring); }
 
   /* ── Keyboard key ────────────────────────────────────────────────────── */
   .keyboard-key {
@@ -932,10 +1039,6 @@
     -webkit-backdrop-filter: var(--vzn-blur-sm);
     box-shadow: 0 0 0 1px rgba(0,0,0,0.06), var(--vzn-shadow-sm);
   }
-  .chat-composer:focus-within {
-    border-color: var(--vzn-accent-border);
-    box-shadow: 0 0 0 3px var(--vzn-focus-ring), var(--vzn-shadow-glow), 0 0 0 1px rgba(255,255,255,0.07);
-  }
   .chat-composer-drop {
     border-color: var(--vzn-accent) !important;
     background: var(--vzn-accent-soft) !important;
@@ -964,7 +1067,6 @@
     transition: all 0.15s;
   }
   .chat-action-button:hover { background: var(--vzn-surface-subtle); color: var(--vzn-text); }
-  .chat-action-button:focus-visible { box-shadow: 0 0 0 2px var(--vzn-focus-ring); outline: none; }
   .chat-action-button-active-neutral,
   .chat-action-button-active-muted {
     background: var(--vzn-accent-soft) !important;
@@ -983,7 +1085,6 @@
     transition: all 0.15s;
   }
   .chat-mode-pill:hover { background: var(--vzn-surface-subtle); color: var(--vzn-text); }
-  .chat-mode-pill:focus-visible { box-shadow: 0 0 0 2px var(--vzn-focus-ring); outline: none; }
   .chat-mode-pill-active { background: var(--vzn-accent-soft); color: var(--vzn-accent); }
   .chat-mode-pill-active:hover { background: var(--vzn-accent-soft); color: var(--vzn-accent-hover); }
 
@@ -1009,7 +1110,6 @@
     color: var(--vzn-text-disabled) !important;
     box-shadow: none !important; transform: none !important;
   }
-  .chat-send-button:focus-visible { box-shadow: 0 0 0 3px var(--vzn-focus-ring); }
 
   .chat-stop-button {
     display: inline-flex; align-items: center; justify-content: center;
@@ -1020,7 +1120,6 @@
     cursor: pointer; transition: all 0.15s;
   }
   .chat-stop-button:hover { color: var(--vzn-danger-hover); }
-  .chat-stop-button:focus-visible { box-shadow: 0 0 0 3px rgba(255,107,122,0.25); outline: none; }
 
   .chat-resume-button {
     display: inline-flex; align-items: center; justify-content: center;
@@ -1243,10 +1342,6 @@
   .app-page  { background: transparent; }
   .app-workspace { background: transparent; }
 
-  .surface-panel-focus:focus-within {
-    border-color: var(--vzn-accent-border) !important;
-    box-shadow: 0 0 0 3px var(--vzn-focus-ring), var(--vzn-shadow-md) !important;
-  }
   .surface-panel-drop {
     border-color: var(--vzn-accent) !important;
     background: var(--vzn-accent-soft) !important;

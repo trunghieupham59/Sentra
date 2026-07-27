@@ -1,6 +1,6 @@
+import { ToggleSwitch } from '../../components/ui/atoms'
 import { FontSizePicker } from '../../components/ui/FontSizePicker'
 import { ChevronDownIcon } from '../../components/ui/icons'
-import { ToggleSwitch } from '../../components/ui/ToggleSwitch'
 import { type AppLocale, LOCALE_NAMES } from '../../i18n'
 import { useAppStore, useT } from '../../store/useAppStore'
 import { detectSystemLocale } from '../../utils/locale'

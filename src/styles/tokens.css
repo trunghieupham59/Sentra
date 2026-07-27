@@ -1,0 +1,326 @@
+/*
+ * Viezan Design Tokens
+ *
+ * Canonical visual foundation for every renderer surface. Component styles
+ * consume semantic aliases below instead of choosing literal values.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Primitive palette --------------------------------------------------- */
+  --vzn-neutral-0: #ffffff;
+  --vzn-neutral-25: #fdfdfe;
+  --vzn-neutral-50: #fafafb;
+  --vzn-neutral-100: #f4f5f7;
+  --vzn-neutral-200: #e5e7eb;
+  --vzn-neutral-300: #d1d5db;
+  --vzn-neutral-400: #a1a1aa;
+  --vzn-neutral-500: #71717a;
+  --vzn-neutral-600: #52525b;
+  --vzn-neutral-700: #3f3f46;
+  --vzn-neutral-800: #27272a;
+  --vzn-neutral-900: #18181b;
+  --vzn-neutral-950: #09090b;
+
+  --vzn-blue-50: #eff6ff;
+  --vzn-blue-100: #dbeafe;
+  --vzn-blue-200: #bfdbfe;
+  --vzn-blue-300: #93c5fd;
+  --vzn-blue-400: #60a5fa;
+  --vzn-blue-500: #3b82f6;
+  --vzn-blue-600: #2563eb;
+  --vzn-blue-700: #1d4ed8;
+  --vzn-blue-800: #1e40af;
+  --vzn-blue-900: #1e3a8a;
+
+  --vzn-red-50: #fef2f2;
+  --vzn-red-200: #fecaca;
+  --vzn-red-500: #ef4444;
+  --vzn-red-600: #dc2626;
+  --vzn-red-700: #b91c1c;
+
+  --vzn-green-50: #ecfdf5;
+  --vzn-green-500: #10b981;
+  --vzn-green-600: #059669;
+  --vzn-amber-50: #fffbeb;
+  --vzn-amber-500: #f59e0b;
+  --vzn-amber-600: #d97706;
+
+  /* Semantic colors ----------------------------------------------------- */
+  --vzn-app-bg: #f3f4f6;
+  --vzn-bg: var(--vzn-neutral-50);
+  --vzn-canvas: var(--vzn-neutral-0);
+  --vzn-sidebar-bg: #f7f8fa;
+  --vzn-chat-sidebar-bg: var(--vzn-neutral-50);
+
+  --vzn-surface: var(--vzn-neutral-0);
+  --vzn-surface-raised: var(--vzn-neutral-25);
+  --vzn-surface-muted: #f7f8fa;
+  --vzn-surface-subtle: #f3f4f6;
+  --vzn-surface-hover: #eef0f3;
+  --vzn-surface-selected: #eaf2ff;
+
+  --vzn-text: var(--vzn-neutral-800);
+  --vzn-text-strong: var(--vzn-neutral-900);
+  --vzn-text-muted: var(--vzn-neutral-500);
+  --vzn-text-soft: var(--vzn-neutral-400);
+  --vzn-text-disabled: #c4c4cc;
+  --vzn-text-inverse: var(--vzn-neutral-0);
+
+  --vzn-border: var(--vzn-neutral-200);
+  --vzn-border-strong: var(--vzn-neutral-300);
+  --vzn-divider: #eceef1;
+
+  --vzn-action: var(--vzn-blue-600);
+  --vzn-action-hover: var(--vzn-blue-700);
+  --vzn-action-active: var(--vzn-blue-800);
+  --vzn-action-soft: var(--vzn-blue-50);
+  --vzn-action-soft-hover: var(--vzn-blue-100);
+  --vzn-action-border: var(--vzn-blue-300);
+  --vzn-action-text: var(--vzn-blue-700);
+  --vzn-action-fg: var(--vzn-neutral-0);
+  --vzn-focus-ring: color-mix(in srgb, var(--vzn-blue-500) 52%, transparent);
+
+  --vzn-success: var(--vzn-green-600);
+  --vzn-success-soft: var(--vzn-green-50);
+  --vzn-success-border: color-mix(in srgb, var(--vzn-green-500) 42%, transparent);
+  --vzn-warning: var(--vzn-amber-600);
+  --vzn-warning-soft: var(--vzn-amber-50);
+  --vzn-warning-border: color-mix(in srgb, var(--vzn-amber-500) 45%, transparent);
+  --vzn-danger: var(--vzn-red-600);
+  --vzn-danger-hover: var(--vzn-red-700);
+  --vzn-danger-soft: var(--vzn-red-50);
+  --vzn-danger-soft-hover: #fee2e2;
+  --vzn-danger-border: var(--vzn-red-200);
+
+  --vzn-disabled-bg: var(--vzn-neutral-100);
+  --vzn-disabled-border: var(--vzn-neutral-200);
+  --vzn-disabled-fg: var(--vzn-neutral-400);
+
+  /* Typography ---------------------------------------------------------- */
+  --vzn-font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --vzn-font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --vzn-font-size-micro: 10px;
+  --vzn-font-size-caption: 11px;
+  --vzn-font-size-sm: 12px;
+  --vzn-font-size-md: 13px;
+  --vzn-font-size-lg: 14px;
+  --vzn-font-size-title: 16px;
+  --vzn-font-size-heading: 22px;
+  --vzn-font-size-display: 32px;
+  --vzn-line-tight: 1.2;
+  --vzn-line-normal: 1.45;
+  --vzn-line-relaxed: 1.6;
+  --vzn-weight-regular: 400;
+  --vzn-weight-medium: 500;
+  --vzn-weight-semibold: 600;
+  --vzn-weight-bold: 700;
+
+  /* 4px spacing grid ---------------------------------------------------- */
+  --vzn-space-0: 0;
+  --vzn-space-0-5: 2px;
+  --vzn-space-1: 4px;
+  --vzn-space-1-5: 6px;
+  --vzn-space-2: 8px;
+  --vzn-space-3: 12px;
+  --vzn-space-4: 16px;
+  --vzn-space-5: 20px;
+  --vzn-space-6: 24px;
+  --vzn-space-8: 32px;
+  --vzn-space-10: 40px;
+  --vzn-space-12: 48px;
+
+  /* Shape --------------------------------------------------------------- */
+  --vzn-radius-2xs: 4px;
+  --vzn-radius-xs: 6px;
+  --vzn-radius-sm: 8px;
+  --vzn-radius-control: 10px;
+  --vzn-radius-md: 12px;
+  --vzn-radius-lg: 16px;
+  --vzn-radius-xl: 20px;
+  --vzn-radius-2xl: 24px;
+  --vzn-radius-pill: 999px;
+
+  /* Controls and icons -------------------------------------------------- */
+  --vzn-control-height-xs: 28px;
+  --vzn-control-height-sm: 32px;
+  --vzn-control-height-md: 36px;
+  --vzn-control-height-lg: 40px;
+  --vzn-control-height-xl: 48px;
+  --vzn-icon-xs: 12px;
+  --vzn-icon-sm: 14px;
+  --vzn-icon-md: 16px;
+  --vzn-icon-lg: 20px;
+  --vzn-icon-xl: 24px;
+  --vzn-brand-mark-sm: 28px;
+  --vzn-brand-mark-md: 36px;
+  --vzn-brand-mark-lg: 48px;
+
+  /* Elevation and motion ------------------------------------------------ */
+  --vzn-shadow-xs: 0 1px 1px rgba(15, 23, 42, 0.03);
+  --vzn-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --vzn-shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
+  --vzn-shadow-lg: 0 18px 48px rgba(15, 23, 42, 0.12);
+  --vzn-shadow-overlay: 0 24px 72px rgba(15, 23, 42, 0.22);
+  --vzn-duration-fast: 120ms;
+  --vzn-duration-normal: 180ms;
+  --vzn-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Layering ------------------------------------------------------------ */
+  --vzn-layer-context-overlay: 60;
+  --vzn-layer-navigation-backdrop: 65;
+  --vzn-layer-navigation-overlay: 70;
+  --vzn-layer-modal: 80;
+
+  /* Layout -------------------------------------------------------------- */
+  --vzn-sidebar-width: 60px;
+  --vzn-sidebar-expanded-width: 236px;
+  --vzn-chat-sidebar-width: 260px;
+  --vzn-chat-sidebar-collapsed-width: 48px;
+  --vzn-content-max: 980px;
+  --vzn-chat-stage-max: 1040px;
+  --vzn-chat-reading-max: 820px;
+  --vzn-chat-composer-max: 1040px;
+  --vzn-chat-gutter: clamp(16px, 2.2vw, 40px);
+  --vzn-composer-min-height: 116px;
+  --vzn-prompt-card-min-height: 132px;
+  --vzn-workspace-pad: var(--vzn-space-4);
+  --vzn-panel-gap: var(--vzn-space-3);
+
+  /* Compatibility aliases ---------------------------------------------- */
+  --vzn-accent: var(--vzn-action);
+  --vzn-accent-hover: var(--vzn-action-hover);
+  --vzn-accent-active: var(--vzn-action-active);
+  --vzn-accent-soft: var(--vzn-action-soft);
+  --vzn-accent-border: var(--vzn-action-border);
+  --vzn-accent-glow: transparent;
+  --vzn-send-bg: var(--vzn-action);
+  --vzn-send-bg-hover: var(--vzn-action-hover);
+  --vzn-send-fg: var(--vzn-action-fg);
+  --vzn-shadow-glow: none;
+  --vzn-skeleton: color-mix(in srgb, var(--vzn-neutral-900) 6%, transparent);
+  --vzn-blur: none;
+  --vzn-blur-sm: none;
+}
+
+html.dark {
+  color-scheme: dark;
+
+  --vzn-app-bg: #111318;
+  --vzn-bg: #15171c;
+  --vzn-canvas: #181a20;
+  --vzn-sidebar-bg: #1d2026;
+  --vzn-chat-sidebar-bg: #1a1d23;
+  --vzn-surface: #20232a;
+  --vzn-surface-raised: #252830;
+  --vzn-surface-muted: #24272e;
+  --vzn-surface-subtle: #2b2f37;
+  --vzn-surface-hover: #343842;
+  --vzn-surface-selected: rgba(96, 165, 250, 0.14);
+
+  --vzn-text: #e4e7ec;
+  --vzn-text-strong: #f8fafc;
+  --vzn-text-muted: #a8afba;
+  --vzn-text-soft: #777f8c;
+  --vzn-text-disabled: #565e6b;
+  --vzn-text-inverse: #111318;
+
+  --vzn-border: rgba(226, 232, 240, 0.1);
+  --vzn-border-strong: rgba(226, 232, 240, 0.18);
+  --vzn-divider: rgba(226, 232, 240, 0.08);
+
+  --vzn-action: var(--vzn-blue-400);
+  --vzn-action-hover: var(--vzn-blue-300);
+  --vzn-action-active: var(--vzn-blue-500);
+  --vzn-action-soft: rgba(96, 165, 250, 0.14);
+  --vzn-action-soft-hover: rgba(96, 165, 250, 0.2);
+  --vzn-action-border: rgba(96, 165, 250, 0.38);
+  --vzn-action-text: #93c5fd;
+  --vzn-action-fg: #101820;
+  --vzn-focus-ring: rgba(96, 165, 250, 0.58);
+
+  --vzn-success: #4ade80;
+  --vzn-success-soft: rgba(74, 222, 128, 0.1);
+  --vzn-success-border: rgba(74, 222, 128, 0.28);
+  --vzn-warning: #fbbf24;
+  --vzn-warning-soft: rgba(251, 191, 36, 0.1);
+  --vzn-warning-border: rgba(251, 191, 36, 0.28);
+  --vzn-danger: #fb7185;
+  --vzn-danger-hover: #fda4af;
+  --vzn-danger-soft: rgba(251, 113, 133, 0.14);
+  --vzn-danger-soft-hover: rgba(251, 113, 133, 0.2);
+  --vzn-danger-border: rgba(251, 113, 133, 0.3);
+
+  --vzn-disabled-bg: rgba(255, 255, 255, 0.07);
+  --vzn-disabled-border: rgba(255, 255, 255, 0.08);
+  --vzn-disabled-fg: #667085;
+  --vzn-shadow-xs: 0 1px 1px rgba(0, 0, 0, 0.14);
+  --vzn-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.18);
+  --vzn-shadow-md: 0 10px 28px rgba(0, 0, 0, 0.26);
+  --vzn-shadow-lg: 0 20px 52px rgba(0, 0, 0, 0.36);
+  --vzn-shadow-overlay: 0 28px 80px rgba(0, 0, 0, 0.5);
+  --vzn-skeleton: rgba(255, 255, 255, 0.06);
+}
+
+body {
+  font-family: var(--vzn-font-sans);
+  font-size: var(--vzn-font-size-lg);
+  line-height: var(--vzn-line-normal);
+}
+
+.app-logo {
+  display: block;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.app-logo--sm {
+  width: var(--vzn-brand-mark-sm);
+  height: var(--vzn-brand-mark-sm);
+}
+
+.app-logo--md {
+  width: var(--vzn-brand-mark-md);
+  height: var(--vzn-brand-mark-md);
+}
+
+.app-logo--lg {
+  width: var(--vzn-brand-mark-lg);
+  height: var(--vzn-brand-mark-lg);
+}
+
+.ui-micro {
+  color: var(--vzn-text-soft);
+  font-size: var(--vzn-font-size-micro);
+  font-weight: var(--vzn-weight-regular);
+  line-height: var(--vzn-line-tight);
+}
+
+.ui-kicker {
+  color: var(--vzn-text-muted);
+  font-size: var(--vzn-font-size-caption);
+  font-weight: var(--vzn-weight-semibold);
+  line-height: var(--vzn-line-tight);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Shared interaction baseline. The old reset removes outlines globally, so
+ * restore a consistent keyboard-only focus signal at the foundation layer. */
+:where(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--vzn-focus-ring) !important;
+  outline-offset: 2px !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

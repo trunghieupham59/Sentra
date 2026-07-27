@@ -137,6 +137,7 @@ export function AIChatPopup() {
     setKeyStatus,
     chatSystemPrompt,
     chatSendShortcut,
+    theme,
   } = useAppStore()
 
   const t = useT()
@@ -230,6 +231,29 @@ export function AIChatPopup() {
     lastHideAtRef.current = Date.now()
     window.api?.quickChat?.hide()
   }, [])
+
+  useEffect(() => {
+    const root = document.documentElement
+    if (theme === 'dark') {
+      root.classList.add('dark')
+      return
+    }
+    if (theme === 'light') {
+      root.classList.remove('dark')
+      return
+    }
+    if (typeof window.matchMedia !== 'function') {
+      root.classList.remove('dark')
+      return
+    }
+
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const applyTheme = (dark: boolean) => root.classList.toggle('dark', dark)
+    applyTheme(media.matches)
+    const handleChange = (event: MediaQueryListEvent) => applyTheme(event.matches)
+    media.addEventListener('change', handleChange)
+    return () => media.removeEventListener('change', handleChange)
+  }, [theme])
 
   // Mount lifecycle: tag <html> for popup-only CSS, run show-time logic.
   useEffect(() => {

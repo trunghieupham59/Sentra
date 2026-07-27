@@ -43,6 +43,8 @@ export interface ChatSlice {
   createChatSession: (provider: Provider, model: string) => string
   deleteChatSession: (id: string) => void
   setActiveChatSession: (id: string | null) => void
+  /** Keep the provider/model owned by a conversation in sync with its composer. */
+  setChatSessionModel: (sessionId: string, provider: Provider, model: string) => void
   addChatMessage: (sessionId: string, message: ChatMessage) => void
   updateChatMessage: (sessionId: string, messageId: string, updates: Partial<ChatMessage>) => void
   addChatSessionCost: (sessionId: string, cost: UsageCost) => void
@@ -128,7 +130,36 @@ export const createChatSlice = (set: SliceSet): ChatSlice => ({
       activeChatSessionId: state.activeChatSessionId === id ? null : state.activeChatSessionId,
     })),
 
-  setActiveChatSession: (id) => set({ activeChatSessionId: id }),
+  setActiveChatSession: (id) =>
+    set((state: ChatSlice & {
+      selectedProvider: Provider
+      selectedModels: Record<Provider, string>
+    }) => {
+      if (!id) return { activeChatSessionId: null }
+
+      const session = state.chatSessions.find((item) => item.id === id)
+      if (!session) return { activeChatSessionId: id }
+
+      return {
+        activeChatSessionId: id,
+        selectedProvider: session.provider,
+        selectedModels: {
+          ...state.selectedModels,
+          [session.provider]: session.model,
+        },
+      }
+    }),
+
+  setChatSessionModel: (sessionId, provider, model) =>
+    set((state: ChatSlice) => ({
+      // Model choice is conversation metadata, not activity, so it must not
+      // reorder the recent-conversation list by changing `updatedAt`.
+      chatSessions: state.chatSessions.map((session) =>
+        session.id === sessionId && (session.provider !== provider || session.model !== model)
+          ? { ...session, provider, model }
+          : session
+      ),
+    })),
 
   addChatMessage: (sessionId, message) =>
     set((state: ChatSlice) => ({
@@ -308,4 +339,3 @@ export const createChatSlice = (set: SliceSet): ChatSlice => ({
     })),
 
 })
-

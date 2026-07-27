@@ -85,6 +85,26 @@ export function ChatBubbleIcon({ className = 'w-5 h-5' }: IconProps) {
   )
 }
 
+/** Stacked conversation bubbles — used for compact session switching. */
+export function ConversationsIcon({ className = 'w-4 h-4' }: IconProps) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.8}
+        d="M7 7h10a3 3 0 013 3v5a3 3 0 01-3 3h-4l-4 3v-3H7a3 3 0 01-3-3v-5a3 3 0 013-3z"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.8}
+        d="M16 7V6a3 3 0 00-3-3H6a3 3 0 00-3 3v5a3 3 0 001 1.73"
+      />
+    </svg>
+  )
+}
+
 /** Clock icon — used on history navigation items. */
 export function ClockIcon({ className = 'w-5 h-5' }: IconProps) {
   return (

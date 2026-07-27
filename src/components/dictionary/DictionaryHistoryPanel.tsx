@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Translations } from '../../i18n'
 import { useAppStore } from '../../store/useAppStore'
 import type { DictionaryEntry } from '../../types'
+import { Button } from '../ui/atoms'
 import { BookIcon, SearchIcon, StarIcon, TrashIcon, XIcon } from '../ui/icons'
 import { UsageCostBadge } from '../ui/UsageCostBadge'
 
@@ -139,7 +140,7 @@ export function DictionaryHistoryPanel({
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               placeholder={t.history_search_placeholder}
-              className="h-7 w-full rounded-md border border-gray-200 bg-gray-50/60 pl-7 pr-7 text-xs text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-500/15 dark:border-neutral-800 dark:bg-neutral-950/45 dark:text-gray-200 dark:placeholder:text-gray-600 dark:focus:bg-neutral-900"
+              className="h-7 w-full rounded-md border border-gray-200 bg-gray-50/60 pl-7 pr-7 text-xs text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:bg-white dark:border-neutral-800 dark:bg-neutral-950/45 dark:text-gray-200 dark:placeholder:text-gray-600 dark:focus:bg-neutral-900"
             />
             {filter && (
               <button
@@ -253,28 +254,30 @@ export function DictionaryHistoryPanel({
       {/* ── Footer ──────────────────────────────────────────────────────── */}
       {entries.length > 0 && (
         <div className="surface-footer">
-          <button
-            type="button"
+          <Button
+            size="sm"
+            shape="pill"
+            variant="danger"
             onClick={() => {
               if (window.confirm(t.dictionary_clear_history_confirm)) onClearHistory()
             }}
             disabled={!entries.some((entry) => !entry.favorite)}
-            className="btn-ghost btn-xs"
             title={t.dictionary_clear_history}
           >
             <TrashIcon className="h-3.5 w-3.5" />
             <span>{t.dictionary_clear_history}</span>
-          </button>
+          </Button>
           {selectedEntry && (
-            <button
-              type="button"
+            <Button
+              size="sm"
+              shape="pill"
+              variant="danger"
               onClick={onDeleteSelected}
-              className="btn-danger btn-xs"
               title={t.dictionary_delete}
             >
               <TrashIcon className="h-3.5 w-3.5" />
               <span>{t.dictionary_delete}</span>
-            </button>
+            </Button>
           )}
         </div>
       )}

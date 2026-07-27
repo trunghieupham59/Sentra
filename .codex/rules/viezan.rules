@@ -1,0 +1,105 @@
+# Project command policy. Behavioral and architecture guidance lives in the
+# root AGENTS.md; this file only controls commands requested outside sandbox.
+
+prefix_rule(
+    pattern = ["git", "reset", "--hard"],
+    decision = "forbidden",
+    justification = "Hard reset can destroy uncommitted work; inspect the diff and use a targeted, user-approved alternative.",
+    match = [
+        "git reset --hard",
+        "git reset --hard HEAD",
+    ],
+    not_match = [
+        "git reset --soft HEAD~1",
+        "git status",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", "checkout", "--"],
+    decision = "forbidden",
+    justification = "Discarding paths can overwrite user changes; use a targeted patch or request explicit direction.",
+    match = [
+        "git checkout -- src/App.tsx",
+        "git checkout -- .",
+    ],
+    not_match = [
+        "git checkout feature-branch",
+        "git switch feature-branch",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", ["clean", "restore"]],
+    decision = "prompt",
+    justification = "Cleaning or restoring can remove local work and requires explicit approval.",
+    match = [
+        "git clean -fd",
+        "git restore src/App.tsx",
+    ],
+    not_match = [
+        "git status --short",
+        "git diff -- src/App.tsx",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", ["commit", "push"]],
+    decision = "prompt",
+    justification = "Creating or publishing Git history is an explicit user action.",
+    match = [
+        "git commit -m ui-fix",
+        "git push origin main",
+    ],
+    not_match = [
+        "git diff --check",
+        "git log -1",
+    ],
+)
+
+prefix_rule(
+    pattern = ["npm", ["install", "i", "ci", "uninstall", "remove", "update"]],
+    decision = "prompt",
+    justification = "Dependency mutations and installs may change the lockfile or execute package scripts.",
+    match = [
+        "npm install",
+        "npm i react",
+        "npm ci",
+        "npm update",
+        "npm uninstall react",
+    ],
+    not_match = [
+        "npm run build",
+        "npm test -- --run",
+    ],
+)
+
+prefix_rule(
+    pattern = ["npm", "run", ["dist:mac", "dist:win", "release:mac", "release:win"]],
+    decision = "prompt",
+    justification = "Distribution and release commands create or publish release artifacts.",
+    match = [
+        "npm run dist:mac",
+        "npm run dist:win",
+        "npm run release:mac",
+        "npm run release:win",
+    ],
+    not_match = [
+        "npm run build",
+        "npm run test:web",
+    ],
+)
+
+prefix_rule(
+    pattern = ["rm", ["-rf", "-fr"]],
+    decision = "prompt",
+    justification = "Recursive forced deletion requires exact-target review and explicit approval.",
+    match = [
+        "rm -rf build-cache",
+        "rm -fr release-temp",
+    ],
+    not_match = [
+        "rm single-file.tmp",
+        "rmdir empty-directory",
+    ],
+)

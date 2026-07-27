@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TRANSLATIONS } from '../../i18n'
 import { deepResearchService } from '../../services/deepResearchService'
@@ -79,20 +79,163 @@ beforeEach(() => {
   mockedEditChatImage().mockResolvedValue({ success: false })
   vi.mocked(window.api.onChatStreamEvent).mockReset()
   vi.mocked(window.api.onChatStreamEvent).mockReturnValue(() => {})
+  vi.mocked(window.api.fetchModels).mockReset()
+  vi.mocked(window.api.fetchModels).mockResolvedValue({ success: false, models: [] })
 })
 
 describe('ChatPage', () => {
   it('renders empty state when no messages', () => {
     render(<ChatPage />)
     // Empty state title should be visible
-    expect(screen.getByRole('heading', { level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
+    expect(document.querySelector('.chat-empty-composer .chat-page-composer')).toBeInTheDocument()
+    expect(document.querySelector('.chat-active-composer-frame')).not.toBeInTheDocument()
   })
 
-  it('shows "New Chat" button in toolbar', () => {
+  it('keeps the active composer unframed like the empty composer and uses one atomic size contract', () => {
+    const mediaDevicesDescriptor = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices')
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { getUserMedia: vi.fn() },
+    })
+
+    act(() => {
+      useAppStore.setState({
+        chatSessions: [{
+          id: 'active-chat',
+          title: 'Existing conversation',
+          provider: 'gemini',
+          model: 'gemini-2.0-flash',
+          messages: [{
+            id: 'user-message',
+            role: 'user',
+            content: [{ type: 'text', text: 'Hello' }],
+            timestamp: 1_000,
+          }],
+          createdAt: 1_000,
+          updatedAt: 1_000,
+        }],
+        activeChatSessionId: 'active-chat',
+        keyStatus: { gemini: true, claude: false, openai: false, local: false },
+      })
+    })
+
+    try {
+      render(<ChatPage />)
+
+      const activeFooter = document.querySelector('.chat-active-composer-footer')
+      expect(activeFooter).toBeInTheDocument()
+      if (!(activeFooter instanceof HTMLElement)) throw new Error('Active-chat composer footer is missing')
+
+      const composer = activeFooter.querySelector('.chat-composer.chat-page-composer')
+      expect(composer).toBeInTheDocument()
+      if (!(composer instanceof HTMLElement)) throw new Error('Active-chat composer is missing')
+      expect(document.querySelector('.chat-active-composer-frame')).not.toBeInTheDocument()
+
+      expect(screen.queryByRole('button', { name: TRANSLATIONS.en.chat_clear })).not.toBeInTheDocument()
+
+      const controls = composer.querySelectorAll<HTMLButtonElement>('[data-ui-control="button"]')
+      expect(controls.length).toBeGreaterThanOrEqual(6)
+      for (const control of controls) {
+        expect(control).toHaveAttribute('data-control-size', 'md')
+      }
+
+      const composerQueries = within(composer)
+      expect(composerQueries.getByRole('button', { name: TRANSLATIONS.en.chat_attach_image }))
+        .toHaveAttribute('aria-haspopup', 'menu')
+      expect(composerQueries.getByRole('button', { name: TRANSLATIONS.en.chat_attach_image }))
+        .toHaveAttribute('aria-expanded', 'false')
+      const imageModeButton = composerQueries.getByRole('button', { name: TRANSLATIONS.en.chat_mode_chip_image })
+      expect(imageModeButton).toHaveAttribute('aria-pressed', 'false')
+      expect(imageModeButton).toHaveAttribute('data-control-variant', 'neutral')
+      fireEvent.click(imageModeButton)
+      expect(imageModeButton).toHaveAttribute('aria-pressed', 'true')
+      expect(imageModeButton).toHaveAttribute('data-control-variant', 'primary')
+      expect(composerQueries.getByRole('button', { name: TRANSLATIONS.en.settings_mode_auto }))
+        .toHaveAttribute('aria-haspopup', 'menu')
+      expect(composerQueries.getByRole('button', { name: TRANSLATIONS.en.settings_mode_auto }))
+        .toHaveAttribute('aria-expanded', 'false')
+      expect(composer.querySelector('button[aria-haspopup="dialog"]'))
+        .toHaveAttribute('aria-expanded', 'false')
+      expect(composerQueries.getByRole('button', { name: TRANSLATIONS.en.chat_voice_record }))
+        .toBeInTheDocument()
+      const sendButton = composerQueries.getByRole('button', { name: TRANSLATIONS.en.chat_send })
+      expect(sendButton).toHaveAttribute('data-control-variant', 'primary')
+      expect(sendButton).toHaveAttribute('data-control-state', 'disabled')
+    } finally {
+      if (mediaDevicesDescriptor) {
+        Object.defineProperty(navigator, 'mediaDevices', mediaDevicesDescriptor)
+      } else {
+        Reflect.deleteProperty(navigator, 'mediaDevices')
+      }
+    }
+  })
+
+  it('keeps contextual navigation outside the page component', () => {
     render(<ChatPage />)
-    // The new chat button text comes from t.chat_new_session
-    const newChatButtons = screen.getAllByRole('button')
-    expect(newChatButtons.length).toBeGreaterThan(0)
+    expect(screen.queryByRole('complementary', { name: TRANSLATIONS.en.chat_sidebar_label })).not.toBeInTheDocument()
+  })
+
+  it('does not let a stale model response rewrite a newly selected conversation', async () => {
+    const sessionA = {
+      id: 'session-a',
+      title: 'Local chat',
+      provider: 'local' as const,
+      model: 'local-auto',
+      messages: [],
+      createdAt: 1,
+      updatedAt: 1,
+    }
+    const sessionB = {
+      id: 'session-b',
+      title: 'Another local chat',
+      provider: 'local' as const,
+      model: 'qwen3:8b',
+      messages: [],
+      createdAt: 2,
+      updatedAt: 2,
+    }
+    let resolveFetch!: (value: Awaited<ReturnType<typeof window.api.fetchModels>>) => void
+    const pendingFetch = new Promise<Awaited<ReturnType<typeof window.api.fetchModels>>>((resolve) => {
+      resolveFetch = resolve
+    })
+    vi.mocked(window.api.fetchModels).mockImplementation(() => pendingFetch)
+
+    act(() => {
+      useAppStore.setState({
+        chatSessions: [sessionA, sessionB],
+        activeChatSessionId: sessionA.id,
+        selectedProvider: 'local',
+        selectedModels: {
+          local: 'local-auto',
+          gemini: 'gemini-2.0-flash',
+          claude: 'claude-sonnet-4-20250514',
+          openai: 'gpt-4o',
+        },
+        dynamicModels: { local: [], gemini: [], claude: [], openai: [] },
+        modelsLoading: { local: false, gemini: false, claude: false, openai: false },
+        modelsError: { local: null, gemini: null, claude: null, openai: null },
+      })
+    })
+
+    render(<ChatPage />)
+    await waitFor(() => expect(window.api.fetchModels).toHaveBeenCalledWith('local'))
+    act(() => useAppStore.getState().setActiveChatSession(sessionB.id))
+
+    await act(async () => {
+      resolveFetch({
+        success: true,
+        models: [{ id: 'qwen3:4b', name: 'Qwen3 4B', description: '' }],
+        recommendedModel: 'qwen3:4b',
+      })
+      await pendingFetch
+    })
+
+    expect(useAppStore.getState().chatSessions).toEqual([
+      expect.objectContaining({ id: sessionA.id, provider: 'local', model: 'local-auto' }),
+      expect.objectContaining({ id: sessionB.id, provider: 'local', model: sessionB.model }),
+    ])
+    expect(useAppStore.getState().selectedModels.local).toBe(sessionB.model)
   })
 
   it('shows API key warning when no key is configured', () => {
@@ -105,12 +248,10 @@ describe('ChatPage', () => {
 
   it('send button is disabled when no API key', () => {
     render(<ChatPage />)
-    // Find the composer send button.
-    const buttons = screen.getAllByRole('button')
-    const sendBtn = buttons.find(b => b.getAttribute('title') !== null && b.className.includes('chat-send-button'))
-    if (sendBtn) {
-      expect(sendBtn).toBeDisabled()
-    }
+    const sendButton = screen.getByRole('button', { name: TRANSLATIONS.en.chat_send })
+    expect(sendButton).toBeDisabled()
+    expect(sendButton).toHaveAttribute('data-control-variant', 'primary')
+    expect(sendButton).toHaveAttribute('data-control-state', 'disabled')
   })
 
   it('creates a new chat session when "New Chat" is clicked with a key', () => {
@@ -169,8 +310,7 @@ describe('ChatPage', () => {
   // ── Required: input field nhận text ───────────────────────────────────────
   it('input field accepts typed text', () => {
     render(<ChatPage />)
-    // The chat textarea has placeholder t.chat_placeholder = "Type a message…"
-    const textarea = screen.getByPlaceholderText(/type a message/i)
+    const textarea = screen.getByPlaceholderText(TRANSLATIONS.en.chat_placeholder)
     expect(textarea).toBeInTheDocument()
     fireEvent.change(textarea, { target: { value: 'Hello chatbot' } })
     expect(textarea).toHaveValue('Hello chatbot')
@@ -183,11 +323,14 @@ describe('ChatPage', () => {
     const stream = mockStreamingChat()
     render(<ChatPage />)
 
-    const textarea = screen.getByPlaceholderText(/type a message/i)
+    const textarea = screen.getByPlaceholderText(TRANSLATIONS.en.chat_placeholder)
     fireEvent.change(textarea, { target: { value: 'Hello' } })
     fireEvent.keyDown(textarea, { key: 'Enter' })
 
     await waitFor(() => expect(window.api.chatStream).toHaveBeenCalled())
+
+    const stopButton = screen.getByRole('button', { name: TRANSLATIONS.en.chat_stop })
+    expect(stopButton).toHaveAttribute('data-control-variant', 'danger')
 
     stream.emit({ type: 'token', token: 'Hel' })
     expect(screen.getByText('Hel')).toBeInTheDocument()
@@ -215,7 +358,7 @@ describe('ChatPage', () => {
     vi.mocked(window.api.chatStream).mockResolvedValue({ success: true, reply: 'Sent with shortcut' })
     render(<ChatPage />)
 
-    const textarea = screen.getByPlaceholderText(/type a message/i)
+    const textarea = screen.getByPlaceholderText(TRANSLATIONS.en.chat_placeholder)
     fireEvent.change(textarea, { target: { value: 'Hello' } })
     fireEvent.keyDown(textarea, { key: 'Enter' })
     expect(window.api.chatStream).not.toHaveBeenCalled()
@@ -238,7 +381,8 @@ describe('ChatPage', () => {
     try {
       render(<ChatPage />)
 
-      fireEvent.click(screen.getByTitle(/enable deep research mode/i))
+      fireEvent.click(screen.getByRole('button', { name: TRANSLATIONS.en.settings_mode_auto }))
+      fireEvent.click(screen.getByRole('button', { name: TRANSLATIONS.en.chat_menu_deep_research }))
 
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
       fireEvent.change(fileInput, {
@@ -246,7 +390,7 @@ describe('ChatPage', () => {
       })
       await waitFor(() => expect(screen.getByAltText('research.png')).toBeInTheDocument())
 
-      const textarea = screen.getByPlaceholderText(/type a message/i)
+      const textarea = screen.getByPlaceholderText(TRANSLATIONS.en.chat_placeholder)
       fireEvent.change(textarea, { target: { value: 'Research this image' } })
       fireEvent.keyDown(textarea, { key: 'Enter' })
 
@@ -349,7 +493,7 @@ describe('ChatPage', () => {
     })
     await waitFor(() => expect(screen.getByAltText('research.png')).toBeInTheDocument())
 
-    const textarea = screen.getByPlaceholderText(/type a message/i)
+    const textarea = screen.getByPlaceholderText(TRANSLATIONS.en.chat_placeholder)
     fireEvent.change(textarea, { target: { value: 'Sửa thành phông nền màu trắng' } })
     fireEvent.keyDown(textarea, { key: 'Enter' })
 
@@ -405,7 +549,7 @@ describe('ChatPage', () => {
       })
       await waitFor(() => expect(screen.getByAltText('research.png')).toBeInTheDocument())
 
-      const textarea = screen.getByPlaceholderText(/type a message/i)
+      const textarea = screen.getByPlaceholderText(TRANSLATIONS.en.chat_placeholder)
       fireEvent.change(textarea, { target: { value: 'Thay nền trắng cho ảnh' } })
       fireEvent.keyDown(textarea, { key: 'Enter' })
 
@@ -493,7 +637,7 @@ describe('ChatPage', () => {
     vi.mocked(window.api.chatStream).mockResolvedValue({ success: false, error: 'Stream failed' })
 
     render(<ChatPage />)
-    const textarea = screen.getByPlaceholderText(/type a message/i)
+    const textarea = screen.getByPlaceholderText(TRANSLATIONS.en.chat_placeholder)
     fireEvent.change(textarea, { target: { value: 'Hello' } })
     fireEvent.keyDown(textarea, { key: 'Enter' })
 
@@ -541,7 +685,7 @@ describe('ChatPage', () => {
 
     try {
       render(<ChatPage />)
-      const textarea = screen.getByPlaceholderText(/type a message/i)
+      const textarea = screen.getByPlaceholderText(TRANSLATIONS.en.chat_placeholder)
       fireEvent.change(textarea, { target: { value: 'Hello' } })
       fireEvent.keyDown(textarea, { key: 'Enter' })
 
@@ -557,9 +701,7 @@ describe('ChatPage', () => {
   it('empty state is shown when there are no chat sessions', () => {
     // chatSessions: [] from beforeEach — no session, no messages
     render(<ChatPage />)
-    // Empty state renders an <h2> with chat_empty_title and a <p> with chat_empty_desc
-    expect(screen.getByRole('heading', { level: 2 })).toBeInTheDocument()
-    // The messages list div should NOT be present (only shown when messages.length > 0)
-    expect(document.querySelector('.space-y-4')).toBeNull()
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
+    expect(document.querySelector('.chat-empty-state')).not.toBeNull()
   })
 })

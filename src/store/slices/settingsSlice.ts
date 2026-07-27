@@ -43,6 +43,8 @@ export interface SettingsSlice {
   chatNewSessionShortcut: string
   /** When true, the left sidebar is collapsed to icon-only mode */
   sidebarCollapsed: boolean
+  /** Independent collapsed preference for the contextual AI Chat sidebar. */
+  aiChatSidebarCollapsed: boolean
 
   // Provider / key status
   keyStatus: Record<Provider, boolean>
@@ -73,6 +75,8 @@ export interface SettingsSlice {
   setChatNewSessionShortcut: (shortcut: string) => void
   setSidebarCollapsed: (collapsed: boolean) => void
   toggleSidebar: () => void
+  setAiChatSidebarCollapsed: (collapsed: boolean) => void
+  toggleAiChatSidebar: () => void
 
   /** Whether a Tavily API key is stored (used for Deep Research web search) */
   hasTavilyKey: boolean
@@ -103,6 +107,7 @@ export const createSettingsSlice = (set: SliceSet): SettingsSlice => ({
   chatSendShortcut: DEFAULT_CHAT_SEND_SHORTCUT,
   chatNewSessionShortcut: DEFAULT_CHAT_NEW_SESSION_SHORTCUT,
   sidebarCollapsed: false,
+  aiChatSidebarCollapsed: false,
   // Build initial provider maps from PROVIDERS registry — adding a new provider only requires
   // updating constants/providers.ts; no need to touch this slice.
   keyStatus: Object.fromEntries(PROVIDERS.map((p) => [p.id, false])) as Record<Provider, boolean>,
@@ -131,6 +136,9 @@ export const createSettingsSlice = (set: SliceSet): SettingsSlice => ({
   setChatNewSessionShortcut: (shortcut) => set({ chatNewSessionShortcut: shortcut }),
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
   toggleSidebar: () => set((state: SettingsSlice) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+  setAiChatSidebarCollapsed: (collapsed) => set({ aiChatSidebarCollapsed: collapsed }),
+  toggleAiChatSidebar: () =>
+    set((state: SettingsSlice) => ({ aiChatSidebarCollapsed: !state.aiChatSidebarCollapsed })),
 
   setKeyStatus: (provider, hasKey) =>
     set((state: SettingsSlice) => ({ keyStatus: { ...state.keyStatus, [provider]: hasKey } })),

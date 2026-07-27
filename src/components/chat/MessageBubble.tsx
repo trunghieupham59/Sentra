@@ -1,10 +1,12 @@
-import { memo, useEffect, useState } from 'react'
+import { memo, useCallback, useState } from 'react'
 
 import { useAppStore, useT } from '../../store/useAppStore'
 import type { ChatMessage, ChatMessageContent } from '../../types'
 import { AppLogoIcon } from '../AppLogo'
 import { MarkdownText } from '../MarkdownText'
-import { CopyIcon, DownloadIcon, LightbulbIcon, RefreshIcon, SparklesIcon, SpinnerIcon, ThumbsDownIcon, ThumbsUpIcon, UserIcon, XIcon } from '../ui/icons'
+import { Button } from '../ui/atoms'
+import { CopyIcon, DownloadIcon, LightbulbIcon, RefreshIcon, SparklesIcon, SpinnerIcon, ThumbsDownIcon, ThumbsUpIcon, UserIcon } from '../ui/icons'
+import { ImageLightbox } from '../ui/molecules'
 import { UsageCostBadge } from '../ui/UsageCostBadge'
 
 /**
@@ -14,8 +16,7 @@ import { UsageCostBadge } from '../ui/UsageCostBadge'
  * intent" matches modern chat UIs (ChatGPT, Claude) and keeps the conversation
  * scroll clean.
  */
-const MESSAGE_ACTION_BUTTON_CLASS =
-  'btn-icon btn-icon-sm border-transparent bg-transparent text-gray-400 shadow-none dark:bg-transparent dark:text-gray-500'
+const MESSAGE_ACTION_BUTTON_CLASS = 'chat-message-action-button'
 const MESSAGE_COPY_BUTTON_CLASS = MESSAGE_ACTION_BUTTON_CLASS
 const MESSAGE_DOWNLOAD_BUTTON_CLASS = MESSAGE_ACTION_BUTTON_CLASS
 const MESSAGE_REGENERATE_BUTTON_CLASS = MESSAGE_ACTION_BUTTON_CLASS
@@ -162,14 +163,7 @@ function MessageBubbleImpl({
   const [previewImage, setPreviewImage] = useState<ChatMessageContent | null>(null)
   const previewImageSrc = previewImage ? getImageSource(previewImage) : null
 
-  useEffect(() => {
-    if (!previewImage) return
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setPreviewImage(null)
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [previewImage])
+  const closeImagePreview = useCallback(() => setPreviewImage(null), [])
 
   // ── Research Step bubble (collapsible, gray) ──────────────────────────────
   if (message.isResearchStep) {
@@ -225,15 +219,15 @@ function MessageBubbleImpl({
   // ── Research Final bubble ─────────────────────────────────────────────────
   if (message.isResearchFinal) {
     return (
-      <div className="group flex gap-3 items-start">
+      <div className="chat-message-row group flex gap-3 items-start">
         {/* Avatar */}
         <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center overflow-hidden
                         bg-white dark:bg-neutral-900
                         border border-gray-200 dark:border-neutral-800 shadow-sm shadow-gray-900/[0.06]">
-          <AppLogoIcon size={28} />
+          <AppLogoIcon size="sm" />
         </div>
 
-        <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+        <div className="chat-message-content flex-1 min-w-0 flex flex-col gap-1.5">
           {message.isLoading ? (
             <div className="rounded-2xl border border-gray-200/80 bg-white px-4 py-3 shadow-sm shadow-gray-900/[0.05]
                             dark:border-neutral-800 dark:bg-neutral-900">
@@ -263,15 +257,18 @@ function MessageBubbleImpl({
               <span className="ui-micro">
                 {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
-              <button
-                type="button"
+              <Button
+                size="xs"
+                shape="icon"
+                variant="neutral"
+                appearance="ghost"
                 onClick={() => onCopy(textContent)}
                 title={copyLabel ?? t.translate_copy}
                 aria-label={copyLabel ?? t.translate_copy}
                 className={MESSAGE_COPY_BUTTON_CLASS}
               >
                 <CopyIcon className="w-3.5 h-3.5" />
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -283,7 +280,10 @@ function MessageBubbleImpl({
   const showPinnedActions = !isUser && (isLastAssistant || Boolean(message.error))
 
   return (
-    <div className={`group flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'} items-start`}>
+    <div
+      className={`chat-message-row group flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'} items-start`}
+      data-message-role={isUser ? 'user' : 'assistant'}
+    >
       {/* Avatar */}
       <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center overflow-hidden shadow-sm
                        ${isUser
@@ -292,11 +292,11 @@ function MessageBubbleImpl({
         {isUser ? (
           <UserIcon className="w-4 h-4 text-white dark:text-neutral-950" />
         ) : (
-          <AppLogoIcon size={28} />
+          <AppLogoIcon size="sm" />
         )}
       </div>
 
-      <div className={`flex flex-col gap-1.5 min-w-0 max-w-[78%] ${isUser ? 'items-end' : 'items-start w-full'}`}>
+      <div className={`chat-message-content flex flex-col gap-1.5 min-w-0 max-w-[78%] ${isUser ? 'items-end' : 'items-start w-full'}`}>
         {/* Image attachments */}
         {imageContents.map((img, i) => {
           const imageSrc = getImageSource(img)
@@ -307,8 +307,8 @@ function MessageBubbleImpl({
               key={i}
               onClick={() => setPreviewImage(img)}
               title={t.chat_open_image}
-              className="block max-w-full rounded-xl cursor-pointer
-                         focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 dark:focus:ring-offset-neutral-950"
+              aria-label={t.chat_open_image}
+              className="block max-w-full rounded-xl cursor-pointer"
             >
               <img
                 src={imageSrc}
@@ -370,56 +370,71 @@ function MessageBubbleImpl({
 
           {/* Copy button */}
           {textContent && !message.isLoading && (
-            <button
-              type="button"
+            <Button
+              size="xs"
+              shape="icon"
+              variant="neutral"
+              appearance="ghost"
               onClick={() => onCopy(textContent)}
               title={copyLabel ?? t.translate_copy}
               aria-label={copyLabel ?? t.translate_copy}
               className={MESSAGE_COPY_BUTTON_CLASS}
             >
               <CopyIcon className="w-3.5 h-3.5" />
-            </button>
+            </Button>
           )}
 
           {/* Download generated assistant image */}
           {downloadableImage && onDownloadImage && !message.isLoading && (
-            <button
-              type="button"
+            <Button
+              size="xs"
+              shape="icon"
+              variant="neutral"
+              appearance="ghost"
               onClick={() => onDownloadImage(downloadableImage)}
               title={downloadImageLabel}
               aria-label={downloadImageLabel ?? t.chat_download_image}
               className={MESSAGE_DOWNLOAD_BUTTON_CLASS}
             >
               <DownloadIcon className="w-3.5 h-3.5" />
-            </button>
+            </Button>
           )}
 
           {/* Thumbs up / down feedback — assistant messages only, not loading */}
           {!isUser && !message.isLoading && textContent && (
             <>
-              <button
-                type="button"
+              <Button
+                size="xs"
+                shape="icon"
+                variant="neutral"
+                appearance="ghost"
                 title={t.chat_feedback_good}
                 aria-label={t.chat_feedback_good}
                 className={MESSAGE_ACTION_BUTTON_CLASS}
               >
                 <ThumbsUpIcon className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                size="xs"
+                shape="icon"
+                variant="neutral"
+                appearance="ghost"
                 title={t.chat_feedback_bad}
                 aria-label={t.chat_feedback_bad}
                 className={MESSAGE_ACTION_BUTTON_CLASS}
               >
                 <ThumbsDownIcon className="w-3.5 h-3.5" />
-              </button>
+              </Button>
             </>
           )}
 
           {/* Regenerate button — only on last assistant message */}
           {!isUser && isLastAssistant && onRegenerate && !message.isLoading && (
-            <button
-              type="button"
+            <Button
+              size="xs"
+              shape="icon"
+              variant="primary"
+              appearance="soft"
               onClick={onRegenerate}
               disabled={isSending}
               title={regenerateLabel ?? t.chat_regenerate}
@@ -427,66 +442,24 @@ function MessageBubbleImpl({
               className={MESSAGE_REGENERATE_BUTTON_CLASS}
             >
               <RefreshIcon className="w-3.5 h-3.5" />
-            </button>
+            </Button>
           )}
         </div>
       </div>
 
-      {previewImageSrc && (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 fade-in"
-          role="dialog"
-          aria-modal="true"
-          aria-label={t.chat_image_preview}
-        >
-          <button
-            type="button"
-            className="absolute inset-0 cursor-pointer"
-            onClick={() => setPreviewImage(null)}
-            aria-label={t.chat_close_image_preview}
-          />
-          <div className="relative z-10 max-w-[96vw] max-h-[92vh]">
-            <div
-              className="absolute right-3 top-3 z-20 flex items-center gap-1 rounded-full
-                         bg-neutral-950/70 p-1 text-white shadow-xl backdrop-blur
-                         dark:bg-neutral-900/80"
-            >
-              {previewImage && onCopyImage && (
-                <button
-                  type="button"
-                  onClick={() => onCopyImage(previewImage)}
-                  title={copyLabel ?? t.chat_copy}
-                  className="btn-icon btn-icon-lg border-white/10 bg-neutral-950/70 text-white/80 shadow-none hover:bg-white/10 hover:text-white"
-                >
-                  <CopyIcon className="w-4 h-4" />
-                </button>
-              )}
-              {previewImage && onDownloadImage && (
-                <button
-                  type="button"
-                  onClick={() => onDownloadImage(previewImage)}
-                  title={downloadImageLabel ?? t.chat_download_image}
-                  className="btn-icon btn-icon-lg border-white/10 bg-neutral-950/70 text-white/80 shadow-none hover:bg-white/10 hover:text-white"
-                >
-                  <DownloadIcon className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => setPreviewImage(null)}
-              title={t.chat_close_image_preview}
-              className="btn-icon absolute -right-3 -top-3"
-            >
-              <XIcon className="w-4 h-4" />
-            </button>
-            <img
-              src={previewImageSrc}
-              alt={previewImage?.imageFileName ?? t.chat_image_preview}
-              className="max-w-[92vw] max-h-[88vh] object-contain rounded-lg bg-white shadow-2xl"
-            />
-          </div>
-        </div>
+      {previewImage && previewImageSrc && (
+        <ImageLightbox
+          src={previewImageSrc}
+          alt={previewImage.imageFileName ?? t.chat_image_preview}
+          previewLabel={t.chat_image_preview}
+          toolbarLabel={t.chat_image_actions}
+          copyLabel={copyLabel ?? t.chat_copy}
+          downloadLabel={downloadImageLabel ?? t.chat_download_image}
+          closeLabel={t.chat_close_image_preview}
+          onCopy={onCopyImage ? () => onCopyImage(previewImage) : undefined}
+          onDownload={onDownloadImage ? () => onDownloadImage(previewImage) : undefined}
+          onClose={closeImagePreview}
+        />
       )}
     </div>
   )

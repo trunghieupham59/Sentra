@@ -1,5 +1,5 @@
 /**
- * UsageCostBadge — small pill that surfaces the estimated provider cost
+ * UsageCostBadge — compact metadata that surfaces the estimated provider cost
  * of a single message/translation/lookup.
  *
  * Variants:
@@ -25,13 +25,12 @@ interface UsageCostBadgeProps {
 }
 
 const SIZE_CLASSES: Record<BadgeSize, string> = {
-  sm: 'ui-badge-xs gap-1',
-  md: 'ui-badge gap-1.5 py-1',
+  sm: 'usage-cost-badge--sm',
+  md: 'usage-cost-badge--md',
 }
 
 const TONE_CLASSES: Record<BadgeTone, string> = {
-  neutral:
-    'bg-gray-100 text-gray-600 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700',
+  neutral: 'usage-cost-badge--neutral',
 }
 
 export function UsageCostBadge({
@@ -56,21 +55,22 @@ export function UsageCostBadge({
   return (
     <span
       className={[
-        'ring-1 whitespace-nowrap',
+        'usage-cost-badge',
         SIZE_CLASSES[size],
         TONE_CLASSES[tone],
         className ?? '',
       ].join(' ')}
       title={tooltipParts.join(' — ')}
     >
-      {label ? <span className="opacity-80">{label}</span> : null}
-      <span>
+      {label ? <span className="usage-cost-badge-label">{label}</span> : null}
+      <span className="usage-cost-badge-amount">
         {cost.estimated ? '~' : ''}{formatUsageAmount(cost.amountUsd, currency)}
       </span>
       {cost.totalTokens ? (
-        <span className="opacity-60 font-medium tabular-nums">
-          · {formatTokenCount(cost.totalTokens)}
-        </span>
+        <>
+          <span className="usage-cost-badge-divider" aria-hidden="true" />
+          <span className="usage-cost-badge-tokens">{formatTokenCount(cost.totalTokens)}</span>
+        </>
       ) : null}
     </span>
   )

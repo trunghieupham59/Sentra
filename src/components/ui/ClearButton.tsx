@@ -1,7 +1,8 @@
 /**
- * ClearButton — ghost button with a trash icon for clearing source text.
+ * ClearButton — destructive icon action for clearing source text.
  * The text label is hidden on narrow viewports (< 1100 px).
  */
+import { Button } from './atoms'
 import { TrashIcon } from './icons'
 
 interface ClearButtonProps {
@@ -12,13 +13,16 @@ interface ClearButtonProps {
 
 export function ClearButton({ onClick, label }: ClearButtonProps) {
   return (
-    <button
-      type="button"
+    <Button
+      size="sm"
+      shape="icon"
+      variant="danger"
+      appearance="ghost"
       onClick={onClick}
       title={label}
-      className="btn-ghost btn-xs"
+      aria-label={label}
     >
       <TrashIcon />
-    </button>
+    </Button>
   )
 }

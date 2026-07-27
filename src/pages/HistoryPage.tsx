@@ -59,7 +59,7 @@ export function HistoryPage() {
                 >
                   <Icon className="h-3.5 w-3.5 flex-shrink-0" />
                   <span className="truncate text-sm">{label}</span>
-                  <span className="ui-badge-xs" style={isActive ? { background: 'var(--vzn-accent)', color: '#fff', borderColor: 'transparent' } : {}}>
+                  <span className="ui-badge-xs" style={isActive ? { background: 'var(--vzn-accent)', color: 'var(--vzn-text-inverse)', borderColor: 'transparent' } : {}}>
                     {count}
                   </span>
                 </button>

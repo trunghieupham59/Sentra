@@ -194,6 +194,21 @@ describe('Chat Sessions', () => {
     expect(session?.messages[0].isLoading).toBe(false)
   })
 
+  it('persists a session model and restores it when the session is activated', () => {
+    let sessionId = ''
+    act(() => {
+      sessionId = useAppStore.getState().createChatSession('claude', 'claude-old')
+      useAppStore.getState().setChatSessionModel(sessionId, 'openai', 'gpt-5-mini')
+      useAppStore.setState({ selectedProvider: 'gemini' })
+      useAppStore.getState().setActiveChatSession(sessionId)
+    })
+
+    const state = useAppStore.getState()
+    expect(state.chatSessions[0]).toMatchObject({ provider: 'openai', model: 'gpt-5-mini' })
+    expect(state.selectedProvider).toBe('openai')
+    expect(state.selectedModels.openai).toBe('gpt-5-mini')
+  })
+
   it('deletes a chat session and clears activeChatSessionId', () => {
     let sessionId = ''
     act(() => {

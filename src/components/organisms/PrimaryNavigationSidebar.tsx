@@ -1,0 +1,313 @@
+import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useAppStore, useT } from '../../store/useAppStore'
+import type { AppPage } from '../../types'
+import { AppLogoIcon } from '../AppLogo'
+import { Button } from '../ui/atoms'
+import {
+  BookIcon,
+  ChatBubbleIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ClockIcon,
+  GearIcon,
+  MicrophoneIcon,
+  SearchIcon,
+  TranslateIcon,
+} from '../ui/icons'
+
+interface PrimaryNavItemProps {
+  icon: ReactNode
+  label: string
+  active?: boolean
+  badge?: boolean
+  badgeLabel?: string
+  onClick: () => void
+}
+
+interface PrimaryNavigationOverlayPosition {
+  top: number
+  left: number
+  height: number
+}
+
+const PRIMARY_NAVIGATION_NARROW_BREAKPOINT = 900
+const CLOSE_PRIMARY_NAVIGATION_EVENT = 'viezan:close-primary-navigation'
+const CLOSE_CONTEXT_SIDEBARS_EVENT = 'viezan:close-context-sidebars'
+
+function PrimaryNavItem({ icon, label, active, badge, badgeLabel, onClick }: PrimaryNavItemProps) {
+  const accessibleLabel = badge && badgeLabel ? `${label}: ${badgeLabel}` : label
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      aria-label={accessibleLabel}
+      aria-current={active ? 'page' : undefined}
+      className={`sidebar-nav-btn${active ? ' active' : ''}`}
+    >
+      <span className="sidebar-nav-icon">{icon}</span>
+      <span className="sidebar-nav-label">{label}</span>
+      {badge && <span className="sidebar-nav-badge" aria-hidden="true" />}
+    </button>
+  )
+}
+
+/** Persistent app-wide navigation. Feature-specific navigation belongs elsewhere. */
+export function PrimaryNavigationSidebar() {
+  const {
+    activePage,
+    setActivePage,
+    clearTranslation,
+    keyStatus,
+    openSettings,
+    sidebarCollapsed,
+    toggleSidebar,
+  } = useAppStore()
+  const t = useT()
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth)
+  const [responsiveOverlayOpen, setResponsiveOverlayOpen] = useState(false)
+  const [overlayPosition, setOverlayPosition] = useState<PrimaryNavigationOverlayPosition | null>(null)
+  const sidebarRef = useRef<HTMLElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const toggleRef = useRef<HTMLButtonElement>(null)
+  const contentId = useId()
+  const hasAnyKey = Object.values(keyStatus).some(Boolean)
+  const commandShortcut = window.api?.platform === 'darwin' ? '⌘K' : 'Ctrl K'
+  const responsiveCompact = viewportWidth < PRIMARY_NAVIGATION_NARROW_BREAKPOINT
+  const effectiveCollapsed = responsiveCompact ? !responsiveOverlayOpen : sidebarCollapsed
+
+  const updateOverlayPosition = useCallback(() => {
+    const rect = sidebarRef.current?.getBoundingClientRect()
+    if (!rect) return
+    setOverlayPosition({ top: rect.top, left: rect.left, height: rect.height })
+  }, [])
+
+  const handleToggle = () => {
+    if (!responsiveCompact) {
+      toggleSidebar()
+      return
+    }
+    if (!responsiveOverlayOpen) {
+      updateOverlayPosition()
+      window.dispatchEvent(new CustomEvent(CLOSE_CONTEXT_SIDEBARS_EVENT))
+    }
+    setResponsiveOverlayOpen((open) => !open)
+  }
+
+  const closeResponsiveOverlay = useCallback(() => setResponsiveOverlayOpen(false), [])
+
+  const navigate = (page: AppPage, extra?: () => void) => {
+    extra?.()
+    setActivePage(page)
+    closeResponsiveOverlay()
+  }
+
+  const openCommandPalette = () => {
+    closeResponsiveOverlay()
+    window.dispatchEvent(new CustomEvent('viezan:open-command-palette'))
+  }
+
+  const handleOpenSettings = () => {
+    closeResponsiveOverlay()
+    openSettings()
+  }
+
+  useEffect(() => {
+    const handleResize = () => setViewportWidth(window.innerWidth)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  useEffect(() => {
+    if (!responsiveCompact) setResponsiveOverlayOpen(false)
+  }, [responsiveCompact])
+
+  useEffect(() => {
+    const handleClose = () => setResponsiveOverlayOpen(false)
+    window.addEventListener(CLOSE_PRIMARY_NAVIGATION_EVENT, handleClose)
+    return () => window.removeEventListener(CLOSE_PRIMARY_NAVIGATION_EVENT, handleClose)
+  }, [])
+
+  useEffect(() => {
+    if (!responsiveOverlayOpen) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node
+      if (sidebarRef.current?.contains(target) || panelRef.current?.contains(target)) return
+      closeResponsiveOverlay()
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      closeResponsiveOverlay()
+      requestAnimationFrame(() => toggleRef.current?.focus())
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [closeResponsiveOverlay, responsiveOverlayOpen])
+
+  useEffect(() => {
+    if (!responsiveOverlayOpen) return
+    updateOverlayPosition()
+    window.addEventListener('resize', updateOverlayPosition)
+    window.addEventListener('scroll', updateOverlayPosition, true)
+    return () => {
+      window.removeEventListener('resize', updateOverlayPosition)
+      window.removeEventListener('scroll', updateOverlayPosition, true)
+    }
+  }, [responsiveOverlayOpen, updateOverlayPosition])
+
+  const navigationPanel = (
+    <div
+      ref={panelRef}
+      id={contentId}
+      className="primary-navigation-panel"
+      data-expanded={!effectiveCollapsed}
+      data-overlay-open={responsiveOverlayOpen}
+      style={responsiveOverlayOpen && overlayPosition ? {
+        top: overlayPosition.top,
+        left: overlayPosition.left,
+        height: overlayPosition.height,
+      } : undefined}
+    >
+      <div className="sidebar-brand-row">
+        <div className="sidebar-brand-surface" title="Viezan">
+          <AppLogoIcon size="sm" />
+        </div>
+        {!effectiveCollapsed && <span className="sidebar-brand-title">Viezan</span>}
+        {!effectiveCollapsed && (
+          <Button
+            ref={toggleRef}
+            size="sm"
+            shape="icon"
+            variant="neutral"
+            appearance="ghost"
+            className="primary-navigation-toggle"
+            title={t.nav_collapse_sidebar}
+            aria-label={t.nav_collapse_sidebar}
+            aria-expanded="true"
+            aria-controls={contentId}
+            onClick={handleToggle}
+          >
+            <ChevronLeftIcon className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+
+      {effectiveCollapsed && (
+        <div className="primary-navigation-collapsed-toggle-row">
+          <Button
+            ref={toggleRef}
+            size="sm"
+            shape="icon"
+            variant="neutral"
+            appearance="ghost"
+            className="primary-navigation-toggle"
+            title={t.nav_expand_sidebar}
+            aria-label={t.nav_expand_sidebar}
+            aria-expanded="false"
+            aria-controls={contentId}
+            onClick={handleToggle}
+          >
+            <ChevronRightIcon className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
+      <div className="app-sidebar-divider" />
+
+      <div className="sidebar-nav-group">
+        <PrimaryNavItem
+          label={t.nav_chat}
+          active={activePage === 'chat'}
+          onClick={() => navigate('chat')}
+          icon={<ChatBubbleIcon className="h-[18px] w-[18px]" />}
+        />
+        <PrimaryNavItem
+          label={t.nav_translate}
+          active={activePage === 'translate'}
+          onClick={() => navigate('translate', clearTranslation)}
+          icon={<TranslateIcon className="h-[18px] w-[18px]" />}
+        />
+        <PrimaryNavItem
+          label={t.nav_live_translate}
+          active={activePage === 'live'}
+          onClick={() => navigate('live')}
+          icon={<MicrophoneIcon className="h-[18px] w-[18px]" />}
+        />
+        <PrimaryNavItem
+          label={t.nav_dictionary}
+          active={activePage === 'dictionary'}
+          onClick={() => navigate('dictionary')}
+          icon={<BookIcon className="h-[18px] w-[18px]" />}
+        />
+        <PrimaryNavItem
+          label={t.nav_history}
+          active={activePage === 'history'}
+          onClick={() => navigate('history')}
+          icon={<ClockIcon className="h-[18px] w-[18px]" />}
+        />
+      </div>
+
+      <div className="sidebar-bottom-group">
+        <button
+          type="button"
+          title={`${t.nav_command_palette} (${commandShortcut})`}
+          aria-label={t.nav_command_palette}
+          className="sidebar-nav-btn"
+          onClick={openCommandPalette}
+        >
+          <span className="sidebar-nav-icon">
+            <SearchIcon className="h-[18px] w-[18px]" />
+          </span>
+          <span className="sidebar-nav-label">{t.nav_command_palette}</span>
+          <span className="sidebar-shortcut">{commandShortcut}</span>
+        </button>
+
+        <div className="app-sidebar-divider" />
+
+        <PrimaryNavItem
+          label={t.nav_settings}
+          badge={!hasAnyKey}
+          badgeLabel={t.model_no_key}
+          onClick={handleOpenSettings}
+          icon={<GearIcon className="h-[18px] w-[18px]" />}
+        />
+      </div>
+    </div>
+  )
+
+  return (
+    <nav
+      ref={sidebarRef}
+      className="app-sidebar primary-navigation-sidebar"
+      aria-label={t.nav_primary_sidebar}
+      aria-owns={responsiveOverlayOpen ? contentId : undefined}
+      data-collapsed={effectiveCollapsed}
+      data-overlay-open={responsiveOverlayOpen}
+      data-responsive-compact={responsiveCompact}
+      data-user-collapsed={sidebarCollapsed}
+      data-sidebar-scope="primary"
+    >
+      {!responsiveOverlayOpen && navigationPanel}
+      {responsiveOverlayOpen && overlayPosition && createPortal(
+        <>
+          <div
+            className="primary-navigation-backdrop"
+            aria-hidden="true"
+            style={{ top: overlayPosition.top }}
+          />
+          {navigationPanel}
+        </>,
+        document.body,
+      )}
+    </nav>
+  )
+}

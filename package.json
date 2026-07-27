@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "concurrently -k -n \"VITE,ELECTRON\" -c \"cyan,yellow\" \"npm run dev:vite\" \"npm run dev:electron\"",
     "dev:vite": "vite",
+    "dev:web": "vite --mode web-preview",
     "dev:electron": "wait-on tcp:5173 && npm run build:electron && node scripts/run-electron-dev.mjs",
     "build:electron": "tsc -p tsconfig.electron.json && npm run bundle:preloads",
     "bundle:preloads": "esbuild electron/preload.ts --bundle --platform=node --external:electron --outfile=dist-electron/preload.js && esbuild electron/subtitle-preload.ts --bundle --platform=node --external:electron --outfile=dist-electron/subtitle-preload.js",
@@ -20,11 +21,14 @@
     "postinstall": "electron-builder install-app-deps || true",
     "preview": "vite preview",
     "check:agent": "node scripts/validate-viezanagent.mjs",
+    "check:atomic": "node scripts/check-atomic-design.mjs",
+    "check:design": "node scripts/check-design-system.mjs",
     "check:biome": "biome check .",
     "check:duplicates": "jscpd --min-lines 8 --min-tokens 80 --threshold 0 --reporters console src electron chrome-extension --ignore \"**/__tests__/**,**/*.test.ts,**/*.test.tsx,src/i18n/locales/**,src/components/ui/icons/**,**/node_modules/**,**/dist/**,**/build/**\"",
     "lint:docs": "markdownlint-cli2 \"viezanagent/**/*.md\" \"README.md\" \"chrome-extension/README.md\"",
-    "maintenance:verify": "npm run build && npm test -- --run && npm run check:biome && npm run check:duplicates && npm run lint:docs && npm run check:agent",
+    "maintenance:verify": "npm run check:atomic && npm run check:design && npm run build && npm test -- --run && npm run check:biome && npm run check:duplicates && npm run lint:docs && npm run check:agent",
     "test": "vitest",
+    "test:web": "node scripts/test-web-preview.mjs",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "generate-icons": "node scripts/add-logo-background.mjs"

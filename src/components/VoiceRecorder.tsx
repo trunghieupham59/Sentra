@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getSupportedAudioMimeType, LANG_TO_BCP47 } from '../constants/audio'
 import { useAppStore, useT } from '../store/useAppStore'
+import { Button, type ButtonSize, type ButtonVariant } from './ui/atoms/Button'
 import { MicrophoneIcon, SpinnerIcon, StopSquareIcon } from './ui/icons'
 
 // ─── SpeechRecognition retry config ──────────────────────────────────────────
@@ -61,6 +62,7 @@ interface VoiceRecorderProps {
   titleRecord?: string
   titleStop?: string
   buttonClassName?: string
+  buttonSize?: ButtonSize
   /**
    * When true: force MediaRecorder + IPC path regardless of the store's sttProvider.
    * Use this for Live Translate where the pipeline specifically requires audio data.
@@ -81,6 +83,7 @@ export function VoiceRecorder({
   titleRecord = 'Record voice',
   titleStop = 'Stop recording',
   buttonClassName,
+  buttonSize = 'md',
   useWhisper = false,
   labelTranscribing = 'Transcribing…',
   labelRecording = 'Recording…',
@@ -355,24 +358,24 @@ export function VoiceRecorder({
   const resolvedButtonClassName = (isRecording || isTranscribing)
     ? 'btn-icon relative'
     : (buttonClassName ?? 'btn-icon relative')
+  const buttonVariant: ButtonVariant = isRecording || state === 'error'
+    ? 'danger'
+    : isTranscribing
+      ? 'primary'
+      : 'neutral'
 
   return (
     <div className="relative flex items-center gap-1.5">
-      <button
-        type="button"
+      <Button
+        size={buttonSize}
+        shape="icon"
+        variant={buttonVariant}
+        appearance={isRecording || isTranscribing ? 'soft' : 'ghost'}
         onClick={handleClick}
         disabled={disabled || isTranscribing}
         title={isRecording ? titleStop : titleRecord}
-        className={[
-          resolvedButtonClassName,
-          isRecording
-            ? 'btn-danger'
-            : isTranscribing
-              ? 'btn-primary'
-              : state === 'error'
-                ? 'btn-secondary'
-                : '',
-        ].join(' ')}
+        aria-label={isRecording ? titleStop : titleRecord}
+        className={resolvedButtonClassName}
       >
         {/* Pulse ring */}
         {(isRecording || isTranscribing) && (
@@ -392,7 +395,7 @@ export function VoiceRecorder({
           /* Microphone */
           <MicrophoneIcon className="w-4 h-4 relative z-10" />
         )}
-      </button>
+      </Button>
 
       {/* Inline status label */}
       {isTranscribing && (

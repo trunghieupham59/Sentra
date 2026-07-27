@@ -141,6 +141,17 @@ npm install
 npm run dev
 ```
 
+For browser-based UI development and AI-assisted visual testing, run the
+deterministic Web Preview instead. It mocks the Electron bridge and never reads
+real API keys or invokes native OS features:
+
+```bash
+npm run dev:web
+```
+
+Then open `http://localhost:5173`. Translation, chat, models, settings and
+history remain interactive; native-only features return safe preview results.
+
 ### Test
 
 ```bash

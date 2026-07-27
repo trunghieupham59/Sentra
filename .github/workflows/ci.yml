@@ -51,6 +51,12 @@ jobs:
             - name: Run Biome
               run: npx biome ci .
 
+            - name: Check Atomic Design boundaries
+              run: npm run check:atomic
+
+            - name: Check design tokens
+              run: npm run check:design
+
     # ─────────────────────────────────────────────
     # 2. Type-check (renderer + electron)
     # ─────────────────────────────────────────────

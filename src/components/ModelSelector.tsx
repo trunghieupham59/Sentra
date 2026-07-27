@@ -1,13 +1,48 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { PROVIDERS } from '../constants/providers'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { Provider } from '../types'
 import { dedupeModelsByFamily, formatModelName } from '../utils/modelDisplay'
-import { PROVIDER_COLORS, ProviderIcon } from './ProviderIcon'
-import { CheckIcon, ChevronDownIcon, SearchIcon, SpinnerIcon } from './ui/icons'
+import { ProviderIcon } from './ProviderIcon'
+import { Button, Input } from './ui/atoms'
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  RefreshIcon,
+  SearchIcon,
+  SpinnerIcon,
+} from './ui/icons'
 
-export function ModelSelector({ compact = false }: { compact?: boolean }) {
+type PickerView = 'root' | 'models' | 'providers'
+
+interface PickerPosition {
+  top: number
+  left: number
+  maxHeight: number
+  placement: 'above' | 'below'
+}
+
+const PICKER_GAP = 6
+const VIEWPORT_MARGIN = 8
+const PICKER_WIDTH = 320
+const PICKER_MAX_HEIGHT = 440
+
+interface ModelSelectorProps {
+  compact?: boolean
+  /** Invalidates automatic async fallbacks when the owning context changes. */
+  selectionContextKey?: string | null
+  /** Lets a feature persist the selection in its own contextual state. */
+  onSelectionChange?: (provider: Provider, model: string) => void
+}
+
+export function ModelSelector({
+  compact = false,
+  selectionContextKey,
+  onSelectionChange,
+}: ModelSelectorProps) {
   const {
     selectedProvider, selectedModels, keyStatus,
     dynamicModels, modelsLoading, modelsError, recentModels,
@@ -17,97 +52,143 @@ export function ModelSelector({ compact = false }: { compact?: boolean }) {
   const t = useT()
 
   const [open, setOpen] = useState(false)
+  const [view, setView] = useState<PickerView>('root')
+  const [advancedOpen, setAdvancedOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
+  const [pickerPosition, setPickerPosition] = useState<PickerPosition | null>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const pickerRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
+  const firstRootItemRef = useRef<HTMLButtonElement>(null)
+  const selectionContextRef = useRef(selectionContextKey)
+  const pickerId = useId()
+  const modelListId = `${pickerId}-models`
+  const providerListId = `${pickerId}-providers`
 
-  const openDropdown = () => {
-    if (triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect()
-      // compact: right-align dropdown; default: left-align
-      const left = compact
-        ? Math.max(4, rect.right - 280)
-        : rect.left
-      setDropdownPos({ top: rect.bottom + 4, left })
+  useLayoutEffect(() => {
+    selectionContextRef.current = selectionContextKey
+  }, [selectionContextKey])
+
+  const closePicker = useCallback((restoreFocus = true) => {
+    setOpen(false)
+    setView('root')
+    setAdvancedOpen(false)
+    setSearch('')
+    setPickerPosition(null)
+    if (restoreFocus) {
+      window.requestAnimationFrame(() => triggerRef.current?.focus())
     }
+  }, [])
+
+  const openPicker = () => {
+    setView('root')
+    setAdvancedOpen(false)
+    setSearch('')
+    setPickerPosition(null)
     setOpen(true)
   }
 
-  // Close on outside click (trigger OR portal panel)
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      const target = e.target as Node
-      if (!triggerRef.current?.contains(target) && !dropdownRef.current?.contains(target)) {
-        setOpen(false)
-        setSearch('')
+  const repositionPicker = useCallback(() => {
+    const trigger = triggerRef.current
+    if (!trigger) return
+
+    const triggerRect = trigger.getBoundingClientRect()
+    const panel = pickerRef.current
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
+    const renderedWidth = panel?.offsetWidth || Math.min(PICKER_WIDTH, viewportWidth - VIEWPORT_MARGIN * 2)
+    const measuredHeight = Math.min(panel?.scrollHeight || 240, PICKER_MAX_HEIGHT)
+    const spaceAbove = Math.max(0, triggerRect.top - PICKER_GAP - VIEWPORT_MARGIN)
+    const spaceBelow = Math.max(0, viewportHeight - triggerRect.bottom - PICKER_GAP - VIEWPORT_MARGIN)
+    const compactCanOpenAbove = spaceAbove >= Math.min(measuredHeight, 160) || spaceAbove >= spaceBelow
+    const placement: PickerPosition['placement'] = compact && compactCanOpenAbove
+      ? 'above'
+      : spaceBelow >= measuredHeight || spaceBelow >= spaceAbove
+        ? 'below'
+        : 'above'
+    const availableHeight = placement === 'above' ? spaceAbove : spaceBelow
+    const maxHeight = Math.min(PICKER_MAX_HEIGHT, availableHeight)
+    const visibleHeight = Math.min(measuredHeight, maxHeight)
+    const unclampedTop = placement === 'above'
+      ? triggerRect.top - PICKER_GAP - visibleHeight
+      : triggerRect.bottom + PICKER_GAP
+    const top = Math.min(
+      Math.max(VIEWPORT_MARGIN, unclampedTop),
+      Math.max(VIEWPORT_MARGIN, viewportHeight - visibleHeight - VIEWPORT_MARGIN),
+    )
+    const preferredLeft = compact ? triggerRect.right - renderedWidth : triggerRect.left
+    const left = Math.min(
+      Math.max(VIEWPORT_MARGIN, preferredLeft),
+      Math.max(VIEWPORT_MARGIN, viewportWidth - renderedWidth - VIEWPORT_MARGIN),
+    )
+
+    setPickerPosition((current) => {
+      const next = { top, left, maxHeight, placement }
+      if (
+        current
+        && Math.abs(current.top - next.top) < 1
+        && Math.abs(current.left - next.left) < 1
+        && Math.abs(current.maxHeight - next.maxHeight) < 1
+        && current.placement === next.placement
+      ) {
+        return current
       }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
+      return next
+    })
+  }, [compact])
 
-  // Escape to close, focus search on open
-  useEffect(() => {
-    if (open) {
-      setTimeout(() => searchRef.current?.focus(), 30)
-    }
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { setOpen(false); setSearch('') }
-    }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [open])
-
-  const fetchModels = async (provider: Provider, forceRecommended = false) => {
+  const fetchModels = async (provider: Provider) => {
     const requiresKey = PROVIDERS.find((p) => p.id === provider)?.requiresApiKey !== false
     if ((requiresKey && !keyStatus[provider]) || !window.api) return
+    const requestContextKey = selectionContextKey
+    const modelAtRequestStart = useAppStore.getState().selectedModels[provider]
     setModelsLoading(provider, true)
     setModelsError(provider, null)
     try {
       const result = await window.api.fetchModels(provider)
       if (result.success && result.models.length > 0) {
         setDynamicModels(provider, result.models)
-        const ids = result.models.map((m) => m.id)
-        const currentSelection = selectedModels[provider]
+        const ids = result.models.map((model) => model.id)
+        const currentState = useAppStore.getState()
+        const currentSelection = currentState.selectedModels[provider]
         const currentInList = Boolean(currentSelection) && ids.includes(currentSelection)
-        if (forceRecommended || !currentInList) {
+        const requestStillOwnsSelection = selectionContextRef.current === requestContextKey
+          && currentState.selectedProvider === provider
+          && currentSelection === modelAtRequestStart
+        if (!currentInList && requestStillOwnsSelection) {
           const target = result.recommendedModel ?? result.models[0].id
           setSelectedModel(provider, target)
+          onSelectionChange?.(provider, target)
         }
       } else {
         setModelsError(provider, result.error || t.model_load_error)
       }
-    } catch (err) {
-      setModelsError(provider, err instanceof Error ? err.message : t.settings_hotkey_status_error)
+    } catch (error) {
+      setModelsError(provider, error instanceof Error ? error.message : t.settings_hotkey_status_error)
     } finally {
       setModelsLoading(provider, false)
     }
   }
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: fetchModels is stable
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fetchModels uses the latest store state
   useEffect(() => {
-    const hasKey = PROVIDERS.find((p) => p.id === selectedProvider)?.requiresApiKey === false
+    const hasKey = PROVIDERS.find((provider) => provider.id === selectedProvider)?.requiresApiKey === false
       || keyStatus[selectedProvider]
     if (hasKey && dynamicModels[selectedProvider].length === 0 && !modelsLoading[selectedProvider]) {
       fetchModels(selectedProvider)
     }
   }, [selectedProvider, keyStatus])
 
-  // Build all models grouped by provider, deduplicated
   const providerGroups = useMemo(() => {
-    return PROVIDERS.map((p) => {
-      const dynamic = dynamicModels[p.id as Provider]
-      const raw = dynamic.length > 0 ? dynamic : p.models
-      const models = dedupeModelsByFamily(p.id as Provider, raw)
-      return { provider: p, models }
+    return PROVIDERS.map((provider) => {
+      const providerId = provider.id as Provider
+      const dynamic = dynamicModels[providerId]
+      const raw = dynamic.length > 0 ? dynamic : provider.models
+      return { provider, models: dedupeModelsByFamily(providerId, raw) }
     })
   }, [dynamicModels])
 
-  // Current selected model display info
-  const currentProviderConfig = PROVIDERS.find((p) => p.id === selectedProvider) ?? PROVIDERS[0]
+  const currentProviderConfig = PROVIDERS.find((provider) => provider.id === selectedProvider) ?? PROVIDERS[0]
   const currentDynamic = dynamicModels[selectedProvider]
   const currentRaw = currentDynamic.length > 0 ? currentDynamic : currentProviderConfig.models
   const currentDisplayModels = dedupeModelsByFamily(selectedProvider, currentRaw)
@@ -115,97 +196,227 @@ export function ModelSelector({ compact = false }: { compact?: boolean }) {
   const selectedModelName = formatModelName(
     selectedProvider,
     selectedModelId,
-    currentDisplayModels.find((m) => m.id === selectedModelId)?.name,
+    currentDisplayModels.find((model) => model.id === selectedModelId)?.name,
   )
   const isCurrentLoading = modelsLoading[selectedProvider]
+  const currentHasKey = currentProviderConfig.requiresApiKey === false || keyStatus[selectedProvider]
 
-  // Filter models by search
-  const q = search.toLowerCase().trim()
-  const filteredGroups = q
+  const query = search.toLowerCase().trim()
+  const filteredGroups = query
     ? providerGroups
-        .map((g) => ({
-          ...g,
-          models: g.models.filter((m) => {
-            const name = formatModelName(g.provider.id as Provider, m.id, m.name).toLowerCase()
-            return name.includes(q) || g.provider.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q)
+        .map((group) => ({
+          ...group,
+          models: group.models.filter((model) => {
+            const providerId = group.provider.id as Provider
+            const name = formatModelName(providerId, model.id, model.name).toLowerCase()
+            return name.includes(query)
+              || group.provider.name.toLowerCase().includes(query)
+              || model.id.toLowerCase().includes(query)
           }),
         }))
-        .filter((g) => g.models.length > 0)
+        .filter((group) => group.models.length > 0)
     : providerGroups
 
-  // Resolve recent models to display info
   const recentItems = recentModels
-    .map((r) => {
-      const providerConf = PROVIDERS.find((p) => p.id === r.provider)
-      if (!providerConf) return null
-      const dynamic = dynamicModels[r.provider as Provider]
-      const raw = dynamic.length > 0 ? dynamic : providerConf.models
-      const model = raw.find((m) => m.id === r.modelId)
+    .map((recent) => {
+      const providerConfig = PROVIDERS.find((provider) => provider.id === recent.provider)
+      if (!providerConfig) return null
+      const dynamic = dynamicModels[recent.provider as Provider]
+      const raw = dynamic.length > 0 ? dynamic : providerConfig.models
+      const model = raw.find((candidate) => candidate.id === recent.modelId)
       if (!model) return null
-      const displayName = formatModelName(r.provider, r.modelId, model.name)
-      return { provider: r.provider, modelId: r.modelId, displayName, providerName: providerConf.name }
+      return {
+        provider: recent.provider,
+        modelId: recent.modelId,
+        displayName: formatModelName(recent.provider, recent.modelId, model.name),
+        providerName: providerConfig.name,
+      }
     })
-    .filter(Boolean) as Array<{ provider: Provider; modelId: string; displayName: string; providerName: string }>
+    .filter(Boolean) as Array<{
+      provider: Provider
+      modelId: string
+      displayName: string
+      providerName: string
+    }>
 
-  const handleSelect = (provider: Provider, modelId: string) => {
+  const handleSelectModel = (provider: Provider, modelId: string) => {
     setSelectedProvider(provider)
     setSelectedModel(provider, modelId)
+    onSelectionChange?.(provider, modelId)
     recordModelUsage(provider, modelId)
-    // Fetch dynamic models for this provider if not yet loaded
-    const hasKey = PROVIDERS.find((p) => p.id === provider)?.requiresApiKey === false
-      || keyStatus[provider as Provider]
-    if (hasKey && dynamicModels[provider as Provider].length === 0) {
-      fetchModels(provider as Provider)
+    const hasKey = PROVIDERS.find((item) => item.id === provider)?.requiresApiKey === false || keyStatus[provider]
+    if (hasKey && dynamicModels[provider].length === 0) {
+      fetchModels(provider)
     }
-    setOpen(false)
-    setSearch('')
+    closePicker()
   }
 
-  const showRecent = !q && recentItems.length > 0
+  const handleSelectProvider = (provider: Provider) => {
+    setSelectedProvider(provider)
+    const providerModels = dynamicModels[provider].length > 0
+      ? dynamicModels[provider]
+      : PROVIDERS.find((item) => item.id === provider)?.models ?? []
+    const model = selectedModels[provider] ?? providerModels[0]?.id
+    if (model) onSelectionChange?.(provider, model)
+    setSearch('')
+    const hasKey = PROVIDERS.find((item) => item.id === provider)?.requiresApiKey === false || keyStatus[provider]
+    if (hasKey && dynamicModels[provider].length === 0 && !modelsLoading[provider]) {
+      fetchModels(provider)
+    }
+    setView('root')
+  }
 
-  const dropdownPanel = open && createPortal(
-    <div
-      ref={dropdownRef}
-      style={{
-        position: 'fixed',
-        top: dropdownPos.top,
-        left: dropdownPos.left,
-        width: 280,
-        zIndex: 9999,
-        background: 'var(--vzn-surface)',
-        border: '1px solid var(--vzn-border-strong)',
-        borderRadius: 'var(--vzn-radius-md)',
-        boxShadow: 'var(--vzn-shadow-lg)',
-        overflow: 'hidden',
-      }}
-    >
-      {/* Search */}
-      <div className="p-2 border-b" style={{ borderColor: 'var(--vzn-divider)' }}>
-        <div className="relative">
-          <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-          <input
+  const showRecent = !query && recentItems.length > 0
+
+  useEffect(() => {
+    if (!open) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node
+      if (!triggerRef.current?.contains(target) && !pickerRef.current?.contains(target)) {
+        closePicker(false)
+      }
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        closePicker()
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open, closePicker])
+
+  useLayoutEffect(() => {
+    if (!open) return
+    repositionPicker()
+    const frame = window.requestAnimationFrame(repositionPicker)
+    const panel = pickerRef.current
+    let observer: ResizeObserver | null = null
+    if (typeof ResizeObserver !== 'undefined' && panel) {
+      observer = new ResizeObserver(repositionPicker)
+      observer.observe(panel)
+    }
+    window.addEventListener('resize', repositionPicker)
+    window.addEventListener('scroll', repositionPicker, true)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      observer?.disconnect()
+      window.removeEventListener('resize', repositionPicker)
+      window.removeEventListener('scroll', repositionPicker, true)
+    }
+  }, [open, repositionPicker])
+
+  useEffect(() => {
+    if (!open) return
+    const frame = window.requestAnimationFrame(() => {
+      if (view === 'models') searchRef.current?.focus()
+      if (view === 'root') firstRootItemRef.current?.focus()
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [open, view])
+
+  const rootMenu = (
+    <div className="model-picker-root">
+      <button
+        ref={firstRootItemRef}
+        type="button"
+        className="model-picker-menu-row"
+        aria-label={`${t.model_picker_model}: ${selectedModelName}`}
+        onClick={() => setView('models')}
+      >
+        <span className="model-picker-row-label">{t.model_picker_model}</span>
+        <span className="model-picker-row-value">{selectedModelName}</span>
+        <ChevronRightIcon className="model-picker-row-chevron" />
+      </button>
+      <button
+        type="button"
+        className="model-picker-menu-row"
+        aria-label={`${t.model_picker_provider}: ${currentProviderConfig.name}`}
+        onClick={() => setView('providers')}
+      >
+        <span className="model-picker-row-label">{t.model_picker_provider}</span>
+        <span className="model-picker-row-value">{currentProviderConfig.name}</span>
+        <ChevronRightIcon className="model-picker-row-chevron" />
+      </button>
+      <hr className="model-picker-divider" />
+      <button
+        type="button"
+        className="model-picker-advanced-trigger"
+        aria-expanded={advancedOpen}
+        aria-controls={`${pickerId}-advanced`}
+        onClick={() => setAdvancedOpen((value) => !value)}
+      >
+        <span className="model-picker-row-label">{t.model_picker_advanced}</span>
+        <ChevronDownIcon
+          className={`model-picker-row-chevron model-picker-advanced-chevron${advancedOpen ? ' model-picker-advanced-chevron--open' : ''}`}
+        />
+      </button>
+      {advancedOpen && (
+        <div id={`${pickerId}-advanced`} className="model-picker-advanced-content">
+          <div className="model-picker-advanced-model">
+            <span className="model-picker-advanced-label">{t.model_picker_model_id}</span>
+            <code className="model-picker-advanced-value" title={selectedModelId}>{selectedModelId}</code>
+          </div>
+          <button
+            type="button"
+            className="model-picker-refresh"
+            onClick={() => fetchModels(selectedProvider)}
+            disabled={!currentHasKey || isCurrentLoading}
+          >
+            {isCurrentLoading
+              ? <SpinnerIcon className="model-picker-spinner" />
+              : <RefreshIcon className="model-picker-refresh-icon" />}
+            <span>{t.model_refresh}</span>
+          </button>
+          {!currentHasKey && (
+            <p className="model-picker-advanced-status" role="status">{t.model_no_key}</p>
+          )}
+          {currentHasKey && modelsError[selectedProvider] && (
+            <p className="model-picker-advanced-status model-picker-advanced-status--error" role="alert">
+              {modelsError[selectedProvider]}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+
+  const modelsView = (
+    <div className="model-picker-subview model-picker-models-view">
+      <PickerHeader label={t.model_picker_model} backLabel={t.model_picker_back} onBack={() => {
+        setSearch('')
+        setView('root')
+      }} />
+      <div className="model-picker-search-wrap">
+        <div className="model-picker-search-shell">
+          <SearchIcon className="model-picker-search-icon" />
+          <Input
             ref={searchRef}
-            type="text"
+            size="md"
+            type="search"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search models…"
-            className="search-field text-xs h-8"
-            style={{ paddingLeft: 30, paddingRight: 10 }}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t.model_picker_search_placeholder}
+            aria-label={t.model_picker_search_placeholder}
+            aria-controls={modelListId}
+            className="model-picker-search"
           />
         </div>
       </div>
-
-      {/* List */}
-      <div className="overflow-y-auto" style={{ maxHeight: 320 }}>
+      <div id={modelListId} className="model-picker-list">
         {showRecent && (
-          <div>
-            <div className="px-3 pt-2.5 pb-1">
-              <span className="ui-kicker">Recent</span>
-            </div>
+          <section className="model-picker-section" aria-labelledby={`${pickerId}-recent`}>
+            <div id={`${pickerId}-recent`} className="model-picker-section-label">{t.model_picker_recent}</div>
             {recentItems.map((item) => {
               const isSelected = selectedProvider === item.provider && selectedModelId === item.modelId
               return (
-                <ModelRow
+                <ModelOption
                   key={`recent-${item.provider}-${item.modelId}`}
                   provider={item.provider}
                   modelId={item.modelId}
@@ -213,135 +424,193 @@ export function ModelSelector({ compact = false }: { compact?: boolean }) {
                   providerName={item.providerName}
                   isSelected={isSelected}
                   showProvider
-                  onSelect={handleSelect}
+                  onSelect={handleSelectModel}
                 />
               )
             })}
-            <div className="mx-3 my-1" style={{ height: 1, background: 'var(--vzn-divider)' }} />
-          </div>
+            <hr className="model-picker-divider model-picker-section-divider" />
+          </section>
         )}
 
         {filteredGroups.length === 0 && (
-          <div className="px-3 py-4 text-center text-xs" style={{ color: 'var(--vzn-text-soft)' }}>
-            No models found
-          </div>
+          <div className="model-picker-empty" role="status">{t.model_picker_no_results}</div>
         )}
         {filteredGroups.map((group) => {
-          const provId = group.provider.id as Provider
-          const hasKey = group.provider.requiresApiKey === false || keyStatus[provId]
-          const isLoading = modelsLoading[provId]
-          const error = modelsError[provId]
+          const providerId = group.provider.id as Provider
+          const hasKey = group.provider.requiresApiKey === false || keyStatus[providerId]
+          const isLoading = modelsLoading[providerId]
+          const error = modelsError[providerId]
+          const sectionId = `${pickerId}-${providerId}`
           return (
-            <div key={provId}>
-              <div className="flex items-center gap-1.5 px-3 pt-2.5 pb-1">
-                <ProviderIcon provider={provId} size={11} />
-                <span className="ui-kicker">{group.provider.name}</span>
-                {!hasKey && (
-                  <span className="ui-kicker ml-auto" style={{ color: 'var(--vzn-text-disabled)' }}>
-                    no key
-                  </span>
-                )}
-                {isLoading && <SpinnerIcon className="w-2.5 h-2.5 spinner ml-auto text-gray-400" />}
+            <section key={providerId} className="model-picker-section" aria-labelledby={sectionId}>
+              <div className="model-picker-section-label model-picker-section-heading">
+                <span aria-hidden="true"><ProviderIcon provider={providerId} size={13} /></span>
+                <span id={sectionId}>{group.provider.name}</span>
+                {!hasKey && <span className="model-picker-status">{t.model_no_key}</span>}
+                {isLoading && <SpinnerIcon className="model-picker-spinner" />}
               </div>
-              {error && group.models.length === 0 ? (
-                <div className="px-3 pb-2 text-xs" style={{ color: 'var(--vzn-danger)' }}>
-                  {t.model_load_error}
-                </div>
-              ) : (
-                group.models.map((model) => {
-                  const isSelected = selectedProvider === provId && selectedModelId === model.id
-                  return (
-                    <ModelRow
-                      key={model.id}
-                      provider={provId}
-                      modelId={model.id}
-                      displayName={formatModelName(provId, model.id, model.name)}
-                      isSelected={isSelected}
-                      onSelect={handleSelect}
-                    />
-                  )
-                })
+              {error && (
+                <p className="model-picker-error model-picker-error--inline" role="alert">{t.model_load_error}</p>
               )}
-            </div>
+              {group.models.map((model) => (
+                <ModelOption
+                  key={`${providerId}-${model.id}`}
+                  provider={providerId}
+                  modelId={model.id}
+                  displayName={formatModelName(providerId, model.id, model.name)}
+                  isSelected={selectedProvider === providerId && selectedModelId === model.id}
+                  onSelect={handleSelectModel}
+                />
+              ))}
+            </section>
           )
         })}
-        <div className="h-1.5" />
       </div>
+    </div>
+  )
+
+  const providersView = (
+    <div className="model-picker-subview model-picker-providers-view">
+      <PickerHeader
+        label={t.model_picker_provider}
+        backLabel={t.model_picker_back}
+        onBack={() => setView('root')}
+      />
+      <div id={providerListId} className="model-picker-list model-picker-provider-list">
+        {PROVIDERS.map((provider) => {
+          const providerId = provider.id as Provider
+          const hasKey = provider.requiresApiKey === false || keyStatus[providerId]
+          const isSelected = providerId === selectedProvider
+          return (
+            <button
+              key={providerId}
+              type="button"
+              aria-current={isSelected ? 'true' : undefined}
+              className={`model-picker-option model-picker-provider-option${isSelected ? ' model-picker-option--selected model-picker-provider-option--selected' : ''}`}
+              onClick={() => handleSelectProvider(providerId)}
+            >
+              <span className="model-picker-provider-icon" aria-hidden="true">
+                <ProviderIcon provider={providerId} size={16} />
+              </span>
+              <span className="model-picker-provider-copy">
+                <span className="model-picker-provider-name">{provider.name}</span>
+                {!hasKey && <span className="model-picker-provider-meta">{t.model_no_key}</span>}
+              </span>
+              {modelsLoading[providerId] && <SpinnerIcon className="model-picker-spinner" />}
+              {isSelected && <CheckIcon className="model-picker-check" />}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+
+  const pickerPanel = open && createPortal(
+    <div
+      ref={pickerRef}
+      id={pickerId}
+      role="dialog"
+      aria-label={t.model_picker_model}
+      className={`model-picker-panel model-picker-panel--${pickerPosition?.placement ?? (compact ? 'above' : 'below')}`}
+      style={{
+        position: 'fixed',
+        top: pickerPosition?.top ?? VIEWPORT_MARGIN,
+        left: pickerPosition?.left ?? VIEWPORT_MARGIN,
+        width: Math.min(PICKER_WIDTH, window.innerWidth - VIEWPORT_MARGIN * 2),
+        maxHeight: pickerPosition?.maxHeight ?? PICKER_MAX_HEIGHT,
+        visibility: pickerPosition ? 'visible' : 'hidden',
+        zIndex: 9999,
+      }}
+    >
+      {view === 'root' && rootMenu}
+      {view === 'models' && modelsView}
+      {view === 'providers' && providersView}
     </div>,
-    document.body
+    document.body,
   )
 
   return (
     <>
-      <button
+      <Button
         ref={triggerRef}
-        type="button"
-        onClick={open ? () => { setOpen(false); setSearch('') } : openDropdown}
-        className={compact
-          ? `inline-flex items-center gap-1 px-2 py-1 rounded-md text-[13px] font-medium flex-shrink-0 transition-colors ${open ? 'opacity-100' : 'opacity-80 hover:opacity-100'}`
-          : `btn-select font-medium gap-2 flex-shrink-0 ${open ? 'btn-select-active' : ''}`}
-        style={compact
-          ? { color: 'var(--vzn-text-muted)', background: open ? 'var(--vzn-surface-subtle)' : 'transparent', minWidth: 0 }
-          : { minWidth: 180, maxWidth: 260 }}
+        size="md"
+        shape="pill"
+        variant={open ? 'primary' : 'neutral'}
+        appearance={open ? 'soft' : 'ghost'}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-controls={open ? pickerId : undefined}
+        onClick={() => open ? closePicker(false) : openPicker()}
+        className={`model-picker-trigger${compact ? ' model-picker-trigger--compact' : ' model-picker-trigger--field'}${open ? ' model-picker-trigger--open' : ''}`}
       >
-        {compact ? null : isCurrentLoading ? (
-          <SpinnerIcon className="w-3.5 h-3.5 spinner flex-shrink-0 text-gray-400" />
-        ) : (
-          <ProviderIcon provider={selectedProvider} size={14} />
+        {!compact && (
+          isCurrentLoading
+            ? <SpinnerIcon className="model-picker-spinner" />
+            : <span aria-hidden="true"><ProviderIcon provider={selectedProvider} size={14} /></span>
         )}
-        <span className={compact ? 'truncate max-w-[120px]' : `flex-1 text-left truncate text-[13px] ${PROVIDER_COLORS[selectedProvider].text}`}>
+        <span className="model-picker-trigger-label">
           {isCurrentLoading && !compact ? t.model_loading : selectedModelName || t.settings_hotkey_model}
         </span>
-        <ChevronDownIcon
-          className={`w-3 h-3 flex-shrink-0 transition-transform duration-150 ${open ? 'rotate-180' : ''} ${compact ? 'text-gray-400' : 'text-gray-400'}`}
-        />
-      </button>
-      {dropdownPanel}
+        <ChevronDownIcon className="model-picker-trigger-icon model-picker-trigger-chevron" />
+      </Button>
+      {pickerPanel}
     </>
   )
 }
 
-interface ModelRowProps {
+interface PickerHeaderProps {
+  label: string
+  backLabel: string
+  onBack: () => void
+}
+
+function PickerHeader({ label, backLabel, onBack }: PickerHeaderProps) {
+  return (
+    <div className="model-picker-header">
+      <button type="button" className="model-picker-back" aria-label={backLabel} onClick={onBack}>
+        <ChevronLeftIcon className="model-picker-back-icon" />
+      </button>
+      <h2 className="model-picker-title">{label}</h2>
+    </div>
+  )
+}
+
+interface ModelOptionProps {
   provider: Provider
   modelId: string
   displayName: string
   providerName?: string
   isSelected: boolean
   showProvider?: boolean
+  disabled?: boolean
   onSelect: (provider: Provider, modelId: string) => void
 }
 
-function ModelRow({ provider, modelId, displayName, providerName, isSelected, showProvider, onSelect }: ModelRowProps) {
+function ModelOption({
+  provider,
+  modelId,
+  displayName,
+  providerName,
+  isSelected,
+  showProvider = false,
+  disabled = false,
+  onSelect,
+}: ModelOptionProps) {
   return (
     <button
       type="button"
+      aria-current={isSelected ? 'true' : undefined}
+      disabled={disabled}
+      className={`model-picker-option${isSelected ? ' model-picker-option--selected' : ''}${disabled ? ' model-picker-option--disabled' : ''}`}
       onClick={() => onSelect(provider, modelId)}
-      className="w-full flex items-center gap-2 px-3 py-1.5 text-left transition-colors"
-      style={{
-        background: isSelected ? 'var(--vzn-accent-soft)' : 'transparent',
-        color: isSelected ? 'var(--vzn-accent)' : 'var(--vzn-text)',
-        fontSize: 13,
-        cursor: 'pointer',
-        border: 'none',
-        outline: 'none',
-      }}
-      onMouseEnter={(e) => {
-        if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'var(--vzn-surface-hover)'
-      }}
-      onMouseLeave={(e) => {
-        if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'transparent'
-      }}
+      title={modelId}
     >
-      {showProvider && <ProviderIcon provider={provider} size={12} />}
-      <span className="flex-1 truncate">
-        {displayName}
-        {showProvider && providerName && (
-          <span className="ml-1.5 text-[11px]" style={{ color: 'var(--vzn-text-soft)' }}>
-            {providerName}
-          </span>
-        )}
+      {showProvider && <span aria-hidden="true"><ProviderIcon provider={provider} size={13} /></span>}
+      <span className="model-picker-option-copy">
+        <span className="model-picker-option-name">{displayName}</span>
+        {showProvider && providerName && <span className="model-picker-option-meta">{providerName}</span>}
       </span>
-      {isSelected && <CheckIcon className="w-3 h-3 flex-shrink-0 text-[--vzn-accent]" />}
+      {isSelected && <CheckIcon className="model-picker-check" />}
     </button>
   )
 }

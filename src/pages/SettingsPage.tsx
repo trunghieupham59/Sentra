@@ -184,10 +184,10 @@ export function SettingsPage() {
                   title={description}
                   className="btn-nav-item flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all"
                   style={{
-                    background: active ? 'var(--vzn-accent-soft)' : 'transparent',
-                    color: active ? 'var(--vzn-accent)' : 'var(--vzn-text-muted)',
-                    border: active ? '1px solid var(--vzn-accent-border)' : '1px solid transparent',
-                    boxShadow: active ? 'var(--vzn-shadow-glow)' : 'none',
+                    background: active ? 'var(--vzn-surface-subtle)' : 'transparent',
+                    color: active ? 'var(--vzn-text-strong)' : 'var(--vzn-text-muted)',
+                    border: active ? '1px solid var(--vzn-border)' : '1px solid transparent',
+                    boxShadow: 'none',
                   }}
                   aria-current={active ? 'true' : undefined}
                   onMouseEnter={(e) => { if (!active) { e.currentTarget.style.background = 'var(--vzn-surface-subtle)'; e.currentTarget.style.color = 'var(--vzn-text)'; } }}
@@ -216,9 +216,9 @@ export function SettingsPage() {
                     title={description}
                     className="btn-sm whitespace-nowrap rounded-lg flex items-center gap-1.5"
                     style={{
-                      background: active ? 'var(--vzn-accent-soft)' : 'transparent',
-                      color: active ? 'var(--vzn-accent)' : 'var(--vzn-text-muted)',
-                      border: active ? '1px solid var(--vzn-accent-border)' : '1px solid transparent',
+                      background: active ? 'var(--vzn-surface-subtle)' : 'transparent',
+                      color: active ? 'var(--vzn-text-strong)' : 'var(--vzn-text-muted)',
+                      border: active ? '1px solid var(--vzn-border)' : '1px solid transparent',
                     }}
                     aria-current={active ? 'true' : undefined}
                   >

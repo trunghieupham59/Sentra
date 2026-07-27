@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { InlineErrorBanner } from '../../components/ui/InlineErrorBanner'
 import {
   GitHubIcon, KeyIcon,
   PlusIcon, RefreshIcon, SpinnerIcon, TrashIcon, XIcon,
 } from '../../components/ui/icons'
+import { InlineErrorBanner } from '../../components/ui/molecules'
 import { SettingsFormActions } from '../../components/ui/SettingsFormActions'
 import { TokenTtlPicker } from '../../components/ui/TokenTtlPicker'
 import { GITHUB_RELEASES_URL } from '../../constants/urls'

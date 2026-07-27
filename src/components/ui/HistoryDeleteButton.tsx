@@ -1,3 +1,4 @@
+import { Button } from './atoms'
 import { TrashIcon } from './icons'
 
 interface HistoryDeleteButtonProps {
@@ -7,11 +8,9 @@ interface HistoryDeleteButtonProps {
 
 export function HistoryDeleteButton({ onClick, label }: HistoryDeleteButtonProps) {
   return (
-    <button type="button" onClick={onClick}
-      className="btn-danger btn-sm"
-    >
+    <Button size="sm" shape="pill" variant="danger" appearance="soft" onClick={onClick}>
       <TrashIcon className="w-3.5 h-3.5" />
       {label}
-    </button>
+    </Button>
   )
 }
