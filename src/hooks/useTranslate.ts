@@ -10,10 +10,11 @@
  *  - Rewrite and copy actions
  *  - TTS and voice input integration
  *
- * TranslatePage owns only scroll-sync refs/effect and pure JSX render.
+ * TranslatePage composes the presentation layer and routes these handlers.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ImageAttachment } from '../components/translate/ImageTranslator'
+import type { VoiceRecordingState } from '../components/VoiceRecorder'
 import { MAX_TRANSLATE_IMAGE_DIMENSION } from '../constants/image'
 import { DETECT_LANG_MAX_CHARS } from '../constants/providers'
 import { COPY_FEEDBACK_DURATION_MS, IMAGE_AUTO_TRANSLATE_DELAY_MS } from '../constants/ui'
@@ -21,6 +22,7 @@ import { translationService } from '../services/translationService'
 import { useAppStore, useT } from '../store/useAppStore'
 import type { ImageTextRegion, PhoneticMode } from '../types'
 import { renderTranslatedRegions } from '../utils/canvas'
+import { localizeChatError, localizeChatException } from '../utils/chatErrors'
 import { createClientId } from '../utils/id'
 import { extractImageFromClipboard, resizeImageFile } from '../utils/imageUtils'
 import { estimateUsageCost } from '../utils/usageCost'
@@ -43,6 +45,57 @@ interface AutoHistoryDraft {
   contextKey: string
   sourceText: string
   timestamp: number
+}
+
+interface TranslationResultContext {
+  sourceText: string
+  imageAttachment: ImageAttachment | null
+  sourceLang: string
+  targetLang: string
+  provider: string
+  model: string
+  translationStyle: string
+  reasoningEffort: string
+}
+
+function isSameResultContext(
+  previous: TranslationResultContext,
+  current: TranslationResultContext,
+) {
+  return previous.sourceText === current.sourceText
+    && previous.imageAttachment === current.imageAttachment
+    && previous.sourceLang === current.sourceLang
+    && previous.targetLang === current.targetLang
+    && previous.provider === current.provider
+    && previous.model === current.model
+    && previous.translationStyle === current.translationStyle
+    && previous.reasoningEffort === current.reasoningEffort
+}
+
+function localizeTranslationError(
+  t: ReturnType<typeof useT>,
+  error: string | undefined,
+  errorCode: string | undefined,
+  fallback: string,
+) {
+  if (errorCode === 'NO_API_KEY') return t.translate_error_no_key
+  const localized = localizeChatError(t, { error, errorCode }, fallback)
+  if (localized === t.chat_error_empty_response) return t.translate_error_empty_response
+  if (localized === t.chat_error_blocked_recitation) return t.translate_error_blocked_recitation
+  if (localized === t.chat_error_blocked_safety) return t.translate_error_blocked_safety
+  return error && localized === error ? fallback : localized
+}
+
+function localizeTranslationException(
+  t: ReturnType<typeof useT>,
+  error: unknown,
+  fallback: string,
+) {
+  const rawMessage = error instanceof Error ? error.message : String(error ?? '')
+  const localized = localizeChatException(t, error, fallback)
+  if (localized === t.chat_error_blocked_recitation) return t.translate_error_blocked_recitation
+  if (localized === t.chat_error_blocked_safety) return t.translate_error_blocked_safety
+  return rawMessage && localized === rawMessage ? fallback : localized
 }
 
 function createHistoryId(timestamp = Date.now()) {
@@ -93,10 +146,10 @@ export function useTranslate() {
   const {
     sourceText, translatedText, phoneticText, sourceLang, targetLang,
     isTranslating, translateError, translateErrorCode,
-    selectedProvider, selectedModels, autoTranslate, autoTranslateDelay, keyStatus, phoneticMode, translationStyle,
+    selectedProvider, selectedModels, autoTranslate, autoTranslateDelay, keyStatus, phoneticMode, translationStyle, translationReasoningEffort,
     ttsMode, ttsVoice,
     setSourceText, setTranslatedText, setPhoneticText, setTargetLang,
-    setIsTranslating, setTranslateError, setActivePage, setPhoneticMode, setTranslationStyle, setAutoTranslate, addHistory, upsertHistory,
+    setIsTranslating, setTranslateError, setActivePage, setPhoneticMode, setTranslationStyle, setTranslationReasoningEffort, setAutoTranslate, addHistory, upsertHistory,
     recordUsageCost,
     swapLanguages,
   } = useAppStore()
@@ -116,6 +169,8 @@ export function useTranslate() {
    */
   const translateGenerationRef = useRef(0)
   const phoneticRequestRef = useRef(0)
+  const rewriteGenerationRef = useRef(0)
+  const imageProcessGenerationRef = useRef(0)
   const autoHistoryDraftRef = useRef<AutoHistoryDraft | null>(null)
   const hasKey = selectedProvider === 'local' || keyStatus[selectedProvider]
   const charCount = sourceText.length
@@ -133,6 +188,20 @@ export function useTranslate() {
       (!translateErrorCode && !hasKey)
     )
   )
+
+  const cancelActiveTranslation = useCallback(() => {
+    const requestId = activeTranslateRequestIdRef.current
+    if (requestId) {
+      void window.api.cancelTranslate?.({ requestId })
+      activeTranslateRequestIdRef.current = null
+    }
+
+    const phoneticRequestId = activePhoneticRequestIdRef.current
+    if (phoneticRequestId) {
+      void window.api.cancelTranslate?.({ requestId: phoneticRequestId })
+      activePhoneticRequestIdRef.current = null
+    }
+  }, [])
 
   const [copied, setCopied] = useState(false)
   const [isRewriting, setIsRewriting] = useState<'source' | 'translated' | null>(null)
@@ -163,6 +232,21 @@ export function useTranslate() {
   const [imageRegions, setImageRegions] = useState<ImageTextRegion[] | null>(null)
   // Edited image returned directly by Gemini image-edit model
   const [editedImageUrl, setEditedImageUrl] = useState<string | null>(null)
+  // Snapshot that produced the visible result. A mismatched draft is explicitly stale.
+  const [resultContext, setResultContext] = useState<TranslationResultContext | null>(() => (
+    translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL
+      ? {
+          sourceText,
+          imageAttachment: null,
+          sourceLang,
+          targetLang,
+          provider: selectedProvider,
+          model: selectedModels[selectedProvider],
+          translationStyle,
+          reasoningEffort: translationReasoningEffort,
+        }
+      : null
+  ))
   // Drag-over state for source panel drop zone visual feedback
   const [isDraggingOver, setIsDraggingOver] = useState(false)
   // Ref to hidden file input — triggered when user clicks the image icon
@@ -177,14 +261,73 @@ export function useTranslate() {
   isTranslatingRef.current = isTranslating
   phoneticModeRef.current = phoneticMode
 
+  const currentResultContext: TranslationResultContext = {
+    sourceText,
+    imageAttachment,
+    sourceLang,
+    targetLang,
+    provider: selectedProvider,
+    model: selectedModels[selectedProvider],
+    translationStyle,
+    reasoningEffort: imageAttachment ? 'auto' : translationReasoningEffort,
+  }
+  const hasVisibleResult = Boolean(translatedText || editedImageUrl)
+  const isResultStale = Boolean(
+    hasVisibleResult
+    && resultContext
+    && !isSameResultContext(resultContext, currentResultContext),
+  )
+
+  const markResultCurrent = useCallback(() => {
+    setResultContext({
+      sourceText,
+      imageAttachment,
+      sourceLang,
+      targetLang,
+      provider: selectedProvider,
+      model: selectedModels[selectedProvider],
+      translationStyle,
+      reasoningEffort: imageAttachment ? 'auto' : translationReasoningEffort,
+    })
+  }, [
+    sourceText,
+    imageAttachment,
+    sourceLang,
+    targetLang,
+    selectedProvider,
+    selectedModels,
+    translationStyle,
+    translationReasoningEffort,
+  ])
+
+  const invalidateRewrite = useCallback(() => {
+    rewriteGenerationRef.current++
+    setIsRewriting(null)
+  }, [])
+
+  const invalidateActiveTranslation = useCallback(() => {
+    translateGenerationRef.current++
+    phoneticRequestRef.current++
+    imageProcessGenerationRef.current++
+    invalidateRewrite()
+    cancelActiveTranslation()
+    setIsTranslating(false)
+    setDetectedSourceLang(null)
+    setIsDetectingLang(false)
+    stopSpeak()
+  }, [cancelActiveTranslation, invalidateRewrite, setIsTranslating, stopSpeak])
+
   /** Process an image File: resize, convert to base64, attach to translate area */
   const processImageFile = useCallback(async (file: File) => {
     if (!file.type.startsWith('image/')) {
       setTranslateError(t.image_translate_type_error)
       return
     }
+    invalidateActiveTranslation()
+    const processGeneration = ++imageProcessGenerationRef.current
     try {
       const result = await resizeImageFile(file, MAX_TRANSLATE_IMAGE_DIMENSION, { useQualityLoop: true })
+      if (imageProcessGenerationRef.current !== processGeneration) return
       const attachment: ImageAttachment = {
         base64:         result.base64,
         mimeType:       result.mimeType,
@@ -198,11 +341,13 @@ export function useTranslate() {
       setEditedImageUrl(null)
       setTranslatedText('')
       setPhoneticText('')
+      setResultContext(null)
       setTranslateError(null)
     } catch (err) {
-      setTranslateError(err instanceof Error ? err.message : t.image_translate_error_failed)
+      if (imageProcessGenerationRef.current !== processGeneration) return
+      setTranslateError(localizeTranslationException(t, err, t.image_translate_error_failed))
     }
-  }, [setTranslateError, setTranslatedText, setPhoneticText, t])
+  }, [invalidateActiveTranslation, setTranslateError, setTranslatedText, setPhoneticText, t])
 
   const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -219,33 +364,45 @@ export function useTranslate() {
     processImageFile(file)
   }, [processImageFile])
 
-  const handleSourcePanelDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+  const handleSourcePanelDragOver = useCallback((e: React.DragEvent<HTMLElement>) => {
     e.preventDefault()
     setIsDraggingOver(true)
   }, [])
 
-  const handleSourcePanelDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+  const handleSourcePanelDragLeave = useCallback((e: React.DragEvent<HTMLElement>) => {
     // Only clear when leaving the panel itself, not a child element
     if (!e.currentTarget.contains(e.relatedTarget as Node)) {
       setIsDraggingOver(false)
     }
   }, [])
 
-  const handleSourcePanelDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+  const handleSourcePanelDrop = useCallback((e: React.DragEvent<HTMLElement>) => {
     e.preventDefault()
     setIsDraggingOver(false)
     const file = e.dataTransfer.files[0]
     if (file) processImageFile(file)
   }, [processImageFile])
 
+  const handleVoiceTextChange = useCallback((text: string) => {
+    invalidateActiveTranslation()
+    setSourceText(text)
+  }, [invalidateActiveTranslation, setSourceText])
+
   // ── Voice input — shared hook (same logic as ChatPage) ──
+  const [voiceRecordingState, setVoiceRecordingState] = useState<VoiceRecordingState>('idle')
   const {
-    isVoiceActive,
+    isVoiceActive: isVoiceRecordingActive,
     isVoiceInterim,
     handleVoiceRecordingChange,
     handleVoiceTranscript,
+    cancelVoiceInput,
     resetVoicePrefix,
-  } = useVoiceInput({ currentText: sourceText, onTextChange: setSourceText })
+  } = useVoiceInput({ currentText: sourceText, onTextChange: handleVoiceTextChange })
+  const isVoiceActive = isVoiceRecordingActive
+    || (voiceRecordingState !== 'idle' && voiceRecordingState !== 'error')
+  const handleVoiceStateChange = useCallback((state: VoiceRecordingState) => {
+    setVoiceRecordingState(state)
+  }, [])
 
   /**
    * Triggers background language detection for `text` (best-effort, non-blocking).
@@ -277,21 +434,6 @@ export function useTranslate() {
         if (translateGenerationRef.current === generation) setIsDetectingLang(false)
       })
   }, []) // All values are passed as params → no external deps needed
-
-  const cancelActiveTranslation = useCallback(() => {
-    const requestId = activeTranslateRequestIdRef.current
-    if (requestId) {
-      void window.api.cancelTranslate?.({ requestId })
-      activeTranslateRequestIdRef.current = null
-    }
-    // Also cancel any in-flight phonetic pass — toggling phonetic mode rapidly otherwise
-    // leaves multiple parallel requests running and burns provider quota.
-    const phoneticRequestId = activePhoneticRequestIdRef.current
-    if (phoneticRequestId) {
-      void window.api.cancelTranslate?.({ requestId: phoneticRequestId })
-      activePhoneticRequestIdRef.current = null
-    }
-  }, [])
 
   const recordTranslationHistory = useCallback((trigger: TranslateTrigger, plainText: string) => {
     const timestamp = Date.now()
@@ -426,6 +568,8 @@ export function useTranslate() {
       clearTimeout(debounceRef.current)
       debounceRef.current = null
     }
+    imageProcessGenerationRef.current++
+    invalidateRewrite()
     cancelActiveTranslation()
     const generation = ++translateGenerationRef.current
     const requestId = createClientId('translate')
@@ -454,12 +598,14 @@ export function useTranslate() {
           setEditedImageUrl(`data:${mimeType};base64,${result.editedImageBase64}`)
           setTranslatedText(IMAGE_TRANSLATED_SENTINEL) // non-empty so conditional buttons render
           setImageRegions(null)
+          markResultCurrent()
         } else if (result.success && result.regions && result.regions.length > 0) {
           // ── Fallback (Claude/OpenAI): compile translated text from regions ──
           const text = result.regions.map(r => r.translatedText).filter(Boolean).join('\n')
           setTranslatedText(text)
           setImageRegions(result.regions)
           setEditedImageUrl(null)
+          markResultCurrent()
           // Generate phonetic pass for the compiled region text — image translations
           // also benefit from furigana/romanisation when target is JA/ZH/KO etc.
           const modeAtCompletion = phoneticModeRef.current
@@ -470,9 +616,18 @@ export function useTranslate() {
           }
         } else if (result.success) {
           setTranslatedText('')
+          setResultContext(null)
           setTranslateError(t.image_translate_no_text)
         } else {
-          setTranslateError(result.error || t.image_translate_error_failed, result.errorCode)
+          setTranslateError(
+            localizeTranslationError(
+              t,
+              result.error,
+              result.errorCode,
+              t.image_translate_error_failed,
+            ),
+            result.errorCode,
+          )
         }
 
         // Show notice if system auto-switched to a different model/provider
@@ -486,7 +641,7 @@ export function useTranslate() {
         }
       } catch (err) {
         if (translateGenerationRef.current !== generation) return
-        setTranslateError(err instanceof Error ? err.message : t.translate_error_unexpected)
+        setTranslateError(localizeTranslationException(t, err, t.translate_error_unexpected))
       } finally {
         if (translateGenerationRef.current === generation) setIsTranslating(false)
         if (translateGenerationRef.current === generation) activeTranslateRequestIdRef.current = null
@@ -512,6 +667,7 @@ export function useTranslate() {
         sourceLang,
         targetLang,
         translationStyle,
+        reasoningEffort: translationReasoningEffort,
       }
 
       const plainResult = await translationService.translate({ ...baseParams, showFurigana: false })
@@ -523,6 +679,7 @@ export function useTranslate() {
         const plainText = plainResult.translatedText
         setTranslatedText(plainText)
         setPhoneticText('')   // clear stale phonetic — phonetic pass below will repopulate it
+        markResultCurrent()
         setIsTranslating(false)
 
         recordTranslationHistory(trigger, plainText)
@@ -537,18 +694,26 @@ export function useTranslate() {
         // Identifies the source language so the swap button can set the correct target.
         detectLanguageInBackground(sourceText, generation, selectedProvider, selectedModels[selectedProvider])
       } else {
-        setTranslateError(plainResult.error || t.translate_error_generic, plainResult.errorCode)
+        setTranslateError(
+          localizeTranslationError(
+            t,
+            plainResult.error,
+            plainResult.errorCode,
+            t.translate_error_generic,
+          ),
+          plainResult.errorCode,
+        )
       }
     } catch (err) {
       if (translateGenerationRef.current !== generation) return
-      setTranslateError(err instanceof Error ? err.message : t.translate_error_unexpected)
+      setTranslateError(localizeTranslationException(t, err, t.translate_error_unexpected))
     } finally {
       if (translateGenerationRef.current === generation) setIsTranslating(false)
       if (translateGenerationRef.current === generation) activeTranslateRequestIdRef.current = null
     }
   }, [imageAttachment, sourceText, sourceLang, targetLang, selectedProvider, selectedModels,
-       hasKey, translationStyle,
-       setIsTranslating, setTranslateError, setTranslatedText, setPhoneticText, t, detectLanguageInBackground, recordTranslationHistory, generatePhoneticText, cancelActiveTranslation])
+       hasKey, translationStyle, translationReasoningEffort,
+       setIsTranslating, setTranslateError, setTranslatedText, setPhoneticText, t, detectLanguageInBackground, recordTranslationHistory, generatePhoneticText, cancelActiveTranslation, invalidateRewrite, markResultCurrent])
 
   const handleTranslate = useCallback(() => runTranslate('manual'), [runTranslate])
 
@@ -574,7 +739,7 @@ export function useTranslate() {
       a.download = `translated_${Date.now()}.png`
       a.click()
     } catch (err) {
-      setTranslateError(err instanceof Error ? err.message : t.translate_error_download)
+      setTranslateError(localizeTranslationException(t, err, t.translate_error_download))
     }
   }, [imageAttachment, imageRegions, setTranslateError, t])
 
@@ -589,6 +754,7 @@ export function useTranslate() {
 
   // Stable refs for effects below (avoids stale closures without re-triggering effects)
   const styleInitRef = useRef(false)
+  const reasoningInitRef = useRef(false)
   const langInitRef = useRef(false)
   const modelInitRef = useRef(false)
   const runTranslateRef = useRef(runTranslate)
@@ -600,6 +766,7 @@ export function useTranslate() {
 
   useLayoutEffect(() => {
     styleInitRef.current = false
+    reasoningInitRef.current = false
     langInitRef.current = false
     modelInitRef.current = false
   }, [])
@@ -631,9 +798,29 @@ export function useTranslate() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: translationStyle is the intentional trigger; runTranslate is accessed via a stable ref
   useEffect(() => {
     if (!styleInitRef.current) { styleInitRef.current = true; return }
+    invalidateRewrite()
+    if (!sourceTextRef.current.trim() && !imageAttachmentRef.current) return
+    if (isTranslatingRef.current) {
+      runTranslateRef.current(autoTranslateRef.current ? 'auto' : 'manual')
+      return
+    }
     if (!autoTranslateRef.current) return
     runTranslateRef.current('auto')
   }, [translationStyle])
+
+  // Re-translate when reasoning effort changes (skip first render, skip manual mode).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reasoning effort is the intentional trigger; runTranslate is accessed via a stable ref
+  useEffect(() => {
+    if (!reasoningInitRef.current) { reasoningInitRef.current = true; return }
+    invalidateRewrite()
+    if (!sourceTextRef.current.trim() || imageAttachmentRef.current) return
+    if (isTranslatingRef.current) {
+      runTranslateRef.current(autoTranslateRef.current ? 'auto' : 'manual')
+      return
+    }
+    if (!autoTranslateRef.current) return
+    runTranslateRef.current('auto')
+  }, [translationReasoningEffort])
 
   // Re-translate when target or source language changes (skip first render, skip manual mode).
   // Special case: if a translation is already in flight, restart it with the new lang pair so
@@ -642,6 +829,7 @@ export function useTranslate() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: lang changes are the triggers; sourceText/imageAttachment/runTranslate accessed via stable refs
   useEffect(() => {
     if (!langInitRef.current) { langInitRef.current = true; return }
+    invalidateRewrite()
     if (!sourceTextRef.current.trim() && !imageAttachmentRef.current) return
     if (isTranslatingRef.current) {
       runTranslateRef.current(autoTranslateRef.current ? 'auto' : 'manual')
@@ -655,26 +843,44 @@ export function useTranslate() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: provider/model changes are the triggers; runTranslate via stable ref
   useEffect(() => {
     if (!modelInitRef.current) { modelInitRef.current = true; return }
-    if (!autoTranslateRef.current) return
+    invalidateRewrite()
     if (!sourceTextRef.current.trim() && !imageAttachmentRef.current) return
+    if (isTranslatingRef.current) {
+      runTranslateRef.current(autoTranslateRef.current ? 'auto' : 'manual')
+      return
+    }
+    if (!autoTranslateRef.current) return
     runTranslateRef.current('auto')
   }, [selectedProvider, selectedModels[selectedProvider]])
 
   /** Swap translation panels — puts translated text into source, sets detected language as target. */
   const handleSwapLanguages = useCallback(() => {
     if (!translatedText || translatedText === IMAGE_TRANSLATED_SENTINEL || imageAttachment) return
+    const resolvedSourceLang = sourceLang === 'auto' ? detectedSourceLang : sourceLang
+    if (!resolvedSourceLang) return
     translateGenerationRef.current++
+    imageProcessGenerationRef.current++
+    invalidateRewrite()
     cancelActiveTranslation()
     stopSpeak()
-    // Delegates all text/lang state to the store. Passes detectedSourceLang so the store
-    // can use it as the new targetLang instead of falling back to sourceLang/'ja'.
-    swapLanguages(detectedSourceLang ?? undefined)
+    swapLanguages(resolvedSourceLang)
+    setResultContext({
+      sourceText: translatedText,
+      imageAttachment: null,
+      sourceLang: targetLang,
+      targetLang: resolvedSourceLang,
+      provider: selectedProvider,
+      model: selectedModels[selectedProvider],
+      translationStyle,
+      reasoningEffort: translationReasoningEffort,
+    })
     setTranslateError(null)
     setIsTranslating(false)
     setDetectedSourceLang(null)
     setIsDetectingLang(false)
-  }, [translatedText, detectedSourceLang, imageAttachment, stopSpeak, swapLanguages,
-      setTranslateError, setIsTranslating, cancelActiveTranslation])
+  }, [translatedText, detectedSourceLang, imageAttachment, sourceLang, targetLang,
+      selectedProvider, selectedModels, translationStyle, translationReasoningEffort, stopSpeak, swapLanguages,
+      setTranslateError, setIsTranslating, cancelActiveTranslation, invalidateRewrite])
 
   const handleCopy = async () => {
     const textToCopy = showFurigana && phoneticText ? phoneticText : translatedText
@@ -697,6 +903,7 @@ export function useTranslate() {
       ? (sourceLang === 'auto' ? 'the same language as the input text' : sourceLang)
       : targetLang
     if (!text.trim()) return
+    const rewriteGeneration = ++rewriteGenerationRef.current
     setIsRewriting(panel)
     try {
       const result = await translationService.rewriteText({
@@ -706,8 +913,10 @@ export function useTranslate() {
         lang,
         translationStyle,
       })
+      if (rewriteGenerationRef.current !== rewriteGeneration) return
       if (result.success && result.translatedText) {
         if (panel === 'source') {
+          invalidateActiveTranslation()
           setSourceText(result.translatedText)
           // Clear stale phonetic immediately — auto-translate will regenerate it after the
           // new source text is translated; prevents old phonetic showing for new content.
@@ -721,44 +930,44 @@ export function useTranslate() {
         }
       }
     } catch (err) {
-      setTranslateError(err instanceof Error ? err.message : t.translate_error_rewrite)
+      if (rewriteGenerationRef.current !== rewriteGeneration) return
+      setTranslateError(localizeTranslationException(t, err, t.translate_error_rewrite))
     } finally {
-      setIsRewriting(null)
+      if (rewriteGenerationRef.current === rewriteGeneration) setIsRewriting(null)
     }
   }, [isRewriting, hasKey, sourceText, translatedText, sourceLang, targetLang, translationStyle,
       selectedProvider, selectedModels, generatePhoneticText,
-      setSourceText, setTranslatedText, setPhoneticText, setTranslateError, t])
+      invalidateActiveTranslation, setSourceText, setTranslatedText, setPhoneticText, setTranslateError, t])
 
   /** Handles MarkdownEditor source text changes */
   const handleSourceChange = useCallback((val: string) => {
+    if (val !== sourceText) invalidateActiveTranslation()
     setSourceText(val)
-    stopSpeak()
     if (!val.trim()) {
       setTranslatedText('')
       setPhoneticText('')
+      setResultContext(null)
     }
     // User edited manually while voice is active — reset prefix so next
     // transcript chunk replaces the field content, not appends to stale prefix
     if (isVoiceActive) resetVoicePrefix()
-  }, [setSourceText, stopSpeak, setTranslatedText, setPhoneticText, isVoiceActive, resetVoicePrefix])
+  }, [sourceText, invalidateActiveTranslation, setSourceText, setTranslatedText, setPhoneticText, isVoiceActive, resetVoicePrefix])
 
   /** Clears the source panel (ClearButton) — cancels any in-flight translation */
   const handleClearSource = useCallback(() => {
-    translateGenerationRef.current++
-    cancelActiveTranslation()
-    setIsTranslating(false)
-    stopSpeak()
+    invalidateActiveTranslation()
     setSourceText('')
     setImageAttachment(null)
     setImageRegions(null)
     setEditedImageUrl(null)
     setTranslatedText('')
     setPhoneticText('')
+    setResultContext(null)
     setTranslateError(null)
     setDetectedSourceLang(null)
     setIsDetectingLang(false)
     setImageSwitchNotice(null)
-  }, [stopSpeak, setIsTranslating, setSourceText, setTranslatedText, setPhoneticText, setTranslateError, cancelActiveTranslation])
+  }, [invalidateActiveTranslation, setSourceText, setTranslatedText, setPhoneticText, setTranslateError])
 
   /** Dismisses the current error banner — clears translateError in store */
   const handleDismissError = useCallback(() => {
@@ -767,17 +976,25 @@ export function useTranslate() {
 
   /** Removes the attached image (ImageAttachmentPreview onRemove) — cancels in-flight job */
   const handleRemoveImage = useCallback(() => {
-    translateGenerationRef.current++
-    cancelActiveTranslation()
-    setIsTranslating(false)
+    invalidateActiveTranslation()
     setImageAttachment(null)
     setImageRegions(null)
     setEditedImageUrl(null)
     setTranslatedText('')
     setPhoneticText('')
+    setResultContext(null)
     setTranslateError(null)
     setImageSwitchNotice(null)
-  }, [setIsTranslating, setTranslatedText, setPhoneticText, setTranslateError, cancelActiveTranslation])
+  }, [invalidateActiveTranslation, setTranslatedText, setPhoneticText, setTranslateError])
+
+  useEffect(() => () => {
+    translateGenerationRef.current++
+    phoneticRequestRef.current++
+    rewriteGenerationRef.current++
+    imageProcessGenerationRef.current++
+    cancelActiveTranslation()
+    setIsTranslating(false)
+  }, [cancelActiveTranslation, setIsTranslating])
 
   return {
     // ── Store state (needed by JSX) ─────────────────────────────────────────
@@ -791,6 +1008,7 @@ export function useTranslate() {
     autoTranslate,
     phoneticMode,
     translationStyle,
+    translationReasoningEffort,
     keyStatus,
     selectedProvider,
     // ── Store setters (used directly in JSX) ───────────────────────────────
@@ -798,6 +1016,7 @@ export function useTranslate() {
     setActivePage,
     setPhoneticMode: handlePhoneticModeChange,
     setTranslationStyle,
+    setTranslationReasoningEffort,
     setAutoTranslate,
     // ── Local state ────────────────────────────────────────────────────────
     copied,
@@ -813,6 +1032,7 @@ export function useTranslate() {
     // ── Computed ───────────────────────────────────────────────────────────
     charCount,
     isApiKeyError,
+    isResultStale,
     // ── TTS ────────────────────────────────────────────────────────────────
     speakingPanel,
     speakLoading,
@@ -821,7 +1041,9 @@ export function useTranslate() {
     isVoiceActive,
     isVoiceInterim,
     handleVoiceRecordingChange,
+    handleVoiceStateChange,
     handleVoiceTranscript,
+    cancelVoiceInput,
     // ── Refs ───────────────────────────────────────────────────────────────
     fileInputRef,
     // ── Handlers ───────────────────────────────────────────────────────────

@@ -10,29 +10,29 @@
 
   /* Primitive palette --------------------------------------------------- */
   --vzn-neutral-0: #ffffff;
-  --vzn-neutral-25: #fdfdfe;
-  --vzn-neutral-50: #fafafb;
-  --vzn-neutral-100: #f4f5f7;
-  --vzn-neutral-200: #e5e7eb;
-  --vzn-neutral-300: #d1d5db;
-  --vzn-neutral-400: #a1a1aa;
-  --vzn-neutral-500: #71717a;
-  --vzn-neutral-600: #52525b;
-  --vzn-neutral-700: #3f3f46;
-  --vzn-neutral-800: #27272a;
-  --vzn-neutral-900: #18181b;
-  --vzn-neutral-950: #09090b;
+  --vzn-neutral-25: #fdfdfd;
+  --vzn-neutral-50: #fafafa;
+  --vzn-neutral-100: #f2f2f7;
+  --vzn-neutral-200: #e5e5ea;
+  --vzn-neutral-300: #d1d1d6;
+  --vzn-neutral-400: #aeaeb2;
+  --vzn-neutral-500: #8e8e93;
+  --vzn-neutral-600: #6e6e73;
+  --vzn-neutral-700: #48484a;
+  --vzn-neutral-800: #2c2c2e;
+  --vzn-neutral-900: #1c1c1e;
+  --vzn-neutral-950: #0f0f10;
 
-  --vzn-blue-50: #eff6ff;
-  --vzn-blue-100: #dbeafe;
-  --vzn-blue-200: #bfdbfe;
-  --vzn-blue-300: #93c5fd;
-  --vzn-blue-400: #60a5fa;
-  --vzn-blue-500: #3b82f6;
-  --vzn-blue-600: #2563eb;
-  --vzn-blue-700: #1d4ed8;
-  --vzn-blue-800: #1e40af;
-  --vzn-blue-900: #1e3a8a;
+  --vzn-blue-50: #edf6ff;
+  --vzn-blue-100: #d9ecff;
+  --vzn-blue-200: #b9dcff;
+  --vzn-blue-300: #88c4ff;
+  --vzn-blue-400: #409cff;
+  --vzn-blue-500: #0a84ff;
+  --vzn-blue-600: #007aff;
+  --vzn-blue-700: #0064d6;
+  --vzn-blue-800: #0050aa;
+  --vzn-blue-900: #003e84;
 
   --vzn-red-50: #fef2f2;
   --vzn-red-200: #fecaca;
@@ -48,37 +48,49 @@
   --vzn-amber-600: #d97706;
 
   /* Semantic colors ----------------------------------------------------- */
-  --vzn-app-bg: #f3f4f6;
-  --vzn-bg: var(--vzn-neutral-50);
+  --vzn-app-bg: #ececef;
+  --vzn-bg: #f5f5f7;
   --vzn-canvas: var(--vzn-neutral-0);
-  --vzn-sidebar-bg: #f7f8fa;
-  --vzn-chat-sidebar-bg: var(--vzn-neutral-50);
+  --vzn-titlebar-bg: #f4f4f6;
+  --vzn-sidebar-bg: #f4f4f6;
+  --vzn-chat-sidebar-bg: #f8f8fa;
 
   --vzn-surface: var(--vzn-neutral-0);
   --vzn-surface-raised: var(--vzn-neutral-25);
-  --vzn-surface-muted: #f7f8fa;
-  --vzn-surface-subtle: #f3f4f6;
-  --vzn-surface-hover: #eef0f3;
-  --vzn-surface-selected: #eaf2ff;
+  --vzn-surface-muted: #f6f6f8;
+  --vzn-surface-subtle: var(--vzn-neutral-100);
+  --vzn-surface-hover: #eaeaee;
+  --vzn-surface-selected: rgba(0, 122, 255, 0.1);
 
   --vzn-text: var(--vzn-neutral-800);
   --vzn-text-strong: var(--vzn-neutral-900);
-  --vzn-text-muted: var(--vzn-neutral-500);
-  --vzn-text-soft: var(--vzn-neutral-400);
-  --vzn-text-disabled: #c4c4cc;
+  --vzn-text-muted: var(--vzn-neutral-600);
+  --vzn-text-soft: #74747a;
+  --vzn-text-disabled: var(--vzn-neutral-400);
   --vzn-text-inverse: var(--vzn-neutral-0);
 
-  --vzn-border: var(--vzn-neutral-200);
-  --vzn-border-strong: var(--vzn-neutral-300);
-  --vzn-divider: #eceef1;
+  --vzn-border: rgba(60, 60, 67, 0.16);
+  --vzn-border-strong: rgba(60, 60, 67, 0.23);
+  --vzn-divider: rgba(60, 60, 67, 0.12);
+
+  /* Selective material: native vibrancy supplies blur on macOS. */
+  --vzn-titlebar-material: rgba(246, 246, 248, 0.78);
+  --vzn-primary-nav-material: rgba(244, 244, 247, 0.74);
+  --vzn-context-nav-material: rgba(250, 250, 252, 0.86);
+  --vzn-overlay-material: rgba(250, 250, 252, 0.96);
+  --vzn-material-border: rgba(60, 60, 67, 0.14);
+  --vzn-material-highlight: rgba(255, 255, 255, 0.72);
+  --vzn-user-avatar-bg: #3a3a3c;
+  --vzn-user-avatar-fg: #f5f5f7;
+  --vzn-assistant-avatar-bg: rgba(255, 255, 255, 0.72);
 
   --vzn-action: var(--vzn-blue-600);
   --vzn-action-hover: var(--vzn-blue-700);
   --vzn-action-active: var(--vzn-blue-800);
-  --vzn-action-soft: var(--vzn-blue-50);
-  --vzn-action-soft-hover: var(--vzn-blue-100);
-  --vzn-action-border: var(--vzn-blue-300);
-  --vzn-action-text: var(--vzn-blue-700);
+  --vzn-action-soft: rgba(0, 122, 255, 0.1);
+  --vzn-action-soft-hover: rgba(0, 122, 255, 0.16);
+  --vzn-action-border: rgba(0, 122, 255, 0.28);
+  --vzn-action-text: #0066cc;
   --vzn-action-fg: var(--vzn-neutral-0);
   --vzn-focus-ring: color-mix(in srgb, var(--vzn-blue-500) 52%, transparent);
 
@@ -159,11 +171,11 @@
   --vzn-brand-mark-lg: 48px;
 
   /* Elevation and motion ------------------------------------------------ */
-  --vzn-shadow-xs: 0 1px 1px rgba(15, 23, 42, 0.03);
-  --vzn-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
-  --vzn-shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
-  --vzn-shadow-lg: 0 18px 48px rgba(15, 23, 42, 0.12);
-  --vzn-shadow-overlay: 0 24px 72px rgba(15, 23, 42, 0.22);
+  --vzn-shadow-xs: 0 1px 1px rgba(28, 28, 30, 0.025);
+  --vzn-shadow-sm: 0 1px 2px rgba(28, 28, 30, 0.045), 0 6px 18px rgba(28, 28, 30, 0.035);
+  --vzn-shadow-md: 0 10px 30px rgba(28, 28, 30, 0.08);
+  --vzn-shadow-lg: 0 20px 52px rgba(28, 28, 30, 0.13);
+  --vzn-shadow-overlay: 0 28px 76px rgba(28, 28, 30, 0.22);
   --vzn-duration-fast: 120ms;
   --vzn-duration-normal: 180ms;
   --vzn-ease-standard: cubic-bezier(0.2, 0, 0, 1);
@@ -183,6 +195,7 @@
   --vzn-chat-stage-max: 1040px;
   --vzn-chat-reading-max: 820px;
   --vzn-chat-composer-max: 1040px;
+  --vzn-translate-workspace-max: 1440px;
   --vzn-chat-gutter: clamp(16px, 2.2vw, 40px);
   --vzn-composer-min-height: 116px;
   --vzn-prompt-card-min-height: 132px;
@@ -208,38 +221,49 @@
 html.dark {
   color-scheme: dark;
 
-  --vzn-app-bg: #111318;
-  --vzn-bg: #15171c;
-  --vzn-canvas: #181a20;
-  --vzn-sidebar-bg: #1d2026;
-  --vzn-chat-sidebar-bg: #1a1d23;
-  --vzn-surface: #20232a;
-  --vzn-surface-raised: #252830;
-  --vzn-surface-muted: #24272e;
-  --vzn-surface-subtle: #2b2f37;
-  --vzn-surface-hover: #343842;
-  --vzn-surface-selected: rgba(96, 165, 250, 0.14);
+  --vzn-app-bg: #161618;
+  --vzn-bg: #1c1c1e;
+  --vzn-canvas: #1c1c1e;
+  --vzn-titlebar-bg: #242426;
+  --vzn-sidebar-bg: #242426;
+  --vzn-chat-sidebar-bg: #202022;
+  --vzn-surface: #2c2c2e;
+  --vzn-surface-raised: #323234;
+  --vzn-surface-muted: #28282a;
+  --vzn-surface-subtle: #303033;
+  --vzn-surface-hover: #3a3a3c;
+  --vzn-surface-selected: rgba(10, 132, 255, 0.16);
 
-  --vzn-text: #e4e7ec;
-  --vzn-text-strong: #f8fafc;
-  --vzn-text-muted: #a8afba;
-  --vzn-text-soft: #777f8c;
-  --vzn-text-disabled: #565e6b;
-  --vzn-text-inverse: #111318;
+  --vzn-text: #e5e5ea;
+  --vzn-text-strong: #f5f5f7;
+  --vzn-text-muted: #aeaeb2;
+  --vzn-text-soft: #8e8e93;
+  --vzn-text-disabled: #636366;
+  --vzn-text-inverse: #161618;
 
-  --vzn-border: rgba(226, 232, 240, 0.1);
-  --vzn-border-strong: rgba(226, 232, 240, 0.18);
-  --vzn-divider: rgba(226, 232, 240, 0.08);
+  --vzn-border: rgba(235, 235, 245, 0.12);
+  --vzn-border-strong: rgba(235, 235, 245, 0.2);
+  --vzn-divider: rgba(235, 235, 245, 0.1);
 
-  --vzn-action: var(--vzn-blue-400);
-  --vzn-action-hover: var(--vzn-blue-300);
-  --vzn-action-active: var(--vzn-blue-500);
-  --vzn-action-soft: rgba(96, 165, 250, 0.14);
-  --vzn-action-soft-hover: rgba(96, 165, 250, 0.2);
-  --vzn-action-border: rgba(96, 165, 250, 0.38);
-  --vzn-action-text: #93c5fd;
-  --vzn-action-fg: #101820;
-  --vzn-focus-ring: rgba(96, 165, 250, 0.58);
+  --vzn-titlebar-material: rgba(30, 30, 32, 0.76);
+  --vzn-primary-nav-material: rgba(34, 34, 37, 0.76);
+  --vzn-context-nav-material: rgba(28, 28, 30, 0.88);
+  --vzn-overlay-material: rgba(36, 36, 38, 0.96);
+  --vzn-material-border: rgba(235, 235, 245, 0.12);
+  --vzn-material-highlight: rgba(255, 255, 255, 0.08);
+  --vzn-user-avatar-bg: #636366;
+  --vzn-user-avatar-fg: #ffffff;
+  --vzn-assistant-avatar-bg: rgba(44, 44, 46, 0.78);
+
+  --vzn-action: var(--vzn-blue-500);
+  --vzn-action-hover: var(--vzn-blue-400);
+  --vzn-action-active: var(--vzn-blue-600);
+  --vzn-action-soft: rgba(10, 132, 255, 0.16);
+  --vzn-action-soft-hover: rgba(10, 132, 255, 0.23);
+  --vzn-action-border: rgba(10, 132, 255, 0.4);
+  --vzn-action-text: #409cff;
+  --vzn-action-fg: #ffffff;
+  --vzn-focus-ring: rgba(10, 132, 255, 0.62);
 
   --vzn-success: #4ade80;
   --vzn-success-soft: rgba(74, 222, 128, 0.1);

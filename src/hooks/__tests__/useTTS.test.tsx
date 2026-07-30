@@ -6,6 +6,7 @@ describe('useTTS', () => {
   const speak = vi.fn()
   const cancel = vi.fn()
   const getVoices = vi.fn<() => SpeechSynthesisVoice[]>()
+  const createBufferSource = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -29,7 +30,7 @@ describe('useTTS', () => {
         resume = vi.fn().mockResolvedValue(undefined)
         decodeAudioData = vi.fn()
         createBuffer = vi.fn()
-        createBufferSource = vi.fn()
+        createBufferSource = createBufferSource
       },
       configurable: true,
     })
@@ -94,5 +95,30 @@ describe('useTTS', () => {
       lang: 'en',
     })
     expect(speak).not.toHaveBeenCalled()
+  })
+
+  it('does not start delayed audio after the user stops playback', async () => {
+    type SpeakResult = Awaited<ReturnType<typeof window.api.speakText>>
+    let resolveSpeak: ((value: SpeakResult) => void) | undefined
+    vi.mocked(window.api.speakText).mockImplementationOnce(() => (
+      new Promise<SpeakResult>((resolve) => { resolveSpeak = resolve })
+    ))
+    const { result } = renderHook(() => useTTS({ ttsMode: 'free', ttsVoice: 'nova' }))
+
+    let pendingSpeak: Promise<void> | undefined
+    await act(async () => {
+      pendingSpeak = result.current.handleSpeak('Hello', 'en', 'source')
+      await Promise.resolve()
+    })
+
+    act(() => result.current.stopSpeak())
+    await act(async () => {
+      resolveSpeak?.({ success: true, audioBase64: 'AA==', mimeType: 'audio/mp3' })
+      await pendingSpeak
+    })
+
+    expect(createBufferSource).not.toHaveBeenCalled()
+    expect(result.current.speakingPanel).toBeNull()
+    expect(result.current.speakLoading).toBe(false)
   })
 })

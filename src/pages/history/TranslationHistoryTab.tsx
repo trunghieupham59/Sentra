@@ -16,7 +16,19 @@ interface TranslationHistoryTabProps {
 }
 
 export function TranslationHistoryTab({ query }: TranslationHistoryTabProps) {
-  const { history, deleteHistoryItem, setActivePage, setSourceText, setTranslatedText, setSourceLang, setTargetLang, costCurrency } = useAppStore()
+  const {
+    history,
+    deleteHistoryItem,
+    setActivePage,
+    setSourceText,
+    setTranslatedText,
+    setSourceLang,
+    setTargetLang,
+    setSelectedProvider,
+    setSelectedModel,
+    setTranslationStyle,
+    costCurrency,
+  } = useAppStore()
   const t = useT()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const normalizedQuery = normalizeHistoryQuery(query)
@@ -39,6 +51,9 @@ export function TranslationHistoryTab({ query }: TranslationHistoryTabProps) {
     setTranslatedText(item.translatedText)
     setSourceLang(item.sourceLang)
     setTargetLang(item.targetLang)
+    setSelectedProvider(item.provider)
+    setSelectedModel(item.provider, item.model)
+    if (item.translationStyle) setTranslationStyle(item.translationStyle)
     setActivePage('translate')
   }
 

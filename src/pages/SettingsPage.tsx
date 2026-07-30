@@ -182,7 +182,7 @@ export function SettingsPage() {
                   type="button"
                   onClick={() => scrollToSection(id)}
                   title={description}
-                  className="btn-nav-item flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all"
+                  className="btn-nav-item flex w-full items-center justify-start gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium transition-all"
                   style={{
                     background: active ? 'var(--vzn-surface-subtle)' : 'transparent',
                     color: active ? 'var(--vzn-text-strong)' : 'var(--vzn-text-muted)',
@@ -194,7 +194,7 @@ export function SettingsPage() {
                   onMouseLeave={(e) => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--vzn-text-muted)'; } }}
                 >
                   <Icon className="w-4 h-4 flex-shrink-0" />
-                  <span className="min-w-0 truncate">{label}</span>
+                  <span className="min-w-0 flex-1 truncate">{label}</span>
                 </button>
               )
             })}

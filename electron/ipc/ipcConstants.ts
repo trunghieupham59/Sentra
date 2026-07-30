@@ -332,9 +332,9 @@ export const EDGE_TTS_TIMEOUT_MS = 8_000
 /**
  * Hard upper bound for `sourceText` accepted by the translate IPC handler.
  *
- * The renderer enforces MAX_INPUT_CHARS (5 000) as a soft warning but does not
- * block the user from submitting longer input — long documents are then sent
- * through the chunked translation pipeline. We still need a defensive cap at the
+ * The renderer shows an advisory cost/latency warning above 5 000 characters but
+ * does not block submission. The translation pipeline independently starts
+ * chunking above TRANSLATE_CHUNK_CHAR_LIMIT. We still need a defensive cap at the
  * IPC boundary so a malicious or buggy caller cannot push a multi-megabyte string
  * through `JSON.parse` on the main process. 1 MB of text (~250 000 characters)
  * comfortably covers any realistic book-length input while keeping memory bounded.

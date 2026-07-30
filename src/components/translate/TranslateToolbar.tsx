@@ -1,12 +1,18 @@
-import type { PhoneticMode, TranslationStyle } from '../../types'
-import { ModelSelector } from '../ModelSelector'
+import { useId, useState } from 'react'
+import { useAppStore } from '../../store/useAppStore'
+import type { PhoneticMode, TranslationReasoningEffort, TranslationStyle } from '../../types'
+import { getEffectiveTranslationReasoningEffort, getTranslationReasoningEfforts } from '../../utils/translationReasoning'
+import { type ModelPickerInlineView, ModelSelector } from '../ModelSelector'
 import { AutoTranslateToggle } from '../ui/AutoTranslateToggle'
-import { ChevronDownIcon } from '../ui/icons'
 import { PhoneticToggle } from '../ui/PhoneticToggle'
+
+export type TranslateSettingsSubview = ModelPickerInlineView
 
 interface TranslateToolbarProps {
   translationStyle: TranslationStyle
   onStyleChange: (style: TranslationStyle) => void
+  reasoningEffort: TranslationReasoningEffort
+  onReasoningEffortChange: (effort: TranslationReasoningEffort) => void
   autoTranslate: boolean
   onAutoTranslateChange: (v: boolean) => void
   phoneticMode: PhoneticMode
@@ -14,7 +20,20 @@ interface TranslateToolbarProps {
   isPhoneticLoading: boolean
   /** When true, hides the embedded ModelSelector (useful when parent renders it separately) */
   hideModelSelector?: boolean
+  /** When true, the owning surface renders the always-visible Auto/Manual control. */
+  hideAutoToggle?: boolean
+  /** Keeps the model drill-down inside this toolbar surface. */
+  inlineModelSelector?: boolean
+  modelPickerCloseRequest?: number
+  onModelPickerViewChange?: (view: ModelPickerInlineView | null) => void
   // i18n
+  labelModel: string
+  labelReasoning: string
+  labelReasoningAuto: string
+  labelReasoningLow: string
+  labelReasoningMedium: string
+  labelReasoningHigh: string
+  labelReasoningUnsupported: string
   labelStyleLabel: string
   labelStyleGeneral: string
   labelStyleFormal: string
@@ -37,9 +56,18 @@ interface TranslateToolbarProps {
 
 export function TranslateToolbar({
   translationStyle, onStyleChange,
+  reasoningEffort, onReasoningEffortChange,
   autoTranslate, onAutoTranslateChange,
   phoneticMode, onPhoneticModeChange, isPhoneticLoading,
   hideModelSelector = false,
+  hideAutoToggle = false,
+  inlineModelSelector = false,
+  modelPickerCloseRequest = 0,
+  onModelPickerViewChange,
+  labelModel,
+  labelReasoning,
+  labelReasoningAuto, labelReasoningLow, labelReasoningMedium, labelReasoningHigh,
+  labelReasoningUnsupported,
   labelStyleLabel,
   labelStyleGeneral, labelStyleFormal, labelStyleCasual,
   labelStyleBusiness, labelStyleTechnical, labelStyleNatural,
@@ -47,29 +75,74 @@ export function TranslateToolbar({
   labelPhoneticSection, labelAutoSection,
   titleAutoMode, titleManualMode, labelAutoMode, labelManualMode,
 }: TranslateToolbarProps) {
+  const styleId = useId()
+  const reasoningId = useId()
+  const phoneticId = useId()
+  const [modelPickerView, setModelPickerView] = useState<ModelPickerInlineView | null>(null)
+  const selectedProvider = useAppStore((state) => state.selectedProvider)
+  const selectedModel = useAppStore((state) => state.selectedModels[state.selectedProvider])
+  const supportedReasoningEfforts = getTranslationReasoningEfforts(selectedProvider, selectedModel)
+  const reasoningConfigurable = supportedReasoningEfforts.length > 1
+  const effectiveReasoningEffort = getEffectiveTranslationReasoningEffort(
+    selectedProvider,
+    selectedModel,
+    reasoningEffort,
+  )
+  const modelPickerOpen = modelPickerView !== null
+  const showSecondaryControls = !inlineModelSelector || !modelPickerOpen
+  const handleModelPickerViewChange = (view: ModelPickerInlineView | null) => {
+    setModelPickerView(view)
+    onModelPickerViewChange?.(view)
+  }
+
   return (
-    <div className="flex items-end gap-3 overflow-hidden flex-wrap">
+    <div className={`translate-settings-grid${modelPickerOpen ? ' translate-settings-grid-model-open' : ''}`}>
       {!hideModelSelector && (
-        <div className="flex-1 min-w-0 overflow-hidden">
-          <ModelSelector />
+        <div className={`translate-setting-control translate-setting-control-model${modelPickerOpen ? ' translate-setting-control-model-open' : ''}`}>
+          {!modelPickerOpen && <span className="translate-setting-label">{labelModel}</span>}
+          <ModelSelector
+            inline={inlineModelSelector}
+            directModelList={inlineModelSelector}
+            hideTriggerWhenOpen={inlineModelSelector}
+            closeRequest={modelPickerCloseRequest}
+            onInlineViewChange={handleModelPickerViewChange}
+          />
         </div>
       )}
 
-      <div className="flex items-end gap-3 flex-shrink-0">
-        {/* Style dropdown with label above */}
-        <div className="flex flex-col items-start gap-1">
-          <span className="ui-kicker whitespace-nowrap">
+      {showSecondaryControls && (
+        <div className="translate-setting-control">
+          <label htmlFor={reasoningId} className="translate-setting-label">
+            {labelReasoning}
+          </label>
+          <select
+            id={reasoningId}
+            value={effectiveReasoningEffort}
+            disabled={!reasoningConfigurable}
+            title={!reasoningConfigurable ? labelReasoningUnsupported : undefined}
+            onChange={(event) => onReasoningEffortChange(event.target.value as TranslationReasoningEffort)}
+            className="select-field translate-setting-select"
+          >
+            <option value="auto">
+              {reasoningConfigurable ? labelReasoningAuto : labelReasoningUnsupported}
+            </option>
+            {reasoningConfigurable && <option value="low">{labelReasoningLow}</option>}
+            {reasoningConfigurable && <option value="medium">{labelReasoningMedium}</option>}
+            {reasoningConfigurable && <option value="high">{labelReasoningHigh}</option>}
+          </select>
+        </div>
+      )}
+
+      {showSecondaryControls && <div className="translate-setting-control">
+          <label htmlFor={styleId} className="translate-setting-label">
             {labelStyleLabel}
-          </span>
+          </label>
           <div className="relative">
             <select
+              id={styleId}
               value={translationStyle}
               onChange={(e) => onStyleChange(e.target.value as TranslationStyle)}
-              className={`select-field w-36 pl-3 pr-8
-                          ${translationStyle !== 'general'
-                            ? 'bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-400'
-                            : 'bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'
-                          }`}
+              className="select-field translate-setting-select"
             >
               <option value="general">{labelStyleGeneral}</option>
               <option value="formal">{labelStyleFormal}</option>
@@ -78,18 +151,15 @@ export function TranslateToolbar({
               <option value="technical">{labelStyleTechnical}</option>
               <option value="natural">{labelStyleNatural}</option>
             </select>
-            <div className="pointer-events-none absolute right-2 inset-y-0 flex items-center">
-              <ChevronDownIcon className="w-3 h-3 text-gray-400" />
-            </div>
           </div>
-        </div>
+      </div>}
 
-        {/* Phonetic dropdown with label above */}
-        <div className="flex flex-col items-start gap-1">
-          <span className="ui-kicker whitespace-nowrap">
+      {showSecondaryControls && <div className="translate-setting-control">
+          <label htmlFor={phoneticId} className="translate-setting-label">
             {labelPhoneticSection}
-          </span>
+          </label>
           <PhoneticToggle
+            id={phoneticId}
             phoneticMode={phoneticMode}
             onChange={onPhoneticModeChange}
             labelOff={labelPhoneticOff}
@@ -97,11 +167,11 @@ export function TranslateToolbar({
             labelPhonetic={labelPhoneticTranscription}
             isLoading={isPhoneticLoading}
           />
-        </div>
+      </div>}
 
-        {/* Auto/Manual toggle with label above */}
-        <div className="flex flex-col items-start gap-1">
-          <span className="ui-kicker whitespace-nowrap">
+      {showSecondaryControls && !hideAutoToggle && (
+        <div className="translate-setting-control">
+          <span className="translate-setting-label">
             {labelAutoSection}
           </span>
           <AutoTranslateToggle
@@ -113,7 +183,7 @@ export function TranslateToolbar({
             labelManual={labelManualMode}
           />
         </div>
-      </div>
+      )}
     </div>
   )
 }

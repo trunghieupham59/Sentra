@@ -2,6 +2,8 @@
  * TranslateButton — primary action button that triggers manual translation.
  * Shows a spinner with a loading label while translation is in progress.
  */
+
+import { Button } from './atoms'
 import { ArrowRightIcon, SpinnerIcon } from './icons'
 
 interface TranslateButtonProps {
@@ -22,11 +24,15 @@ export function TranslateButton({
   labelLoading,
 }: TranslateButtonProps) {
   return (
-    <button
-      type="button"
+    <Button
+      size="md"
+      shape="rect"
+      variant="primary"
+      appearance="solid"
       onClick={onClick}
       disabled={isTranslating || disabled}
-      className="btn-primary"
+      aria-busy={isTranslating}
+      className="translate-submit-button"
     >
       {isTranslating ? (
         <>
@@ -39,6 +45,6 @@ export function TranslateButton({
           <span>{labelTranslate}</span>
         </>
       )}
-    </button>
+    </Button>
   )
 }

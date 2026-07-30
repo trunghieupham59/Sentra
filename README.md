@@ -68,7 +68,7 @@ View all versions on the [GitHub Releases page](https://github.com/trunghieupham
 | Cloud Providers | Use Google Gemini, Anthropic Claude or OpenAI with your own API keys. |
 | Live Translation | Real-time microphone/system-audio transcription, translation and floating subtitles. |
 | Image Translation | Drag, drop or paste images; AI extracts and translates visible text. |
-| Voice Input | Web Speech API plus Whisper, Gemini STT and Groq fallback routing. |
+| Voice Input | Records audio locally, then sends the completed clip through Electron Main to Whisper, Gemini STT or Groq. |
 | Text-to-Speech | OpenAI, Gemini, Edge TTS and ElevenLabs fallback chain. |
 | AI Chat | Chat with image attachments, voice input, saved system prompts, history, optional web search and native chart blocks in AI responses. |
 | Web Search | Tavily and Brave key support with a Jina fallback path. |

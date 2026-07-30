@@ -61,7 +61,12 @@ function createWebPreviewApi(): WindowApi {
     cancelTranslate: ok,
     rewriteText: async (params: { text: string }) => ({ success: true, translatedText: `[Rewritten preview] ${params.text.trim()}` }),
     detectLanguage: async (params: { text: string }) => ({ success: true, lang: detectPreviewLanguage(params.text) }),
-    transcribeAudio: async () => ({ success: true, text: 'This is a simulated transcript for Web Preview.', usedProvider: 'whisper' }),
+    transcribeAudio: async () => ({
+      success: true as const,
+      text: 'This is a simulated transcript for Web Preview.',
+      usedProvider: 'whisper' as const,
+    }),
+    cancelAudioTranscription: async () => ({ success: true as const, cancelled: false }),
     speakText: async () => ({ success: false, error: 'Audio playback requires the desktop app.' }),
     translateImage: async () => ({ success: true, regions: [{ x: 0.1, y: 0.1, width: 0.8, height: 0.15, originalText: 'Sample image text', translatedText: 'Văn bản ảnh mẫu', fontSize: 0.05, bgColor: '#ffffff', textColor: '#111111' }] }),
     onImageModelSwitched: noopSubscription,

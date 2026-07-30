@@ -1,58 +1,41 @@
 /**
  * Audio preload API — Text-to-Speech and audio transcription (STT).
  *
- * STT routing (handled in the main process, 'auto' mode):
- *   Whisper (OpenAI) → Gemini STT → Groq STT (free fallback)
+ * STT routing is purpose-aware in the main process:
+ *   dictation — sequential OpenAI → Gemini → Groq fallback
+ *   live      — low-latency routing with provider availability caching
  *
- * Provider priority is configured in Settings → Speech-to-Text.
- * webSpeech (Browser Speech API) is handled entirely in the renderer via
- * webkitSpeechRecognition — it never reaches IPC.
+ * Provider priority is configured in Settings → Speech-to-Text. Recorded audio
+ * always crosses the typed preload boundary and is processed in the main process.
  */
 import { ipcRenderer } from 'electron'
+import type {
+  CancelAudioTranscriptionParams,
+  CancelAudioTranscriptionResult,
+  SttProviderCheckResult,
+  TranscribeAudioParams,
+  TranscribeResult,
+} from '../../shared/audioTranscription'
 
-// ── Types (mirrored from src/types to keep electron code self-contained) ──────
-type SttProvider = 'auto' | 'whisper' | 'google' | 'groq' | 'webSpeech'
-type SttBackend = 'whisper' | 'gemini' | 'groq'
 type TtsMode = 'free' | 'auto' | 'premium'
-
-interface SttProviderCheckResult {
-  primary: SttBackend | 'none'
-  available: SttBackend[]
-}
-
-interface TranscribeResult {
-  success: boolean
-  text?: string
-  error?: string
-  errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | string
-  noSpeechProb?: number
-  avgLogprob?: number
-  compressionRatio?: number
-  provider?: string
-}
 
 export const audioSection = {
   /**
    * Audio transcription — routes to the appropriate STT backend based on `sttProvider`.
    *
    * Provider routing (handled in the main process):
-   *   'auto'      — Whisper → Gemini STT → Groq STT; session cache skips unavailable providers
+   *   'auto'      — purpose-aware OpenAI → Gemini → Groq routing
    *   'whisper'   — OpenAI Whisper only (highest accuracy, requires OpenAI key)
    *   'google'    — Gemini STT only (uses Gemini API key, no extra GCP setup needed)
-   *   'webSpeech' — browser-only, never sent via IPC (handled in VoiceRecorder.tsx)
    */
-  transcribeAudio: (params: {
-    audioData: ArrayBuffer
-    mimeType: string
-    language?: string
-    /**
-     * Last successfully transcribed text, forwarded to Whisper/Groq as prompt context.
-     * Keeps terminology consistent across chunks and prevents YouTube-caption drift.
-     */
-    previousText?: string
-    /** Which STT backend to use. Defaults to 'auto' in the main process. */
-    sttProvider?: SttProvider
-  }): Promise<TranscribeResult> => ipcRenderer.invoke('audio:transcribe', params),
+  transcribeAudio: (params: TranscribeAudioParams): Promise<TranscribeResult> =>
+    ipcRenderer.invoke('audio:transcribe', params),
+
+  /** Cancel an in-flight transcription by its renderer-generated request ID. */
+  cancelAudioTranscription: (
+    params: CancelAudioTranscriptionParams,
+  ): Promise<CancelAudioTranscriptionResult> =>
+    ipcRenderer.invoke('audio:cancelTranscription', params),
 
   /**
    * Pre-flight STT availability check — call before starting a Live Translate session.

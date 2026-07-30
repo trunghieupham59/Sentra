@@ -1,4 +1,4 @@
-import type { PhoneticMode, TranslationStyle } from './translateValidation'
+import type { PhoneticMode, TranslationReasoningEffort, TranslationStyle } from './translateValidation'
 
 export interface TranslateRequestOptions {
   signal?: AbortSignal
@@ -14,6 +14,7 @@ export type TranslateFn = (
   style: TranslationStyle,
   phoneticOnly: boolean,
   phoneticMode: PhoneticMode,
+  reasoningEffort: TranslationReasoningEffort,
   options?: TranslateRequestOptions,
 ) => Promise<string>
 

@@ -13,6 +13,8 @@
  *   labelRewriting={t.translate_rewriting}
  * />
  */
+
+import { Button } from './atoms'
 import { RewriteIcon, SpinnerIcon } from './icons'
 
 export type RewritePanel = 'source' | 'translated'
@@ -32,30 +34,27 @@ export function RewriteButton({
   isRewriting,
   onRewrite,
   labelRewrite,
-  labelRewriting: _labelRewriting,
+  labelRewriting,
 }: RewriteButtonProps) {
   const isThisPanel = isRewriting === panel
   const isAnyRewriting = isRewriting !== null
 
   return (
-    <button
-      type="button"
+    <Button
+      size="md"
+      shape="icon"
+      variant="neutral"
+      appearance="ghost"
       onClick={() => onRewrite(panel)}
-      title={labelRewrite}
+      title={isThisPanel ? labelRewriting : labelRewrite}
+      aria-label={isThisPanel ? labelRewriting : labelRewrite}
       disabled={isAnyRewriting}
-      className={[
-        'btn-ghost btn-xs',
-        isThisPanel
-          ? 'btn-icon-active'
-          : 'text-gray-400',
-        isAnyRewriting && !isThisPanel ? 'opacity-40 cursor-not-allowed' : '',
-      ].join(' ')}
     >
       {isThisPanel ? (
         <SpinnerIcon className="w-4 h-4 animate-spin" />
       ) : (
         <RewriteIcon />
       )}
-    </button>
+    </Button>
   )
 }

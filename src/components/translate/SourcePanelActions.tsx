@@ -1,10 +1,11 @@
 import { DEFAULT_TTS_FALLBACK_LANG } from '../../constants/providers'
+import type { AudioTranscriptionErrorCode } from '../../types'
 import { ClearButton } from '../ui/ClearButton'
 import { ImageTranslateButton } from '../ui/ImageTranslateButton'
 import { RewriteButton } from '../ui/RewriteButton'
 import type { SpeakPanel } from '../ui/SpeakButton'
 import { SpeakButton } from '../ui/SpeakButton'
-import { VoiceRecorder } from '../VoiceRecorder'
+import { VoiceRecorder, type VoiceRecordingState } from '../VoiceRecorder'
 
 interface SourcePanelActionsProps {
   // Mode
@@ -14,6 +15,7 @@ interface SourcePanelActionsProps {
   // Content state
   sourceText: string
   sourceLang: string
+  voiceContextKey: string
   hasImage: boolean
   // TTS state
   speakingPanel: SpeakPanel | null
@@ -21,6 +23,9 @@ interface SourcePanelActionsProps {
   // Handlers
   onVoiceTranscript: (text: string, isFinal: boolean) => void
   onVoiceRecordingChange: (isRecording: boolean) => void
+  onVoiceStateChange: (state: VoiceRecordingState) => void
+  onVoiceCancel: () => void
+  onVoiceError: (code: AudioTranscriptionErrorCode) => void
   onImageButtonClick: () => void
   onSpeak: (text: string, lang: string, panel: SpeakPanel) => void
   onRewrite: (panel: 'source' | 'translated') => void
@@ -28,9 +33,10 @@ interface SourcePanelActionsProps {
   // i18n
   labelVoiceRecord: string
   labelVoiceStop: string
+  labelVoiceCancel: string
   labelVoiceTranscribing: string
   labelVoiceRecording: string
-  labelImageTranslate: string
+  labelAddImage: string
   labelSpeak: string
   labelSpeakStop: string
   labelRewrite: string
@@ -44,38 +50,57 @@ interface SourcePanelActionsProps {
  */
 export function SourcePanelActions({
   isVoiceActive, isVoiceInterim: _isVoiceInterim,
-  isRewriting, sourceText, sourceLang,
+  isRewriting, sourceText, sourceLang, voiceContextKey,
   hasImage,
   speakingPanel, speakLoading,
-  onVoiceTranscript, onVoiceRecordingChange, onImageButtonClick,
+  onVoiceTranscript, onVoiceRecordingChange, onVoiceStateChange, onVoiceCancel,
+  onVoiceError, onImageButtonClick,
   onSpeak, onRewrite, onClear,
   labelVoiceRecord, labelVoiceStop,
-  labelVoiceTranscribing, labelVoiceRecording, labelImageTranslate,
+  labelVoiceCancel,
+  labelVoiceTranscribing, labelVoiceRecording, labelAddImage,
   labelSpeak, labelSpeakStop,
   labelRewrite, labelRewriting, labelClear,
 }: SourcePanelActionsProps) {
   const hasContent = (sourceText.trim().length > 0 || hasImage) && !isVoiceActive
+  const hasTextContent = sourceText.trim().length > 0 && !hasImage && !isVoiceActive
+  const showEntryLabels = !hasContent && !isVoiceActive
 
   return (
     <div className="flex items-center gap-1.5">
-      <VoiceRecorder
-        sourceLang={sourceLang}
-        onTranscript={onVoiceTranscript}
-        onRecordingChange={onVoiceRecordingChange}
-        titleRecord={labelVoiceRecord}
-        titleStop={labelVoiceStop}
-        buttonClassName="btn-ghost btn-xs relative text-gray-500"
-        labelTranscribing={labelVoiceTranscribing}
-        labelRecording={labelVoiceRecording}
-      />
-      <ImageTranslateButton
-        onClick={onImageButtonClick}
-        title={labelImageTranslate}
-        className="btn-ghost btn-xs text-gray-500"
-      />
+      {!hasImage && (
+        <VoiceRecorder
+          sourceLang={sourceLang}
+          contextKey={voiceContextKey}
+          onTranscript={onVoiceTranscript}
+          onRecordingChange={onVoiceRecordingChange}
+          onStateChange={onVoiceStateChange}
+          onCancel={onVoiceCancel}
+          onError={onVoiceError}
+          titleRecord={labelVoiceRecord}
+          titleStop={labelVoiceStop}
+          buttonSize="md"
+          showIdleLabel={showEntryLabels}
+          idleLabel={labelVoiceRecord}
+          labelTranscribing={labelVoiceTranscribing}
+          labelRecording={labelVoiceRecording}
+          labelCancel={labelVoiceCancel}
+          showCancel
+          showPulse={false}
+        />
+      )}
+      {!isVoiceActive && (
+        <ImageTranslateButton
+          onClick={onImageButtonClick}
+          title={labelAddImage}
+          showLabel={showEntryLabels}
+        />
+      )}
       {hasContent && (
+        <ClearButton onClick={onClear} label={labelClear} />
+      )}
+      {hasTextContent && (
         <>
-          <ClearButton onClick={onClear} label={labelClear} />
           <RewriteButton
             panel="source"
             isRewriting={isRewriting}

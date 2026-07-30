@@ -16,6 +16,8 @@
  *   labelStop={t.translate_speak_stop}
  * />
  */
+
+import { Button } from './atoms'
 import { SpeakerIcon, SpinnerIcon, StopIcon } from './icons'
 
 export type SpeakPanel = 'source' | 'translated'
@@ -48,16 +50,14 @@ export function SpeakButton({
   const isLoading = speakLoading && isThisPanel
 
   return (
-    <button
-      type="button"
+    <Button
+      size="md"
+      shape="icon"
+      variant={isThisPanel ? 'danger' : 'neutral'}
+      appearance="ghost"
       onClick={() => onSpeak(text, lang, panel)}
       title={isThisPanel ? labelStop : labelSpeak}
-      className={[
-        'btn-ghost btn-xs',
-        isThisPanel
-          ? 'btn-icon-active'
-          : 'text-gray-400',
-      ].join(' ')}
+      aria-label={isThisPanel ? labelStop : labelSpeak}
     >
       {isLoading ? (
         /* Loading spinner */
@@ -69,6 +69,6 @@ export function SpeakButton({
         /* Speaker icon */
         <SpeakerIcon />
       )}
-    </button>
+    </Button>
   )
 }

@@ -13,7 +13,7 @@
  * `copiedSummary`) and pure render logic.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { getSupportedAudioMimeType } from '../constants/audio'
+import { createAudioTranscriptionRequestId, getSupportedAudioMimeType } from '../constants/audio'
 import { LANG_NAMES_FOR_AI } from '../constants/langNames'
 import { MIN_AUDIO_BLOB_BYTES } from '../constants/ui'
 import { useAppStore, useT } from '../store/useAppStore'
@@ -215,6 +215,8 @@ export function useLiveTranslate() {
   const audioChunksRef = useRef<Blob[]>([])
   const activeRef      = useRef(false)
   const queueRef       = useRef<Promise<void>>(Promise.resolve())
+  /** Main-process STT requests that still belong to this mounted live session. */
+  const activeSttRequestIdsRef = useRef(new Set<string>())
   /**
    * Generation token — bumped on every handleStart/handleClear/handleStop.
    * In-flight processChunk callbacks compare their captured generation with
@@ -233,6 +235,14 @@ export function useLiveTranslate() {
    * when a live session is stopped while translation/STT calls are in-flight.
    */
   const mountedRef = useRef(true)
+
+  const cancelActiveSttRequests = useCallback(() => {
+    const requestIds = [...activeSttRequestIdsRef.current]
+    activeSttRequestIdsRef.current.clear()
+    for (const requestId of requestIds) {
+      void window.api.cancelAudioTranscription({ requestId }).catch(() => undefined)
+    }
+  }, [])
 
   const addLiveUsageCost = useCallback((cost: UsageCost) => {
     recordUsageCost(cost)
@@ -373,14 +383,11 @@ export function useLiveTranslate() {
 
     const { sourceLang, targetLang, selectedProvider, selectedModels, sttProvider } = paramsRef.current
 
-    // Live Translate uses MediaRecorder (audio chunks) — it cannot use the
-    // browser's Web Speech API which requires a real-time stream. If the user
-    // chose 'webSpeech', fall back to 'auto' so STT still works here.
-    const effectiveSttProvider = sttProvider === 'webSpeech' ? 'auto' : sttProvider
-
     // ── STT call — keep reference to full result for confidence gate ──────
     if (mountedRef.current) setIsTranscribing(true)
     let stt: Awaited<ReturnType<typeof window.api.transcribeAudio>> | null = null
+    const requestId = createAudioTranscriptionRequestId()
+    activeSttRequestIdsRef.current.add(requestId)
     try {
       const buf = await blob.arrayBuffer()
       // Cap previousText so it never approaches Whisper's ~224-token prompt window.
@@ -389,6 +396,8 @@ export function useLiveTranslate() {
         ? prev.slice(-MAX_PREVIOUS_TEXT_CHARS)
         : prev
       stt = await window.api?.transcribeAudio({
+        requestId,
+        purpose:     'live',
         audioData:    buf,
         mimeType,
         language:     sourceLang === 'auto' ? undefined : sourceLang,
@@ -397,12 +406,13 @@ export function useLiveTranslate() {
         // maintaining terminology consistency across chunks and preventing
         // the decoder from drifting to a YouTube-caption style opening.
         previousText: cappedPrev || undefined,
-        sttProvider:  effectiveSttProvider,
+        sttProvider,
       })
     } catch {
       showPipelineError(t.live_error_stt_failed)
     }
     finally {
+      activeSttRequestIdsRef.current.delete(requestId)
       if (mountedRef.current) setIsTranscribing(false)
     }
 
@@ -424,7 +434,7 @@ export function useLiveTranslate() {
     // down or misconfigured), continue transcribing is impossible.  Stop the
     // session immediately and surface a persistent error so the user knows
     // why recording halted — silent audio drops with no feedback are confusing.
-    if (stt?.errorCode === 'ALL_PROVIDERS_EXHAUSTED') {
+    if (stt && !stt.success && stt.errorCode === 'ALL_PROVIDERS_EXHAUSTED') {
       if (mountedRef.current) {
         // Stop the live pipeline without waiting for the user to click Stop.
         // activeRef = false prevents startChunk() from restarting the recorder.
@@ -439,7 +449,12 @@ export function useLiveTranslate() {
       return
     }
 
-    const newText = stt?.success && stt.text?.trim() ? stt.text.trim() : ''
+    if (!stt?.success) {
+      if (stt?.errorCode !== 'CANCELLED') showPipelineError(t.live_error_stt_failed)
+      return
+    }
+
+    const newText = stt.text.trim()
     if (!newText || isHallucination(newText)) {
       // ── Adaptive VAD: noise-discard (empty / hallucinated output) ────────
       adaptiveDiscardRef.current += 1
@@ -465,7 +480,7 @@ export function useLiveTranslate() {
     //  noSpeechProb    > NO_SPEECH_PROB_MAX    → model is ≥65% sure no speech
     //  avgLogprob      < AVG_LOGPROB_MIN       → model is not confident in tokens
     //  compressionRatio > COMPRESSION_RATIO_MAX → output is anomalously repetitive
-    if (typeof stt?.noSpeechProb === 'number' && stt.noSpeechProb > NO_SPEECH_PROB_MAX) {
+    if (typeof stt.noSpeechProb === 'number' && stt.noSpeechProb > NO_SPEECH_PROB_MAX) {
       // ── Adaptive VAD: Whisper says no speech detected ────────────────────
       adaptiveDiscardRef.current += 1
       if (vadModeStateRef.current === 'energy') {
@@ -481,8 +496,8 @@ export function useLiveTranslate() {
       }
       return
     }
-    if (typeof stt?.avgLogprob === 'number'      && stt.avgLogprob      < AVG_LOGPROB_MIN)       return
-    if (typeof stt?.compressionRatio === 'number' && stt.compressionRatio > COMPRESSION_RATIO_MAX) return
+    if (typeof stt.avgLogprob === 'number'      && stt.avgLogprob      < AVG_LOGPROB_MIN)       return
+    if (typeof stt.compressionRatio === 'number' && stt.compressionRatio > COMPRESSION_RATIO_MAX) return
 
     // ── Max-words-per-chunk guard ─────────────────────────────────────────
     const wordCountGuard = newText.split(/\s+/).filter(Boolean).length
@@ -517,7 +532,7 @@ export function useLiveTranslate() {
     if (mountedRef.current) setRawTranscript(fullRawForSummaryRef.current)
 
     const assembly = assembleCompletedSentences(
-      getWhisperParts(newText, stt?.segmentTexts),
+      getWhisperParts(newText, stt.segmentTexts),
       {
         pendingBuffer: pendingBufferRef.current,
         pendingChunkCount: pendingChunkCountRef.current,
@@ -856,6 +871,7 @@ export function useLiveTranslate() {
     // Bump generation so any in-flight chunks from a previous session resolve
     // into a no-op instead of polluting the fresh transcript.
     generationRef.current += 1
+    cancelActiveSttRequests()
     // Clear any historical session being viewed — start fresh
     setViewingLiveSession(null)
     setRawTranscript('')
@@ -1073,13 +1089,14 @@ export function useLiveTranslate() {
         setMicError(msg)
       }
     }
-  }, [startChunk, audioMode, setViewingLiveSession, processChunk, t])
+  }, [startChunk, audioMode, setViewingLiveSession, processChunk, t, cancelActiveSttRequests])
 
   const handleStop = useCallback(() => {
     activeRef.current = false
     // Bump generation so any STT/translation already in flight stops writing
     // back into the now-stopped session's state.
     generationRef.current += 1
+    cancelActiveSttRequests()
     setIsActive(false)
     setIsTranscribing(false)
     setIsTranslating(false)
@@ -1134,12 +1151,13 @@ export function useLiveTranslate() {
         })
       }
     }
-  }, [addLiveSession])
+  }, [addLiveSession, cancelActiveSttRequests])
 
   const handleClear = useCallback(() => {
     // Bump generation so any in-flight chunks from before clear resolve into
     // a no-op instead of repopulating the just-cleared transcript.
     generationRef.current += 1
+    cancelActiveSttRequests()
     pendingBufferRef.current     = ''
     pendingChunkCountRef.current = 0
     recentSentencesRef.current   = []
@@ -1165,7 +1183,7 @@ export function useLiveTranslate() {
     silenceBeforeChunkRef.current    = 0
     lastSpeakerChangeTimeRef.current = INITIAL_SPEAKER_DIARIZATION_STATE.lastSpeakerChangeTime
     speakerTurnHistoryRef.current    = [...INITIAL_SPEAKER_DIARIZATION_STATE.turnHistory]
-  }, [])
+  }, [cancelActiveSttRequests])
 
   /**
    * handleNewSession — triggered by the "Mới" button in the subtitle overlay.
@@ -1565,6 +1583,7 @@ export function useLiveTranslate() {
       mountedRef.current = false  // ← guards processChunk + background translation setState calls
       activeRef.current = false
       generationRef.current += 1
+      cancelActiveSttRequests()
       if (vadTimerRef.current) clearInterval(vadTimerRef.current)
       if (chunkTimeoutRef.current) clearTimeout(chunkTimeoutRef.current)
       if (pipelineErrorTimerRef.current) clearTimeout(pipelineErrorTimerRef.current)
@@ -1575,7 +1594,7 @@ export function useLiveTranslate() {
       // Close the OS subtitle window when leaving the page
       window.api?.subtitle?.hide()
     }
-  }, [])
+  }, [cancelActiveSttRequests])
 
   // ── Computed ──────────────────────────────────────────────────────────────
   // useMemo: rawTranscript can be large (50k chars) — only recount when the
@@ -1641,14 +1660,14 @@ export function useLiveTranslate() {
     // Adaptive VAD mode — 'energy' (default) or 'silero' (auto-upgraded when noisy)
     vadMode,
     // Active STT backend for the UI badge.
-    // • 'auto' / 'webSpeech' → use the pre-flight-determined best provider
+    // • 'auto'                → use the pre-flight-determined best provider
     // • explicit choice       → always reflect exactly what the user selected
     //   (store uses 'google' for Gemini STT; map to 'gemini' for display)
     activeSttProvider: (
       sttProvider === 'whisper' ? 'whisper' :
       sttProvider === 'google'  ? 'gemini'  :
       sttProvider === 'groq'    ? 'groq'    :
-      activeSttProvider  // 'auto' or 'webSpeech'
+      activeSttProvider  // 'auto'
     ) as typeof activeSttProvider,
   }
 }

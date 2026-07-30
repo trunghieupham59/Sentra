@@ -3,6 +3,8 @@
  * Switches to a neutral checkmark state for 1.5 s after a successful copy.
  * The text label is hidden on narrow viewports (< 1100 px).
  */
+
+import { Button } from './atoms'
 import { CheckIcon, CopyIcon } from './icons'
 
 interface CopyButtonProps {
@@ -16,17 +18,20 @@ interface CopyButtonProps {
 
 export function CopyButton({ copied, onClick, labelCopy, labelCopied }: CopyButtonProps) {
   return (
-    <button
-      type="button"
+    <Button
+      size="md"
+      shape="icon"
+      variant={copied ? 'primary' : 'neutral'}
+      appearance={copied ? 'soft' : 'ghost'}
       onClick={onClick}
       title={copied ? labelCopied : labelCopy}
-      className={`btn-ghost btn-xs ${copied ? 'text-gray-700 dark:text-gray-200' : ''}`}
+      aria-label={copied ? labelCopied : labelCopy}
     >
       {copied ? (
         <CheckIcon />
       ) : (
         <CopyIcon />
       )}
-    </button>
+    </Button>
   )
 }

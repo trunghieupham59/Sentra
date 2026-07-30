@@ -9,6 +9,7 @@ describe('App quick chat bridge', () => {
     act(() => {
       useAppStore.setState({
         activePage: 'translate',
+        locale: 'en',
         settingsOpen: false,
         sidebarCollapsed: false,
         aiChatSidebarCollapsed: false,
@@ -74,5 +75,47 @@ describe('App quick chat bridge', () => {
         .toHaveAttribute('data-collapsed', 'false')
     })
     expect(primaryNavigation).toHaveAttribute('data-collapsed', 'false')
+  })
+
+  it('opens the command palette with Ctrl+K and keeps sidebar open events idempotent', async () => {
+    render(<App />)
+
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true, repeat: true })
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true, isComposing: true })
+    expect(screen.queryByRole('dialog', { name: 'Command palette' })).not.toBeInTheDocument()
+
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
+    const dialog = await screen.findByRole('dialog', { name: 'Command palette' })
+    expect(dialog).toBeInTheDocument()
+
+    act(() => {
+      window.dispatchEvent(new Event('viezan:open-command-palette'))
+      window.dispatchEvent(new Event('viezan:open-command-palette'))
+    })
+    expect(screen.getByRole('dialog', { name: 'Command palette' })).toBeInTheDocument()
+
+    fireEvent.keyDown(window, { key: 'K', ctrlKey: true })
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Command palette' })).not.toBeInTheDocument()
+    })
+  })
+
+  it('keeps Settings and the command palette mutually exclusive', async () => {
+    act(() => useAppStore.setState({ settingsOpen: true }))
+    render(<App />)
+
+    expect(await screen.findByRole('dialog', { name: 'Settings' })).toBeInTheDocument()
+
+    fireEvent.keyDown(window, { key: 'k', metaKey: true })
+    expect(await screen.findByRole('dialog', { name: 'Command palette' })).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Settings' })).not.toBeInTheDocument()
+    })
+
+    act(() => useAppStore.getState().openSettings())
+    expect(await screen.findByRole('dialog', { name: 'Settings' })).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Command palette' })).not.toBeInTheDocument()
+    })
   })
 })

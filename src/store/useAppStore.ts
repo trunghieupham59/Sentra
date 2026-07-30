@@ -27,6 +27,36 @@ type AppState = CoreSlice & SettingsSlice & HistorySlice & ChatSlice & Dictionar
 const STORE_PERSIST_KEY = 'translate-app-settings'
 
 /**
+ * Persist schema v1 removes the renderer-only Web Speech STT mode. Voice input
+ * now always records audio before the Electron main process transcribes it.
+ */
+export const STORE_PERSIST_VERSION = 1
+
+const PERSISTED_STT_PROVIDERS = new Set(['auto', 'whisper', 'google', 'groq'])
+
+/**
+ * Normalize persisted settings without discarding unrelated user data.
+ *
+ * Exported as a pure function so migrations remain independently testable from
+ * Zustand hydration and its debounced browser storage adapter.
+ */
+export function migratePersistedStore<T>(persistedState: T): T {
+  if (!persistedState || typeof persistedState !== 'object' || Array.isArray(persistedState)) {
+    return persistedState
+  }
+
+  const state = persistedState as Record<string, unknown>
+  if (typeof state.sttProvider === 'string' && PERSISTED_STT_PROVIDERS.has(state.sttProvider)) {
+    return persistedState
+  }
+
+  return {
+    ...state,
+    sttProvider: 'auto',
+  } as T
+}
+
+/**
  * Debounced localStorage storage — batches writes at most once per `delay` ms.
  * Prevents excessive serialization on rapid state updates (e.g. typing in source text).
  *
@@ -118,7 +148,9 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: STORE_PERSIST_KEY,
+      version: STORE_PERSIST_VERSION,
       storage: createJSONStorage(() => createDebouncedStorage(500)),
+      migrate: (persistedState) => migratePersistedStore(persistedState as AppState),
       partialize: (state) => ({
         sourceLang: state.sourceLang,
         targetLang: state.targetLang,
@@ -128,6 +160,7 @@ export const useAppStore = create<AppState>()(
         autoTranslateDelay: state.autoTranslateDelay,
         phoneticMode: state.phoneticMode,
         translationStyle: state.translationStyle,
+        translationReasoningEffort: state.translationReasoningEffort,
         ttsMode: state.ttsMode,
         ttsVoice: state.ttsVoice,
         fontSize: state.fontSize,

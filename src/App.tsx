@@ -14,6 +14,13 @@ const HistoryPage = lazy(() => import('./pages/HistoryPage').then(m => ({ defaul
 const DictionaryPage = lazy(() => import('./pages/DictionaryPage').then(m => ({ default: m.DictionaryPage })))
 
 const FONT_SIZE_MAP = { small: '13px', medium: '15px', large: '17px' } as const
+const CLOSE_PRIMARY_NAVIGATION_EVENT = 'viezan:close-primary-navigation'
+const CLOSE_CONTEXT_SIDEBARS_EVENT = 'viezan:close-context-sidebars'
+
+function closeResponsiveNavigation() {
+  window.dispatchEvent(new CustomEvent(CLOSE_PRIMARY_NAVIGATION_EVENT))
+  window.dispatchEvent(new CustomEvent(CLOSE_CONTEXT_SIDEBARS_EVENT))
+}
 
 function PageFallback() {
   return <div className="app-page" aria-hidden="true" />
@@ -24,7 +31,7 @@ function App() {
     activePage, localeAuto, setKeyStatus, setLocaleFromSystem, fontSize, theme,
     selectedProvider, selectedModels, ttsMode, ttsVoice,
     createChatSession, setActiveChatSession, addChatMessage,
-    setActivePage, openSettings,
+    setActivePage, settingsOpen, openSettings, closeSettings,
   } = useAppStore()
 
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false)
@@ -87,21 +94,33 @@ function App() {
   // Cmd+K / Ctrl+K — global command palette
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if (e.isComposing || e.repeat) return
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
+        closeSettings()
+        closeResponsiveNavigation()
         setCmdPaletteOpen(o => !o)
       }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [])
+  }, [closeSettings])
 
   // Custom event from Sidebar search button
   useEffect(() => {
-    const handle = () => setCmdPaletteOpen(o => !o)
+    const handle = () => {
+      closeSettings()
+      closeResponsiveNavigation()
+      setCmdPaletteOpen(true)
+    }
     window.addEventListener('viezan:open-command-palette', handle)
     return () => window.removeEventListener('viezan:open-command-palette', handle)
-  }, [])
+  }, [closeSettings])
+
+  // Blocking overlays stay mutually exclusive.
+  useEffect(() => {
+    if (settingsOpen) setCmdPaletteOpen(false)
+  }, [settingsOpen])
 
   // Quick chat forwarding
   useEffect(() => {
@@ -152,12 +171,16 @@ function App() {
   return (
     <AppShell
       showMacTitlebar={isMac}
+      useNativeMaterial={isMac && theme === 'system'}
       primaryNavigation={<PrimaryNavigationSidebar />}
       contextSidebar={activePage === 'chat' ? <AIChatSidebar /> : undefined}
       overlays={
         <>
           <SettingsModal />
-          <CommandPalette open={cmdPaletteOpen} onClose={() => setCmdPaletteOpen(false)} />
+          <CommandPalette
+            open={cmdPaletteOpen && !settingsOpen}
+            onClose={() => setCmdPaletteOpen(false)}
+          />
         </>
       }
     >

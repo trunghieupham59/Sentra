@@ -55,7 +55,7 @@ export async function streamTranslation(
 
   const streamFn = STREAM_PROVIDERS[provider]
   if (!streamFn) {
-    const fullText = await translateWithOpenAI(apiKey, model, sourceText, sourceLang, targetLang, false, style, false, 'off')
+    const fullText = await translateWithOpenAI(apiKey, model, sourceText, sourceLang, targetLang, false, style, false, 'off', 'auto')
     onToken(fullText)
     return fullText
   }

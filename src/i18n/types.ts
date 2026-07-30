@@ -1,4 +1,9 @@
+import type { AudioTranscriptionErrorCode } from '../types'
+
 export type AppLocale = 'en' | 'vi' | 'ja'
+
+/** Locale key paired one-to-one with the stable audio transcription error contract. */
+export type VoiceErrorTranslationKey = `voice_error_${Lowercase<AudioTranscriptionErrorCode>}`
 
 export interface Translations {
   // Navbar / Sidebar
@@ -10,6 +15,17 @@ export interface Translations {
   nav_dictionary: string
   nav_command_palette: string
   nav_primary_sidebar: string
+  command_palette_search_placeholder: string
+  command_palette_no_results: string
+  command_palette_hint_navigate: string
+  command_palette_hint_open: string
+  command_palette_hint_close: string
+  command_palette_chat_description: string
+  command_palette_translate_description: string
+  command_palette_live_description: string
+  command_palette_dictionary_description: string
+  command_palette_history_description: string
+  command_palette_settings_description: string
   /** Tooltip / aria-label on the sidebar collapse button */
   nav_collapse_sidebar: string
   /** Tooltip / aria-label on the sidebar expand button */
@@ -26,7 +42,8 @@ export interface Translations {
   translate_auto_indicator: string
   translate_manual_indicator: string
   translate_chars: string
-  translate_limit: string
+  translate_long_text_label: string
+  translate_long_text_notice: (limit: number) => string
   translate_swap: string
   translate_error_no_key: string
   translate_error_open_settings: string
@@ -42,6 +59,12 @@ export interface Translations {
   translate_error_unexpected: string
   /** Generic fallback when translation IPC returned success=false without a specific message */
   translate_error_generic: string
+  /** Provider returned no usable translation */
+  translate_error_empty_response: string
+  /** Provider blocked the result because it resembled protected text */
+  translate_error_blocked_recitation: string
+  /** Provider blocked the translation through its safety filter */
+  translate_error_blocked_safety: string
   /** Error shown when downloading the translated image fails */
   translate_error_download: string
   translate_phonetic: string
@@ -58,6 +81,12 @@ export interface Translations {
   translate_style_business: string
   translate_style_technical: string
   translate_style_natural: string
+  translate_reasoning_label: string
+  translate_reasoning_auto: string
+  translate_reasoning_low: string
+  translate_reasoning_medium: string
+  translate_reasoning_high: string
+  translate_reasoning_unsupported: string
   translate_speak: string
   translate_speak_stop: string
   translate_rewrite: string
@@ -70,15 +99,54 @@ export interface Translations {
   translate_mode_auto: string
   /** Label on the Auto/Manual toggle when in manual mode */
   translate_mode_manual: string
+  translate_controls_label: string
+  translate_options: string
+  translate_add_image: string
+  translate_from_label: string
+  translate_to_label: string
+  language_picker_search_placeholder: string
+  language_picker_no_results: string
+  translate_source_content_label: string
+  translate_result_content_label: string
+  translate_detecting_language: string
+  translate_detected_language: (language: string) => string
+  translate_swap_disabled_auto: string
+  translate_swap_disabled_image: string
+  translate_input_help: string
+  translate_manual_shortcut: string
+  translate_empty_auto_hint: string
+  translate_empty_manual_hint: string
+  translate_result_stale_auto: string
+  translate_result_stale_manual: string
+  translate_result_ready: string
 
   // Voice recording
   voice_record: string
   voice_stop: string
-  voice_listening: string
+  voice_cancel: string
+  voice_preparing_microphone: string
   voice_transcribing: string
-  voice_whisper_mode: string
+  voice_recording: string
+  voice_finishing_recording: string
+  voice_transcription_error_title: string
+  voice_transcription_failed: string
+  voice_error_invalid_input: string
+  voice_error_permission_denied: string
+  voice_error_recording_failed: string
+  voice_error_audio_too_short: string
+  voice_error_no_speech: string
+  voice_error_audio_too_large: string
+  voice_error_unsupported_format: string
+  voice_error_no_api_key: string
+  voice_error_invalid_key: string
+  voice_error_rate_limit: string
+  voice_error_connection_error: string
+  voice_error_timeout: string
+  voice_error_cancelled: string
+  voice_error_all_providers_failed: string
+  voice_error_all_providers_exhausted: string
+  voice_error_unknown: string
   /** HC-NEW-05: Error message when Speech Recognition API is unavailable (network error) */
-  voice_error_network: string
 
   // Model selector
   model_no_key: string
@@ -86,8 +154,11 @@ export interface Translations {
   model_load_error: string
   model_refresh: string
   model_picker_model: string
+  model_picker_choose: string
   model_picker_provider: string
   model_picker_advanced: string
+  model_picker_details: string
+  model_picker_model_details: string
   model_picker_search_placeholder: string
   model_picker_recent: string
   model_picker_no_results: string
@@ -319,10 +390,6 @@ export interface Translations {
   settings_stt_google_desc: string
   /** Note about enabling Speech API in GCP console */
   settings_stt_google_note: string
-  /** Browser Web Speech API option label */
-  settings_stt_webspeech: string
-  /** Browser Web Speech API description */
-  settings_stt_webspeech_desc: string
   /** Status badge: always available (no API key needed) */
   settings_stt_always_available: string
   /** Status badge: needs Gemini API key */
@@ -938,10 +1005,6 @@ export interface Translations {
    * The live session is stopped automatically when this occurs.
    */
   live_error_all_stt_exhausted: string
-  /** Warning shown in Live Translate when the user has selected Browser Speech API
-   *  (webSpeech) which is not supported in this pipeline — Whisper will be used instead. */
-  live_webspeech_not_supported: string
-
   // STT — Groq API key (optional free fallback)
   /** Label for the Groq API key input in STT Settings */
   settings_stt_groq_key: string

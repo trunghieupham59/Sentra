@@ -71,7 +71,14 @@ beforeEach(() => {
       systemPromptPresets: [],
       chatSendShortcut: DEFAULT_CHAT_SEND_SHORTCUT,
       chatNewSessionShortcut: DEFAULT_CHAT_NEW_SESSION_SHORTCUT,
+      sttProvider: 'auto',
     })
+  })
+  vi.mocked(window.api.transcribeAudio).mockReset()
+  vi.mocked(window.api.transcribeAudio).mockResolvedValue({
+    success: false,
+    errorCode: 'UNKNOWN',
+    retryable: false,
   })
   vi.mocked(window.api.chatStream).mockReset()
   vi.mocked(window.api.chatStream).mockResolvedValue({ success: false })
@@ -92,8 +99,52 @@ describe('ChatPage', () => {
     expect(document.querySelector('.chat-active-composer-frame')).not.toBeInTheDocument()
   })
 
+  it('shows a safe localized top-right notification when microphone access is denied', async () => {
+    const mediaDevicesDescriptor = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices')
+    const mediaRecorderDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'MediaRecorder')
+    Object.defineProperty(globalThis, 'MediaRecorder', {
+      configurable: true,
+      value: class MediaRecorderSupportStub {},
+    })
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: {
+        getUserMedia: vi.fn().mockRejectedValue(
+          new DOMException('Sensitive browser permission detail', 'NotAllowedError'),
+        ),
+      },
+    })
+
+    try {
+      render(<ChatPage />)
+      fireEvent.click(screen.getByRole('button', { name: TRANSLATIONS.en.chat_voice_record }))
+
+      const alert = await screen.findByRole('alert')
+      expect(alert).toHaveTextContent(TRANSLATIONS.en.voice_error_permission_denied)
+      expect(alert.closest('.notification-viewport')).toBeInTheDocument()
+      expect(within(alert).queryByRole('button', { name: /Open Settings/i })).not.toBeInTheDocument()
+      expect(screen.queryByText('Sensitive browser permission detail')).not.toBeInTheDocument()
+    } finally {
+      if (mediaDevicesDescriptor) {
+        Object.defineProperty(navigator, 'mediaDevices', mediaDevicesDescriptor)
+      } else {
+        Reflect.deleteProperty(navigator, 'mediaDevices')
+      }
+      if (mediaRecorderDescriptor) {
+        Object.defineProperty(globalThis, 'MediaRecorder', mediaRecorderDescriptor)
+      } else {
+        Reflect.deleteProperty(globalThis, 'MediaRecorder')
+      }
+    }
+  })
+
   it('keeps the active composer unframed like the empty composer and uses one atomic size contract', () => {
     const mediaDevicesDescriptor = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices')
+    const mediaRecorderDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'MediaRecorder')
+    Object.defineProperty(globalThis, 'MediaRecorder', {
+      configurable: true,
+      value: class MediaRecorderSupportStub {},
+    })
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
       value: { getUserMedia: vi.fn() },
@@ -167,6 +218,11 @@ describe('ChatPage', () => {
         Object.defineProperty(navigator, 'mediaDevices', mediaDevicesDescriptor)
       } else {
         Reflect.deleteProperty(navigator, 'mediaDevices')
+      }
+      if (mediaRecorderDescriptor) {
+        Object.defineProperty(globalThis, 'MediaRecorder', mediaRecorderDescriptor)
+      } else {
+        Reflect.deleteProperty(globalThis, 'MediaRecorder')
       }
     }
   })

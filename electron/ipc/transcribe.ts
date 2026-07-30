@@ -1,4 +1,16 @@
 import type { IpcMain } from 'electron'
+import type {
+  AudioTranscriptionErrorCode,
+  AudioTranscriptionPurpose,
+  CancelAudioTranscriptionParams,
+  CancelAudioTranscriptionResult,
+  SttProvider,
+  SttProviderCheckResult,
+  TranscribeAudioParams,
+  TranscribeFailure,
+  TranscribeResult,
+  TranscribeSuccess,
+} from '../../shared/audioTranscription'
 import {
   GEMINI_API_BASE, GEMINI_STT_MODEL,
   GROQ_API_BASE, GROQ_STT_MODEL,
@@ -7,7 +19,7 @@ import {
   WHISPER_CONSECUTIVE_FAIL_BAN_MS, WHISPER_MODEL,
   WHISPER_RATE_LIMIT_BAN_MS, WHISPER_TIMEOUT_MS,
 } from './ipcConstants'
-import { invalidIpcInput, isOptionalString, isRecord, isSafeLanguageCode } from './ipcValidation'
+import { isOptionalString, isRecord, isSafeLanguageCode } from './ipcValidation'
 import { withRetry } from './retry'
 import { getStoredApiKey, hasStoredApiKey } from './storage'
 
@@ -185,85 +197,206 @@ function scheduleRecoveryProbe(provider: 'whisper' | 'gemini', afterMs: number):
   }, afterMs)
 }
 
-// ─── Shared types ─────────────────────────────────────────────────────────────
-
-interface TranscribeParams {
-  audioData: ArrayBuffer   // Raw audio bytes from MediaRecorder or WAV encoder
-  mimeType: string         // e.g. 'audio/webm;codecs=opus' | 'audio/wav'
-  language?: string        // BCP-47 code or 'auto'
-  /**
-   * The last successfully transcribed text, passed as Whisper's `prompt`
-   * parameter. Whisper treats it as "speech already in progress", maintaining
-   * terminology consistency across chunks and preventing decoder drift.
-   */
-  previousText?: string
-  /**
-   * Which STT backend to use:
-   *   'auto'      — smart routing: Whisper → Gemini STT → Groq (free) → surface error
-   *   'whisper'   — OpenAI Whisper only (with retry; requires OpenAI key)
-   *   'google'    — Gemini STT (uses Gemini API key; no extra GCP setup needed)
-   *   'webSpeech' — browser-only, never sent via IPC
-   * Defaults to 'auto'.
-   */
-  sttProvider?: 'auto' | 'whisper' | 'google' | 'groq' | 'webSpeech'
-}
+// ─── Shared IPC contract and validation ───────────────────────────────────────
 
 type ParsedTranscribeParams =
-  | { ok: true; value: TranscribeParams }
-  | { ok: false; response: { success: false; error: string; errorCode?: string } }
+  | { ok: true; value: TranscribeAudioParams }
+  | { ok: false; response: TranscribeFailure }
 
-const STT_PROVIDERS = new Set(['auto', 'whisper', 'google', 'groq', 'webSpeech'])
+const STT_PROVIDERS = new Set<SttProvider>(['auto', 'whisper', 'google', 'groq'])
+const TRANSCRIPTION_PURPOSES = new Set<AudioTranscriptionPurpose>(['dictation', 'live'])
+const ALLOWED_AUDIO_MIME_TYPES = new Set([
+  'audio/aac',
+  'audio/aiff',
+  'audio/flac',
+  'audio/mp3',
+  'audio/mp4',
+  'audio/mpeg',
+  'audio/ogg',
+  'audio/wav',
+  'audio/webm',
+  'audio/x-m4a',
+])
+const MAX_REQUEST_ID_CHARS = 100
 const MAX_PREVIOUS_TEXT_CHARS = 20_000
+const MIN_DICTATION_AUDIO_BYTES = 1_000
+export const MAX_TRANSCRIPTION_AUDIO_BYTES = 10 * 1024 * 1024
+const DICTATION_PROVIDER_TIMEOUT_MS = 15_000
+
+const activeTranscriptions = new Map<string, AbortController>()
+
+type InternalTranscribeFailure = TranscribeFailure & { internalError?: string }
+type InternalTranscribeResult = TranscribeSuccess | InternalTranscribeFailure
+
+function transcriptionFailure(
+  errorCode: AudioTranscriptionErrorCode,
+  retryable: boolean,
+): TranscribeFailure {
+  return { success: false, errorCode, retryable }
+}
+
+function internalTranscriptionFailure(
+  errorCode: AudioTranscriptionErrorCode,
+  retryable: boolean,
+  internalError?: string,
+): InternalTranscribeFailure {
+  return { success: false, errorCode, retryable, ...(internalError ? { internalError } : {}) }
+}
+
+function invalidInput(): TranscribeFailure {
+  return transcriptionFailure('INVALID_INPUT', false)
+}
+
+function toExternalTranscribeResult(result: InternalTranscribeResult): TranscribeResult {
+  if (result.success) return result
+  return transcriptionFailure(result.errorCode, result.retryable)
+}
+
+function normalizeAudioMimeType(mimeType: string): string {
+  return mimeType.split(';', 1)[0].trim().toLowerCase()
+}
+
+function isSafeRequestId(value: unknown): value is string {
+  return typeof value === 'string'
+    && value.length > 0
+    && value.length <= MAX_REQUEST_ID_CHARS
+    && /^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(value)
+}
 
 function parseTranscribeParams(rawParams: unknown): ParsedTranscribeParams {
   if (!isRecord(rawParams)) {
-    return { ok: false, response: invalidIpcInput('Transcribe payload must be an object') }
+    return { ok: false, response: invalidInput() }
   }
-
+  if (!isSafeRequestId(rawParams.requestId)) {
+    return { ok: false, response: invalidInput() }
+  }
+  if (typeof rawParams.purpose !== 'string'
+      || !TRANSCRIPTION_PURPOSES.has(rawParams.purpose as AudioTranscriptionPurpose)) {
+    return { ok: false, response: invalidInput() }
+  }
   if (!(rawParams.audioData instanceof ArrayBuffer) || rawParams.audioData.byteLength === 0) {
-    return { ok: false, response: invalidIpcInput('Audio data is required') }
+    return { ok: false, response: invalidInput() }
   }
-  if (typeof rawParams.mimeType !== 'string' || !rawParams.mimeType.startsWith('audio/')) {
-    return { ok: false, response: invalidIpcInput('Invalid audio MIME type') }
+  if (rawParams.audioData.byteLength > MAX_TRANSCRIPTION_AUDIO_BYTES) {
+    return {
+      ok: false,
+      response: transcriptionFailure('AUDIO_TOO_LARGE', false),
+    }
+  }
+  if (rawParams.purpose === 'dictation'
+      && rawParams.audioData.byteLength < MIN_DICTATION_AUDIO_BYTES) {
+    return {
+      ok: false,
+      response: transcriptionFailure('AUDIO_TOO_SHORT', false),
+    }
+  }
+  if (typeof rawParams.mimeType !== 'string') {
+    return { ok: false, response: invalidInput() }
+  }
+  const mimeType = normalizeAudioMimeType(rawParams.mimeType)
+  if (!ALLOWED_AUDIO_MIME_TYPES.has(mimeType)) {
+    return {
+      ok: false,
+      response: transcriptionFailure('UNSUPPORTED_FORMAT', false),
+    }
   }
   if (rawParams.language !== undefined && !isSafeLanguageCode(rawParams.language)) {
-    return { ok: false, response: invalidIpcInput('Invalid language') }
+    return { ok: false, response: invalidInput() }
   }
-  if (!isOptionalString(rawParams.previousText) || (rawParams.previousText?.length ?? 0) > MAX_PREVIOUS_TEXT_CHARS) {
-    return { ok: false, response: invalidIpcInput('Invalid previous text') }
+  if (!isOptionalString(rawParams.previousText)
+      || (rawParams.previousText?.length ?? 0) > MAX_PREVIOUS_TEXT_CHARS) {
+    return { ok: false, response: invalidInput() }
   }
-  if (rawParams.sttProvider !== undefined && (typeof rawParams.sttProvider !== 'string' || !STT_PROVIDERS.has(rawParams.sttProvider))) {
-    return { ok: false, response: invalidIpcInput('Invalid STT provider') }
+  if (typeof rawParams.sttProvider !== 'string'
+      || !STT_PROVIDERS.has(rawParams.sttProvider as SttProvider)) {
+    return { ok: false, response: invalidInput() }
   }
 
   return {
     ok: true,
     value: {
+      requestId: rawParams.requestId,
+      purpose: rawParams.purpose as AudioTranscriptionPurpose,
       audioData: rawParams.audioData,
-      mimeType: rawParams.mimeType,
-      language: rawParams.language,
+      mimeType,
+      language: rawParams.language as string | undefined,
       previousText: rawParams.previousText,
-      sttProvider: rawParams.sttProvider as TranscribeParams['sttProvider'],
+      sttProvider: rawParams.sttProvider as SttProvider,
     },
   }
 }
 
-interface TranscribeResult {
-  success: boolean
-  text?: string
-  error?: string
-  errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | 'CONNECTION_ERROR' | string
-  noSpeechProb?: number
-  avgLogprob?: number
-  compressionRatio?: number
-  segmentTexts?: string[]
-  /** Which STT backend actually produced this result */
-  usedProvider?: 'whisper' | 'gemini' | 'groq'
+function parseCancelParams(rawParams: unknown): CancelAudioTranscriptionParams | null {
+  if (!isRecord(rawParams) || !isSafeRequestId(rawParams.requestId)) return null
+  return { requestId: rawParams.requestId }
 }
 
-interface SttProviderCheckResult {
-  primary: 'whisper' | 'gemini' | 'groq' | 'none'
-  available: Array<'whisper' | 'gemini' | 'groq'>
+function isCancellationError(error: unknown): boolean {
+  if (error instanceof DOMException && error.name === 'AbortError') return true
+  if (!(error instanceof Error)) return false
+  const message = error.message.toLowerCase()
+  return error.name === 'AbortError' || message.includes('aborted') || message.includes('cancelled')
+}
+
+function classifyTranscriptionError(error: unknown, providerName: string): InternalTranscribeFailure {
+  if (isCancellationError(error)) {
+    return internalTranscriptionFailure('CANCELLED', false)
+  }
+
+  const message = error instanceof Error ? error.message : String(error)
+  const lower = message.toLowerCase()
+  if (lower.includes('401') || lower.includes('invalid_api_key') || lower.includes('unauthorized')) {
+    return internalTranscriptionFailure('INVALID_KEY', false, message)
+  }
+  if (lower.includes('429') || lower.includes('rate_limit') || lower.includes('quota')) {
+    return internalTranscriptionFailure('RATE_LIMIT', true, message)
+  }
+  if (lower.includes('timeout') || lower.includes('timed out')) {
+    return internalTranscriptionFailure('TIMEOUT', true, message)
+  }
+  if (lower.includes('enotfound') || lower.includes('econnrefused')
+      || lower.includes('failed to fetch') || lower.includes('fetch failed')
+      || lower.includes('connection error')) {
+    return internalTranscriptionFailure('CONNECTION_ERROR', true, message)
+  }
+  return internalTranscriptionFailure('UNKNOWN', false, `${providerName}: ${message}`)
+}
+
+function createAbortScope(parentSignal: AbortSignal | undefined, timeoutMs: number) {
+  const controller = new AbortController()
+  let timedOut = false
+  const handleParentAbort = () => controller.abort()
+  if (parentSignal?.aborted) controller.abort()
+  else parentSignal?.addEventListener('abort', handleParentAbort, { once: true })
+
+  const timeoutId = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, timeoutMs)
+
+  return {
+    signal: controller.signal,
+    didTimeOut: () => timedOut,
+    cleanup: () => {
+      clearTimeout(timeoutId)
+      parentSignal?.removeEventListener('abort', handleParentAbort)
+    },
+  }
+}
+
+function audioFileExtension(mimeType: string): string {
+  switch (mimeType) {
+    case 'audio/aac': return 'aac'
+    case 'audio/aiff': return 'aiff'
+    case 'audio/flac': return 'flac'
+    case 'audio/mp3':
+    case 'audio/mpeg': return 'mp3'
+    case 'audio/mp4':
+    case 'audio/x-m4a': return 'm4a'
+    case 'audio/ogg': return 'ogg'
+    case 'audio/wav': return 'wav'
+    default: return 'webm'
+  }
 }
 
 interface VerboseSegment {
@@ -345,47 +478,37 @@ async function transcribeWithWhisper(
   language?: string,
   previousText?: string,
   useRetry = true,
-): Promise<TranscribeResult> {
+  signal?: AbortSignal,
+  timeoutMs = WHISPER_TIMEOUT_MS,
+): Promise<InternalTranscribeResult> {
   const apiKey = await getStoredApiKey('openai')
   if (!apiKey) {
-    return { success: false, error: 'No OpenAI API key. Add one in Settings.', errorCode: 'NO_API_KEY' }
+    return internalTranscriptionFailure('NO_API_KEY', false)
   }
 
+  const abortScope = createAbortScope(signal, timeoutMs)
   try {
     const OpenAI = (await import('openai')).default
-    const client = new OpenAI({ apiKey })
+    const client = new OpenAI({ apiKey, maxRetries: 0, timeout: timeoutMs })
 
     const buffer = Buffer.from(audioData)
-    const ext = mimeType.includes('ogg') ? 'ogg'
-      : mimeType.includes('mp4') ? 'mp4'
-      : mimeType.includes('wav') ? 'wav'
-      : 'webm'
-
+    const ext = audioFileExtension(mimeType)
     const file = new File([buffer], `audio.${ext}`, { type: mimeType })
     const whisperLang = language && language !== 'auto' ? language.split('-')[0] : undefined
 
-    const createCall = () => client.audio.transcriptions.create({
-      file,
-      model: WHISPER_MODEL,
-      language: whisperLang,
-      response_format: 'verbose_json',
-      temperature: 0,
-      prompt: buildWhisperPrompt(whisperLang, previousText),
-    })
+    const createCall = () => client.audio.transcriptions.create(
+      {
+        file,
+        model: WHISPER_MODEL,
+        language: whisperLang,
+        response_format: 'verbose_json',
+        temperature: 0,
+        prompt: buildWhisperPrompt(whisperLang, previousText),
+      },
+      { signal: abortScope.signal, timeout: timeoutMs, maxRetries: 0 },
+    )
 
-    // In 'auto' mode (useRetry=false) we race the Whisper call against a hard
-    // timeout so a stalled/slow endpoint never blocks the real-time pipeline.
-    // In explicit 'whisper' mode (useRetry=true) the retry wrapper manages
-    // timing, so we let it run without an outer timeout.
-    let apiCall: Promise<unknown>
-    if (useRetry) {
-      apiCall = withRetry(createCall) as Promise<unknown>
-    } else {
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Whisper request timed out')), WHISPER_TIMEOUT_MS),
-      )
-      apiCall = Promise.race([createCall() as Promise<unknown>, timeoutPromise])
-    }
+    const apiCall = useRetry ? withRetry(createCall) : createCall()
 
     const rawResponse = await (apiCall as unknown) as VerboseResponse
     const text = rawResponse.text?.trim() ?? ''
@@ -403,19 +526,14 @@ async function transcribeWithWhisper(
       usedProvider: 'whisper',
       ...(segmentTexts.length > 1 ? { segmentTexts } : {}),
     }
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.error('[transcribe] Whisper error:', msg)
-    if (msg.includes('401') || msg.includes('invalid_api_key'))
-      return { success: false, error: 'Invalid OpenAI API key.', errorCode: 'INVALID_KEY' }
-    if (msg.includes('429'))
-      return { success: false, error: 'OpenAI rate limit exceeded.', errorCode: 'RATE_LIMIT' }
-    if (msg.toLowerCase().includes('connection error') || msg.includes('ENOTFOUND') || msg.includes('ECONNREFUSED'))
-      return { success: false, error: 'Connection error.', errorCode: 'CONNECTION_ERROR' }
-    // Catch the timeout we inject via Promise.race above
-    if (msg.toLowerCase().includes('timed out') || msg.toLowerCase().includes('timeout'))
-      return { success: false, error: 'Whisper request timed out — falling back to next STT provider.', errorCode: 'TIMEOUT' }
-    return { success: false, error: msg }
+  } catch (error) {
+    const failure = abortScope.didTimeOut()
+      ? internalTranscriptionFailure('TIMEOUT', true)
+      : classifyTranscriptionError(error, 'OpenAI')
+    console.error('[transcribe] Whisper failed:', failure.errorCode)
+    return failure
+  } finally {
+    abortScope.cleanup()
   }
 }
 
@@ -440,9 +558,11 @@ async function transcribeWithGeminiSTT(
   mimeType: string,
   language?: string,
   apiKey?: string | null,
-): Promise<TranscribeResult> {
+  signal?: AbortSignal,
+  timeoutMs = WHISPER_TIMEOUT_MS,
+): Promise<InternalTranscribeResult> {
   if (!apiKey) {
-    return { success: false, error: 'No Gemini API key. Add one in Settings.', errorCode: 'NO_API_KEY' }
+    return internalTranscriptionFailure('NO_API_KEY', false)
   }
 
   const normalizedMime = mimeType.split(';')[0].trim()
@@ -455,12 +575,17 @@ async function transcribeWithGeminiSTT(
     `Transcribe the audio accurately.${langHint} ` +
     'Output ONLY the transcription text — no timestamps, no speaker labels, no markdown, no explanations.'
 
-  const url = `${GEMINI_API_BASE}/models/${GEMINI_STT_MODEL}:generateContent?key=${apiKey}`
+  const url = `${GEMINI_API_BASE}/models/${GEMINI_STT_MODEL}:generateContent`
+  const abortScope = createAbortScope(signal, timeoutMs)
 
   try {
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      signal: abortScope.signal,
       body: JSON.stringify({
         contents: [{
           parts: [
@@ -476,12 +601,21 @@ async function transcribeWithGeminiSTT(
       // biome-ignore lint/suspicious/noExplicitAny: dynamic JSON error shape
       const errData: any = await response.json().catch(() => ({}))
       const msg: string = errData?.error?.message ?? response.statusText
-      console.error('[transcribe] Gemini STT error:', response.status, msg)
-      if ((response.status === 400 && msg.includes('API key not valid')) || response.status === 401)
-        return { success: false, error: 'Invalid Gemini API key.', errorCode: 'INVALID_KEY' }
-      if (response.status === 429)
-        return { success: false, error: 'Gemini STT rate limit exceeded.', errorCode: 'RATE_LIMIT' }
-      return { success: false, error: `Gemini STT error: ${msg}` }
+      let failure: InternalTranscribeFailure
+      if ((response.status === 400 && msg.includes('API key not valid'))
+          || response.status === 401 || response.status === 403) {
+        failure = internalTranscriptionFailure('INVALID_KEY', false, msg)
+      } else if (response.status === 429) {
+        failure = internalTranscriptionFailure('RATE_LIMIT', true, msg)
+      } else if (response.status === 408 || response.status === 504) {
+        failure = internalTranscriptionFailure('TIMEOUT', true, msg)
+      } else if (response.status >= 500) {
+        failure = internalTranscriptionFailure('CONNECTION_ERROR', true, msg)
+      } else {
+        failure = internalTranscriptionFailure('UNKNOWN', false, msg)
+      }
+      console.error('[transcribe] Gemini STT failed:', response.status, failure.errorCode)
+      return failure
     }
 
     // biome-ignore lint/suspicious/noExplicitAny: dynamic Gemini response shape
@@ -489,12 +623,14 @@ async function transcribeWithGeminiSTT(
     const text: string = (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '').trim()
     if (!text) return { success: true, text: '', usedProvider: 'gemini' }
     return { success: true, text, usedProvider: 'gemini' }
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.error('[transcribe] Gemini STT fetch error:', msg)
-    if (msg.includes('ENOTFOUND') || msg.includes('ECONNREFUSED') || msg.toLowerCase().includes('failed to fetch'))
-      return { success: false, error: 'Connection error reaching Gemini STT.', errorCode: 'CONNECTION_ERROR' }
-    return { success: false, error: `Gemini STT: ${msg}` }
+  } catch (error) {
+    const failure = abortScope.didTimeOut()
+      ? internalTranscriptionFailure('TIMEOUT', true)
+      : classifyTranscriptionError(error, 'Gemini')
+    console.error('[transcribe] Gemini STT failed:', failure.errorCode)
+    return failure
+  } finally {
+    abortScope.cleanup()
   }
 }
 
@@ -517,38 +653,44 @@ async function transcribeWithGroq(
   mimeType: string,
   language?: string,
   previousText?: string,
-): Promise<TranscribeResult> {
+  signal?: AbortSignal,
+  timeoutMs = WHISPER_TIMEOUT_MS,
+): Promise<InternalTranscribeResult> {
   const apiKey = await getStoredApiKey('groq')
   if (!apiKey) {
-    return { success: false, error: 'No Groq API key configured.', errorCode: 'NO_API_KEY' }
+    return internalTranscriptionFailure('NO_API_KEY', false)
   }
 
+  const abortScope = createAbortScope(signal, timeoutMs)
   try {
     const OpenAI = (await import('openai')).default
     // Reuse the OpenAI SDK — only the baseURL changes.
     // apiKey is required by the SDK constructor even though Groq uses bearer auth;
     // the SDK passes it as Authorization: Bearer <apiKey> which Groq accepts.
-    const client = new OpenAI({ apiKey, baseURL: GROQ_API_BASE })
+    const client = new OpenAI({
+      apiKey,
+      baseURL: GROQ_API_BASE,
+      maxRetries: 0,
+      timeout: timeoutMs,
+    })
 
     const buffer = Buffer.from(audioData)
-    const ext = mimeType.includes('ogg') ? 'ogg'
-      : mimeType.includes('mp4') ? 'mp4'
-      : mimeType.includes('wav') ? 'wav'
-      : 'webm'
-
+    const ext = audioFileExtension(mimeType)
     const file = new File([buffer], `audio.${ext}`, { type: mimeType })
     const groqLang = language && language !== 'auto' ? language.split('-')[0] : undefined
 
     // Single attempt, no retry — used as a fallback, want fast response.
-    const rawResponse = await client.audio.transcriptions.create({
-      file,
-      model: GROQ_STT_MODEL,
-      language: groqLang,
-      response_format: 'verbose_json',
-      temperature: 0,
-      prompt: buildWhisperPrompt(groqLang, previousText),
-      // biome-ignore lint/suspicious/noExplicitAny: Groq verbose_json not yet typed in openai SDK
-    }) as any
+    const rawResponse = await client.audio.transcriptions.create(
+      {
+        file,
+        model: GROQ_STT_MODEL,
+        language: groqLang,
+        response_format: 'verbose_json',
+        temperature: 0,
+        prompt: buildWhisperPrompt(groqLang, previousText),
+      },
+      { signal: abortScope.signal, timeout: timeoutMs, maxRetries: 0 },
+    ) as unknown as VerboseResponse
 
     const text: string = (rawResponse.text ?? '').trim()
     if (!text || /^\s*$/.test(text)) {
@@ -564,16 +706,14 @@ async function transcribeWithGroq(
       usedProvider: 'groq',
       ...(segmentTexts.length > 1 ? { segmentTexts } : {}),
     }
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.error('[transcribe] Groq STT error:', msg)
-    if (msg.includes('401') || msg.includes('invalid_api_key') || msg.includes('Unauthorized'))
-      return { success: false, error: 'Invalid Groq API key.', errorCode: 'INVALID_KEY' }
-    if (msg.includes('429'))
-      return { success: false, error: 'Groq rate limit exceeded.', errorCode: 'RATE_LIMIT' }
-    if (msg.includes('ENOTFOUND') || msg.includes('ECONNREFUSED') || msg.toLowerCase().includes('connection error'))
-      return { success: false, error: 'Connection error reaching Groq STT.', errorCode: 'CONNECTION_ERROR' }
-    return { success: false, error: `Groq STT: ${msg}` }
+  } catch (error) {
+    const failure = abortScope.didTimeOut()
+      ? internalTranscriptionFailure('TIMEOUT', true)
+      : classifyTranscriptionError(error, 'Groq')
+    console.error('[transcribe] Groq STT failed:', failure.errorCode)
+    return failure
+  } finally {
+    abortScope.cleanup()
   }
 }
 
@@ -595,37 +735,56 @@ async function transcribeHedged(
   language: string | undefined,
   previousText: string | undefined,
   geminiKey: string,
-): Promise<{ result: TranscribeResult; fromWhisper: boolean }> {
-
-  return new Promise(outerResolve => {
+  signal?: AbortSignal,
+): Promise<{ result: InternalTranscribeResult; fromWhisper: boolean }> {
+  return new Promise(resolve => {
     let settled = false
     let geminiLaunched = false
-    let geminiResolve: (r: TranscribeResult) => void
+    let whisperFailure: InternalTranscribeFailure | null = null
+    let geminiFailure: InternalTranscribeFailure | null = null
+    const whisperController = new AbortController()
+    const geminiController = new AbortController()
 
-    // Deferred Gemini promise — launched on demand
-    const geminiDeferred = new Promise<TranscribeResult>(res => { geminiResolve = res })
+    const abortChildren = () => {
+      whisperController.abort()
+      geminiController.abort()
+    }
+    if (signal?.aborted) abortChildren()
+    else signal?.addEventListener('abort', abortChildren, { once: true })
 
-    const settle = (result: TranscribeResult, fromWhisper: boolean) => {
+    const finish = (result: InternalTranscribeResult, fromWhisper: boolean) => {
       if (settled) return
       settled = true
-      outerResolve({ result, fromWhisper })
+      clearTimeout(hedgeTimer)
+      signal?.removeEventListener('abort', abortChildren)
+      if (fromWhisper) geminiController.abort()
+      else whisperController.abort()
+      resolve({ result, fromWhisper })
+    }
+
+    const finishIfBothFailed = () => {
+      if (whisperFailure && geminiFailure) finish(geminiFailure, false)
     }
 
     const launchGemini = () => {
-      if (geminiLaunched) return
+      if (geminiLaunched || settled) return
       geminiLaunched = true
-      transcribeWithGeminiSTT(audioData, mimeType, language, geminiKey)
-        .then(r => geminiResolve(r))
-        .catch(() => geminiResolve({ success: false, error: 'Gemini hedge error', errorCode: 'CONNECTION_ERROR' }))
+      void transcribeWithGeminiSTT(
+        audioData,
+        mimeType,
+        language,
+        geminiKey,
+        geminiController.signal,
+        WHISPER_TIMEOUT_MS,
+      ).then(result => {
+        if (result.success) finish(result, false)
+        else {
+          geminiFailure = result
+          finishIfBothFailed()
+        }
+      })
     }
 
-    // Listen for Gemini result (resolves after launchGemini fires)
-    geminiDeferred.then(r => settle(r, false))
-
-    // Start Whisper immediately
-    const whisperPromise = transcribeWithWhisper(audioData, mimeType, language, previousText, false)
-
-    // Hedge timer: start Gemini if Whisper hasn't responded in time
     const hedgeTimer = setTimeout(() => {
       if (!settled) {
         console.log('[transcribe] hedge: Whisper slow — starting Gemini in parallel')
@@ -633,19 +792,21 @@ async function transcribeHedged(
       }
     }, STT_HEDGE_DELAY_MS)
 
-    whisperPromise.then(r => {
-      clearTimeout(hedgeTimer)
-      if (r.success) {
-        settle(r, true)  // Whisper wins!
-      } else {
-        // Whisper failed — start Gemini now (hedge may not have fired yet)
+    void transcribeWithWhisper(
+      audioData,
+      mimeType,
+      language,
+      previousText,
+      false,
+      whisperController.signal,
+      WHISPER_TIMEOUT_MS,
+    ).then(result => {
+      if (result.success) finish(result, true)
+      else {
+        whisperFailure = result
         launchGemini()
-        // Don't settle yet; wait for Gemini result
-        // (geminiDeferred.then(settle) is already registered above)
+        finishIfBothFailed()
       }
-    }).catch(() => {
-      clearTimeout(hedgeTimer)
-      launchGemini()
     })
   })
 }
@@ -668,7 +829,8 @@ async function transcribeAuto(
   mimeType: string,
   language?: string,
   previousText?: string,
-): Promise<TranscribeResult> {
+  signal?: AbortSignal,
+): Promise<InternalTranscribeResult> {
 
   const whisperAvail = isWhisperAvailableNow()
   const geminiAvail  = isGeminiAvailableNow()
@@ -681,7 +843,7 @@ async function transcribeAuto(
   // performance when Whisper is slow or flaky.
   if (whisperAvail && geminiAvail && geminiKey) {
     const { result, fromWhisper } = await transcribeHedged(
-      audioData, mimeType, language, previousText, geminiKey,
+      audioData, mimeType, language, previousText, geminiKey, signal,
     )
 
     if (result.success) {
@@ -713,9 +875,10 @@ async function transcribeAuto(
       }
       return result
     }
+    if (result.errorCode === 'CANCELLED') return result
 
     // Both Whisper and Gemini failed in the hedged race → ban both, fall to Groq
-    const code = result.errorCode ?? ''
+    const code = result.errorCode
     console.log(`[transcribe] auto: Hedged race failed (${code}) → Groq STT`)
     if (PERMANENT_FALLBACK_CODES.has(code)) {
       markWhisperUnavailable(code)
@@ -727,7 +890,15 @@ async function transcribeAuto(
 
   // ── Single provider: Whisper only ────────────────────────────────────────────
   else if (whisperAvail) {
-    const whisperResult = await transcribeWithWhisper(audioData, mimeType, language, previousText, false)
+    const whisperResult = await transcribeWithWhisper(
+      audioData,
+      mimeType,
+      language,
+      previousText,
+      false,
+      signal,
+      WHISPER_TIMEOUT_MS,
+    )
 
     if (whisperResult.success) {
       whisperConsecutiveFailures = 0
@@ -737,8 +908,9 @@ async function transcribeAuto(
       }
       return whisperResult
     }
+    if (whisperResult.errorCode === 'CANCELLED') return whisperResult
 
-    const code = whisperResult.errorCode ?? ''
+    const code = whisperResult.errorCode
     if (PERMANENT_FALLBACK_CODES.has(code)) {
       markWhisperUnavailable(code); whisperConsecutiveFailures = 0
       if (code === 'CONNECTION_ERROR' || code === 'TIMEOUT') scheduleRecoveryProbe('whisper', STT_RECOVERY_PROBE_DELAY_MS)
@@ -755,7 +927,14 @@ async function transcribeAuto(
 
   // ── Single provider: Gemini only ─────────────────────────────────────────────
   else if (geminiAvail && geminiKey) {
-    const geminiResult = await transcribeWithGeminiSTT(audioData, mimeType, language, geminiKey)
+    const geminiResult = await transcribeWithGeminiSTT(
+      audioData,
+      mimeType,
+      language,
+      geminiKey,
+      signal,
+      WHISPER_TIMEOUT_MS,
+    )
 
     if (geminiResult.success) {
       if (!geminiSessionAvailable) {
@@ -765,7 +944,7 @@ async function transcribeAuto(
       return geminiResult
     }
 
-    const geminiCode = geminiResult.errorCode ?? ''
+    const geminiCode = geminiResult.errorCode
     if (FALLBACK_CODES.has(geminiCode)) {
       markGeminiUnavailable(geminiCode)
       if (geminiCode === 'RATE_LIMIT' || geminiCode === 'CONNECTION_ERROR') scheduleRecoveryProbe('gemini', STT_RECOVERY_PROBE_DELAY_MS)
@@ -789,26 +968,136 @@ async function transcribeAuto(
   const groqKey = await getStoredApiKey('groq')
 
   if (!groqKey) {
-    return {
-      success: false,
-      errorCode: 'ALL_PROVIDERS_EXHAUSTED',
-      error: 'All STT providers exhausted. No Groq API key configured. Add one in Settings → STT (free, no credit card required).',
-    }
+    return internalTranscriptionFailure('ALL_PROVIDERS_EXHAUSTED', false)
   }
 
-  const groqResult = await transcribeWithGroq(audioData, mimeType, language, previousText)
+  const groqResult = await transcribeWithGroq(
+    audioData,
+    mimeType,
+    language,
+    previousText,
+    signal,
+    WHISPER_TIMEOUT_MS,
+  )
 
   if (!groqResult.success) {
     // Groq also failed → no more fallbacks → signal the UI to stop the session
-    console.error('[transcribe] auto: Groq STT also failed — all providers exhausted:', groqResult.error)
-    return {
-      success: false,
-      errorCode: 'ALL_PROVIDERS_EXHAUSTED',
-      error: `All STT providers failed. Last error (Groq): ${groqResult.error}`,
-    }
+    console.error('[transcribe] auto: Groq STT also failed — all providers exhausted:', groqResult.errorCode)
+    return internalTranscriptionFailure('ALL_PROVIDERS_EXHAUSTED', groqResult.retryable)
   }
 
   return groqResult
+}
+
+async function transcribeWithSelectedProvider(
+  sttProvider: Exclude<SttProvider, 'auto'>,
+  params: TranscribeAudioParams,
+  signal: AbortSignal,
+  timeoutMs: number,
+  useRetry: boolean,
+): Promise<InternalTranscribeResult> {
+  const { audioData, mimeType, language, previousText } = params
+  if (sttProvider === 'whisper') {
+    return transcribeWithWhisper(
+      audioData,
+      mimeType,
+      language,
+      previousText,
+      useRetry,
+      signal,
+      timeoutMs,
+    )
+  }
+  if (sttProvider === 'google') {
+    const geminiKey = await getStoredApiKey('gemini')
+    return transcribeWithGeminiSTT(
+      audioData,
+      mimeType,
+      language,
+      geminiKey,
+      signal,
+      timeoutMs,
+    )
+  }
+  return transcribeWithGroq(
+    audioData,
+    mimeType,
+    language,
+    previousText,
+    signal,
+    timeoutMs,
+  )
+}
+
+function normalizeDictationSuccess(result: InternalTranscribeResult): InternalTranscribeResult {
+  if (result.success && result.text.trim().length === 0) {
+    return internalTranscriptionFailure('NO_SPEECH', false)
+  }
+  return result
+}
+
+async function transcribeDictation(
+  params: TranscribeAudioParams,
+  signal: AbortSignal,
+): Promise<InternalTranscribeResult> {
+  if (params.sttProvider !== 'auto') {
+    const result = await transcribeWithSelectedProvider(
+      params.sttProvider,
+      params,
+      signal,
+      DICTATION_PROVIDER_TIMEOUT_MS,
+      true,
+    )
+    return normalizeDictationSuccess(result)
+  }
+
+  const providers: Array<Exclude<SttProvider, 'auto'>> = ['whisper', 'google', 'groq']
+  let attemptedProvider = false
+  let retryable = false
+
+  for (const provider of providers) {
+    if (signal.aborted) return internalTranscriptionFailure('CANCELLED', false)
+    const result = normalizeDictationSuccess(await transcribeWithSelectedProvider(
+      provider,
+      params,
+      signal,
+      DICTATION_PROVIDER_TIMEOUT_MS,
+      false,
+    ))
+
+    if (result.success || result.errorCode === 'NO_SPEECH' || result.errorCode === 'CANCELLED') {
+      return result
+    }
+    if (result.errorCode !== 'NO_API_KEY') attemptedProvider = true
+    retryable ||= result.retryable
+  }
+
+  return internalTranscriptionFailure(
+    attemptedProvider ? 'ALL_PROVIDERS_FAILED' : 'ALL_PROVIDERS_EXHAUSTED',
+    retryable,
+  )
+}
+
+async function transcribeLive(
+  params: TranscribeAudioParams,
+  signal: AbortSignal,
+): Promise<InternalTranscribeResult> {
+  if (params.sttProvider === 'auto') {
+    return transcribeAuto(
+      params.audioData,
+      params.mimeType,
+      params.language,
+      params.previousText,
+      signal,
+    )
+  }
+  return transcribeWithSelectedProvider(
+    params.sttProvider,
+    params,
+    signal,
+    WHISPER_TIMEOUT_MS,
+    params.sttProvider === 'whisper',
+  )
 }
 
 // ─── Pre-flight: check provider availability ──────────────────────────────────
@@ -875,34 +1164,36 @@ export function registerTranscribeHandlers(ipcMain: IpcMain) {
     const parsed = parseTranscribeParams(rawParams)
     if (!parsed.ok) return parsed.response
     const params = parsed.value
-    const { audioData, mimeType, language, previousText } = params
-    const sttProvider = params.sttProvider ?? 'auto'
+    if (activeTranscriptions.has(params.requestId)) return invalidInput()
 
-    if (sttProvider === 'webSpeech') {
-      // webSpeech uses webkitSpeechRecognition in the renderer — never reaches IPC.
-      return { success: false, error: 'webSpeech is a browser-only mode — not available via IPC.' }
+    const controller = new AbortController()
+    activeTranscriptions.set(params.requestId, controller)
+    try {
+      const result = params.purpose === 'dictation'
+        ? await transcribeDictation(params, controller.signal)
+        : await transcribeLive(params, controller.signal)
+      return toExternalTranscribeResult(result)
+    } catch (error) {
+      return toExternalTranscribeResult(classifyTranscriptionError(error, 'Audio'))
+    } finally {
+      if (activeTranscriptions.get(params.requestId) === controller) {
+        activeTranscriptions.delete(params.requestId)
+      }
     }
-
-    if (sttProvider === 'groq') {
-      // Explicit Groq mode: route directly to Groq (free, whisper-large-v3-turbo).
-      return transcribeWithGroq(audioData, mimeType, language, previousText)
-    }
-
-    if (sttProvider === 'google') {
-      // 'google' in the store means Gemini STT (same Gemini API key, no extra GCP setup)
-      const geminiKey = await getStoredApiKey('gemini')
-      return transcribeWithGeminiSTT(audioData, mimeType, language, geminiKey)
-    }
-
-    if (sttProvider === 'whisper') {
-      // Explicit Whisper mode: use retry (user chose Whisper specifically, so
-      // transient errors should be retried before giving up)
-      return transcribeWithWhisper(audioData, mimeType, language, previousText, /* useRetry= */ true)
-    }
-
-    // 'auto' — smart routing with session cache: Whisper → Gemini → Groq
-    return transcribeAuto(audioData, mimeType, language, previousText)
   })
+
+  ipcMain.handle(
+    'audio:cancelTranscription',
+    async (_event, rawParams: unknown): Promise<CancelAudioTranscriptionResult> => {
+      const params = parseCancelParams(rawParams)
+      if (!params) {
+        return { success: false, errorCode: 'INVALID_INPUT', retryable: false }
+      }
+      const controller = activeTranscriptions.get(params.requestId)
+      controller?.abort()
+      return { success: true, cancelled: Boolean(controller) }
+    },
+  )
 
   ipcMain.handle('audio:checkSttProviders', async (): Promise<SttProviderCheckResult> => {
     return checkSttProviders()

@@ -1,6 +1,7 @@
 import { VERIFY_MODEL_GEMINI } from './ipcConstants'
 import { buildPrompt, buildRewritePrompt, REWRITE_SYSTEM_PROMPT, SYSTEM_PROMPT } from './translatePrompts'
 import type { DetectFn, RewriteFn, StreamFn, TranslateFn, TranslateRequestOptions, VerifyFn } from './translateProviderTypes'
+import { getGeminiThinkingConfig } from './translationReasoning'
 
 const TRANSLATE_CANCELLED_MESSAGE = 'translate-cancelled'
 
@@ -14,12 +15,22 @@ export const translateWithGemini: TranslateFn = async (
   style,
   phoneticOnly,
   phoneticMode,
+  reasoningEffort,
   options: TranslateRequestOptions = {},
 ) => {
   if (options.signal?.aborted) throw new Error(TRANSLATE_CANCELLED_MESSAGE)
   const { GoogleGenerativeAI } = await import('@google/generative-ai')
   const genAI = new GoogleGenerativeAI(apiKey)
-  const genModel = genAI.getGenerativeModel({ model, systemInstruction: SYSTEM_PROMPT })
+  const thinkingConfig = getGeminiThinkingConfig(model, reasoningEffort)
+  const generationConfig = thinkingConfig === undefined
+    ? undefined
+    : { thinkingConfig }
+  const genModel = genAI.getGenerativeModel({
+    model,
+    systemInstruction: SYSTEM_PROMPT,
+    // The legacy SDK forwards generationConfig verbatim but predates this API field in its types.
+    generationConfig: generationConfig as never,
+  })
   const result = await genModel.generateContent(buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style, phoneticOnly, phoneticMode))
   if (options.signal?.aborted) throw new Error(TRANSLATE_CANCELLED_MESSAGE)
   return result.response.text().trim()

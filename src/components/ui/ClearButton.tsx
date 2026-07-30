@@ -14,7 +14,7 @@ interface ClearButtonProps {
 export function ClearButton({ onClick, label }: ClearButtonProps) {
   return (
     <Button
-      size="sm"
+      size="md"
       shape="icon"
       variant="danger"
       appearance="ghost"

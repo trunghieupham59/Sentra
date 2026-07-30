@@ -11,7 +11,7 @@
  *   const { speakingPanel, speakLoading, handleSpeak, stopSpeak } = useTTS({ ttsMode, ttsVoice })
  *   <button onClick={() => handleSpeak(text, lang, 'translated')} />
  */
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { TtsMode, TtsVoice } from '../types'
 
 /** Tốc độ phát audio TTS — thấp hơn 1.0 để dễ nghe hơn */
@@ -37,14 +37,34 @@ export function useTTS({ ttsMode, ttsVoice }: UseTTSOptions): UseTTSReturn {
 
   const audioCtxRef = useRef<AudioContext | null>(null)
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null)
+  const playbackGenerationRef = useRef(0)
 
-  const stopSpeak = useCallback(() => {
-    try { audioSourceRef.current?.stop() } catch { /* node may already be stopped */ }
-    try { audioSourceRef.current?.disconnect() } catch { /* node may not be connected */ }
+  const stopAudio = useCallback((updateState: boolean) => {
+    playbackGenerationRef.current++
+    const source = audioSourceRef.current
     audioSourceRef.current = null
-    setSpeakingPanel(null)
-    setSpeakLoading(false)
+    try { source?.stop() } catch { /* node may already be stopped */ }
+    try { source?.disconnect() } catch { /* node may not be connected */ }
+    if (updateState) {
+      setSpeakingPanel(null)
+      setSpeakLoading(false)
+    }
   }, [])
+
+  const stopSpeak = useCallback(() => stopAudio(true), [stopAudio])
+
+  useEffect(() => () => {
+    stopAudio(false)
+    const audioContext = audioCtxRef.current
+    audioCtxRef.current = null
+    if (
+      audioContext
+      && audioContext.state !== 'closed'
+      && typeof audioContext.close === 'function'
+    ) {
+      void audioContext.close()
+    }
+  }, [stopAudio])
 
   const handleSpeak = useCallback(async (
     text: string,
@@ -57,6 +77,7 @@ export function useTTS({ ttsMode, ttsVoice }: UseTTSOptions): UseTTSReturn {
       return
     }
     stopSpeak()
+    const playbackGeneration = playbackGenerationRef.current
     setSpeakingPanel(panel)
 
     // Unlock / create AudioContext BEFORE the first await (must stay in user-gesture context)
@@ -67,8 +88,9 @@ export function useTTS({ ttsMode, ttsVoice }: UseTTSOptions): UseTTSReturn {
       if (audioCtxRef.current.state === 'suspended') {
         await audioCtxRef.current.resume()
       }
+      if (playbackGenerationRef.current !== playbackGeneration) return
     } catch {
-      setSpeakingPanel(null)
+      if (playbackGenerationRef.current === playbackGeneration) setSpeakingPanel(null)
       return
     }
 
@@ -76,6 +98,7 @@ export function useTTS({ ttsMode, ttsVoice }: UseTTSOptions): UseTTSReturn {
     try {
       setSpeakLoading(true)
       const result = await window.api.speakText({ text, voice: ttsVoice, mode: ttsMode, lang })
+      if (playbackGenerationRef.current !== playbackGeneration) return
       setSpeakLoading(false)
 
       if (result.success && result.audioBase64) {
@@ -95,6 +118,7 @@ export function useTTS({ ttsMode, ttsVoice }: UseTTSOptions): UseTTSReturn {
           // decodeAudioData supports MP3, WAV, OGG, AAC, FLAC
           audioBuffer = await audioCtx.decodeAudioData(bytes.buffer.slice(0))
         } catch {
+          if (playbackGenerationRef.current !== playbackGeneration) return
           // Gemini may return raw PCM (audio/pcm;rate=24000) — decode manually
           if (result.mimeType?.includes('pcm') || result.mimeType?.includes('l16')) {
             const rateMatch = result.mimeType.match(/rate=(\d+)/)
@@ -112,11 +136,20 @@ export function useTTS({ ttsMode, ttsVoice }: UseTTSOptions): UseTTSReturn {
           }
         }
 
+        if (playbackGenerationRef.current !== playbackGeneration) return
+
         const source = audioCtx.createBufferSource()
         source.buffer = audioBuffer
         source.playbackRate.value = TTS_PLAYBACK_RATE // slightly slower for comprehension
         source.connect(audioCtx.destination)
-        source.onended = () => { audioSourceRef.current = null; setSpeakingPanel(null) }
+        source.onended = () => {
+          if (
+            audioSourceRef.current !== source
+            || playbackGenerationRef.current !== playbackGeneration
+          ) return
+          audioSourceRef.current = null
+          setSpeakingPanel(null)
+        }
         audioSourceRef.current = source
         source.start(0)
         return
@@ -124,8 +157,10 @@ export function useTTS({ ttsMode, ttsVoice }: UseTTSOptions): UseTTSReturn {
 
       setSpeakingPanel(null)
     } catch {
-      setSpeakLoading(false)
-      setSpeakingPanel(null)
+      if (playbackGenerationRef.current === playbackGeneration) {
+        setSpeakLoading(false)
+        setSpeakingPanel(null)
+      }
     }
   }, [speakingPanel, speakLoading, ttsMode, ttsVoice, stopSpeak])
 

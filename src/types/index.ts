@@ -1,3 +1,25 @@
+import type {
+  CancelAudioTranscriptionParams,
+  CancelAudioTranscriptionResult,
+  SttProviderCheckResult,
+  TranscribeAudioParams,
+  TranscribeResult,
+} from '../../shared/audioTranscription'
+
+export type {
+  AudioTranscriptionErrorCode,
+  AudioTranscriptionPurpose,
+  CancelAudioTranscriptionParams,
+  CancelAudioTranscriptionResult,
+  SttBackend,
+  SttProvider,
+  SttProviderCheckResult,
+  TranscribeAudioParams,
+  TranscribeFailure,
+  TranscribeResult,
+  TranscribeSuccess,
+} from '../../shared/audioTranscription'
+
 export type Provider = 'gemini' | 'claude' | 'openai' | 'local'
 export type LocalAiEngine = 'ollama' | 'lmstudio' | 'llamacpp'
 export type LocalAiHardwareTier = 'low' | 'balanced' | 'powerful' | 'max'
@@ -55,37 +77,7 @@ export interface UsageFeatureTotal {
   totalTokens: number
 }
 
-/**
- * STT provider user-facing preference (stored in settings):
- *  - 'auto'      — smart routing: Whisper → Gemini STT → Groq (free) → surface error
- *  - 'whisper'   — OpenAI Whisper only (highest accuracy, requires OpenAI key)
- *  - 'google'    — Gemini STT only (uses Gemini API key, no extra GCP setup)
- *  - 'groq'      — Groq Whisper (free, 28,800 sec/day, requires Groq key)
- *  - 'webSpeech' — Browser Web Speech API (free, real-time, no key needed, Chrome-based;
- *                  kept for backward compat — not shown in UI; only used in VoiceRecorder
- *                  for real-time streaming where IPC audio upload is not possible)
- */
-export type SttProvider = 'auto' | 'whisper' | 'google' | 'groq' | 'webSpeech'
-
 export type AppPage = 'translate' | 'history' | 'chat' | 'live' | 'dictionary'
-
-/**
- * Which STT backend actually produced a transcription result.
- * Groq is only used internally as a 3rd fallback in 'auto' mode — not user-selectable.
- */
-export type SttBackend = 'whisper' | 'gemini' | 'groq'
-
-/**
- * Pre-flight STT availability check result.
- * Returned by `checkSttProviders()` before starting a live session so the
- * pipeline can skip unavailable providers from the very first audio chunk.
- */
-export interface SttProviderCheckResult {
-  /** The best available backend (used as default for this session). */
-  primary: SttBackend | 'none'
-  /** All backends that have a configured key, in priority order. */
-  available: SttBackend[]
-}
 
 export interface ProviderConfig {
   id: Provider
@@ -116,6 +108,9 @@ export interface Language {
   nativeName: string
 }
 
+/** Provider-default reasoning, or a portable explicit effort level. */
+export type TranslationReasoningEffort = 'auto' | 'low' | 'medium' | 'high'
+
 export interface TranslateParams {
   provider: Provider
   model: string
@@ -127,6 +122,7 @@ export interface TranslateParams {
   /** Explicit phonetic mode — overrides showFurigana when present */
   phoneticMode?: PhoneticMode
   translationStyle?: TranslationStyle
+  reasoningEffort?: TranslationReasoningEffort
   /** When true, skip translation — only add phonetic annotations to the already-translated sourceText */
   phoneticOnly?: boolean
 }
@@ -232,32 +228,6 @@ export interface LocalAiInstallProgress {
   status: 'running' | 'success' | 'error' | 'cancelled'
   percent: number
   message: string
-}
-
-export interface TranscribeResult {
-  success: boolean
-  text?: string
-  error?: string
-  errorCode?: 'NO_API_KEY' | 'INVALID_KEY' | 'RATE_LIMIT' | string
-  /**
-   * Whisper-internal confidence signals (only present when verbose_json is used).
-   * Use these as a "no-speech gate" before accepting the transcript:
-   *   • noSpeechProb  > 0.65 → model thinks no speech was present → reject
-   *   • avgLogprob    < −1.0 → model is uncertain about the output  → reject
-   *   • compressionRatio > 2.4 → output has unusual repetition     → reject
-   */
-  noSpeechProb?: number
-  avgLogprob?: number
-  compressionRatio?: number
-  /**
-   * Per-segment text from Whisper verbose_json — each entry is one natural
-   * phrase boundary as detected by the model itself.  When 2+ segments are
-   * present, processChunk iterates them independently for language-agnostic
-   * sentence splitting (no regex heuristics needed).
-   */
-  segmentTexts?: string[]
-  /** Which STT backend actually produced this result (for telemetry / UI badge). */
-  usedProvider?: SttBackend
 }
 
 export interface TtsResult {
@@ -684,18 +654,10 @@ export interface WindowApi {
     model: string
     text: string
   }) => Promise<{ success: boolean; lang?: string; error?: string }>
-  transcribeAudio: (params: {
-    audioData: ArrayBuffer
-    mimeType: string
-    language?: string
-    /** Last transcript text, forwarded to Whisper as prompt context. */
-    previousText?: string
-    /**
-     * Which STT backend to use. Defaults to 'auto' (Whisper → Google fallback).
-     * 'webSpeech' is handled entirely in the renderer — never sent via IPC.
-     */
-    sttProvider?: SttProvider
-  }) => Promise<TranscribeResult>
+  transcribeAudio: (params: TranscribeAudioParams) => Promise<TranscribeResult>
+  cancelAudioTranscription: (
+    params: CancelAudioTranscriptionParams,
+  ) => Promise<CancelAudioTranscriptionResult>
   speakText: (params: {
     text: string
     voice?: TtsVoice

@@ -13,6 +13,8 @@ export interface AppShellProps {
   overlays?: ReactNode
   /** Reserves the native traffic-light area in the macOS Electron window. */
   showMacTitlebar?: boolean
+  /** Reveals the native macOS material behind chrome while the system theme is active. */
+  useNativeMaterial?: boolean
 }
 
 /**
@@ -25,9 +27,10 @@ export function AppShell({
   children,
   overlays,
   showMacTitlebar = false,
+  useNativeMaterial = false,
 }: AppShellProps) {
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-window-material={useNativeMaterial ? 'native' : 'opaque'}>
       {showMacTitlebar && (
         <>
           <div

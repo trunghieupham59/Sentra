@@ -15,6 +15,29 @@ import { vi } from 'vitest'
 // Only set up DOM mocks when running in a browser-like environment (jsdom).
 // Electron IPC tests use @vitest-environment node which has no `window`.
 if (typeof window !== 'undefined') {
+  if (!window.IntersectionObserver) {
+    class IntersectionObserverMock implements IntersectionObserver {
+      readonly root = null
+      readonly rootMargin = '0px'
+      readonly scrollMargin = '0px'
+      readonly thresholds = [0]
+
+      disconnect = vi.fn()
+      observe = vi.fn()
+      takeRecords = vi.fn(() => [])
+      unobserve = vi.fn()
+    }
+
+    Object.defineProperty(window, 'IntersectionObserver', {
+      value: IntersectionObserverMock,
+      configurable: true,
+    })
+    Object.defineProperty(globalThis, 'IntersectionObserver', {
+      value: IntersectionObserverMock,
+      configurable: true,
+    })
+  }
+
   if (!Element.prototype.scrollIntoView) {
     Element.prototype.scrollIntoView = vi.fn()
   }
@@ -45,7 +68,15 @@ if (typeof window !== 'undefined') {
       translate: vi.fn().mockResolvedValue({ success: false }),
       cancelTranslate: vi.fn().mockResolvedValue({ success: false, error: 'NOT_FOUND' }),
       rewriteText: vi.fn().mockResolvedValue({ success: false }),
-      transcribeAudio: vi.fn().mockResolvedValue({ success: false }),
+      transcribeAudio: vi.fn().mockResolvedValue({
+        success: false,
+        errorCode: 'UNKNOWN',
+        retryable: false,
+      }),
+      cancelAudioTranscription: vi.fn().mockResolvedValue({
+        success: true,
+        cancelled: false,
+      }),
       speakText: vi.fn().mockResolvedValue({ success: false }),
       translateImage: vi.fn().mockResolvedValue({ success: false }),
       translateStream: vi.fn().mockResolvedValue({ success: false }),

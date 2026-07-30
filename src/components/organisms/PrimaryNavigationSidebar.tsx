@@ -257,8 +257,11 @@ export function PrimaryNavigationSidebar() {
       </div>
 
       <div className="sidebar-bottom-group">
-        <button
-          type="button"
+        <Button
+          size="lg"
+          shape="rect"
+          variant="neutral"
+          appearance="ghost"
           title={`${t.nav_command_palette} (${commandShortcut})`}
           aria-label={t.nav_command_palette}
           className="sidebar-nav-btn"
@@ -269,7 +272,7 @@ export function PrimaryNavigationSidebar() {
           </span>
           <span className="sidebar-nav-label">{t.nav_command_palette}</span>
           <span className="sidebar-shortcut">{commandShortcut}</span>
-        </button>
+        </Button>
 
         <div className="app-sidebar-divider" />
 

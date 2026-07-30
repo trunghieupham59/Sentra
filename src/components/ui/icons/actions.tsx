@@ -221,15 +221,13 @@ export function PaperclipIcon({ className = 'w-4 h-4' }: IconProps) {
 /** Telescope icon — used for Deep Research mode (scientific investigation). */
 export function TelescopeIcon({ className = 'w-4 h-4' }: IconProps) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
-      {/* Main tube */}
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 20L20 6" />
-      {/* Eyepiece */}
-      <path strokeLinecap="round" strokeLinejoin="round" d="M2 22l3.5-3.5" />
-      {/* Objective lens */}
-      <ellipse cx="19" cy="5.5" rx="2.5" ry="2.5" transform="rotate(-45 19 5.5)" />
-      {/* Tripod legs */}
-      <path strokeLinecap="round" d="M11 17l-2 4M13 17l0 4" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {/* Telescope tube and eyepiece */}
+      <path d="M3 13l13-8 3 5-13 8-3-5Z" />
+      <path d="M3 13l-1 2 3 4 1-1" />
+      {/* Pivot and tripod */}
+      <circle cx="11.5" cy="15.5" r="1.25" />
+      <path d="M11.5 16.75V18m0 0-4 4m4-4 4 4" />
     </svg>
   )
 }

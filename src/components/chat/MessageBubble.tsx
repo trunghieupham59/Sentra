@@ -221,9 +221,7 @@ function MessageBubbleImpl({
     return (
       <div className="chat-message-row group flex gap-3 items-start">
         {/* Avatar */}
-        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center overflow-hidden
-                        bg-white dark:bg-neutral-900
-                        border border-gray-200 dark:border-neutral-800 shadow-sm shadow-gray-900/[0.06]">
+        <div className="chat-message-avatar chat-message-avatar-assistant flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center overflow-hidden shadow-sm">
           <AppLogoIcon size="sm" />
         </div>
 
@@ -285,12 +283,12 @@ function MessageBubbleImpl({
       data-message-role={isUser ? 'user' : 'assistant'}
     >
       {/* Avatar */}
-      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center overflow-hidden shadow-sm
+      <div className={`chat-message-avatar flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center overflow-hidden shadow-sm
                        ${isUser
-                         ? 'bg-gray-950 shadow-gray-900/15 dark:bg-gray-100'
-                         : 'bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 shadow-gray-900/[0.05]'}`}>
+                         ? 'chat-message-avatar-user'
+                         : 'chat-message-avatar-assistant'}`}>
         {isUser ? (
-          <UserIcon className="w-4 h-4 text-white dark:text-neutral-950" />
+          <UserIcon className="w-4 h-4" />
         ) : (
           <AppLogoIcon size="sm" />
         )}

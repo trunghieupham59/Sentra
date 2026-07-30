@@ -44,13 +44,33 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 app.setName('Viezan')
 
 // ── Window constants ──────────────────────────────────────────────────────────
-/** HC-NEW-11: Named color constants for window background (avoids magic hex strings) */
-const WIN_BG_DARK  = '#0C0D10'
-const WIN_BG_LIGHT = '#EFF0F6'
+/** Keep native startup/fallback colors aligned with renderer design tokens. */
+const WIN_BG_DARK = '#161618'
+const WIN_BG_LIGHT = '#ECECEF'
+const MACOS_WINDOW_VIBRANCY = 'under-window' as const
 const QUICK_CHAT_WIDTH = 860
 const QUICK_CHAT_HEIGHT = 540
 
 let mainWindow: BrowserWindow | null = null
+
+function getMainWindowBackgroundColor(): string {
+  return nativeTheme.shouldUseDarkColors ? WIN_BG_DARK : WIN_BG_LIGHT
+}
+
+function shouldUseMacWindowMaterial(): boolean {
+  return process.platform === 'darwin'
+    && !nativeTheme.prefersReducedTransparency
+    && !nativeTheme.shouldUseHighContrastColors
+}
+
+function syncMainWindowAppearance(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+
+  mainWindow.setBackgroundColor(getMainWindowBackgroundColor())
+  if (process.platform === 'darwin') {
+    mainWindow.setVibrancy(shouldUseMacWindowMaterial() ? MACOS_WINDOW_VIBRANCY : null)
+  }
+}
 
 function showMainWindow(options: { focus?: boolean } = {}) {
   if (!mainWindow || mainWindow.isDestroyed()) return
@@ -61,6 +81,8 @@ function showMainWindow(options: { focus?: boolean } = {}) {
 }
 
 function createWindow() {
+  const useMacWindowMaterial = shouldUseMacWindowMaterial()
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 700,
@@ -69,7 +91,10 @@ function createWindow() {
     title: 'Viezan',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 16, y: 14 },
-    backgroundColor: nativeTheme.shouldUseDarkColors ? WIN_BG_DARK : WIN_BG_LIGHT,
+    backgroundColor: getMainWindowBackgroundColor(),
+    ...(useMacWindowMaterial
+      ? { vibrancy: MACOS_WINDOW_VIBRANCY, visualEffectState: 'followWindow' as const }
+      : {}),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -287,6 +312,7 @@ app.whenReady().then(() => {
     }
   }
 
+  nativeTheme.on('updated', syncMainWindowAppearance)
   createWindow()
 
   // Register IPC handlers

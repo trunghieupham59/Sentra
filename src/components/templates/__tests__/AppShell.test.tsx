@@ -20,14 +20,15 @@ describe('AppShell', () => {
     expect(screen.getByRole('dialog', { name: 'Test overlay' })).toBeInTheDocument()
   })
 
-  it('renders the macOS titlebar reservation only when requested', () => {
+  it('renders macOS chrome and native material only when requested', () => {
     const { container, rerender } = render(
-      <AppShell primaryNavigation={null} showMacTitlebar>
+      <AppShell primaryNavigation={null} showMacTitlebar useNativeMaterial>
         <span>Page</span>
       </AppShell>,
     )
 
     expect(container.querySelector('.app-titlebar-drag')).toBeInTheDocument()
+    expect(container.querySelector('.app-shell')).toHaveAttribute('data-window-material', 'native')
 
     rerender(
       <AppShell primaryNavigation={null}>
@@ -36,5 +37,6 @@ describe('AppShell', () => {
     )
 
     expect(container.querySelector('.app-titlebar-drag')).not.toBeInTheDocument()
+    expect(container.querySelector('.app-shell')).toHaveAttribute('data-window-material', 'opaque')
   })
 })

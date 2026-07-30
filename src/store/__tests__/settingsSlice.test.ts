@@ -7,7 +7,7 @@
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { DEFAULT_CHAT_NEW_SESSION_SHORTCUT, DEFAULT_CHAT_SEND_SHORTCUT } from '../../utils/keyboardShortcuts'
-import { useAppStore } from '../useAppStore'
+import { migratePersistedStore, STORE_PERSIST_VERSION, useAppStore } from '../useAppStore'
 
 // Reset settings slice state before each test
 // Explicitly reset all provider-keyed maps to avoid cross-test state leakage.
@@ -20,8 +20,10 @@ beforeEach(() => {
       autoTranslateDelay: 500,
       phoneticMode: 'off',
       translationStyle: 'general',
+      translationReasoningEffort: 'auto',
       ttsMode: 'free',
       ttsVoice: 'nova',
+      sttProvider: 'auto',
       fontSize: 'medium',
       chatSendShortcut: DEFAULT_CHAT_SEND_SHORTCUT,
       chatNewSessionShortcut: DEFAULT_CHAT_NEW_SESSION_SHORTCUT,
@@ -50,6 +52,46 @@ describe('ttsMode defaults and persistence', () => {
     const partialize = (useAppStore as any).persist.getOptions().partialize
     const persisted = partialize(useAppStore.getState())
     expect(persisted.ttsMode).toBe('auto')
+  })
+})
+
+describe('persisted STT provider migration', () => {
+  it('registers the migration on the Zustand persistence boundary', async () => {
+    const options = useAppStore.persist.getOptions()
+    const migrate = options.migrate as (
+      state: unknown,
+      version: number,
+    ) => unknown | Promise<unknown>
+
+    expect(options.version).toBe(STORE_PERSIST_VERSION)
+    const migrated = await Promise.resolve(migrate({ sttProvider: 'webSpeech', locale: 'vi' }, 0))
+    expect(migrated).toEqual({
+      sttProvider: 'auto',
+      locale: 'vi',
+    })
+  })
+
+  it.each(['webSpeech', 'unknown-provider', '', null, undefined])(
+    'maps legacy or invalid value %s to auto without losing unrelated settings',
+    (sttProvider) => {
+      const persisted = {
+        sttProvider,
+        locale: 'ja',
+        theme: 'dark',
+        chatPendingDraft: 'keep this draft',
+      }
+
+      expect(migratePersistedStore(persisted)).toEqual({
+        ...persisted,
+        sttProvider: 'auto',
+      })
+    },
+  )
+
+  it.each(['auto', 'whisper', 'google', 'groq'])('preserves supported provider %s', (sttProvider) => {
+    const persisted = { sttProvider, locale: 'vi' }
+
+    expect(migratePersistedStore(persisted)).toBe(persisted)
   })
 })
 
@@ -160,6 +202,18 @@ describe('setTranslationStyle', () => {
   it('sets style to formal', () => {
     act(() => useAppStore.getState().setTranslationStyle('formal'))
     expect(useAppStore.getState().translationStyle).toBe('formal')
+  })
+})
+
+describe('setTranslationReasoningEffort', () => {
+  it('updates and persists the translation reasoning preference', () => {
+    act(() => useAppStore.getState().setTranslationReasoningEffort('medium'))
+    expect(useAppStore.getState().translationReasoningEffort).toBe('medium')
+
+    // Zustand persist exposes the configured partialize callback at runtime.
+    // biome-ignore lint/suspicious/noExplicitAny: persist middleware test hook
+    const partialize = (useAppStore as any).persist.getOptions().partialize
+    expect(partialize(useAppStore.getState()).translationReasoningEffort).toBe('medium')
   })
 })
 

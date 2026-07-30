@@ -2,24 +2,30 @@
  * ImageTranslateButton — circular ghost button that opens the image
  * translation modal. Styled with a neutral hover state.
  */
+
+import { Button } from './atoms'
 import { ImageIcon } from './icons'
 
 interface ImageTranslateButtonProps {
   onClick: () => void
   /** Tooltip text, e.g. t.image_translate_title */
   title: string
-  className?: string
+  showLabel?: boolean
 }
 
-export function ImageTranslateButton({ onClick, title, className = 'btn-icon' }: ImageTranslateButtonProps) {
+export function ImageTranslateButton({ onClick, title, showLabel = false }: ImageTranslateButtonProps) {
   return (
-    <button
-      type="button"
+    <Button
+      size="md"
+      shape={showLabel ? 'rect' : 'icon'}
+      variant="neutral"
+      appearance="ghost"
       onClick={onClick}
       title={title}
-      className={className}
+      aria-label={title}
     >
       <ImageIcon />
-    </button>
+      {showLabel && <span>{title}</span>}
+    </Button>
   )
 }

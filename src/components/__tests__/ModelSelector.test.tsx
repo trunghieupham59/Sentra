@@ -66,6 +66,66 @@ describe('ModelSelector', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
+  it('renders the picker inline without creating a nested dialog', () => {
+    const onOpenChange = vi.fn()
+    render(<ModelSelector inline onOpenChange={onOpenChange} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /auto local model/i }))
+
+    expect(screen.getByRole('group', { name: 'Model' }))
+      .toHaveClass('model-picker-panel--inline')
+    expect(screen.queryByRole('dialog', { name: 'Model' })).not.toBeInTheDocument()
+    expect(onOpenChange).toHaveBeenCalledWith(true)
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('group', { name: 'Model' })).not.toBeInTheDocument()
+    expect(onOpenChange).toHaveBeenLastCalledWith(false)
+  })
+
+  it('opens an inline direct picker without the intermediate model menu', async () => {
+    render(<ModelSelector inline directModelList hideTriggerWhenOpen />)
+
+    fireEvent.click(screen.getByRole('button', { name: /auto local model/i }))
+
+    await waitFor(() => expect(screen.getByRole('searchbox', { name: 'Search models…' })).toHaveFocus())
+    expect(screen.queryByRole('button', { name: 'Model: Auto local model' })).not.toBeInTheDocument()
+    expect(document.querySelector('.model-picker-trigger')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Advanced' })).not.toBeInTheDocument()
+  })
+
+  it('opens the inline advanced view from an owning surface request', async () => {
+    const onInlineViewChange = vi.fn()
+    const { rerender } = render(
+      <ModelSelector
+        inline
+        directModelList
+        hideTriggerWhenOpen
+        advancedOpenRequest={0}
+        onInlineViewChange={onInlineViewChange}
+      />,
+    )
+
+    rerender(
+      <ModelSelector
+        inline
+        directModelList
+        hideTriggerWhenOpen
+        advancedOpenRequest={1}
+        onInlineViewChange={onInlineViewChange}
+      />,
+    )
+
+    await waitFor(() => expect(document.querySelector('.model-picker-advanced-view')).toHaveFocus())
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
+    expect(screen.getByText('local-auto')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Refresh' })).toBeEnabled()
+    expect(onInlineViewChange).toHaveBeenCalledWith('advanced')
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('group', { name: 'Model' })).not.toBeInTheDocument()
+    expect(onInlineViewChange).toHaveBeenLastCalledWith(null)
+  })
+
   it('shows provider and advanced subviews without exposing unsupported controls', async () => {
     render(<ModelSelector compact />)
     fireEvent.click(screen.getByRole('button', { name: /auto local model/i }))

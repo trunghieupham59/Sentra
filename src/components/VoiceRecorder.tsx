@@ -1,418 +1,578 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getSupportedAudioMimeType, LANG_TO_BCP47 } from '../constants/audio'
+import {
+  createAudioTranscriptionRequestId,
+  DICTATION_AUDIO_CONSTRAINTS,
+  DICTATION_MAX_AUDIO_BYTES,
+  DICTATION_MAX_RECORDING_MS,
+  DICTATION_MIN_AUDIO_BYTES,
+  DICTATION_RECORDER_TIMESLICE_MS,
+  getSupportedAudioMimeType,
+} from '../constants/audio'
 import { useAppStore, useT } from '../store/useAppStore'
+import type {
+  AudioTranscriptionErrorCode,
+  SttProvider,
+  TranscribeAudioParams,
+} from '../types'
 import { Button, type ButtonSize, type ButtonVariant } from './ui/atoms/Button'
-import { MicrophoneIcon, SpinnerIcon, StopSquareIcon } from './ui/icons'
+import { MicrophoneIcon, SpinnerIcon, StopSquareIcon, XIcon } from './ui/icons'
 
-// ─── SpeechRecognition retry config ──────────────────────────────────────────
-/** Max reconnect attempts before giving up on SpeechRecognition (network errors) */
-const VOICE_RECORDER_MAX_RETRIES = 3
-/** Delay (ms) before restarting SpeechRecognition after a transient failure */
-const VOICE_RECORDER_RESTART_DELAY_MS = 600
-
-// ─── Local type definitions for cross-browser Speech Recognition ──────────────
-interface SpeechRecResult {
-  readonly isFinal: boolean
-  readonly length: number
-  item(index: number): { transcript: string; confidence: number }
-  [index: number]: { transcript: string; confidence: number }
-}
-interface SpeechRecResultList {
-  readonly length: number
-  item(index: number): SpeechRecResult
-  [index: number]: SpeechRecResult
-}
-interface SpeechRecEvent {
-  readonly resultIndex: number
-  readonly results: SpeechRecResultList
-}
-interface SpeechRecErrorEvent {
-  readonly error: string
-  readonly message: string
-}
-interface SpeechRec {
-  continuous: boolean
-  interimResults: boolean
-  lang: string
-  onstart: (() => void) | null
-  onresult: ((event: SpeechRecEvent) => void) | null
-  onerror: ((event: SpeechRecErrorEvent) => void) | null
-  onend: (() => void) | null
-  start: () => void
-  stop: () => void
-}
-
-function getSpeechRecognitionAPI(): (new () => SpeechRec) | null {
-  if (typeof window === 'undefined') return null
-  // biome-ignore lint/suspicious/noExplicitAny: cross-browser API
-  const w = window as any
-  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
-}
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-type RecordingState = 'idle' | 'recording' | 'transcribing' | 'error'
+export type VoiceRecordingState =
+  | 'idle'
+  | 'requesting'
+  | 'recording'
+  | 'stopping'
+  | 'transcribing'
+  | 'error'
 
 interface VoiceRecorderProps {
-  /** Called with transcript text and whether it's final */
+  /** Dictation produces one final transcript after the completed recording is processed. */
   onTranscript: (text: string, isFinal: boolean) => void
-  /** Called when recording starts (true) or stops/finishes (false) */
+  /** True from operation start so the owner can snapshot/lock its draft before permission resolves. */
   onRecordingChange?: (isRecording: boolean) => void
+  onStateChange?: (state: VoiceRecordingState) => void
+  onCancel?: () => void
+  onError?: (code: AudioTranscriptionErrorCode) => void
   sourceLang: string
+  /** Changing this value discards any capture/result owned by the previous context. */
+  contextKey?: string | null
   disabled?: boolean
   titleRecord?: string
   titleStop?: string
   buttonClassName?: string
   buttonSize?: ButtonSize
-  /**
-   * When true: force MediaRecorder + IPC path regardless of the store's sttProvider.
-   * Use this for Live Translate where the pipeline specifically requires audio data.
-   * When false (default): honour the store's sttProvider setting — may use
-   * webkitSpeechRecognition if user chose 'webSpeech'.
-   */
-  useWhisper?: boolean
+  /** Shows a text label beside the idle microphone icon for discoverability. */
+  showIdleLabel?: boolean
+  idleLabel?: string
+  labelRequesting?: string
   labelTranscribing?: string
   labelRecording?: string
+  labelStopping?: string
+  labelCancel?: string
+  showCancel?: boolean
+  showPulse?: boolean
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+interface RecordingOperation {
+  generation: number
+  requestId: string
+  sourceLang: string
+  sttProvider: SttProvider
+  contextKey?: string | null
+  mimeType: string
+}
+
+type StopIntent = 'submit' | 'discard' | 'audio-too-large'
+
+function formatRecordingDuration(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+function microphoneErrorCode(error: unknown): AudioTranscriptionErrorCode {
+  const errorName = typeof error === 'object' && error !== null && 'name' in error
+    ? String(error.name)
+    : ''
+  if (errorName === 'NotAllowedError' || errorName === 'SecurityError') {
+    return 'PERMISSION_DENIED'
+  }
+  return 'RECORDING_FAILED'
+}
+
+function stopStream(stream: MediaStream | null): void {
+  stream?.getTracks().forEach((track) => {
+    track.stop()
+  })
+}
+
 export function VoiceRecorder({
   onTranscript,
   onRecordingChange,
+  onStateChange,
+  onCancel,
+  onError,
   sourceLang,
+  contextKey,
   disabled,
-  titleRecord = 'Record voice',
-  titleStop = 'Stop recording',
+  titleRecord,
+  titleStop,
   buttonClassName,
   buttonSize = 'md',
-  useWhisper = false,
-  labelTranscribing = 'Transcribing…',
-  labelRecording = 'Recording…',
+  showIdleLabel = false,
+  idleLabel,
+  labelRequesting,
+  labelTranscribing,
+  labelRecording,
+  labelStopping,
+  labelCancel,
+  showCancel = false,
+  showPulse = true,
 }: VoiceRecorderProps) {
   const t = useT()
-  const { sttProvider } = useAppStore()
+  const sttProvider = useAppStore((store) => store.sttProvider)
+  const resolvedTitleRecord = titleRecord ?? t.voice_record
+  const resolvedTitleStop = titleStop ?? t.voice_stop
+  const resolvedLabelRequesting = labelRequesting ?? t.voice_preparing_microphone
+  const resolvedLabelTranscribing = labelTranscribing ?? t.voice_transcribing
+  const resolvedLabelRecording = labelRecording ?? t.voice_recording
+  const resolvedLabelStopping = labelStopping ?? t.voice_finishing_recording
+  const resolvedLabelCancel = labelCancel ?? t.voice_cancel
+  const isSupported = typeof MediaRecorder !== 'undefined'
+    && typeof navigator !== 'undefined'
+    && typeof navigator.mediaDevices?.getUserMedia === 'function'
 
-  const [state, setState] = useState<RecordingState>('idle')
-  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [state, setState] = useState<VoiceRecordingState>('idle')
+  const [errorCode, setErrorCode] = useState<AudioTranscriptionErrorCode | null>(null)
+  const [recordingSeconds, setRecordingSeconds] = useState(0)
 
-  const sourceLangRef = useRef(sourceLang)
-  const isRecordingRef = useRef(false)
-
-  // ── Whisper mode refs ──
+  const mountedRef = useRef(true)
+  const stateRef = useRef<VoiceRecordingState>('idle')
+  const generationRef = useRef(0)
+  const activeOperationRef = useRef<RecordingOperation | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const mediaStreamRef = useRef<MediaStream | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
+  const audioBytesRef = useRef(0)
+  const stopIntentRef = useRef<StopIntent>('submit')
+  const maximumDurationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const recordingPresenceRef = useRef(false)
+  const callbacksRef = useRef({ onTranscript, onRecordingChange, onCancel, onError })
+  callbacksRef.current = { onTranscript, onRecordingChange, onCancel, onError }
 
-  // ── SpeechRecognition mode refs ──
-  const recognitionRef = useRef<SpeechRec | null>(null)
-  const finalRef = useRef<string>('')
-  const retryCountRef = useRef(0)
+  const setLifecycleState = useCallback((nextState: VoiceRecordingState) => {
+    if (!mountedRef.current) return
+    stateRef.current = nextState
+    setState(nextState)
+  }, [])
 
-  /**
-   * Determine which recording path to use:
-   *   - true  → MediaRecorder + IPC (Whisper / Google STT, routed by sttProvider)
-   *   - false → webkitSpeechRecognition (browser-native, no API key needed)
-   *
-   * Priority:
-   *   1. If `useWhisper` prop is explicitly true → always IPC (Live Translate forces this).
-   *   2. If store's sttProvider is 'webSpeech' AND prop is not forced → browser path.
-   *   3. Otherwise (auto / whisper / google) → IPC path.
-   */
-  const useMediaRecorder = useWhisper || sttProvider !== 'webSpeech'
+  const setRecordingPresence = useCallback((isRecording: boolean) => {
+    if (recordingPresenceRef.current === isRecording) return
+    recordingPresenceRef.current = isRecording
+    if (mountedRef.current) callbacksRef.current.onRecordingChange?.(isRecording)
+  }, [])
 
-  const isSupported =
-    useMediaRecorder
-      ? typeof navigator !== 'undefined' && !!navigator.mediaDevices
-      : getSpeechRecognitionAPI() !== null
-
-  // ── IPC/MediaRecorder MODE (Whisper or Google STT) ────────────────────────
-  const stopMediaRecording = useCallback(() => {
-    isRecordingRef.current = false
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop() // triggers onstop which sends to STT backend
-    } else {
-      mediaRecorderRef.current = null
-      setState('idle')
-      onRecordingChange?.(false)
-    }
-  }, [onRecordingChange])
-
-  const startMediaRecording = useCallback(async () => {
-    setErrorMsg(null)
-    audioChunksRef.current = []
-
-    let stream: MediaStream
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    } catch (err) {
-      setState('error')
-      setErrorMsg(err instanceof Error ? err.message : 'Microphone access denied')
-      return
-    }
-
-    const mimeType = getSupportedAudioMimeType()
-    let recorder: MediaRecorder
-    try {
-      recorder = new MediaRecorder(stream, { mimeType })
-    } catch {
-      recorder = new MediaRecorder(stream)
-    }
-
-    recorder.ondataavailable = (e) => {
-      if (e.data.size > 0) audioChunksRef.current.push(e.data)
-    }
-
-    recorder.onstop = async () => {
-      // Stop all audio tracks
-      stream.getTracks().forEach((t) => { t.stop() })
-      mediaRecorderRef.current = null
-
-      if (!isRecordingRef.current && audioChunksRef.current.length === 0) {
-        setState('idle')
-        onRecordingChange?.(false)
-        return
-      }
-
-      setState('transcribing')
-      onRecordingChange?.(false)
-
-      const blob = new Blob(audioChunksRef.current, { type: mimeType })
-      audioChunksRef.current = []
-
-      try {
-        const arrayBuffer = await blob.arrayBuffer()
-        const lang = sourceLangRef.current !== 'auto' ? sourceLangRef.current : undefined
-
-        const result = await window.api.transcribeAudio({
-          audioData: arrayBuffer,
-          mimeType,
-          language: lang,
-          // Forward the store's sttProvider so the main process can route
-          // to the right backend. 'webSpeech' never reaches here (handled above).
-          sttProvider,
-        })
-
-        if (result.success && result.text) {
-          onTranscript(result.text, true)
-          setState('idle')
-        } else {
-          setState('error')
-          setErrorMsg(result.error ?? 'Transcription failed')
-        }
-      } catch (err) {
-        setState('error')
-        setErrorMsg(err instanceof Error ? err.message : 'Transcription failed')
-      }
-    }
-
-    recorder.onerror = () => {
-      stream.getTracks().forEach((t) => { t.stop() })
-      mediaRecorderRef.current = null
-      setState('error')
-      setErrorMsg('Recording error')
-      onRecordingChange?.(false)
-    }
-
-    mediaRecorderRef.current = recorder
-    isRecordingRef.current = true
-    recorder.start()
-    setState('recording')
-    onRecordingChange?.(true)
-  }, [onTranscript, onRecordingChange, sttProvider])
-
-  // ── SPEECH API MODE: webkitSpeechRecognition (browser native, Google) ────────
-  const stopSpeechRecording = useCallback(() => {
-    isRecordingRef.current = false
-    const rec = recognitionRef.current
-    recognitionRef.current = null
-    if (rec) {
-      try { rec.stop() } catch { /* ignore */ }
-    }
-    setState('idle')
-    finalRef.current = ''
-    onRecordingChange?.(false)
-  }, [onRecordingChange])
-
-  const startSpeechRecording = useCallback(() => {
-    const API = getSpeechRecognitionAPI()
-    if (!API) {
-      setState('error')
-      setErrorMsg('Speech recognition not supported')
-      return
-    }
-
-    if (recognitionRef.current) {
-      recognitionRef.current.stop()
-      recognitionRef.current = null
-    }
-
-    const recognition = new API()
-    recognition.continuous = true
-    recognition.interimResults = true
-    recognition.lang = LANG_TO_BCP47[sourceLangRef.current] ?? 'en-US'
-    finalRef.current = ''
-    retryCountRef.current = 0
-
-    recognition.onstart = () => {
-      isRecordingRef.current = true
-      setState('recording')
-      setErrorMsg(null)
-      onRecordingChange?.(true)
-    }
-
-    recognition.onresult = (event: SpeechRecEvent) => {
-      retryCountRef.current = 0
-      let interim = ''
-      let finalSegment = ''
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i]
-        if (result.isFinal) finalSegment += result[0].transcript
-        else interim += result[0].transcript
-      }
-      if (finalSegment) {
-        finalRef.current += finalSegment
-        onTranscript(finalRef.current, true)
-      }
-      if (interim) onTranscript(finalRef.current + interim, false)
-    }
-
-    recognition.onerror = (event: SpeechRecErrorEvent) => {
-      if (event.error === 'aborted' || event.error === 'no-speech') return
-      if (event.error === 'network') { retryCountRef.current++; return }
-      setState('error')
-      setErrorMsg(event.error)
-      isRecordingRef.current = false
-      recognitionRef.current = null
-    }
-
-    recognition.onend = () => {
-      if (!isRecordingRef.current || recognitionRef.current !== recognition) return
-      if (retryCountRef.current >= VOICE_RECORDER_MAX_RETRIES) {
-        // Bug fix: reset refs so the component is in a clean state after giving up
-        isRecordingRef.current = false
-        recognitionRef.current = null
-        setState('error')
-        setErrorMsg('network')
-        onRecordingChange?.(false)
-        return
-      }
-      // Bug fix: do NOT increment retryCountRef here.
-      // retryCountRef is only incremented in onerror for actual network failures.
-      // Natural browser-side timeouts (Chromium stops continuous recognition after
-      // a period of silence) must restart silently without consuming retry budget —
-      // otherwise the component enters error state after ~30 s of silence.
-      setTimeout(() => {
-        if (!isRecordingRef.current || recognitionRef.current !== recognition) return
-        try { recognition.start() } catch {
-          isRecordingRef.current = false
-          recognitionRef.current = null
-          setState('idle')
-          onRecordingChange?.(false)
-        }
-      }, VOICE_RECORDER_RESTART_DELAY_MS)
-    }
-
-    recognitionRef.current = recognition
-    recognition.start()
-  }, [onTranscript, onRecordingChange])
-
-  // ── Unified stop / start ───────────────────────────────────────────────────
-  const stopRecording = useCallback(() => {
-    if (useMediaRecorder) stopMediaRecording()
-    else stopSpeechRecording()
-  }, [useMediaRecorder, stopMediaRecording, stopSpeechRecording])
-
-  const startRecording = useCallback(() => {
-    if (useMediaRecorder) startMediaRecording()
-    else startSpeechRecording()
-  }, [useMediaRecorder, startMediaRecording, startSpeechRecording])
-
-  // Keep sourceLangRef in sync; stop if language changes while recording
-  useEffect(() => {
-    const prev = sourceLangRef.current
-    sourceLangRef.current = sourceLang
-    if (prev !== sourceLang && isRecordingRef.current) stopRecording()
-  }, [sourceLang, stopRecording])
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop()
-        recognitionRef.current = null
-      }
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        mediaRecorderRef.current.stop()
-      }
+  const clearMaximumDurationTimer = useCallback(() => {
+    if (maximumDurationTimerRef.current !== null) {
+      clearTimeout(maximumDurationTimerRef.current)
+      maximumDurationTimerRef.current = null
     }
   }, [])
 
+  const isCurrentOperation = useCallback((operation: RecordingOperation) => (
+    mountedRef.current
+    && generationRef.current === operation.generation
+    && activeOperationRef.current?.generation === operation.generation
+  ), [])
+
+  const discardCaptureResources = useCallback(() => {
+    clearMaximumDurationTimer()
+    const recorder = mediaRecorderRef.current
+    mediaRecorderRef.current = null
+    if (recorder) {
+      recorder.ondataavailable = null
+      recorder.onstop = null
+      recorder.onerror = null
+      if (recorder.state !== 'inactive') {
+        try {
+          recorder.stop()
+        } catch {
+          // Tracks are stopped below even if the recorder already transitioned.
+        }
+      }
+    }
+
+    stopStream(mediaStreamRef.current)
+    mediaStreamRef.current = null
+    audioChunksRef.current = []
+    audioBytesRef.current = 0
+    stopIntentRef.current = 'discard'
+  }, [clearMaximumDurationTimer])
+
+  const finishWithError = useCallback((
+    operation: RecordingOperation,
+    code: AudioTranscriptionErrorCode,
+  ) => {
+    if (!isCurrentOperation(operation)) return
+    generationRef.current += 1
+    activeOperationRef.current = null
+    discardCaptureResources()
+    setRecordingPresence(false)
+    setErrorCode(code)
+    setLifecycleState('error')
+    callbacksRef.current.onError?.(code)
+  }, [discardCaptureResources, isCurrentOperation, setLifecycleState, setRecordingPresence])
+
+  const cancelOperation = useCallback((explicit: boolean) => {
+    const operation = activeOperationRef.current
+    if (!operation) return
+    const shouldCancelBackend = stateRef.current === 'transcribing'
+
+    generationRef.current += 1
+    activeOperationRef.current = null
+    discardCaptureResources()
+    setRecordingPresence(false)
+
+    if (shouldCancelBackend) {
+      const cancelAudioTranscription = window.api.cancelAudioTranscription
+      if (typeof cancelAudioTranscription === 'function') {
+        void cancelAudioTranscription({ requestId: operation.requestId }).catch(() => undefined)
+      }
+    }
+    if (mountedRef.current) {
+      setErrorCode(null)
+      setLifecycleState('idle')
+      if (explicit) callbacksRef.current.onCancel?.()
+    }
+  }, [discardCaptureResources, setLifecycleState, setRecordingPresence])
+
+  const submitCapturedAudio = useCallback(async (
+    operation: RecordingOperation,
+    actualMimeType: string,
+  ) => {
+    if (!isCurrentOperation(operation)) return
+
+    const chunks = audioChunksRef.current
+    audioChunksRef.current = []
+    audioBytesRef.current = 0
+    const blob = new Blob(chunks, { type: actualMimeType })
+
+    if (!actualMimeType.startsWith('audio/')) {
+      finishWithError(operation, 'UNSUPPORTED_FORMAT')
+      return
+    }
+    if (blob.size < DICTATION_MIN_AUDIO_BYTES) {
+      finishWithError(operation, 'AUDIO_TOO_SHORT')
+      return
+    }
+    if (blob.size > DICTATION_MAX_AUDIO_BYTES) {
+      finishWithError(operation, 'AUDIO_TOO_LARGE')
+      return
+    }
+
+    setLifecycleState('transcribing')
+
+    try {
+      const audioData = await blob.arrayBuffer()
+      if (!isCurrentOperation(operation)) return
+
+      const params: TranscribeAudioParams = {
+        requestId: operation.requestId,
+        purpose: 'dictation',
+        audioData,
+        mimeType: actualMimeType,
+        language: operation.sourceLang === 'auto' ? undefined : operation.sourceLang,
+        sttProvider: operation.sttProvider,
+      }
+      const result = await window.api.transcribeAudio(params)
+      if (!isCurrentOperation(operation)) return
+
+      if (!result.success) {
+        finishWithError(operation, result.errorCode)
+        return
+      }
+      if (!result.text) {
+        finishWithError(operation, 'NO_SPEECH')
+        return
+      }
+
+      generationRef.current += 1
+      activeOperationRef.current = null
+      setErrorCode(null)
+      setLifecycleState('idle')
+      callbacksRef.current.onTranscript(result.text, true)
+    } catch {
+      finishWithError(operation, 'UNKNOWN')
+    }
+  }, [finishWithError, isCurrentOperation, setLifecycleState])
+
+  const stopRecording = useCallback(() => {
+    const operation = activeOperationRef.current
+    const recorder = mediaRecorderRef.current
+    if (!operation || stateRef.current !== 'recording' || !recorder) return
+
+    clearMaximumDurationTimer()
+    stopIntentRef.current = 'submit'
+    setRecordingPresence(false)
+    setLifecycleState('stopping')
+    try {
+      recorder.stop()
+    } catch {
+      finishWithError(operation, 'RECORDING_FAILED')
+    }
+  }, [clearMaximumDurationTimer, finishWithError, setLifecycleState, setRecordingPresence])
+
+  const startRecording = useCallback(async () => {
+    if (stateRef.current !== 'idle' && stateRef.current !== 'error') return
+
+    const operation: RecordingOperation = {
+      generation: generationRef.current + 1,
+      requestId: createAudioTranscriptionRequestId(),
+      sourceLang,
+      sttProvider,
+      contextKey,
+      mimeType: '',
+    }
+    generationRef.current = operation.generation
+    activeOperationRef.current = operation
+    audioChunksRef.current = []
+    audioBytesRef.current = 0
+    stopIntentRef.current = 'submit'
+    setErrorCode(null)
+    setLifecycleState('requesting')
+    setRecordingPresence(true)
+
+    if (!isSupported) {
+      finishWithError(operation, 'RECORDING_FAILED')
+      return
+    }
+
+    let stream: MediaStream
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: DICTATION_AUDIO_CONSTRAINTS })
+    } catch (error) {
+      finishWithError(operation, microphoneErrorCode(error))
+      return
+    }
+
+    if (!isCurrentOperation(operation)) {
+      stopStream(stream)
+      return
+    }
+    mediaStreamRef.current = stream
+
+    const preferredMimeType = getSupportedAudioMimeType()
+    let recorder: MediaRecorder
+    try {
+      recorder = preferredMimeType
+        ? new MediaRecorder(stream, { mimeType: preferredMimeType })
+        : new MediaRecorder(stream)
+    } catch {
+      try {
+        recorder = new MediaRecorder(stream)
+      } catch {
+        finishWithError(operation, 'RECORDING_FAILED')
+        return
+      }
+    }
+
+    operation.mimeType = recorder.mimeType || preferredMimeType
+    mediaRecorderRef.current = recorder
+
+    recorder.ondataavailable = (event) => {
+      if (!isCurrentOperation(operation) || event.data.size === 0) return
+      const nextByteCount = audioBytesRef.current + event.data.size
+      if (nextByteCount > DICTATION_MAX_AUDIO_BYTES) {
+        audioChunksRef.current = []
+        audioBytesRef.current = nextByteCount
+        stopIntentRef.current = 'audio-too-large'
+        clearMaximumDurationTimer()
+        setRecordingPresence(false)
+        setLifecycleState('stopping')
+        if (recorder.state !== 'inactive') {
+          try {
+            recorder.stop()
+          } catch {
+            finishWithError(operation, 'AUDIO_TOO_LARGE')
+          }
+        }
+        return
+      }
+      audioBytesRef.current = nextByteCount
+      audioChunksRef.current.push(event.data)
+    }
+
+    recorder.onstop = () => {
+      clearMaximumDurationTimer()
+      if (mediaRecorderRef.current === recorder) mediaRecorderRef.current = null
+      if (mediaStreamRef.current === stream) mediaStreamRef.current = null
+      stopStream(stream)
+      setRecordingPresence(false)
+
+      if (!isCurrentOperation(operation)) return
+      if (stopIntentRef.current === 'audio-too-large') {
+        finishWithError(operation, 'AUDIO_TOO_LARGE')
+        return
+      }
+      if (stopIntentRef.current !== 'submit') return
+
+      const actualMimeType = recorder.mimeType || operation.mimeType || audioChunksRef.current[0]?.type || ''
+      void submitCapturedAudio(operation, actualMimeType)
+    }
+
+    recorder.onerror = () => {
+      finishWithError(operation, 'RECORDING_FAILED')
+    }
+
+    try {
+      recorder.start(DICTATION_RECORDER_TIMESLICE_MS)
+    } catch {
+      finishWithError(operation, 'RECORDING_FAILED')
+      return
+    }
+
+    if (!isCurrentOperation(operation)) {
+      discardCaptureResources()
+      return
+    }
+    setLifecycleState('recording')
+    setRecordingPresence(true)
+    maximumDurationTimerRef.current = setTimeout(stopRecording, DICTATION_MAX_RECORDING_MS)
+  }, [
+    clearMaximumDurationTimer,
+    contextKey,
+    discardCaptureResources,
+    finishWithError,
+    isCurrentOperation,
+    isSupported,
+    setLifecycleState,
+    setRecordingPresence,
+    sourceLang,
+    stopRecording,
+    sttProvider,
+    submitCapturedAudio,
+  ])
+
+  useEffect(() => {
+    onStateChange?.(state)
+  }, [onStateChange, state])
+
+  useEffect(() => {
+    if (state !== 'recording') {
+      setRecordingSeconds(0)
+      return
+    }
+    const timerId = window.setInterval(() => {
+      setRecordingSeconds((seconds) => seconds + 1)
+    }, 1_000)
+    return () => window.clearInterval(timerId)
+  }, [state])
+
+  useEffect(() => {
+    const operation = activeOperationRef.current
+    if (
+      operation
+      && (operation.sourceLang !== sourceLang || operation.contextKey !== contextKey)
+    ) {
+      cancelOperation(false)
+    }
+  }, [cancelOperation, contextKey, sourceLang])
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      cancelOperation(false)
+    }
+  }, [cancelOperation])
+
   const handleClick = () => {
-    if (state === 'recording') stopRecording()
-    else if (state === 'idle' || state === 'error') startRecording()
-    // 'transcribing' → ignore clicks
+    if (stateRef.current === 'recording') stopRecording()
+    else if (stateRef.current === 'idle' || stateRef.current === 'error') void startRecording()
   }
 
-  if (!isSupported) return null
-
-  const isTranscribing = state === 'transcribing'
   const isRecording = state === 'recording'
-  const resolvedButtonClassName = (isRecording || isTranscribing)
+  const isTranscribing = state === 'transcribing'
+  const isTransitioning = state === 'requesting' || state === 'stopping'
+  const isBusy = isRecording || isTranscribing || isTransitioning
+  const showVisibleIdleLabel = showIdleLabel && !isBusy
+  const showMainButton = !showCancel || isRecording || !isBusy
+  const resolvedButtonClassName = isBusy
     ? 'btn-icon relative'
-    : (buttonClassName ?? 'btn-icon relative')
+    : (buttonClassName ?? (showVisibleIdleLabel ? 'relative' : 'btn-icon relative'))
   const buttonVariant: ButtonVariant = isRecording || state === 'error'
     ? 'danger'
-    : isTranscribing
+    : isBusy
       ? 'primary'
       : 'neutral'
+  const busyStatusLabel = state === 'requesting'
+    ? resolvedLabelRequesting
+    : state === 'stopping'
+      ? resolvedLabelStopping
+      : resolvedLabelTranscribing
 
   return (
-    <div className="relative flex items-center gap-1.5">
-      <Button
-        size={buttonSize}
-        shape="icon"
-        variant={buttonVariant}
-        appearance={isRecording || isTranscribing ? 'soft' : 'ghost'}
-        onClick={handleClick}
-        disabled={disabled || isTranscribing}
-        title={isRecording ? titleStop : titleRecord}
-        aria-label={isRecording ? titleStop : titleRecord}
-        className={resolvedButtonClassName}
-      >
-        {/* Pulse ring */}
-        {(isRecording || isTranscribing) && (
-          <span className={[
-            'absolute inset-0 rounded-full animate-ping opacity-40',
-            isTranscribing ? 'bg-gray-400' : 'ui-status-ping-danger',
-          ].join(' ')} />
-        )}
+    <div
+      className="voice-recorder relative flex items-center gap-1.5"
+      data-state={state}
+      data-error-code={errorCode ?? undefined}
+    >
+      {showCancel && isRecording && (
+        <span className="voice-recorder-status" role="status" aria-live="polite">
+          <span className="voice-recorder-status-dot" aria-hidden="true" />
+          <span>{resolvedLabelRecording}</span>
+          <time className="voice-recorder-duration" dateTime={`PT${recordingSeconds}S`} aria-hidden="true">
+            {formatRecordingDuration(recordingSeconds)}
+          </time>
+        </span>
+      )}
 
-        {isTranscribing ? (
-          /* Spinner while transcribing */
-          <SpinnerIcon className="w-3.5 h-3.5 relative z-10 animate-spin" />
-        ) : isRecording ? (
-          /* Stop square — SPLIT-ICON-02: use StopSquareIcon from icon registry */
-          <StopSquareIcon className="w-3.5 h-3.5 relative z-10" />
-        ) : (
-          /* Microphone */
-          <MicrophoneIcon className="w-4 h-4 relative z-10" />
-        )}
-      </Button>
+      {showCancel && (isTransitioning || isTranscribing) && (
+        <span className="voice-recorder-status voice-recorder-status--transcribing" role="status" aria-live="polite">
+          <SpinnerIcon className="h-3.5 w-3.5 animate-spin" />
+          <span>{busyStatusLabel}</span>
+        </span>
+      )}
 
-      {/* Inline status label */}
-      {isTranscribing && (
+      {showCancel && isBusy && (
+        <Button
+          size={buttonSize}
+          shape={showVisibleIdleLabel ? 'rect' : 'icon'}
+          variant="neutral"
+          appearance="ghost"
+          onClick={() => cancelOperation(true)}
+          title={resolvedLabelCancel}
+          aria-label={resolvedLabelCancel}
+          className="voice-recorder-cancel"
+        >
+          <XIcon className="h-3.5 w-3.5" />
+        </Button>
+      )}
+
+      {showMainButton && (
+        <Button
+          size={buttonSize}
+          shape={showVisibleIdleLabel ? 'rect' : 'icon'}
+          variant={buttonVariant}
+          appearance={isBusy ? 'soft' : 'ghost'}
+          onClick={handleClick}
+          disabled={disabled || isTransitioning || isTranscribing}
+          title={isRecording ? resolvedTitleStop : resolvedTitleRecord}
+          aria-label={isRecording ? resolvedTitleStop : resolvedTitleRecord}
+          className={resolvedButtonClassName}
+        >
+          {showPulse && isBusy && (
+            <span className={[
+              'absolute inset-0 rounded-full animate-ping opacity-40',
+              isRecording ? 'ui-status-ping-danger' : 'bg-gray-400',
+            ].join(' ')} />
+          )}
+
+          {isTransitioning || isTranscribing ? (
+            <SpinnerIcon className="w-3.5 h-3.5 relative z-10 animate-spin" />
+          ) : isRecording ? (
+            <StopSquareIcon className="w-3.5 h-3.5 relative z-10" />
+          ) : (
+            <MicrophoneIcon className="w-4 h-4 relative z-10" />
+          )}
+          {showVisibleIdleLabel && <span>{idleLabel ?? resolvedTitleRecord}</span>}
+        </Button>
+      )}
+
+      {!showCancel && (isTransitioning || isTranscribing) && (
         <span className="text-xs text-gray-500 dark:text-gray-400 animate-pulse whitespace-nowrap">
-          {labelTranscribing}
+          {busyStatusLabel}
         </span>
       )}
-      {isRecording && useMediaRecorder && (
+      {!showCancel && isRecording && (
         <span className="voice-recording-text text-xs animate-pulse whitespace-nowrap">
-          {labelRecording}
+          {resolvedLabelRecording}
         </span>
       )}
 
-      {/* Error tooltip */}
-      {state === 'error' && errorMsg && (
+      {!showCancel && state === 'error' && errorCode && (
         <span className="absolute left-full ml-2 whitespace-nowrap text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 px-2 py-1 rounded-md z-10">
-          {errorMsg === 'network' ? t.voice_error_network : errorMsg}
+          {t.voice_transcription_failed}
         </span>
       )}
     </div>

@@ -86,7 +86,7 @@ export function ResultPanelActions({
       </div>
 
       {/* RIGHT: char count */}
-      <span className="text-xs text-gray-400 tabular-nums">
+      <span className="translate-char-count tabular-nums">
         {translatedText && !editedImageUrl
           ? `${translatedText.length.toLocaleString()} ${labelChars}`
           : ''}

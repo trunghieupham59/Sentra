@@ -52,7 +52,7 @@ type PostTab = 'summary' | 'actions' | 'decisions'
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function LiveTranslatePage() {
-  const { targetLang, setTargetLang, openSettings, sttProvider } = useAppStore()
+  const { targetLang, setTargetLang, openSettings } = useAppStore()
   const t = useT()
 
   const {
@@ -524,7 +524,7 @@ export function LiveTranslatePage() {
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{background:'var(--vzn-text-soft)'}} />
                           <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{background:'var(--vzn-text-muted)'}} />
                         </span>
-                        <span className="ui-micro font-medium" style={{color:'var(--vzn-text-muted)'}}>{t.voice_whisper_mode}</span>
+                        <span className="ui-micro font-medium" style={{color:'var(--vzn-text-muted)'}}>{t.voice_recording}</span>
                       </>
                     ) : (
                       <>
@@ -926,29 +926,6 @@ export function LiveTranslatePage() {
                 {t.live_open_system_settings}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* webSpeech fallback toast — shown when user picked Browser Speech API which isn't
-          supported in Live Translate (uses Whisper instead). Floating near footer, dismissable. */}
-      {sttProvider === 'webSpeech' && (
-        <div className="absolute bottom-16 inset-x-0 flex justify-center px-4 z-40 pointer-events-none">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg
-                          bg-gray-50 dark:bg-gray-950/60
-                          border border-gray-200 dark:border-gray-700/60
-                          text-gray-600 dark:text-gray-300
-                          text-xs font-medium shadow-sm
-                          pointer-events-auto">
-            <InfoCircleIcon className="w-3.5 h-3.5 flex-shrink-0" />
-            <span>{t.live_webspeech_not_supported}</span>
-            <button
-              type="button"
-              onClick={() => openSettings()}
-              className="btn-link ml-0.5 text-xs"
-            >
-              {t.translate_error_open_settings}
-            </button>
           </div>
         </div>
       )}

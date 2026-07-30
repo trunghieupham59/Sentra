@@ -10,6 +10,7 @@ import type { PhoneticMode } from '../../types'
 import { ChevronDownIcon, SpinnerIcon } from './icons'
 
 interface PhoneticToggleProps {
+  id?: string
   phoneticMode: PhoneticMode
   onChange: (mode: PhoneticMode) => void
   /** Label for the "off" option */
@@ -23,6 +24,7 @@ interface PhoneticToggleProps {
 }
 
 export function PhoneticToggle({
+  id,
   phoneticMode,
   onChange,
   labelOff,
@@ -38,10 +40,10 @@ export function PhoneticToggle({
   const isActive = phoneticMode !== 'off'
 
   return (
-    <div className="relative">
+    <div className="phonetic-select relative">
       {/* Visible styled button */}
       <div className={[
-        'btn-select w-44 pointer-events-none whitespace-nowrap',
+        'phonetic-select-display btn-select w-44 pointer-events-none whitespace-nowrap',
         isActive ? 'btn-select-active' : '',
       ].join(' ')}>
         <span>{currentLabel}</span>
@@ -53,6 +55,7 @@ export function PhoneticToggle({
 
       {/* Native select overlay */}
       <select
+        id={id}
         value={phoneticMode}
         onChange={(e) => onChange(e.target.value as PhoneticMode)}
         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-xs"

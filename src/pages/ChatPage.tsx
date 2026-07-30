@@ -23,23 +23,31 @@ import {
   TranslateIcon,
   XIcon,
 } from '../components/ui/icons'
-import { PromptCard } from '../components/ui/molecules'
+import { NotificationToast, PromptCard } from '../components/ui/molecules'
 
-import { VoiceRecorder } from '../components/VoiceRecorder'
+import { VoiceRecorder, type VoiceRecordingState } from '../components/VoiceRecorder'
 import { MAX_CHAT_IMAGE_DIMENSION, MAX_IMAGE_INPUT_BYTES } from '../constants/image'
 import { COPY_FEEDBACK_DURATION_MS } from '../constants/ui'
 import { useVoiceInput } from '../hooks/useVoiceInput'
+import type { VoiceErrorTranslationKey } from '../i18n/types'
 import { chatService } from '../services/chatService'
 import { DEEP_RESEARCH_CANCELLED_ERROR, deepResearchService } from '../services/deepResearchService'
 import { smartThinkingService } from '../services/smartThinkingService'
 import { useAppStore, useT } from '../store/useAppStore'
-import type { ChatMessage, ChatMessageContent, DeepResearchResumeState, Provider } from '../types'
+import type {
+  AudioTranscriptionErrorCode,
+  ChatMessage,
+  ChatMessageContent,
+  DeepResearchResumeState,
+  Provider,
+} from '../types'
 
 import { localizeChatError, localizeChatException } from '../utils/chatErrors'
 import { createClientId } from '../utils/id'
 import { extractImageFromClipboard, resizeImageFile } from '../utils/imageUtils'
 import { eventMatchesShortcut, shouldSendChatMessage } from '../utils/keyboardShortcuts'
 import { estimateUsageCost } from '../utils/usageCost'
+import { canResolveVoiceErrorInSettings, getVoiceNotificationTone } from '../utils/voiceErrors'
 
 
 /** Max height (px) của textarea input — giới hạn scroll khi text dài */
@@ -165,15 +173,6 @@ async function copyImageToClipboard(imageUrl: string): Promise<void> {
   ])
 }
 
-// HC-11: Named animation constants for voice bars
-// (dynamic inline styles are necessary for staggered animation — these names add intent)
-const VOICE_BAR_HEIGHT_BASE_PX = 6     // px base height for voice bars
-const VOICE_BAR_HEIGHT_STEP_PX = 4     // px added per (i % 3) pattern unit
-const VOICE_BAR_DURATION_BASE_S = 0.5  // s base animation duration for voice bars
-const VOICE_BAR_DURATION_STEP_S = 0.1  // s added per bar index
-const VOICE_BAR_DELAY_STEP_S    = 0.05 // s between each bar's animation start
-
-
 // ─── Main ChatPage ────────────────────────────────────────────────────────────
 export function ChatPage() {
   // Subscribe with `useShallow` so ChatPage only re-renders when one of the
@@ -248,6 +247,9 @@ export function ChatPage() {
     else setChatPendingDraft(text)
   }, [setChatSessionDraft, setChatPendingDraft])
   const [isSending, setIsSending] = useState(false)
+  const [voiceRecordingState, setVoiceRecordingState] = useState<VoiceRecordingState>('idle')
+  const [voiceErrorCode, setVoiceErrorCode] = useState<AudioTranscriptionErrorCode | null>(null)
+  const isVoiceBusy = voiceRecordingState !== 'idle' && voiceRecordingState !== 'error'
   /**
    * AbortController for the in-flight chat request. Held in a ref (not state)
    * because handlers shouldn't re-render when it's swapped, and because
@@ -335,8 +337,22 @@ export function ChatPage() {
     voicePrefixRef: _voicePrefixRef,
     handleVoiceRecordingChange,
     handleVoiceTranscript,
+    cancelVoiceInput,
     resetVoicePrefix,
   } = useVoiceInput({ currentText: inputText, onTextChange: setInputText })
+
+  const handleVoiceStateChange = useCallback((state: VoiceRecordingState) => {
+    setVoiceRecordingState(state)
+    if (state === 'requesting') setVoiceErrorCode(null)
+    if (state !== 'idle' && state !== 'error') {
+      setShowPlusMenu(false)
+      setShowModeMenu(false)
+    }
+  }, [])
+
+  const handleVoiceError = useCallback((code: AudioTranscriptionErrorCode) => {
+    setVoiceErrorCode(code === 'CANCELLED' ? null : code)
+  }, [])
 
   const hasKey = selectedProvider === 'local' || keyStatus[selectedProvider]
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -345,6 +361,13 @@ export function ChatPage() {
 
   // Active session
   const activeSession = chatSessions.find((s) => s.id === activeChatSessionId) ?? null
+  const voiceContextKey = `chat:${activeChatSessionId ?? 'pending'}:${inputText}`
+  const voiceErrorMessage = voiceErrorCode
+    ? t[`voice_error_${voiceErrorCode.toLowerCase()}` as VoiceErrorTranslationKey]
+    : null
+  const canOpenSettingsForVoiceError = voiceErrorCode
+    ? canResolveVoiceErrorInSettings(voiceErrorCode)
+    : false
 
   // Re-activate on mount so a model selected in another feature cannot leak
   // into this conversation after navigating back to Chat.
@@ -776,7 +799,7 @@ export function ChatPage() {
   const handleSend = useCallback(async () => {
 
     const text = inputText.trim()
-    if ((!text && !attachedImage) || isSending) return
+    if ((!text && !attachedImage) || isSending || isVoiceBusy) return
     if (!hasKey) return
 
 
@@ -1225,6 +1248,7 @@ export function ChatPage() {
     inputText,
     attachedImage,
     isSending,
+    isVoiceBusy,
     hasKey,
     deepResearchMode,
     webSearchMode,
@@ -1350,20 +1374,6 @@ export function ChatPage() {
         />
       )}
 
-      {/* Voice overlay */}
-      {isVoiceActive && (
-        <div className="voice-recording-panel mx-3 mt-2 flex items-center gap-3 px-4 py-2">
-          <div className="flex items-end gap-[3px] h-5">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <span key={i} className="voice-recording-bar" style={{ height: `${VOICE_BAR_HEIGHT_BASE_PX + (i % 3) * VOICE_BAR_HEIGHT_STEP_PX}px`, animationDuration: `${VOICE_BAR_DURATION_BASE_S + i * VOICE_BAR_DURATION_STEP_S}s`, animationDelay: `${i * VOICE_BAR_DELAY_STEP_S}s` }} />
-            ))}
-          </div>
-          <span className={`text-xs font-medium ${isVoiceInterim ? 'italic' : 'voice-recording-text'}`} style={isVoiceInterim ? { color: 'var(--vzn-text-soft)' } : undefined}>
-            {inputText || '…'}
-          </span>
-        </div>
-      )}
-
       {/* Textarea row */}
       <div className="px-3 pt-2.5 pb-1">
         <textarea
@@ -1375,6 +1385,8 @@ export function ChatPage() {
           placeholder={t.chat_placeholder}
           rows={1}
           disabled={isSending}
+          readOnly={isVoiceBusy}
+          aria-busy={isVoiceBusy}
           className={`chat-input-field w-full ${isVoiceInterim ? 'italic' : ''}`}
           style={{ maxHeight: `${CHAT_TEXTAREA_MAX_HEIGHT_PX}px`, overflowY: 'auto', padding: '3px 0', ...(isVoiceInterim ? { color: 'var(--vzn-text-soft)' } : null) }}
         />
@@ -1398,6 +1410,7 @@ export function ChatPage() {
             aria-label={t.chat_attach_image}
             aria-haspopup="menu"
             aria-expanded={showPlusMenu}
+            disabled={isVoiceBusy}
             className={`chat-action-button flex-shrink-0 ${showPlusMenu ? 'chat-action-button-active-neutral' : ''}`}
           >
             <PlusIcon />
@@ -1411,6 +1424,7 @@ export function ChatPage() {
             appearance={imageMode ? 'soft' : 'ghost'}
             className={`chat-mode-pill ${imageMode ? 'chat-mode-pill-active' : ''}`}
             aria-pressed={imageMode}
+            disabled={isVoiceBusy}
             onClick={() => {
               const next = !imageMode
               setImageMode(next)
@@ -1433,6 +1447,7 @@ export function ChatPage() {
             className={`chat-mode-pill ${(webSearchMode || deepResearchMode) ? 'chat-mode-pill-active' : ''}`}
             aria-haspopup="menu"
             aria-expanded={showModeMenu}
+            disabled={isVoiceBusy}
             onClick={showModeMenu ? () => setShowModeMenu(false) : openModeMenu}
           >
             {deepResearchMode
@@ -1456,23 +1471,35 @@ export function ChatPage() {
           {inputText.length > 600 && (
             <span className="ui-micro tabular-nums">{inputText.length}</span>
           )}
-          <ModelSelector
-            compact
-            selectionContextKey={activeChatSessionId}
-            onSelectionChange={handleChatModelChange}
-          />
-          <span className="w-px h-3.5 flex-shrink-0" style={{ background: 'var(--vzn-border-strong)' }} />
+          {!isVoiceBusy && (
+            <>
+              <ModelSelector
+                compact
+                selectionContextKey={activeChatSessionId}
+                onSelectionChange={handleChatModelChange}
+              />
+              <span className="w-px h-3.5 flex-shrink-0" style={{ background: 'var(--vzn-border-strong)' }} />
+            </>
+          )}
           <VoiceRecorder
             sourceLang="auto"
+            contextKey={voiceContextKey}
             onTranscript={handleVoiceTranscript}
             onRecordingChange={handleVoiceRecordingChange}
+            onStateChange={handleVoiceStateChange}
+            onError={handleVoiceError}
+            onCancel={cancelVoiceInput}
             titleRecord={t.chat_voice_record}
             titleStop={t.chat_voice_stop}
             buttonSize="md"
-            labelTranscribing="…"
-            labelRecording="…"
+            labelTranscribing={t.voice_transcribing}
+            labelRecording={t.voice_recording}
+            labelCancel={t.voice_cancel}
+            showCancel
+            showPulse={false}
+            disabled={isSending}
           />
-          {isSending ? (
+          {!isVoiceBusy && (isSending ? (
             <Button size="md" shape="icon" variant="danger" appearance="soft" onClick={handleStop} title={t.chat_stop} aria-label={t.chat_stop} className="chat-stop-button">
               <StopSquareIcon className="w-5 h-5" />
             </Button>
@@ -1485,7 +1512,7 @@ export function ChatPage() {
             <Button size="md" shape="icon" variant="primary" appearance="solid" onClick={handleSend} disabled={(!inputText.trim() && !attachedImage) || !hasKey} title={t.chat_send} aria-label={t.chat_send} className="chat-send-button">
               <SendIcon />
             </Button>
-          )}
+          ))}
         </div>
       </div>
 
@@ -1595,6 +1622,26 @@ export function ChatPage() {
       {/* Drop indicator overlay */}
       {isDraggingOver && (
         <DragOverlay label={t.chat_attach_image} zIndex="z-50" showRing />
+      )}
+
+      {voiceErrorMessage && (
+        <div className="notification-viewport">
+          <NotificationToast
+            tone={voiceErrorCode ? getVoiceNotificationTone(voiceErrorCode) : 'error'}
+            title={t.voice_transcription_error_title}
+            message={voiceErrorMessage}
+            actionLabel={canOpenSettingsForVoiceError ? t.translate_error_open_settings : undefined}
+            onAction={canOpenSettingsForVoiceError
+              ? () => {
+                  setVoiceErrorCode(null)
+                  openSettings()
+                }
+              : undefined}
+            dismissLabel={t.translate_error_dismiss}
+            onDismiss={() => setVoiceErrorCode(null)}
+            className="fade-in"
+          />
+        </div>
       )}
 
       {/* ── Main area ── */}

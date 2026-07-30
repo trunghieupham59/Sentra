@@ -103,11 +103,11 @@ export const LANGUAGES: Language[] = [
 export const TARGET_LANGUAGES = LANGUAGES.filter((l) => l.code !== 'auto')
 
 /**
- * Maximum number of characters allowed in the translation input.
- * Prevents accidental high API costs and request timeouts.
- * Show a warning in the UI when the user exceeds this limit.
+ * Advisory threshold for unusually long translation input.
+ * The UI warns about extra latency and cost above this point, but still allows
+ * submission; the main process owns separate chunking and hard-limit guards.
  */
-export const MAX_INPUT_CHARS = 5000
+export const TRANSLATE_INPUT_WARNING_CHARS = 5000
 
 /**
  * Maximum number of characters allowed in the chat input.

@@ -1,3 +1,4 @@
+import { Button } from './atoms'
 import { DownloadIcon } from './icons'
 
 interface DownloadImageButtonProps {
@@ -7,8 +8,16 @@ interface DownloadImageButtonProps {
 
 export function DownloadImageButton({ onClick, title }: DownloadImageButtonProps) {
   return (
-    <button type="button" onClick={onClick} title={title} className="btn-icon">
+    <Button
+      size="md"
+      shape="icon"
+      variant="neutral"
+      appearance="ghost"
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+    >
       <DownloadIcon />
-    </button>
+    </Button>
   )
 }

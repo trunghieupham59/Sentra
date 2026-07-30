@@ -1010,6 +1010,18 @@
   .ui-error-banner { padding: 8px 12px; border-radius: var(--vzn-radius-sm); font-size: 12px; border: 1px solid var(--vzn-danger-border); background: var(--vzn-danger-soft); color: var(--vzn-danger); }
   .ui-error-divider-top { border-top: 1px solid var(--vzn-danger-border); }
   .ui-alert-toast  { padding: 12px 16px; border-radius: var(--vzn-radius-sm); background: var(--vzn-danger); color: white; box-shadow: var(--vzn-shadow-lg); }
+  .notification-toast { --notification-toast-accent: var(--vzn-text-soft); --notification-toast-border: var(--vzn-border); display: flex; width: min(400px, calc(100vw - var(--vzn-space-8))); align-items: flex-start; gap: var(--vzn-space-2); padding: var(--vzn-space-3); border: 1px solid var(--notification-toast-border); border-radius: var(--vzn-radius-lg); background: var(--vzn-surface-raised); color: var(--vzn-text); box-shadow: var(--vzn-shadow-overlay); }
+  .notification-toast--info { --notification-toast-accent: var(--vzn-action-text); --notification-toast-border: var(--vzn-action-border); }
+  .notification-toast--success { --notification-toast-accent: var(--vzn-success); --notification-toast-border: var(--vzn-success-border); }
+  .notification-toast--warning { --notification-toast-accent: var(--vzn-warning); --notification-toast-border: var(--vzn-warning-border); }
+  .notification-toast--error { --notification-toast-accent: var(--vzn-danger); --notification-toast-border: var(--vzn-danger-border); }
+  .notification-toast-icon { display: inline-flex; width: var(--vzn-icon-md); height: var(--vzn-icon-md); flex: 0 0 var(--vzn-icon-md); align-items: center; justify-content: center; margin-top: var(--vzn-space-0-5); color: var(--notification-toast-accent); }
+  .notification-toast-copy { display: flex; min-width: 0; flex: 1 1 auto; flex-direction: column; gap: var(--vzn-space-1); }
+  .notification-toast-title { color: var(--vzn-text-strong); font-size: var(--vzn-font-size-md); font-weight: var(--vzn-weight-semibold); line-height: var(--vzn-line-tight); }
+  .notification-toast-message { color: var(--vzn-text-soft); font-size: var(--vzn-font-size-sm); line-height: var(--vzn-line-normal); }
+  .notification-toast-actions { display: inline-flex; flex: 0 0 auto; align-items: center; gap: var(--vzn-space-1); }
+  .notification-viewport { position: absolute; z-index: var(--vzn-layer-context); top: var(--vzn-space-4); right: var(--vzn-space-4); pointer-events: none; }
+  .notification-viewport > * { pointer-events: auto; }
 
   /* ══════════════════════════════════════════════════════════════════════
      CHAT UI
@@ -1291,6 +1303,10 @@
   .voice-ripple-soft     { background: var(--vzn-danger-soft); }
   .voice-ripple-medium   { background: var(--vzn-danger-border); }
   .voice-ripple-strong   { background: var(--vzn-danger); opacity: 0.3; }
+  .voice-recorder-status { display: inline-flex; align-items: center; gap: var(--vzn-space-1-5); color: var(--vzn-text-soft); font-size: var(--vzn-font-size-sm); font-weight: var(--vzn-weight-medium); white-space: nowrap; }
+  .voice-recorder-status-dot { width: 6px; height: 6px; flex: 0 0 6px; border-radius: var(--vzn-radius-pill); background: var(--vzn-danger); }
+  .voice-recorder-duration { color: var(--vzn-text-muted); font-variant-numeric: tabular-nums; }
+  .voice-recorder-status--transcribing { color: var(--vzn-text-muted); }
 
   /* ══════════════════════════════════════════════════════════════════════
      SETTINGS

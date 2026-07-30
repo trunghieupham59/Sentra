@@ -83,7 +83,7 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
     const parsed = parseTranslateParams(rawParams)
     if (!parsed.ok) return parsed.response
     const params = parsed.value
-    const { provider, model, requestId, sourceText, sourceLang, targetLang, showFurigana, translationStyle, phoneticOnly, phoneticMode } = params
+    const { provider, model, requestId, sourceText, sourceLang, targetLang, showFurigana, translationStyle, reasoningEffort, phoneticOnly, phoneticMode } = params
     const effectivePhoneticMode: PhoneticMode = phoneticMode ?? (showFurigana ? 'standard' : 'off')
 
     if (!sourceText.trim()) return { success: false, error: 'Source text is empty' }
@@ -105,12 +105,12 @@ export function registerTranslateHandlers(ipcMain: IpcMain) {
           ? await translateChunked(
               (text) => {
                 if (controller?.signal.aborted) throw new Error(TRANSLATE_CANCELLED_MESSAGE)
-                return translateFn(apiKey, model, text, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'general', false, effectivePhoneticMode, options)
+                return translateFn(apiKey, model, text, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'general', false, effectivePhoneticMode, reasoningEffort ?? 'auto', options)
               },
               sourceText,
             )
           : await withRetry(() =>
-              translateFn(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'general', !!phoneticOnly, effectivePhoneticMode, options)
+              translateFn(apiKey, model, sourceText, sourceLang, targetLang, !!showFurigana, translationStyle ?? 'general', !!phoneticOnly, effectivePhoneticMode, reasoningEffort ?? 'auto', options)
             )
 
         return { success: true, translatedText }

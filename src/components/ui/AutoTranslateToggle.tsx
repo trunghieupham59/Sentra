@@ -2,9 +2,11 @@
  * AutoTranslateToggle — compact toggle button for switching between
  * automatic and manual translation modes.
  *
- * Fixed width (112 px) prevents layout shift when the label text changes.
- * Width accommodates the longest Vietnamese labels ("Tự động" / "Thủ công").
+ * A shared minimum width prevents layout shift when the localized mode label
+ * changes; compact layouts intentionally collapse the control to its icon.
  */
+
+import { Button } from './atoms'
 import { MiniToggleTrack } from './MiniToggleTrack'
 
 interface AutoTranslateToggleProps {
@@ -29,20 +31,18 @@ export function AutoTranslateToggle({
   labelManual,
 }: AutoTranslateToggleProps) {
   return (
-    <button
-      type="button"
+    <Button
+      size="md"
+      shape="rect"
+      variant={autoTranslate ? 'primary' : 'neutral'}
+      appearance={autoTranslate ? 'soft' : 'outline'}
       onClick={() => onChange(!autoTranslate)}
       title={autoTranslate ? titleAuto : titleManual}
-      className={[
-        'btn-secondary btn-sm font-medium',
-        'w-[112px] justify-start',
-        autoTranslate
-          ? 'btn-active'
-          : 'bg-gray-50 text-gray-500 dark:bg-neutral-800 dark:text-gray-400',
-      ].join(' ')}
+      aria-pressed={autoTranslate}
+      className="translate-mode-toggle"
     >
       <MiniToggleTrack checked={autoTranslate} />
       <span className="whitespace-nowrap">{autoTranslate ? labelAuto : labelManual}</span>
-    </button>
+    </Button>
   )
 }

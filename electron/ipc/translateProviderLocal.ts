@@ -22,6 +22,7 @@ export const translateWithLocal: TranslateFn = async (
   style,
   phoneticOnly,
   phoneticMode,
+  _reasoningEffort,
   options: TranslateRequestOptions = {},
 ) => {
   const { client, model: resolvedModel } = await getLocalOpenAIClient(model)

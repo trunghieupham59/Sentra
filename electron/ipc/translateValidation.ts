@@ -4,6 +4,7 @@ import { isValidProvider, unknownProviderError } from './providers/types'
 
 export type TranslationStyle = 'general' | 'formal' | 'casual' | 'business' | 'technical' | 'natural'
 export type PhoneticMode = 'off' | 'standard' | 'phonetic'
+export type TranslationReasoningEffort = 'auto' | 'low' | 'medium' | 'high'
 
 export interface TranslateParams {
   provider: string
@@ -15,6 +16,7 @@ export interface TranslateParams {
   showFurigana?: boolean
   phoneticMode?: PhoneticMode
   translationStyle?: TranslationStyle
+  reasoningEffort?: TranslationReasoningEffort
   phoneticOnly?: boolean
 }
 
@@ -40,6 +42,7 @@ const TRANSLATION_STYLES = new Set<TranslationStyle>([
 ])
 
 const PHONETIC_MODES = new Set<PhoneticMode>(['off', 'standard', 'phonetic'])
+const REASONING_EFFORTS = new Set<TranslationReasoningEffort>(['auto', 'low', 'medium', 'high'])
 const MAX_MODEL_ID_CHARS = 200
 
 function parseProvider(value: unknown): ParsedParams<string> {
@@ -111,6 +114,15 @@ export function parseTranslateParams(rawParams: unknown): ParsedParams<Translate
   }
   const translationStyle = parseTranslationStyle(rawParams.translationStyle)
   if (!translationStyle.ok) return translationStyle
+  if (
+    rawParams.reasoningEffort !== undefined
+    && (
+      typeof rawParams.reasoningEffort !== 'string'
+      || !REASONING_EFFORTS.has(rawParams.reasoningEffort as TranslationReasoningEffort)
+    )
+  ) {
+    return { ok: false, response: invalidIpcInput('Invalid reasoning effort') }
+  }
 
   return {
     ok: true,
@@ -124,6 +136,7 @@ export function parseTranslateParams(rawParams: unknown): ParsedParams<Translate
       showFurigana: rawParams.showFurigana,
       phoneticMode: rawParams.phoneticMode as PhoneticMode | undefined,
       translationStyle: translationStyle.value,
+      reasoningEffort: rawParams.reasoningEffort as TranslationReasoningEffort | undefined,
       phoneticOnly: rawParams.phoneticOnly,
     },
   }

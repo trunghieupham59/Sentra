@@ -1,15 +1,17 @@
 import { LANGUAGES, TARGET_LANGUAGES } from '../constants/providers'
 import { useT } from '../store/useAppStore'
-import { ChevronDownIcon } from './ui/icons'
+import { LanguagePicker } from './ui/molecules'
 
 interface LanguageSelectorProps {
   value: string
   onChange: (lang: string) => void
   includeAuto?: boolean
   label?: string
+  labelVisuallyHidden?: boolean
   disabled?: boolean
-  /** Override className for the <select> element */
-  selectClassName?: string
+  status?: string
+  statusBusy?: boolean
+  className?: string
 }
 
 export function LanguageSelector({
@@ -17,32 +19,29 @@ export function LanguageSelector({
   onChange,
   includeAuto = false,
   label,
+  labelVisuallyHidden = false,
   disabled = false,
-  selectClassName,
+  status,
+  statusBusy = false,
+  className,
 }: LanguageSelectorProps) {
   const t = useT()
   const options = includeAuto ? LANGUAGES : TARGET_LANGUAGES
 
   return (
-    <div className="flex flex-col gap-1">
-      {label && <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{label}</span>}
-      <div className="relative">
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={disabled}
-          className={selectClassName ?? 'select-field pr-8'}
-        >
-          {options.map((lang) => (
-            <option key={lang.code} value={lang.code}>
-              {t.lang_names[lang.code] ?? lang.name}
-            </option>
-          ))}
-        </select>
-        <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
-          <ChevronDownIcon className="w-4 h-4 text-gray-400" />
-        </div>
-      </div>
-    </div>
+    <LanguagePicker
+      value={value}
+      options={options}
+      onChange={onChange}
+      getLabel={(language) => t.lang_names[language.code] ?? language.name}
+      label={label}
+      labelVisuallyHidden={labelVisuallyHidden}
+      searchPlaceholder={t.language_picker_search_placeholder}
+      noResultsLabel={t.language_picker_no_results}
+      status={status}
+      statusBusy={statusBusy}
+      disabled={disabled}
+      className={className}
+    />
   )
 }

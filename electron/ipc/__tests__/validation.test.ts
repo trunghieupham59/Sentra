@@ -110,6 +110,7 @@ describe('parseTranslateParams', () => {
       model: ' gpt-4o ',
       phoneticMode: 'standard',
       translationStyle: 'technical',
+      reasoningEffort: 'medium',
       showFurigana: true,
     }))
 
@@ -118,6 +119,7 @@ describe('parseTranslateParams', () => {
       expect(result.value.provider).toBe('openai')
       expect(result.value.model).toBe('gpt-4o')
       expect(result.value.translationStyle).toBe('technical')
+      expect(result.value.reasoningEffort).toBe('medium')
     }
   })
 
@@ -129,5 +131,9 @@ describe('parseTranslateParams', () => {
     const invalidPhonetic = parseTranslateParams(translatePayload({ phoneticMode: 'kana' }))
     expect(invalidPhonetic.ok).toBe(false)
     if (!invalidPhonetic.ok) expect(invalidPhonetic.response.error).toBe('Invalid phonetic mode')
+
+    const invalidReasoning = parseTranslateParams(translatePayload({ reasoningEffort: 'extreme' }))
+    expect(invalidReasoning.ok).toBe(false)
+    if (!invalidReasoning.ok) expect(invalidReasoning.response.error).toBe('Invalid reasoning effort')
   })
 })

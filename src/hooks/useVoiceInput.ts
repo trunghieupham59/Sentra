@@ -8,6 +8,7 @@
  *                         so that voice appends rather than replaces
  *   - `handleVoiceRecordingChange` — called by VoiceRecorder on start/stop
  *   - `handleVoiceTranscript`      — called by VoiceRecorder on each transcript chunk
+ *   - `cancelVoiceInput`           — restores the text captured before recording
  *   - `resetVoicePrefix`           — call when user manually edits the field mid-recording
  *
  * Usage:
@@ -32,6 +33,8 @@ interface UseVoiceInputReturn {
   voicePrefixRef: React.MutableRefObject<string>
   handleVoiceRecordingChange: (recording: boolean) => void
   handleVoiceTranscript: (transcript: string, isFinal: boolean) => void
+  /** Restore the text that existed before recording started. */
+  cancelVoiceInput: () => void
   /**
    * Reset the voice prefix to empty. Call this when the user manually edits the
    * text field while voice recording is active — subsequent transcript chunks
@@ -53,12 +56,18 @@ export function useVoiceInput({
    * what they'd typed before hitting the microphone button.
    */
   const voicePrefixRef = useRef('')
+  /** Exact pre-recording value, including intentional trailing spaces/newlines. */
+  const voiceOriginalTextRef = useRef('')
+  if (!isVoiceActive) voiceOriginalTextRef.current = currentText
 
   const handleVoiceRecordingChange = useCallback(
     (recording: boolean) => {
       if (recording) {
-        // Snapshot current text as prefix — voice will append to it
-        voicePrefixRef.current = currentText ? `${currentText.trimEnd()} ` : ''
+        voiceOriginalTextRef.current = currentText
+        // Add a separator only when the existing draft does not already provide one.
+        voicePrefixRef.current = currentText && !/\s$/u.test(currentText)
+          ? `${currentText} `
+          : currentText
         setIsVoiceActive(true)
       } else {
         setIsVoiceActive(false)
@@ -76,6 +85,12 @@ export function useVoiceInput({
     [onTextChange],
   )
 
+  const cancelVoiceInput = useCallback(() => {
+    onTextChange(voiceOriginalTextRef.current)
+    setIsVoiceActive(false)
+    setIsVoiceInterim(false)
+  }, [onTextChange])
+
   const resetVoicePrefix = useCallback(() => {
     voicePrefixRef.current = ''
   }, [])
@@ -86,6 +101,7 @@ export function useVoiceInput({
     voicePrefixRef,
     handleVoiceRecordingChange,
     handleVoiceTranscript,
+    cancelVoiceInput,
     resetVoicePrefix,
   }
 }

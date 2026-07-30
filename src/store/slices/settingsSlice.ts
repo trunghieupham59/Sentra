@@ -7,7 +7,7 @@
  */
 import { DEFAULT_SETTINGS, PROVIDERS } from '../../constants/providers'
 import type { AppLocale } from '../../i18n'
-import type { ChatSendShortcut, FetchedModel, PhoneticMode, Provider, SttProvider, TranslationStyle, TtsMode, TtsVoice } from '../../types'
+import type { ChatSendShortcut, FetchedModel, PhoneticMode, Provider, SttProvider, TranslationReasoningEffort, TranslationStyle, TtsMode, TtsVoice } from '../../types'
 import { DEFAULT_CHAT_NEW_SESSION_SHORTCUT, DEFAULT_CHAT_SEND_SHORTCUT } from '../../utils/keyboardShortcuts'
 import type { SliceSet } from './sliceTypes'
 
@@ -28,6 +28,7 @@ export interface SettingsSlice {
    */
   phoneticMode: PhoneticMode
   translationStyle: TranslationStyle
+  translationReasoningEffort: TranslationReasoningEffort
   ttsMode: TtsMode
   ttsVoice: TtsVoice
   fontSize: 'small' | 'medium' | 'large'
@@ -66,6 +67,7 @@ export interface SettingsSlice {
   setAutoTranslateDelay: (ms: number) => void
   setPhoneticMode: (mode: PhoneticMode) => void
   setTranslationStyle: (style: TranslationStyle) => void
+  setTranslationReasoningEffort: (effort: TranslationReasoningEffort) => void
   setTtsMode: (mode: TtsMode) => void
   setTtsVoice: (voice: TtsVoice) => void
   setFontSize: (size: 'small' | 'medium' | 'large') => void
@@ -99,6 +101,7 @@ export const createSettingsSlice = (set: SliceSet): SettingsSlice => ({
   autoTranslateDelay: DEFAULT_SETTINGS.autoTranslateDelay,
   phoneticMode: 'off' as PhoneticMode,
   translationStyle: 'general' as TranslationStyle,
+  translationReasoningEffort: 'auto' as TranslationReasoningEffort,
   ttsMode: 'free' as TtsMode,
   ttsVoice: 'nova' as TtsVoice,
   fontSize: 'medium' as const,
@@ -127,6 +130,7 @@ export const createSettingsSlice = (set: SliceSet): SettingsSlice => ({
   setAutoTranslateDelay: (ms) => set({ autoTranslateDelay: ms }),
   setPhoneticMode: (mode) => set({ phoneticMode: mode }),
   setTranslationStyle: (style) => set({ translationStyle: style }),
+  setTranslationReasoningEffort: (effort) => set({ translationReasoningEffort: effort }),
   setTtsMode: (mode) => set({ ttsMode: mode }),
   setTtsVoice: (voice) => set({ ttsVoice: voice }),
   setFontSize: (size) => set({ fontSize: size }),

@@ -85,6 +85,7 @@ export const translateSection = {
     showFurigana?: boolean
     phoneticMode?: 'off' | 'standard' | 'phonetic'
     translationStyle?: string
+    reasoningEffort?: 'auto' | 'low' | 'medium' | 'high'
     phoneticOnly?: boolean
   }) => ipcRenderer.invoke('translate', params),
 

@@ -1,6 +1,7 @@
 import { MAX_OUTPUT_TOKENS_OPENAI, VERIFY_MAX_TOKENS, VERIFY_MODEL_OPENAI } from './ipcConstants'
 import { buildPrompt, buildRewritePrompt, REWRITE_SYSTEM_PROMPT, SYSTEM_PROMPT } from './translatePrompts'
 import type { DetectFn, RewriteFn, StreamFn, TranslateFn, TranslateRequestOptions, VerifyFn } from './translateProviderTypes'
+import { getOpenAIReasoningEffort } from './translationReasoning'
 
 export const translateWithOpenAI: TranslateFn = async (
   apiKey,
@@ -12,6 +13,7 @@ export const translateWithOpenAI: TranslateFn = async (
   style,
   phoneticOnly,
   phoneticMode,
+  reasoningEffort,
   options: TranslateRequestOptions = {},
 ) => {
   const OpenAI = (await import('openai')).default
@@ -24,6 +26,7 @@ export const translateWithOpenAI: TranslateFn = async (
         { role: 'user', content: buildPrompt(sourceText, sourceLang, targetLang, showFurigana, style, phoneticOnly, phoneticMode) },
       ],
       max_completion_tokens: MAX_OUTPUT_TOKENS_OPENAI,
+      reasoning_effort: getOpenAIReasoningEffort(model, reasoningEffort),
     },
     options.signal ? { signal: options.signal } : undefined,
   )

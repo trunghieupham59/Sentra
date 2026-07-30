@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { type RefObject, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { PROVIDERS } from '../constants/providers'
 import { useAppStore, useT } from '../store/useAppStore'
@@ -16,7 +16,8 @@ import {
   SpinnerIcon,
 } from './ui/icons'
 
-type PickerView = 'root' | 'models' | 'providers'
+type PickerView = 'root' | 'models' | 'providers' | 'advanced'
+export type ModelPickerInlineView = Extract<PickerView, 'models' | 'advanced'>
 
 interface PickerPosition {
   top: number
@@ -32,6 +33,19 @@ const PICKER_MAX_HEIGHT = 440
 
 interface ModelSelectorProps {
   compact?: boolean
+  /** Renders the picker inside the owning surface instead of a portal. */
+  inline?: boolean
+  /** Opens directly into the searchable model list. */
+  directModelList?: boolean
+  /** Removes the trigger while an owning surface displays the inline picker. */
+  hideTriggerWhenOpen?: boolean
+  /** Lets an owning surface request that the inline picker return to its trigger. */
+  closeRequest?: number
+  /** Lets an owning surface open the inline advanced subview directly. */
+  advancedOpenRequest?: number
+  onOpenChange?: (open: boolean) => void
+  onInlineViewChange?: (view: ModelPickerInlineView | null) => void
+  advancedReturnFocusRef?: RefObject<HTMLButtonElement | null>
   /** Invalidates automatic async fallbacks when the owning context changes. */
   selectionContextKey?: string | null
   /** Lets a feature persist the selection in its own contextual state. */
@@ -40,6 +54,14 @@ interface ModelSelectorProps {
 
 export function ModelSelector({
   compact = false,
+  inline = false,
+  directModelList = false,
+  hideTriggerWhenOpen = false,
+  closeRequest = 0,
+  advancedOpenRequest = 0,
+  onOpenChange,
+  onInlineViewChange,
+  advancedReturnFocusRef,
   selectionContextKey,
   onSelectionChange,
 }: ModelSelectorProps) {
@@ -57,10 +79,13 @@ export function ModelSelector({
   const [search, setSearch] = useState('')
   const [pickerPosition, setPickerPosition] = useState<PickerPosition | null>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const pickerRef = useRef<HTMLDivElement>(null)
+  const pickerRef = useRef<HTMLElement | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const firstRootItemRef = useRef<HTMLButtonElement>(null)
+  const advancedViewRef = useRef<HTMLDivElement>(null)
   const selectionContextRef = useRef(selectionContextKey)
+  const closeRequestRef = useRef(closeRequest)
+  const advancedOpenRequestRef = useRef(advancedOpenRequest)
   const pickerId = useId()
   const modelListId = `${pickerId}-models`
   const providerListId = `${pickerId}-providers`
@@ -71,21 +96,49 @@ export function ModelSelector({
 
   const closePicker = useCallback((restoreFocus = true) => {
     setOpen(false)
+    onOpenChange?.(false)
+    onInlineViewChange?.(null)
     setView('root')
     setAdvancedOpen(false)
     setSearch('')
     setPickerPosition(null)
     if (restoreFocus) {
-      window.requestAnimationFrame(() => triggerRef.current?.focus())
+      window.requestAnimationFrame(() => {
+        const returnFocusTarget = view === 'advanced'
+          ? advancedReturnFocusRef?.current ?? triggerRef.current
+          : triggerRef.current
+        returnFocusTarget?.focus()
+      })
     }
-  }, [])
+  }, [advancedReturnFocusRef, onInlineViewChange, onOpenChange, view])
 
-  const openPicker = () => {
-    setView('root')
+  useEffect(() => {
+    if (closeRequestRef.current === closeRequest) return
+    closeRequestRef.current = closeRequest
+    if (open) closePicker()
+  }, [closePicker, closeRequest, open])
+
+  useEffect(() => {
+    if (advancedOpenRequestRef.current === advancedOpenRequest) return
+    advancedOpenRequestRef.current = advancedOpenRequest
+    setView('advanced')
     setAdvancedOpen(false)
     setSearch('')
     setPickerPosition(null)
     setOpen(true)
+    onOpenChange?.(true)
+    onInlineViewChange?.('advanced')
+  }, [advancedOpenRequest, onInlineViewChange, onOpenChange])
+
+  const openPicker = () => {
+    const nextView = directModelList ? 'models' : 'root'
+    setView(nextView)
+    setAdvancedOpen(false)
+    setSearch('')
+    setPickerPosition(null)
+    setOpen(true)
+    onOpenChange?.(true)
+    onInlineViewChange?.(nextView === 'models' ? 'models' : null)
   }
 
   const repositionPicker = useCallback(() => {
@@ -284,16 +337,16 @@ export function ModelSelector({
       }
     }
 
-    document.addEventListener('pointerdown', handlePointerDown)
+    if (!inline) document.addEventListener('pointerdown', handlePointerDown)
     document.addEventListener('keydown', handleKeyDown)
     return () => {
-      document.removeEventListener('pointerdown', handlePointerDown)
+      if (!inline) document.removeEventListener('pointerdown', handlePointerDown)
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [open, closePicker])
+  }, [inline, open, closePicker])
 
   useLayoutEffect(() => {
-    if (!open) return
+    if (!open || inline) return
     repositionPicker()
     const frame = window.requestAnimationFrame(repositionPicker)
     const panel = pickerRef.current
@@ -310,16 +363,64 @@ export function ModelSelector({
       window.removeEventListener('resize', repositionPicker)
       window.removeEventListener('scroll', repositionPicker, true)
     }
-  }, [open, repositionPicker])
+  }, [inline, open, repositionPicker])
 
   useEffect(() => {
     if (!open) return
     const frame = window.requestAnimationFrame(() => {
       if (view === 'models') searchRef.current?.focus()
       if (view === 'root') firstRootItemRef.current?.focus()
+      if (view === 'advanced') advancedViewRef.current?.focus()
     })
     return () => window.cancelAnimationFrame(frame)
   }, [open, view])
+
+  const advancedContent = (
+    <div id={`${pickerId}-advanced`} className="model-picker-advanced-content">
+      <div className="model-picker-advanced-model">
+        <span className="model-picker-advanced-label">{t.model_picker_model_id}</span>
+        <code className="model-picker-advanced-value" title={selectedModelId}>{selectedModelId}</code>
+      </div>
+      <button
+        type="button"
+        className="model-picker-refresh"
+        onClick={() => fetchModels(selectedProvider)}
+        disabled={!currentHasKey || isCurrentLoading}
+      >
+        {isCurrentLoading
+          ? <SpinnerIcon className="model-picker-spinner" />
+          : <RefreshIcon className="model-picker-refresh-icon" />}
+        <span>{t.model_refresh}</span>
+      </button>
+      {!currentHasKey && (
+        <p className="model-picker-advanced-status" role="status">{t.model_no_key}</p>
+      )}
+      {currentHasKey && modelsError[selectedProvider] && (
+        <p className="model-picker-advanced-status model-picker-advanced-status--error" role="alert">
+          {modelsError[selectedProvider]}
+        </p>
+      )}
+    </div>
+  )
+
+  const advancedSection = (
+    <>
+      <hr className="model-picker-divider" />
+      <button
+        type="button"
+        className="model-picker-advanced-trigger"
+        aria-expanded={advancedOpen}
+        aria-controls={`${pickerId}-advanced`}
+        onClick={() => setAdvancedOpen((value) => !value)}
+      >
+        <span className="model-picker-row-label">{t.model_picker_advanced}</span>
+        <ChevronDownIcon
+          className={`model-picker-row-chevron model-picker-advanced-chevron${advancedOpen ? ' model-picker-advanced-chevron--open' : ''}`}
+        />
+      </button>
+      {advancedOpen && advancedContent}
+    </>
+  )
 
   const rootMenu = (
     <div className="model-picker-root">
@@ -344,55 +445,18 @@ export function ModelSelector({
         <span className="model-picker-row-value">{currentProviderConfig.name}</span>
         <ChevronRightIcon className="model-picker-row-chevron" />
       </button>
-      <hr className="model-picker-divider" />
-      <button
-        type="button"
-        className="model-picker-advanced-trigger"
-        aria-expanded={advancedOpen}
-        aria-controls={`${pickerId}-advanced`}
-        onClick={() => setAdvancedOpen((value) => !value)}
-      >
-        <span className="model-picker-row-label">{t.model_picker_advanced}</span>
-        <ChevronDownIcon
-          className={`model-picker-row-chevron model-picker-advanced-chevron${advancedOpen ? ' model-picker-advanced-chevron--open' : ''}`}
-        />
-      </button>
-      {advancedOpen && (
-        <div id={`${pickerId}-advanced`} className="model-picker-advanced-content">
-          <div className="model-picker-advanced-model">
-            <span className="model-picker-advanced-label">{t.model_picker_model_id}</span>
-            <code className="model-picker-advanced-value" title={selectedModelId}>{selectedModelId}</code>
-          </div>
-          <button
-            type="button"
-            className="model-picker-refresh"
-            onClick={() => fetchModels(selectedProvider)}
-            disabled={!currentHasKey || isCurrentLoading}
-          >
-            {isCurrentLoading
-              ? <SpinnerIcon className="model-picker-spinner" />
-              : <RefreshIcon className="model-picker-refresh-icon" />}
-            <span>{t.model_refresh}</span>
-          </button>
-          {!currentHasKey && (
-            <p className="model-picker-advanced-status" role="status">{t.model_no_key}</p>
-          )}
-          {currentHasKey && modelsError[selectedProvider] && (
-            <p className="model-picker-advanced-status model-picker-advanced-status--error" role="alert">
-              {modelsError[selectedProvider]}
-            </p>
-          )}
-        </div>
-      )}
+      {advancedSection}
     </div>
   )
 
   const modelsView = (
     <div className="model-picker-subview model-picker-models-view">
-      <PickerHeader label={t.model_picker_model} backLabel={t.model_picker_back} onBack={() => {
-        setSearch('')
-        setView('root')
-      }} />
+      {!directModelList && (
+        <PickerHeader label={t.model_picker_model} backLabel={t.model_picker_back} onBack={() => {
+          setSearch('')
+          setView('root')
+        }} />
+      )}
       <div className="model-picker-search-wrap">
         <div className="model-picker-search-shell">
           <SearchIcon className="model-picker-search-icon" />
@@ -469,6 +533,16 @@ export function ModelSelector({
     </div>
   )
 
+  const advancedView = (
+    <div
+      ref={advancedViewRef}
+      className="model-picker-subview model-picker-advanced-view"
+      tabIndex={-1}
+    >
+      {advancedContent}
+    </div>
+  )
+
   const providersView = (
     <div className="model-picker-subview model-picker-providers-view">
       <PickerHeader
@@ -505,9 +579,32 @@ export function ModelSelector({
     </div>
   )
 
-  const pickerPanel = open && createPortal(
+  const pickerContent = (
+    <>
+      {view === 'root' && rootMenu}
+      {view === 'models' && modelsView}
+      {view === 'providers' && providersView}
+      {view === 'advanced' && advancedView}
+    </>
+  )
+  const pickerPanelContent = !open ? null : inline ? (
+    <fieldset
+      ref={(node) => {
+        pickerRef.current = node
+      }}
+      id={pickerId}
+      className="model-picker-panel model-picker-panel--inline"
+    >
+      <legend className="sr-only">
+        {view === 'advanced' ? t.model_picker_model_details : t.model_picker_model}
+      </legend>
+      {pickerContent}
+    </fieldset>
+  ) : (
     <div
-      ref={pickerRef}
+      ref={(node) => {
+        pickerRef.current = node
+      }}
       id={pickerId}
       role="dialog"
       aria-label={t.model_picker_model}
@@ -522,22 +619,22 @@ export function ModelSelector({
         zIndex: 9999,
       }}
     >
-      {view === 'root' && rootMenu}
-      {view === 'models' && modelsView}
-      {view === 'providers' && providersView}
-    </div>,
-    document.body,
+      {pickerContent}
+    </div>
   )
+  const pickerPanel = inline || !pickerPanelContent
+    ? pickerPanelContent
+    : createPortal(pickerPanelContent, document.body)
 
   return (
     <>
-      <Button
+      {(!open || !hideTriggerWhenOpen) && <Button
         ref={triggerRef}
         size="md"
-        shape="pill"
+        shape={compact ? 'pill' : 'rect'}
         variant={open ? 'primary' : 'neutral'}
-        appearance={open ? 'soft' : 'ghost'}
-        aria-haspopup="dialog"
+        appearance={open ? 'soft' : compact ? 'ghost' : 'outline'}
+        aria-haspopup={inline ? undefined : 'dialog'}
         aria-expanded={open}
         aria-controls={open ? pickerId : undefined}
         onClick={() => open ? closePicker(false) : openPicker()}
@@ -552,7 +649,7 @@ export function ModelSelector({
           {isCurrentLoading && !compact ? t.model_loading : selectedModelName || t.settings_hotkey_model}
         </span>
         <ChevronDownIcon className="model-picker-trigger-icon model-picker-trigger-chevron" />
-      </Button>
+      </Button>}
       {pickerPanel}
     </>
   )
