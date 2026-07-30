@@ -47,9 +47,15 @@
   --vzn-amber-500: #f59e0b;
   --vzn-amber-600: #d97706;
 
+  /* Illustrative tones: feature/prompt-card icon accents, not status colors. */
+  --vzn-tone-blue: #3485f6;
+  --vzn-tone-violet: #8b5cf6;
+  --vzn-tone-green: #1aa75b;
+  --vzn-tone-orange: #ef6a32;
+
   /* Semantic colors ----------------------------------------------------- */
   --vzn-app-bg: #ececef;
-  --vzn-bg: #f5f5f7;
+  --vzn-bg: var(--vzn-neutral-100);
   --vzn-canvas: var(--vzn-neutral-0);
   --vzn-titlebar-bg: #f4f4f6;
   --vzn-sidebar-bg: #f4f4f6;
@@ -119,8 +125,11 @@
   --vzn-font-size-sm: 12px;
   --vzn-font-size-md: 13px;
   --vzn-font-size-lg: 14px;
+  --vzn-font-size-subtitle: 15px;
   --vzn-font-size-title: 16px;
+  --vzn-font-size-title-lg: 18px;
   --vzn-font-size-heading: 22px;
+  --vzn-font-size-heading-lg: 28px;
   --vzn-font-size-display: 32px;
   --vzn-line-tight: 1.2;
   --vzn-line-normal: 1.45;
@@ -178,6 +187,8 @@
   --vzn-shadow-overlay: 0 28px 76px rgba(28, 28, 30, 0.22);
   --vzn-duration-fast: 120ms;
   --vzn-duration-normal: 180ms;
+  --vzn-duration-pulse: 1s;
+  --vzn-duration-spin: 2s;
   --vzn-ease-standard: cubic-bezier(0.2, 0, 0, 1);
 
   /* Layering ------------------------------------------------------------ */
@@ -280,6 +291,12 @@ html.dark {
   --vzn-disabled-bg: rgba(255, 255, 255, 0.07);
   --vzn-disabled-border: rgba(255, 255, 255, 0.08);
   --vzn-disabled-fg: #667085;
+
+  --vzn-tone-blue: #72a7ff;
+  --vzn-tone-violet: #ae8aff;
+  --vzn-tone-green: #55c982;
+  --vzn-tone-orange: #ff8a57;
+
   --vzn-shadow-xs: 0 1px 1px rgba(0, 0, 0, 0.14);
   --vzn-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.18);
   --vzn-shadow-md: 0 10px 28px rgba(0, 0, 0, 0.26);

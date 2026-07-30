@@ -21,8 +21,16 @@ paths:
   `outline` for bounded secondary controls, and `ghost` for toolbar utilities.
 - Keep semantic labels/ARIA/native state; never rely on color alone or hard-code
   a feature color when an action token exists.
-- Treat `src/styles/tokens.css` as canonical. Use semantic tokens instead of
-  literal colors, spacing, radius, shadow, type, motion, or control dimensions.
+- Treat `src/styles/tokens.css` as the single source of truth for every
+  literal design value. Use semantic tokens instead of literal colors,
+  spacing, radius, shadow, type, motion, or control dimensions — in any file,
+  not only the Atomic Design catalog (`codex.css`, `tailwind.config.mjs`,
+  inline `style={{}}`, and Tailwind arbitrary-value brackets all count).
+  `check:design`/`check:atomic` only scan atoms/molecules/organisms/templates;
+  manually verify `src/pages`, migration-zone feature dirs, and `.css` files
+  too. Known debt not to extend: `codex.css` has a dead duplicate token
+  `:root`/`html.dark` block, and `tailwind.config.mjs` keeps its own
+  font-size/animation scale — migrate rather than add beside them.
 - Use `Input` for reusable single-line fields and the same size token as nearby
   buttons. Verify light/dark plus relevant responsive states.
 - Use container queries for feature geometry. Keep chat messages, suggestion

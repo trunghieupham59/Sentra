@@ -88,6 +88,54 @@ Components consume semantic names such as `surface-muted`, `text-soft`,
 directly. Tailwind neutral/brand colors, radii, and shadows map back to these
 tokens so migration-zone components render consistently with atoms.
 
+## Color palette
+
+`tokens.css` layers two kinds of color variable. Primitives are raw scales
+that only `tokens.css` itself should reference; semantic tokens are named
+roles that every component references instead.
+
+### Primitives
+
+| Scale | Steps | Use |
+| --- | --- | --- |
+| Neutral | 0, 25, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 | Base gray ramp behind every background, border, and text token |
+| Blue | 50–900 | Accent/action ramp (Apple system blue) |
+| Red | 50, 200, 500–700 | Danger ramp |
+| Green | 50, 500, 600 | Success ramp |
+| Amber | 50, 500, 600 | Warning ramp |
+
+### Semantic tokens
+
+| Category | Tokens | Purpose |
+| --- | --- | --- |
+| App chrome | `app-bg`, `titlebar-bg`, `sidebar-bg`, `chat-sidebar-bg` | Window-level backgrounds outside content surfaces |
+| Surfaces | `canvas`, `surface`, `surface-raised`, `surface-muted`, `surface-subtle`, `surface-hover`, `surface-selected` | Content panels, cards, and their interactive states |
+| Text | `text`, `text-strong`, `text-muted`, `text-soft`, `text-disabled`, `text-inverse` | Type hierarchy from primary to inverse-on-accent |
+| Borders | `border`, `border-strong`, `divider` | Outlines and separators, low to higher contrast |
+| Materials | `titlebar-material`, `primary-nav-material`, `context-nav-material`, `overlay-material`, `material-border`, `material-highlight` | Translucent vibrancy surfaces; native blur backs them on macOS |
+| Action (accent) | `action`, `action-hover`, `action-active`, `action-soft`, `action-soft-hover`, `action-border`, `action-text`, `action-fg`, `focus-ring` | The single accent color: primary buttons, active/selected state, links, focus ring |
+| Feedback | `success`, `success-soft`, `success-border`, `warning`, `warning-soft`, `warning-border`, `danger`, `danger-hover`, `danger-soft`, `danger-soft-hover`, `danger-border` | Status colors; each pairs a soft background and border for banners/badges |
+| Disabled | `disabled-bg`, `disabled-border`, `disabled-fg` | Overrides every variant's colors when a control is natively disabled |
+
+### Light vs dark
+
+- Light is the default (`:root`); dark activates under `html.dark`.
+- The accent stays the same blue family in both themes (`blue-600` light,
+  `blue-500` dark) — only surfaces, text, and border opacity shift, so the app
+  keeps one identity across themes.
+- Feedback colors get theme-tuned values in dark mode instead of reusing the
+  light-mode primitive scale; low-saturation red/green reads poorly on dark
+  surfaces.
+
+### Rules
+
+- Reference the semantic token, never a literal hex/rgba value, in atoms,
+  molecules, organisms, and templates. `npm run check:design` rejects literal
+  colors found in those directories.
+- Assert the variant/state in tests, not a literal hex/RGB value.
+- Add a semantic alias when component code needs a new name; add a primitive
+  only when no existing scale can express the need.
+
 ## Control hierarchy
 
 - Message action rows use `xs`; contextual toolbars use `sm`; forms, search,

@@ -65,9 +65,31 @@ pages -> templates -> organisms -> molecules -> atoms
 
 - Favor quiet neutral canvases, subtle dividers, restrained shadows, rounded
   white/graphite surfaces, and semantic color only where it communicates state.
-- `src/styles/tokens.css` is the canonical visual foundation. Use its semantic
-  aliases from components; do not add one-off colors, spacing, radii, shadows,
-  typography, icon sizes, motion, or control heights when a token exists.
+- `src/styles/tokens.css` is the single source of truth for every literal
+  design value (color, spacing, radius, shadow, duration, easing, font size,
+  control height, icon size). Editing a token there must be enough to change
+  that value everywhere it is used. No other file may declare a literal value
+  that duplicates or could drift from a token: not another CSS file, not
+  `tailwind.config.*`, not inline `style={{}}`, not a Tailwind arbitrary-value
+  bracket (`text-[18px]`, `shadow-[0_0_0_3px_rgba(...)]`). Reference
+  `var(--vzn-*)` (or the Tailwind utility mapped to it) instead. When a value
+  is close to an existing token, use that token rather than adding a nearby
+  literal (e.g. do not add `font-size: 15px` beside `--vzn-font-size-lg: 14px`
+  / `--vzn-font-size-title: 16px`); if no token fits, add one to `tokens.css`
+  and reuse it everywhere that need recurs.
+- Known pre-existing debt, do not extend it further: `src/styles/codex.css`
+  still carries a dead duplicate `:root`/`html.dark` token block (the later
+  `tokens.css` import overrides it in the cascade), and `tailwind.config.mjs`
+  keeps an independently maintained font-size/animation scale instead of
+  deriving from `tokens.css`. If you touch a rule in either, migrate it to
+  reference `tokens.css` rather than adding a new literal beside it.
+- `npm run check:design` and `npm run check:atomic` only scan
+  `src/components/ui/{atoms,molecules}`, `src/components/organisms`, and
+  `src/components/templates` — they do not cover `src/pages`, the
+  migration-zone feature directories (`chat/`, `dictionary/`, `live/`,
+  `translate/`), or any `.css`/`tailwind.config.*` file. When editing visual
+  code anywhere in the repo, manually check for literal values duplicating a
+  token before reporting the change complete, even where the scripts pass.
 - The global app sidebar and the AI Chat conversation sidebar are different
   organisms. Keep their tokens, widths, state, and responsibilities separate.
 - On desktop, primary navigation is a persistent 60px/236px layout column and
