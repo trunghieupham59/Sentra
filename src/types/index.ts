@@ -21,6 +21,24 @@ export type {
 } from '../../shared/audioTranscription'
 
 export type Provider = 'gemini' | 'claude' | 'openai' | 'local'
+
+/** A provider/model pair selected for one AI Translate comparison run. */
+export interface TranslationModelSelection {
+  provider: Provider
+  model: string
+}
+
+export type TranslationComparisonStatus = 'idle' | 'loading' | 'success' | 'error'
+
+/** Renderer-owned state for one independently retryable comparison result. */
+export interface TranslationComparisonResult extends TranslationModelSelection {
+  key: string
+  status: TranslationComparisonStatus
+  translatedText: string
+  error: string | null
+  errorCode: string | null
+  durationMs: number | null
+}
 export type LocalAiEngine = 'ollama' | 'lmstudio' | 'llamacpp'
 export type LocalAiHardwareTier = 'low' | 'balanced' | 'powerful' | 'max'
 
@@ -35,6 +53,7 @@ export type TranslationStyle = 'general' | 'formal' | 'casual' | 'business' | 't
 export type PhoneticMode = 'off' | 'standard' | 'phonetic'
 
 export type TtsVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
+export type SpeakPanel = 'source' | 'translated' | `comparison:${string}`
 
 /**
  * TTS routing preference:

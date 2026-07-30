@@ -1,10 +1,16 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useT } from '../../../store/useAppStore'
-import type { PhoneticMode, TranslationReasoningEffort, TranslationStyle } from '../../../types'
-import { type TranslateSettingsSubview, TranslateToolbar } from '../../translate/TranslateToolbar'
+import type {
+  PhoneticMode,
+  TranslationModelSelection,
+  TranslationReasoningEffort,
+  TranslationStyle,
+} from '../../../types'
+import { TranslateToolbar } from '../../translate/TranslateToolbar'
 import { AutoTranslateToggle } from '../../ui/AutoTranslateToggle'
 import { Button } from '../../ui/atoms'
-import { ChevronLeftIcon, GearIcon, XIcon } from '../../ui/icons'
+import { GearIcon, InfoCircleIcon, LayersIcon, XIcon } from '../../ui/icons'
+import { TranslationModelDialog } from './TranslationModelDialog'
 
 interface TranslationControlsHeaderProps {
   titleId: string
@@ -17,9 +23,13 @@ interface TranslationControlsHeaderProps {
   phoneticMode: PhoneticMode
   onPhoneticModeChange: (mode: PhoneticMode) => void
   isPhoneticLoading: boolean
+  isComparisonMode: boolean
+  translationModels: TranslationModelSelection[]
+  onTranslationModelsChange: (models: TranslationModelSelection[]) => void
+  onOpenSettings: () => void
 }
 
-/** Compact translation utility bar with an anchored AI settings region. */
+/** Translation utility bar with a focused model dialog and compact output settings. */
 export function TranslationControlsHeader({
   titleId,
   translationStyle,
@@ -31,14 +41,19 @@ export function TranslationControlsHeader({
   phoneticMode,
   onPhoneticModeChange,
   isPhoneticLoading,
+  isComparisonMode,
+  translationModels,
+  onTranslationModelsChange,
+  onOpenSettings,
 }: TranslationControlsHeaderProps) {
   const t = useT()
   const optionsId = useId()
+  const modelsId = useId()
   const optionsTriggerRef = useRef<HTMLButtonElement>(null)
+  const modelsTriggerRef = useRef<HTMLButtonElement>(null)
   const optionsPanelRef = useRef<HTMLElement>(null)
   const [optionsOpen, setOptionsOpen] = useState(false)
-  const [settingsSubview, setSettingsSubview] = useState<TranslateSettingsSubview | null>(null)
-  const [modelPickerCloseRequest, setModelPickerCloseRequest] = useState(0)
+  const [modelsOpen, setModelsOpen] = useState(false)
 
   const styleLabels: Record<TranslationStyle, string> = {
     general: t.translate_style_general,
@@ -52,41 +67,66 @@ export function TranslationControlsHeader({
     standard: t.translate_phonetic_standard,
     phonetic: t.translate_phonetic_transcription,
   }
+  const reasoningLabels: Record<Exclude<TranslationReasoningEffort, 'auto'>, string> = {
+    low: t.translate_reasoning_low,
+    medium: t.translate_reasoning_medium,
+    high: t.translate_reasoning_high,
+  }
   const activeOptionsSummary = [
     translationStyle !== 'general' ? styleLabels[translationStyle] : null,
     phoneticMode !== 'off' ? phoneticLabels[phoneticMode] : null,
+    reasoningEffort !== 'auto' ? reasoningLabels[reasoningEffort] : null,
   ].filter(Boolean).join(' · ')
-  const optionsPanelTitle = settingsSubview === 'models'
-    ? t.model_picker_choose
-    : t.translate_options
+  const hasCustomOptions = translationStyle !== 'general'
+    || reasoningEffort !== 'auto'
+    || phoneticMode !== 'off'
+
+  const closeOptions = useCallback(() => {
+    setOptionsOpen(false)
+    optionsTriggerRef.current?.focus()
+  }, [])
+  const closeModels = useCallback(() => {
+    setModelsOpen(false)
+    requestAnimationFrame(() => modelsTriggerRef.current?.focus())
+  }, [])
 
   useEffect(() => {
     if (!optionsOpen) return
 
+    const focusFrame = requestAnimationFrame(() => {
+      optionsPanelRef.current
+        ?.querySelector<HTMLElement>('.translate-setting-select:not(:disabled)')
+        ?.focus()
+    })
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
-      if (settingsSubview) return
-      setOptionsOpen(false)
-      setSettingsSubview(null)
-      optionsTriggerRef.current?.focus()
+      event.preventDefault()
+      closeOptions()
     }
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target
       if (!(target instanceof Node)) return
-      if (optionsTriggerRef.current?.contains(target) || optionsPanelRef.current?.contains(target)) {
-        return
-      }
+      if (
+        optionsTriggerRef.current?.contains(target)
+        || optionsPanelRef.current?.contains(target)
+      ) return
       setOptionsOpen(false)
-      setSettingsSubview(null)
     }
 
     document.addEventListener('keydown', handleEscape)
     document.addEventListener('pointerdown', handlePointerDown)
     return () => {
+      cancelAnimationFrame(focusFrame)
       document.removeEventListener('keydown', handleEscape)
       document.removeEventListener('pointerdown', handlePointerDown)
     }
-  }, [optionsOpen, settingsSubview])
+  }, [closeOptions, optionsOpen])
+
+  const resetOptions = () => {
+    onStyleChange('general')
+    onReasoningEffortChange('auto')
+    onPhoneticModeChange('off')
+  }
 
   return (
     <div className="translate-header-stack">
@@ -95,14 +135,44 @@ export function TranslationControlsHeader({
 
         <fieldset className="translate-header-controls">
           <legend className="sr-only">{t.translate_controls_label}</legend>
-          <AutoTranslateToggle
-            autoTranslate={autoTranslate}
-            onChange={onAutoTranslateChange}
-            titleAuto={t.translate_mode_auto_title}
-            titleManual={t.translate_mode_manual_title}
-            labelAuto={t.translate_mode_auto}
-            labelManual={t.translate_mode_manual}
-          />
+          {isComparisonMode ? (
+            <span
+              className="translate-manual-mode-chip"
+              title={t.translate_models_manual_notice}
+            >
+              <InfoCircleIcon />
+              <span>{t.translate_mode_manual}</span>
+            </span>
+          ) : (
+            <AutoTranslateToggle
+              autoTranslate={autoTranslate}
+              onChange={onAutoTranslateChange}
+              titleOn={t.translate_mode_auto_title}
+              titleOff={t.translate_mode_manual_title}
+              label={t.translate_mode_auto}
+            />
+          )}
+
+          <Button
+            ref={modelsTriggerRef}
+            size="md"
+            shape="rect"
+            variant={modelsOpen ? 'primary' : 'neutral'}
+            appearance={modelsOpen ? 'soft' : 'outline'}
+            aria-label={t.translate_models_trigger_label(translationModels.length)}
+            aria-expanded={modelsOpen}
+            aria-controls={modelsId}
+            aria-haspopup="dialog"
+            onClick={() => {
+              setModelsOpen(true)
+              setOptionsOpen(false)
+            }}
+            className="translate-models-trigger"
+          >
+            <LayersIcon />
+            <span>{t.translate_models_trigger(translationModels.length)}</span>
+          </Button>
+
           <Button
             ref={optionsTriggerRef}
             size="md"
@@ -115,14 +185,17 @@ export function TranslationControlsHeader({
             title={t.translate_ai_config_title}
             onClick={() => {
               setOptionsOpen((open) => !open)
-              setSettingsSubview(null)
+              setModelsOpen(false)
             }}
             className="translate-options-trigger"
           >
             <GearIcon />
             <span>{t.translate_options}</span>
             {activeOptionsSummary && (
-              <span className="translate-options-trigger-summary">{activeOptionsSummary}</span>
+              <>
+                <span className="translate-options-trigger-separator" aria-hidden="true">·</span>
+                <span className="translate-options-trigger-summary">{activeOptionsSummary}</span>
+              </>
             )}
           </Button>
         </fieldset>
@@ -134,23 +207,12 @@ export function TranslationControlsHeader({
           id={optionsId}
           className="translate-options-panel"
           role="dialog"
-          aria-label={optionsPanelTitle}
+          aria-label={t.translate_options}
         >
           <header className="translate-options-panel-header">
-            <div className="translate-options-panel-heading">
-              {settingsSubview && (
-                <Button
-                  size="sm"
-                  shape="icon"
-                  variant="neutral"
-                  appearance="ghost"
-                  aria-label={t.model_picker_back}
-                  onClick={() => setModelPickerCloseRequest((request) => request + 1)}
-                >
-                  <ChevronLeftIcon />
-                </Button>
-              )}
-              <h2 className="translate-options-panel-title">{optionsPanelTitle}</h2>
+            <div>
+              <h2 className="translate-options-panel-title">{t.translate_options}</h2>
+              <p>{t.translate_settings_scope}</p>
             </div>
             <Button
               size="sm"
@@ -158,21 +220,15 @@ export function TranslationControlsHeader({
               variant="neutral"
               appearance="ghost"
               aria-label={t.settings_close}
-              onClick={() => {
-                setOptionsOpen(false)
-                setSettingsSubview(null)
-                optionsTriggerRef.current?.focus()
-              }}
-              className="translate-options-panel-close"
+              onClick={closeOptions}
             >
               <XIcon />
             </Button>
           </header>
+
           <TranslateToolbar
+            hideModelSelector
             hideAutoToggle
-            inlineModelSelector
-            modelPickerCloseRequest={modelPickerCloseRequest}
-            onModelPickerViewChange={setSettingsSubview}
             translationStyle={translationStyle}
             onStyleChange={onStyleChange}
             reasoningEffort={reasoningEffort}
@@ -204,9 +260,32 @@ export function TranslationControlsHeader({
             titleAutoMode={t.translate_mode_auto_title}
             titleManualMode={t.translate_mode_manual_title}
             labelAutoMode={t.translate_mode_auto}
-            labelManualMode={t.translate_mode_manual}
           />
+
+          {hasCustomOptions && (
+            <footer className="translate-options-panel-footer">
+              <Button
+                size="sm"
+                shape="rect"
+                variant="neutral"
+                appearance="ghost"
+                onClick={resetOptions}
+              >
+                {t.translate_settings_reset}
+              </Button>
+            </footer>
+          )}
         </section>
+      )}
+
+      {modelsOpen && (
+        <TranslationModelDialog
+          id={modelsId}
+          models={translationModels}
+          onApply={onTranslationModelsChange}
+          onCancel={closeModels}
+          onOpenSettings={onOpenSettings}
+        />
       )}
     </div>
   )

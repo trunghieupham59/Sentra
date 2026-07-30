@@ -8,9 +8,9 @@
  * Contains: sourceText, translatedText, lang pair, provider/model selection,
  * active page, and the convenience `t` computed translations getter.
  */
-import { DEFAULT_SETTINGS } from '../../constants/providers'
+import { DEFAULT_SETTINGS, MAX_TRANSLATION_MODELS } from '../../constants/providers'
 import { TRANSLATIONS, type Translations } from '../../i18n'
-import type { AppPage, Provider } from '../../types'
+import type { AppPage, Provider, TranslationModelSelection } from '../../types'
 import type { SliceGet, SliceSet } from './sliceTypes'
 
 export interface CoreSlice {
@@ -28,6 +28,8 @@ export interface CoreSlice {
   // Provider/Model selection
   selectedProvider: Provider
   selectedModels: Record<Provider, string>
+  /** Ordered AI Translate comparison set; the first entry syncs legacy single-model state. */
+  translationModels: TranslationModelSelection[]
   recentModels: Array<{ provider: Provider; modelId: string }>
   recordModelUsage: (provider: Provider, modelId: string) => void
 
@@ -54,6 +56,7 @@ export interface CoreSlice {
   setTranslateError: (err: string | null, errorCode?: string | null) => void
   setSelectedProvider: (provider: Provider) => void
   setSelectedModel: (provider: Provider, model: string) => void
+  setTranslationModels: (models: TranslationModelSelection[]) => void
   setActivePage: (page: AppPage) => void
   openSettings: () => void
   closeSettings: () => void
@@ -75,6 +78,10 @@ export const createCoreSlice = (set: SliceSet, get: SliceGet): CoreSlice => ({
   translateErrorCode: null,
   selectedProvider: DEFAULT_SETTINGS.defaultProvider,
   selectedModels: DEFAULT_SETTINGS.defaultModels,
+  translationModels: [{
+    provider: DEFAULT_SETTINGS.defaultProvider,
+    model: DEFAULT_SETTINGS.defaultModels[DEFAULT_SETTINGS.defaultProvider],
+  }],
   recentModels: [],
   activePage: 'translate',
   settingsOpen: false,
@@ -132,6 +139,29 @@ export const createCoreSlice = (set: SliceSet, get: SliceGet): CoreSlice => ({
     set({ selectedProvider: provider, translateError: null, translateErrorCode: null }),
   setSelectedModel: (provider, model) =>
     set((state: CoreSlice) => ({ selectedModels: { ...state.selectedModels, [provider]: model } })),
+  setTranslationModels: (models) =>
+    set((state: CoreSlice) => {
+      const seen = new Set<string>()
+      const normalized = models.filter(({ provider, model }) => {
+        const key = `${provider}:${model}`
+        if (!model || seen.has(key)) return false
+        seen.add(key)
+        return true
+      }).slice(0, MAX_TRANSLATION_MODELS)
+      const fallback = {
+        provider: state.selectedProvider,
+        model: state.selectedModels[state.selectedProvider],
+      }
+      const translationModels = normalized.length > 0 ? normalized : [fallback]
+      const firstSelection = translationModels[0]
+      return {
+        translationModels,
+        selectedProvider: firstSelection.provider,
+        selectedModels: { ...state.selectedModels, [firstSelection.provider]: firstSelection.model },
+        translateError: null,
+        translateErrorCode: null,
+      }
+    }),
   recordModelUsage: (provider, modelId) =>
     set((state: CoreSlice) => {
       const filtered = state.recentModels.filter(

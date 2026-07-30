@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import {
+  TranslationComparisonPane,
   TranslationControlsHeader,
   TranslationLanguageControls,
   TranslationResultPane,
@@ -11,7 +12,7 @@ import { NotificationToast } from '../components/ui/molecules'
 import { IMAGE_TRANSLATED_SENTINEL, useTranslate } from '../hooks/useTranslate'
 import type { VoiceErrorTranslationKey } from '../i18n/types'
 import { useAppStore, useT } from '../store/useAppStore'
-import type { AudioTranscriptionErrorCode } from '../types'
+import type { AudioTranscriptionErrorCode, TranslationComparisonResult } from '../types'
 import { canResolveVoiceErrorInSettings, getVoiceNotificationTone } from '../utils/voiceErrors'
 import '../styles/translate.css'
 
@@ -36,6 +37,8 @@ export function TranslatePage() {
     translationStyle,
     translationReasoningEffort,
     selectedProvider,
+    translationModels,
+    setTranslationModels,
     setTargetLang,
     setPhoneticMode,
     setTranslationStyle,
@@ -54,6 +57,9 @@ export function TranslatePage() {
     charCount,
     isApiKeyError,
     isResultStale,
+    isComparisonMode,
+    comparisonResults,
+    copiedComparisonKey,
     speakingPanel,
     speakLoading,
     handleSpeak,
@@ -68,6 +74,8 @@ export function TranslatePage() {
     handleRewrite,
     handleSwapLanguages,
     handleCopy,
+    handleCopyComparison,
+    handleRetryComparison,
     handleDismissError,
     handleDownloadTranslatedImage,
     handleDownloadEditedImage,
@@ -87,7 +95,7 @@ export function TranslatePage() {
     && !imageAttachment
     && !isResultStale,
   )
-  const canSwapLanguages = !imageAttachment && (
+  const canSwapLanguages = !imageAttachment && !isComparisonMode && (
     sourceLang !== 'auto' || (hasCurrentTextResult && Boolean(detectedSourceLang))
   )
   const swapDisabledReason = imageAttachment
@@ -104,6 +112,13 @@ export function TranslatePage() {
   const handleVoiceError = useCallback((code: AudioTranscriptionErrorCode) => {
     setVoiceErrorCode(code === 'CANCELLED' ? null : code)
   }, [])
+
+  const speakingComparisonKey = speakingPanel?.startsWith('comparison:')
+    ? speakingPanel.slice('comparison:'.length)
+    : null
+  const handleSpeakComparison = useCallback((result: TranslationComparisonResult) => {
+    void handleSpeak(result.translatedText, targetLang, `comparison:${result.key}`)
+  }, [handleSpeak, targetLang])
 
   const handleVoiceLifecycleChange = useCallback((state: Parameters<typeof handleVoiceStateChange>[0]) => {
     if (state === 'requesting') setVoiceErrorCode(null)
@@ -160,6 +175,10 @@ export function TranslatePage() {
         && !phoneticText
         && (isTranslating || Boolean(translatedText && translatedText !== IMAGE_TRANSLATED_SENTINEL))
       }
+      isComparisonMode={isComparisonMode}
+      translationModels={translationModels}
+      onTranslationModelsChange={setTranslationModels}
+      onOpenSettings={openSettings}
     />
   )
 
@@ -170,6 +189,7 @@ export function TranslatePage() {
       sourceLang={sourceLang}
       voiceContextKey={voiceContextKey}
       charCount={charCount}
+      translationModelCount={imageAttachment ? 1 : translationModels.length}
       autoTranslate={autoTranslate}
       isTranslating={isTranslating}
       isDraggingOver={isDraggingOver}
@@ -199,7 +219,22 @@ export function TranslatePage() {
     />
   )
 
-  const resultPanel = (
+  const resultPanel = isComparisonMode ? (
+    <TranslationComparisonPane
+      headingId={TRANSLATE_RESULT_HEADING_ID}
+      results={comparisonResults}
+      copiedResultKey={copiedComparisonKey}
+      speakingResultKey={speakingComparisonKey}
+      speakLoading={speakLoading}
+      isTranslating={isTranslating}
+      isResultStale={isResultStale}
+      canRetry={Boolean(sourceText.trim()) && !isTranslating}
+      onCopy={handleCopyComparison}
+      onSpeak={handleSpeakComparison}
+      onRetry={handleRetryComparison}
+      onOpenSettings={openSettings}
+    />
+  ) : (
     <TranslationResultPane
       headingId={TRANSLATE_RESULT_HEADING_ID}
       translatedText={translatedText}
@@ -234,6 +269,7 @@ export function TranslatePage() {
     <>
       <TranslateWorkbenchTemplate
         titleId={TRANSLATE_PAGE_TITLE_ID}
+        layout={isComparisonMode ? 'comparison' : 'single'}
         header={header}
         languageControls={(
           <TranslationLanguageControls

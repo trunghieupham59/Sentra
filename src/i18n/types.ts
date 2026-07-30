@@ -91,16 +91,18 @@ export interface Translations {
   translate_speak_stop: string
   translate_rewrite: string
   translate_rewriting: string
-  /** Tooltip on the Auto/Manual toggle when currently in auto mode */
+  /** Tooltip when automatic translation is enabled. */
   translate_mode_auto_title: string
-  /** Tooltip on the Auto/Manual toggle when currently in manual mode */
+  /** Tooltip when automatic translation is disabled. */
   translate_mode_manual_title: string
-  /** Label on the Auto/Manual toggle when in auto mode */
+  /** Stable label on the automatic translation toggle. */
   translate_mode_auto: string
-  /** Label on the Auto/Manual toggle when in manual mode */
+  /** Static mode label used by multi-model comparison. */
   translate_mode_manual: string
   translate_controls_label: string
   translate_options: string
+  translate_settings_scope: string
+  translate_settings_reset: string
   translate_add_image: string
   translate_from_label: string
   translate_to_label: string
@@ -119,6 +121,31 @@ export interface Translations {
   translate_result_stale_auto: string
   translate_result_stale_manual: string
   translate_result_ready: string
+  translate_models_trigger: (count: number) => string
+  translate_models_trigger_label: (count: number) => string
+  translate_models_title: string
+  translate_models_close: string
+  translate_models_description: string
+  translate_models_selected: string
+  translate_models_available: string
+  translate_models_remove: string
+  translate_models_none_selected: string
+  translate_models_replace_notice: string
+  translate_models_select: string
+  translate_models_selected_state: string
+  translate_models_manual_notice: string
+  translate_models_cancel: string
+  translate_models_apply: (count: number) => string
+  translate_compare_heading: (count: number) => string
+  translate_compare_progress: (completed: number, total: number) => string
+  translate_compare_mobile_tabs: string
+  translate_compare_idle: string
+  translate_compare_idle_short: string
+  translate_compare_retry: string
+  translate_compare_duration: (seconds: string) => string
+  translate_compare_request_count: (count: number) => string
+  translate_compare_submit: (count: number) => string
+  translate_compare_submitting: (count: number) => string
 
   // Voice recording
   voice_record: string

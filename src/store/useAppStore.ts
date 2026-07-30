@@ -156,6 +156,7 @@ export const useAppStore = create<AppState>()(
         targetLang: state.targetLang,
         selectedProvider: state.selectedProvider,
         selectedModels: state.selectedModels,
+        translationModels: state.translationModels,
         autoTranslate: state.autoTranslate,
         autoTranslateDelay: state.autoTranslateDelay,
         phoneticMode: state.phoneticMode,

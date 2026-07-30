@@ -12,7 +12,7 @@
  *
  * TranslatePage composes the presentation layer and routes these handlers.
  */
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ImageAttachment } from '../components/translate/ImageTranslator'
 import type { VoiceRecordingState } from '../components/VoiceRecorder'
 import { MAX_TRANSLATE_IMAGE_DIMENSION } from '../constants/image'
@@ -20,7 +20,12 @@ import { DETECT_LANG_MAX_CHARS } from '../constants/providers'
 import { COPY_FEEDBACK_DURATION_MS, IMAGE_AUTO_TRANSLATE_DELAY_MS } from '../constants/ui'
 import { translationService } from '../services/translationService'
 import { useAppStore, useT } from '../store/useAppStore'
-import type { ImageTextRegion, PhoneticMode } from '../types'
+import type {
+  ImageTextRegion,
+  PhoneticMode,
+  TranslationComparisonResult,
+  TranslationModelSelection,
+} from '../types'
 import { renderTranslatedRegions } from '../utils/canvas'
 import { localizeChatError, localizeChatException } from '../utils/chatErrors'
 import { createClientId } from '../utils/id'
@@ -52,10 +57,28 @@ interface TranslationResultContext {
   imageAttachment: ImageAttachment | null
   sourceLang: string
   targetLang: string
-  provider: string
-  model: string
+  modelsKey: string
   translationStyle: string
   reasoningEffort: string
+}
+
+function translationModelKey({ provider, model }: TranslationModelSelection) {
+  return `${provider}:${model}`
+}
+
+function createComparisonResult(
+  selection: TranslationModelSelection,
+  status: TranslationComparisonResult['status'] = 'idle',
+): TranslationComparisonResult {
+  return {
+    ...selection,
+    key: translationModelKey(selection),
+    status,
+    translatedText: '',
+    error: null,
+    errorCode: null,
+    durationMs: null,
+  }
 }
 
 function isSameResultContext(
@@ -66,8 +89,7 @@ function isSameResultContext(
     && previous.imageAttachment === current.imageAttachment
     && previous.sourceLang === current.sourceLang
     && previous.targetLang === current.targetLang
-    && previous.provider === current.provider
-    && previous.model === current.model
+    && previous.modelsKey === current.modelsKey
     && previous.translationStyle === current.translationStyle
     && previous.reasoningEffort === current.reasoningEffort
 }
@@ -146,20 +168,48 @@ export function useTranslate() {
   const {
     sourceText, translatedText, phoneticText, sourceLang, targetLang,
     isTranslating, translateError, translateErrorCode,
-    selectedProvider, selectedModels, autoTranslate, autoTranslateDelay, keyStatus, phoneticMode, translationStyle, translationReasoningEffort,
+    selectedProvider, selectedModels, translationModels, autoTranslate, autoTranslateDelay, keyStatus, phoneticMode, translationStyle, translationReasoningEffort,
     ttsMode, ttsVoice,
     setSourceText, setTranslatedText, setPhoneticText, setTargetLang,
     setIsTranslating, setTranslateError, setActivePage, setPhoneticMode, setTranslationStyle, setTranslationReasoningEffort, setAutoTranslate, addHistory, upsertHistory,
-    recordUsageCost,
+    recordUsageCost, setTranslationModels,
     swapLanguages,
   } = useAppStore()
   const t = useT()
+
+  const activeTranslationModels = useMemo<TranslationModelSelection[]>(() => {
+    const singleSelection = {
+      provider: selectedProvider,
+      model: selectedModels[selectedProvider],
+    }
+    if (!translationModels || translationModels.length <= 1) return [singleSelection]
+    return translationModels
+  }, [selectedModels, selectedProvider, translationModels])
+  const translationModelsKey = activeTranslationModels.map(translationModelKey).join('|')
+  const isComparisonMode = activeTranslationModels.length > 1
+
+  useEffect(() => {
+    if (!isComparisonMode) return
+    const firstSelection = activeTranslationModels[0]
+    const state = useAppStore.getState()
+    if (state.selectedProvider !== firstSelection.provider) {
+      state.setSelectedProvider(firstSelection.provider)
+    }
+    if (state.selectedModels[firstSelection.provider] !== firstSelection.model) {
+      state.setSelectedModel(firstSelection.provider, firstSelection.model)
+    }
+  }, [activeTranslationModels, isComparisonMode])
+
+  useEffect(() => {
+    if (isComparisonMode && autoTranslate) setAutoTranslate(false)
+  }, [autoTranslate, isComparisonMode, setAutoTranslate])
 
   // Derived boolean — true when any phonetic mode is active
   const showFurigana = phoneticMode !== 'off'
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const activeTranslateRequestIdRef = useRef<string | null>(null)
+  const activeComparisonRequestIdsRef = useRef(new Map<string, string>())
   const activePhoneticRequestIdRef = useRef<string | null>(null)
   /**
    * Monotonically-increasing counter that identifies the "current" translation job.
@@ -201,9 +251,16 @@ export function useTranslate() {
       void window.api.cancelTranslate?.({ requestId: phoneticRequestId })
       activePhoneticRequestIdRef.current = null
     }
+
+    for (const requestId of activeComparisonRequestIdsRef.current.values()) {
+      void window.api.cancelTranslate?.({ requestId })
+    }
+    activeComparisonRequestIdsRef.current.clear()
   }, [])
 
   const [copied, setCopied] = useState(false)
+  const [copiedComparisonKey, setCopiedComparisonKey] = useState<string | null>(null)
+  const [comparisonResults, setComparisonResults] = useState<TranslationComparisonResult[]>([])
   const [isRewriting, setIsRewriting] = useState<'source' | 'translated' | null>(null)
   /** Shown when image translation silently switched to a different model/provider */
   const [imageSwitchNotice, setImageSwitchNotice] = useState<{ model: string; provider: string } | null>(null)
@@ -240,8 +297,7 @@ export function useTranslate() {
           imageAttachment: null,
           sourceLang,
           targetLang,
-          provider: selectedProvider,
-          model: selectedModels[selectedProvider],
+          modelsKey: translationModelsKey,
           translationStyle,
           reasoningEffort: translationReasoningEffort,
         }
@@ -261,17 +317,28 @@ export function useTranslate() {
   isTranslatingRef.current = isTranslating
   phoneticModeRef.current = phoneticMode
 
-  const currentResultContext: TranslationResultContext = {
+  const currentResultContext = useMemo<TranslationResultContext>(() => ({
     sourceText,
     imageAttachment,
     sourceLang,
     targetLang,
-    provider: selectedProvider,
-    model: selectedModels[selectedProvider],
+    modelsKey: translationModelsKey,
     translationStyle,
     reasoningEffort: imageAttachment ? 'auto' : translationReasoningEffort,
-  }
-  const hasVisibleResult = Boolean(translatedText || editedImageUrl)
+  }), [
+    sourceText,
+    imageAttachment,
+    sourceLang,
+    targetLang,
+    translationModelsKey,
+    translationStyle,
+    translationReasoningEffort,
+  ])
+  const hasVisibleResult = Boolean(
+    translatedText
+    || editedImageUrl
+    || (isComparisonMode && comparisonResults.some((result) => result.status === 'success')),
+  )
   const isResultStale = Boolean(
     hasVisibleResult
     && resultContext
@@ -279,26 +346,8 @@ export function useTranslate() {
   )
 
   const markResultCurrent = useCallback(() => {
-    setResultContext({
-      sourceText,
-      imageAttachment,
-      sourceLang,
-      targetLang,
-      provider: selectedProvider,
-      model: selectedModels[selectedProvider],
-      translationStyle,
-      reasoningEffort: imageAttachment ? 'auto' : translationReasoningEffort,
-    })
-  }, [
-    sourceText,
-    imageAttachment,
-    sourceLang,
-    targetLang,
-    selectedProvider,
-    selectedModels,
-    translationStyle,
-    translationReasoningEffort,
-  ])
+    setResultContext(currentResultContext)
+  }, [currentResultContext])
 
   const invalidateRewrite = useCallback(() => {
     rewriteGenerationRef.current++
@@ -316,6 +365,61 @@ export function useTranslate() {
     setIsDetectingLang(false)
     stopSpeak()
   }, [cancelActiveTranslation, invalidateRewrite, setIsTranslating, stopSpeak])
+
+  const handleTranslationModelsChange = useCallback((nextModels: TranslationModelSelection[]) => {
+    const previousSingleKey = activeTranslationModels[0]
+      ? translationModelKey(activeTranslationModels[0])
+      : null
+    const nextModelsKey = nextModels.map(translationModelKey).join('|')
+    const nextResults = nextModels.map((selection) => {
+      const key = translationModelKey(selection)
+      const existing = comparisonResults.find((result) => result.key === key)
+      if (existing) return existing
+      if (
+        key === previousSingleKey
+        && !isResultStale
+        && translatedText
+        && translatedText !== IMAGE_TRANSLATED_SENTINEL
+      ) {
+        return {
+          ...createComparisonResult(selection, 'success'),
+          translatedText,
+        }
+      }
+      return createComparisonResult(selection)
+    })
+
+    invalidateActiveTranslation()
+    setTranslationModels(nextModels)
+    if (nextModels.length > 1 && autoTranslate) setAutoTranslate(false)
+    setComparisonResults(nextResults)
+
+    if (!imageAttachment) {
+      const singleResult = nextModels.length === 1 ? nextResults[0] : null
+      const nextText = singleResult?.status === 'success' ? singleResult.translatedText : ''
+      const hasRetainedResult = nextResults.some((result) => (
+        result.status === 'success' && Boolean(result.translatedText)
+      ))
+      setTranslatedText(nextText)
+      setPhoneticText('')
+      setResultContext(hasRetainedResult
+        ? { ...currentResultContext, modelsKey: nextModelsKey }
+        : null)
+    }
+  }, [
+    activeTranslationModels,
+    autoTranslate,
+    comparisonResults,
+    currentResultContext,
+    imageAttachment,
+    invalidateActiveTranslation,
+    isResultStale,
+    setAutoTranslate,
+    setPhoneticText,
+    setTranslatedText,
+    setTranslationModels,
+    translatedText,
+  ])
 
   /** Process an image File: resize, convert to base64, attach to translate area */
   const processImageFile = useCallback(async (file: File) => {
@@ -339,6 +443,7 @@ export function useTranslate() {
       setImageAttachment(attachment)
       setImageRegions(null)
       setEditedImageUrl(null)
+      setComparisonResults([])
       setTranslatedText('')
       setPhoneticText('')
       setResultContext(null)
@@ -420,12 +525,17 @@ export function useTranslate() {
     model: string,
   ) => {
     setIsDetectingLang(true)
-    translationService.detectLanguage({ provider, model, text: text.slice(0, DETECT_LANG_MAX_CHARS) })
+    Promise.resolve()
+      .then(() => translationService.detectLanguage({
+        provider,
+        model,
+        text: text.slice(0, DETECT_LANG_MAX_CHARS),
+      }))
       .then((res) => {
         if (translateGenerationRef.current !== generation) return
         if (res.success && res.lang) setDetectedSourceLang(res.lang)
       })
-      .catch((_err) => {
+      .catch(() => {
         // Detection is best-effort — a failure here means the swap button won't
         // automatically change the target language, but it will still move the
         // translated text into the source panel correctly.
@@ -435,22 +545,34 @@ export function useTranslate() {
       })
   }, []) // All values are passed as params → no external deps needed
 
-  const recordTranslationHistory = useCallback((trigger: TranslateTrigger, plainText: string) => {
+  const recordTranslationOutcome = useCallback((
+    trigger: TranslateTrigger,
+    plainText: string,
+    selection: TranslationModelSelection,
+    options: { recordCost?: boolean; recordHistory?: boolean } = {},
+  ) => {
     const timestamp = Date.now()
-    const model = selectedModels[selectedProvider]
-    const contextKey = buildHistoryContextKey(selectedProvider, model, sourceLang, targetLang, translationStyle)
+    const { recordCost = true, recordHistory = true } = options
+    const contextKey = buildHistoryContextKey(
+      selection.provider,
+      selection.model,
+      sourceLang,
+      targetLang,
+      translationStyle,
+    )
     const cost = estimateUsageCost({
       feature: 'translate',
-      provider: selectedProvider,
-      model,
+      provider: selection.provider,
+      model: selection.model,
       inputText: sourceText,
       outputText: plainText,
     })
-    recordUsageCost(cost)
+    if (recordCost) recordUsageCost(cost)
+    if (!recordHistory) return
     const baseItem = {
       timestamp,
-      provider: selectedProvider,
-      model,
+      provider: selection.provider,
+      model: selection.model,
       sourceLang,
       targetLang,
       translationStyle,
@@ -472,7 +594,7 @@ export function useTranslate() {
 
     addHistory({ ...baseItem, id: createHistoryId(timestamp) })
     autoHistoryDraftRef.current = null
-  }, [addHistory, upsertHistory, recordUsageCost, selectedProvider, selectedModels, sourceLang, targetLang, translationStyle, sourceText])
+  }, [addHistory, upsertHistory, recordUsageCost, sourceLang, targetLang, translationStyle, sourceText])
 
   const generatePhoneticText = useCallback((
     text: string,
@@ -561,8 +683,14 @@ export function useTranslate() {
     generatePhoneticText(currentTranslation, mode)
   }, [generatePhoneticText, setPhoneticMode, setPhoneticText])
 
-  const runTranslate = useCallback(async (trigger: TranslateTrigger) => {
-    if (!hasKey) { setTranslateError(t.translate_error_no_key, 'NO_API_KEY'); return }
+  const runTranslate = useCallback(async (
+    trigger: TranslateTrigger,
+    onlyModel?: TranslationModelSelection,
+  ) => {
+    if ((imageAttachment || !isComparisonMode) && !hasKey) {
+      setTranslateError(t.translate_error_no_key, 'NO_API_KEY')
+      return
+    }
 
     if (debounceRef.current) {
       clearTimeout(debounceRef.current)
@@ -658,6 +786,127 @@ export function useTranslate() {
       setIsTranslating(false)
       return
     }
+
+    if (isComparisonMode) {
+      activeTranslateRequestIdRef.current = null
+      const selectionsToRun = onlyModel ? [onlyModel] : activeTranslationModels
+      const keysToRun = new Set(selectionsToRun.map(translationModelKey))
+      const outcomes = new Map<string, TranslationComparisonResult>()
+
+      setComparisonResults((current) => {
+        const currentByKey = new Map(current.map((result) => [result.key, result]))
+        return activeTranslationModels.map((selection) => {
+          const key = translationModelKey(selection)
+          if (!keysToRun.has(key)) return currentByKey.get(key) ?? createComparisonResult(selection)
+          return createComparisonResult(selection, 'loading')
+        })
+      })
+      if (!onlyModel) {
+        setTranslatedText('')
+        setPhoneticText('')
+        setResultContext(null)
+      }
+
+      const updateResult = (nextResult: TranslationComparisonResult) => {
+        outcomes.set(nextResult.key, nextResult)
+        setComparisonResults((current) => {
+          const currentByKey = new Map(current.map((result) => [result.key, result]))
+          currentByKey.set(nextResult.key, nextResult)
+          return activeTranslationModels.map((selection) => (
+            currentByKey.get(translationModelKey(selection)) ?? createComparisonResult(selection)
+          ))
+        })
+      }
+
+      await Promise.all(selectionsToRun.map(async (selection) => {
+        const key = translationModelKey(selection)
+        const startedAt = Date.now()
+        const providerHasKey = selection.provider === 'local' || keyStatus[selection.provider]
+        if (!providerHasKey) {
+          updateResult({
+            ...createComparisonResult(selection, 'error'),
+            error: t.translate_error_no_key,
+            errorCode: 'NO_API_KEY',
+            durationMs: 0,
+          })
+          return
+        }
+
+        const comparisonRequestId = createClientId('translate-compare')
+        activeComparisonRequestIdsRef.current.set(key, comparisonRequestId)
+        try {
+          const result = await translationService.translate({
+            provider: selection.provider,
+            model: selection.model,
+            requestId: comparisonRequestId,
+            sourceText,
+            sourceLang,
+            targetLang,
+            translationStyle,
+            reasoningEffort: translationReasoningEffort,
+            showFurigana: false,
+          })
+          if (translateGenerationRef.current !== generation) return
+
+          if (result.success && result.translatedText) {
+            const nextResult = {
+              ...createComparisonResult(selection, 'success'),
+              translatedText: result.translatedText,
+              durationMs: Date.now() - startedAt,
+            }
+            updateResult(nextResult)
+            recordTranslationOutcome(trigger, result.translatedText, selection, { recordHistory: false })
+          } else {
+            updateResult({
+              ...createComparisonResult(selection, 'error'),
+              error: localizeTranslationError(t, result.error, result.errorCode, t.translate_error_generic),
+              errorCode: result.errorCode ?? null,
+              durationMs: Date.now() - startedAt,
+            })
+          }
+        } catch (error) {
+          if (translateGenerationRef.current !== generation) return
+          updateResult({
+            ...createComparisonResult(selection, 'error'),
+            error: localizeTranslationException(t, error, t.translate_error_unexpected),
+            durationMs: Date.now() - startedAt,
+          })
+        } finally {
+          if (activeComparisonRequestIdsRef.current.get(key) === comparisonRequestId) {
+            activeComparisonRequestIdsRef.current.delete(key)
+          }
+        }
+      }))
+
+      if (translateGenerationRef.current !== generation) return
+      const successfulResults = selectionsToRun
+        .map((selection) => outcomes.get(translationModelKey(selection)))
+        .filter((result): result is TranslationComparisonResult => result?.status === 'success')
+
+      if (successfulResults.length > 0) {
+        setTranslatedText('')
+        setPhoneticText('')
+        markResultCurrent()
+        for (const result of successfulResults) {
+          recordTranslationOutcome(
+            trigger,
+            result.translatedText,
+            result,
+            { recordCost: false },
+          )
+        }
+        const detectionResult = successfulResults[0]
+        detectLanguageInBackground(
+          sourceText,
+          generation,
+          detectionResult.provider,
+          detectionResult.model,
+        )
+      }
+      setIsTranslating(false)
+      return
+    }
+
     try {
       const baseParams = {
         provider: selectedProvider,
@@ -682,7 +931,10 @@ export function useTranslate() {
         markResultCurrent()
         setIsTranslating(false)
 
-        recordTranslationHistory(trigger, plainText)
+        recordTranslationOutcome(trigger, plainText, {
+          provider: selectedProvider,
+          model: selectedModels[selectedProvider],
+        })
 
         // Second pass: add phonetic output for the mode that is active when the
         // translation finishes. This also supports toggling phonetic on while a
@@ -712,10 +964,28 @@ export function useTranslate() {
       if (translateGenerationRef.current === generation) activeTranslateRequestIdRef.current = null
     }
   }, [imageAttachment, sourceText, sourceLang, targetLang, selectedProvider, selectedModels,
+       activeTranslationModels, isComparisonMode, keyStatus,
        hasKey, translationStyle, translationReasoningEffort,
-       setIsTranslating, setTranslateError, setTranslatedText, setPhoneticText, t, detectLanguageInBackground, recordTranslationHistory, generatePhoneticText, cancelActiveTranslation, invalidateRewrite, markResultCurrent])
+       setIsTranslating, setTranslateError, setTranslatedText, setPhoneticText, t,
+       detectLanguageInBackground, recordTranslationOutcome, generatePhoneticText,
+       cancelActiveTranslation, invalidateRewrite, markResultCurrent])
 
   const handleTranslate = useCallback(() => runTranslate('manual'), [runTranslate])
+
+  const handleRetryComparison = useCallback((selection: TranslationModelSelection) => {
+    void runTranslate('manual', selection)
+  }, [runTranslate])
+
+  const handleCopyComparison = useCallback(async (result: TranslationComparisonResult) => {
+    if (!result.translatedText) return
+    try {
+      await navigator.clipboard.writeText(result.translatedText)
+      setCopiedComparisonKey(result.key)
+      setTimeout(() => setCopiedComparisonKey(null), COPY_FEEDBACK_DURATION_MS)
+    } catch (_error) {
+      setTranslateError(t.translate_error_copy)
+    }
+  }, [setTranslateError, t.translate_error_copy])
 
   /** Download the translated image (original + text regions overlaid) */
   const handleDownloadTranslatedImage = useCallback(async () => {
@@ -869,8 +1139,7 @@ export function useTranslate() {
       imageAttachment: null,
       sourceLang: targetLang,
       targetLang: resolvedSourceLang,
-      provider: selectedProvider,
-      model: selectedModels[selectedProvider],
+      modelsKey: translationModelsKey,
       translationStyle,
       reasoningEffort: translationReasoningEffort,
     })
@@ -879,7 +1148,7 @@ export function useTranslate() {
     setDetectedSourceLang(null)
     setIsDetectingLang(false)
   }, [translatedText, detectedSourceLang, imageAttachment, sourceLang, targetLang,
-      selectedProvider, selectedModels, translationStyle, translationReasoningEffort, stopSpeak, swapLanguages,
+      translationModelsKey, translationStyle, translationReasoningEffort, stopSpeak, swapLanguages,
       setTranslateError, setIsTranslating, cancelActiveTranslation, invalidateRewrite])
 
   const handleCopy = async () => {
@@ -962,6 +1231,8 @@ export function useTranslate() {
     setEditedImageUrl(null)
     setTranslatedText('')
     setPhoneticText('')
+    setComparisonResults([])
+    setCopiedComparisonKey(null)
     setResultContext(null)
     setTranslateError(null)
     setDetectedSourceLang(null)
@@ -982,6 +1253,7 @@ export function useTranslate() {
     setEditedImageUrl(null)
     setTranslatedText('')
     setPhoneticText('')
+    setComparisonResults([])
     setResultContext(null)
     setTranslateError(null)
     setImageSwitchNotice(null)
@@ -995,6 +1267,13 @@ export function useTranslate() {
     cancelActiveTranslation()
     setIsTranslating(false)
   }, [cancelActiveTranslation, setIsTranslating])
+
+  const visibleComparisonResults = useMemo(() => {
+    const resultsByKey = new Map(comparisonResults.map((result) => [result.key, result]))
+    return activeTranslationModels.map((selection) => (
+      resultsByKey.get(translationModelKey(selection)) ?? createComparisonResult(selection)
+    ))
+  }, [activeTranslationModels, comparisonResults])
 
   return {
     // ── Store state (needed by JSX) ─────────────────────────────────────────
@@ -1011,6 +1290,7 @@ export function useTranslate() {
     translationReasoningEffort,
     keyStatus,
     selectedProvider,
+    translationModels: activeTranslationModels,
     // ── Store setters (used directly in JSX) ───────────────────────────────
     setTargetLang,
     setActivePage,
@@ -1018,6 +1298,7 @@ export function useTranslate() {
     setTranslationStyle,
     setTranslationReasoningEffort,
     setAutoTranslate,
+    setTranslationModels: handleTranslationModelsChange,
     // ── Local state ────────────────────────────────────────────────────────
     copied,
     isRewriting,
@@ -1033,6 +1314,9 @@ export function useTranslate() {
     charCount,
     isApiKeyError,
     isResultStale,
+    isComparisonMode: isComparisonMode && !imageAttachment,
+    comparisonResults: visibleComparisonResults,
+    copiedComparisonKey,
     // ── TTS ────────────────────────────────────────────────────────────────
     speakingPanel,
     speakLoading,
@@ -1051,6 +1335,8 @@ export function useTranslate() {
     handleRewrite,
     handleSwapLanguages,
     handleCopy,
+    handleCopyComparison,
+    handleRetryComparison,
     handleDismissError,
     handleDownloadTranslatedImage,
     handleDownloadEditedImage,

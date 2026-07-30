@@ -7,7 +7,7 @@ import { ImageAttachmentPreview } from '../../translate/ImageAttachmentPreview'
 import type { ImageAttachment } from '../../translate/ImageTranslator'
 import { SourcePanelActions } from '../../translate/SourcePanelActions'
 import { DragOverlay } from '../../ui/DragOverlay'
-import { InfoCircleIcon } from '../../ui/icons'
+import { InfoCircleIcon, LayersIcon } from '../../ui/icons'
 import type { SpeakPanel } from '../../ui/SpeakButton'
 import { TranslateButton } from '../../ui/TranslateButton'
 import type { VoiceRecordingState } from '../../VoiceRecorder'
@@ -18,6 +18,7 @@ interface TranslationSourcePaneProps {
   sourceLang: string
   voiceContextKey: string
   charCount: number
+  translationModelCount: number
   autoTranslate: boolean
   isTranslating: boolean
   isDraggingOver: boolean
@@ -52,6 +53,7 @@ export function TranslationSourcePane({
   sourceLang,
   voiceContextKey,
   charCount,
+  translationModelCount,
   autoTranslate,
   isTranslating,
   isDraggingOver,
@@ -86,12 +88,12 @@ export function TranslationSourcePane({
   const hasSource = Boolean(sourceText.trim() || imageAttachment)
   const isLongInput = charCount > TRANSLATE_INPUT_WARNING_CHARS
   const longInputNotice = t.translate_long_text_notice(TRANSLATE_INPUT_WARNING_CHARS)
+  const isComparisonMode = translationModelCount > 1
 
   const handleInputKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    const isTranslateShortcut = (event.metaKey || event.ctrlKey) && event.key === 'Enter'
-    if (!isTranslateShortcut || event.nativeEvent.isComposing || autoTranslate) return
-    if (!hasSource || isTranslating) return
+    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return
     event.preventDefault()
+    if (!hasSource || isTranslating) return
     onTranslate()
   }
 
@@ -204,13 +206,23 @@ export function TranslationSourcePane({
 
           {!autoTranslate && (
             <>
+              {isComparisonMode && (
+                <span className="translate-comparison-request-notice">
+                  <LayersIcon />
+                  {t.translate_compare_request_count(translationModelCount)}
+                </span>
+              )}
               <span className="translate-shortcut-hint">{t.translate_manual_shortcut}</span>
               <TranslateButton
                 isTranslating={isTranslating}
                 disabled={!hasSource}
                 onClick={onTranslate}
-                labelTranslate={t.translate_btn}
-                labelLoading={t.translate_btn_loading}
+                labelTranslate={isComparisonMode
+                  ? t.translate_compare_submit(translationModelCount)
+                  : t.translate_btn}
+                labelLoading={isComparisonMode
+                  ? t.translate_compare_submitting(translationModelCount)
+                  : t.translate_btn_loading}
               />
             </>
           )}

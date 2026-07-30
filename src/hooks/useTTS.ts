@@ -12,12 +12,10 @@
  *   <button onClick={() => handleSpeak(text, lang, 'translated')} />
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { TtsMode, TtsVoice } from '../types'
+import type { SpeakPanel, TtsMode, TtsVoice } from '../types'
 
 /** Tốc độ phát audio TTS — thấp hơn 1.0 để dễ nghe hơn */
 const TTS_PLAYBACK_RATE = 0.9
-
-export type SpeakPanel = 'source' | 'translated'
 
 interface UseTTSOptions {
   ttsMode: TtsMode

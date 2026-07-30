@@ -51,7 +51,6 @@ interface TranslateToolbarProps {
   titleAutoMode: string
   titleManualMode: string
   labelAutoMode: string
-  labelManualMode: string
 }
 
 export function TranslateToolbar({
@@ -73,7 +72,7 @@ export function TranslateToolbar({
   labelStyleBusiness, labelStyleTechnical, labelStyleNatural,
   labelPhoneticOff, labelPhoneticStandard, labelPhoneticTranscription,
   labelPhoneticSection, labelAutoSection,
-  titleAutoMode, titleManualMode, labelAutoMode, labelManualMode,
+  titleAutoMode, titleManualMode, labelAutoMode,
 }: TranslateToolbarProps) {
   const styleId = useId()
   const reasoningId = useId()
@@ -95,6 +94,29 @@ export function TranslateToolbar({
     onModelPickerViewChange?.(view)
   }
 
+  const reasoningControl = (
+    <div className="translate-setting-control translate-setting-control-reasoning">
+      <label htmlFor={reasoningId} className="translate-setting-label">
+        {labelReasoning}
+      </label>
+      <select
+        id={reasoningId}
+        value={effectiveReasoningEffort}
+        disabled={!reasoningConfigurable}
+        title={!reasoningConfigurable ? labelReasoningUnsupported : undefined}
+        onChange={(event) => onReasoningEffortChange(event.target.value as TranslationReasoningEffort)}
+        className="select-field translate-setting-select"
+      >
+        <option value="auto">
+          {reasoningConfigurable ? labelReasoningAuto : labelReasoningUnsupported}
+        </option>
+        {reasoningConfigurable && <option value="low">{labelReasoningLow}</option>}
+        {reasoningConfigurable && <option value="medium">{labelReasoningMedium}</option>}
+        {reasoningConfigurable && <option value="high">{labelReasoningHigh}</option>}
+      </select>
+    </div>
+  )
+
   return (
     <div className={`translate-settings-grid${modelPickerOpen ? ' translate-settings-grid-model-open' : ''}`}>
       {!hideModelSelector && (
@@ -107,29 +129,6 @@ export function TranslateToolbar({
             closeRequest={modelPickerCloseRequest}
             onInlineViewChange={handleModelPickerViewChange}
           />
-        </div>
-      )}
-
-      {showSecondaryControls && (
-        <div className="translate-setting-control">
-          <label htmlFor={reasoningId} className="translate-setting-label">
-            {labelReasoning}
-          </label>
-          <select
-            id={reasoningId}
-            value={effectiveReasoningEffort}
-            disabled={!reasoningConfigurable}
-            title={!reasoningConfigurable ? labelReasoningUnsupported : undefined}
-            onChange={(event) => onReasoningEffortChange(event.target.value as TranslationReasoningEffort)}
-            className="select-field translate-setting-select"
-          >
-            <option value="auto">
-              {reasoningConfigurable ? labelReasoningAuto : labelReasoningUnsupported}
-            </option>
-            {reasoningConfigurable && <option value="low">{labelReasoningLow}</option>}
-            {reasoningConfigurable && <option value="medium">{labelReasoningMedium}</option>}
-            {reasoningConfigurable && <option value="high">{labelReasoningHigh}</option>}
-          </select>
         </div>
       )}
 
@@ -169,6 +168,8 @@ export function TranslateToolbar({
           />
       </div>}
 
+      {showSecondaryControls && reasoningControl}
+
       {showSecondaryControls && !hideAutoToggle && (
         <div className="translate-setting-control">
           <span className="translate-setting-label">
@@ -177,10 +178,9 @@ export function TranslateToolbar({
           <AutoTranslateToggle
             autoTranslate={autoTranslate}
             onChange={onAutoTranslateChange}
-            titleAuto={titleAutoMode}
-            titleManual={titleManualMode}
-            labelAuto={labelAutoMode}
-            labelManual={labelManualMode}
+            titleOn={titleAutoMode}
+            titleOff={titleManualMode}
+            label={labelAutoMode}
           />
         </div>
       )}

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 
 export interface TranslateWorkbenchTemplateProps {
   titleId: string
+  layout?: 'single' | 'comparison'
   header: ReactNode
   languageControls: ReactNode
   sourcePanel: ReactNode
@@ -16,6 +17,7 @@ export interface TranslateWorkbenchTemplateProps {
  */
 export function TranslateWorkbenchTemplate({
   titleId,
+  layout = 'single',
   header,
   languageControls,
   sourcePanel,
@@ -25,7 +27,11 @@ export function TranslateWorkbenchTemplate({
     <div className="app-page translate-page">
       <div className="translate-workspace">
         {header}
-        <section className="translate-workbench" aria-labelledby={titleId}>
+        <section
+          className={`translate-workbench translate-workbench-${layout}`}
+          aria-labelledby={titleId}
+          data-layout={layout}
+        >
           {languageControls}
           {sourcePanel}
           {resultPanel}

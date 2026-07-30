@@ -17,10 +17,11 @@
  * />
  */
 
+import type { SpeakPanel } from '../../types'
 import { Button } from './atoms'
 import { SpeakerIcon, SpinnerIcon, StopIcon } from './icons'
 
-export type SpeakPanel = 'source' | 'translated'
+export type { SpeakPanel } from '../../types'
 
 interface SpeakButtonProps {
   /** Which panel this button controls */

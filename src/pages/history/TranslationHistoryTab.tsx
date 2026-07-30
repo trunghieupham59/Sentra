@@ -24,8 +24,7 @@ export function TranslationHistoryTab({ query }: TranslationHistoryTabProps) {
     setTranslatedText,
     setSourceLang,
     setTargetLang,
-    setSelectedProvider,
-    setSelectedModel,
+    setTranslationModels,
     setTranslationStyle,
     costCurrency,
   } = useAppStore()
@@ -51,8 +50,7 @@ export function TranslationHistoryTab({ query }: TranslationHistoryTabProps) {
     setTranslatedText(item.translatedText)
     setSourceLang(item.sourceLang)
     setTargetLang(item.targetLang)
-    setSelectedProvider(item.provider)
-    setSelectedModel(item.provider, item.model)
+    setTranslationModels([{ provider: item.provider, model: item.model }])
     if (item.translationStyle) setTranslationStyle(item.translationStyle)
     setActivePage('translate')
   }

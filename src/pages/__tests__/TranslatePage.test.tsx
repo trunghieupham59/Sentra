@@ -16,8 +16,8 @@ vi.mock('../../utils/imageUtils', async () => {
   }
 })
 
-function openAdvancedConfig() {
-  const configButton = screen.getByTitle(/Choose the model|Chọn mô hình|モデル/i)
+function openTranslationSettings() {
+  const configButton = screen.getByRole('button', { name: /AI settings|Tùy chỉnh|カスタマイズ/i })
   act(() => {
     fireEvent.click(configButton)
   })
@@ -72,6 +72,7 @@ beforeEach(() => {
       keyStatus: { gemini: true, claude: false, openai: false, local: false },
       selectedProvider: 'gemini',
       selectedModels: { gemini: 'gemini-2.0-flash', claude: 'claude-3-5-haiku-20241022', openai: 'gpt-4o', local: 'local-auto' },
+      translationModels: [{ provider: 'gemini', model: 'gemini-2.0-flash' }],
       phoneticMode: 'off',
       translationStyle: 'general',
       translationReasoningEffort: 'auto',
@@ -120,6 +121,227 @@ describe('TranslatePage', () => {
   it('shows Translate button in manual mode', () => {
     render(<TranslatePage />)
     expect(screen.getByRole('button', { name: /^Translate$/i })).toBeDisabled()
+  })
+
+  it('applies model changes only after confirmation and switches comparison to manual mode', async () => {
+    act(() => {
+      useAppStore.setState({
+        autoTranslate: true,
+        keyStatus: { gemini: true, claude: false, openai: true, local: false },
+        dynamicModels: {
+          ...useAppStore.getState().dynamicModels,
+          openai: [{ id: 'gpt-4o', name: 'GPT 4o', description: '' }],
+        },
+      })
+    })
+
+    render(<TranslatePage />)
+    const modelsButton = screen.getByRole('button', {
+      name: 'Choose translation models, 1 selected',
+    })
+    fireEvent.click(modelsButton)
+    const dialog = screen.getByRole('dialog', { name: 'Translation models' })
+    expect(dialog).toHaveAttribute('aria-modal', 'true')
+    fireEvent.click(within(dialog).getByRole('button', { name: /GPT 4o.*Select model/i }))
+
+    expect(useAppStore.getState().translationModels).toEqual([
+      { provider: 'gemini', model: 'gemini-2.0-flash' },
+    ])
+    expect(useAppStore.getState().autoTranslate).toBe(true)
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(modelsButton).toHaveFocus())
+
+    fireEvent.click(modelsButton)
+    const reopenedDialog = screen.getByRole('dialog', { name: 'Translation models' })
+    fireEvent.click(within(reopenedDialog).getByRole('button', { name: /GPT 4o.*Select model/i }))
+    fireEvent.click(within(reopenedDialog).getByRole('button', { name: 'Apply 2 models' }))
+
+    expect(useAppStore.getState().translationModels).toEqual([
+      { provider: 'gemini', model: 'gemini-2.0-flash' },
+      { provider: 'openai', model: 'gpt-4o' },
+    ])
+    expect(useAppStore.getState().autoTranslate).toBe(false)
+    expect(screen.getByRole('button', {
+      name: 'Choose translation models, 2 selected',
+    })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Auto translate' })).not.toBeInTheDocument()
+    expect(screen.getByText('Manual translate')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Translate with 2 models' })).toBeDisabled()
+    expect(screen.getByRole('region', { name: 'AI Translate' }))
+      .toHaveAttribute('data-layout', 'comparison')
+  })
+
+  it('explains the three-model limit and enables replacement after one model is removed', () => {
+    act(() => {
+      useAppStore.setState({
+        keyStatus: { gemini: true, claude: true, openai: true, local: false },
+        dynamicModels: {
+          ...useAppStore.getState().dynamicModels,
+          gemini: [
+            { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: '' },
+            { id: 'gemini-experimental', name: 'Gemini Experimental', description: '' },
+          ],
+          claude: [{ id: 'claude-haiku', name: 'Claude Haiku', description: '' }],
+          openai: [{ id: 'gpt-4o', name: 'GPT 4o', description: '' }],
+        },
+      })
+    })
+
+    render(<TranslatePage />)
+    fireEvent.click(screen.getByRole('button', {
+      name: 'Choose translation models, 1 selected',
+    }))
+    const dialog = screen.getByRole('dialog', { name: 'Translation models' })
+    fireEvent.click(within(dialog).getByRole('button', { name: /GPT 4o.*Select model/i }))
+    fireEvent.click(within(dialog).getByRole('button', { name: /Claude Haiku.*Select model/i }))
+
+    expect(within(dialog).getByText(
+      'Three models selected. Remove one to choose another.',
+    )).toBeInTheDocument()
+    const replacement = within(dialog).getByRole('button', {
+      name: /Gemini Experimental.*Select model/i,
+    })
+    expect(replacement).toBeDisabled()
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove model: GPT 4o' }))
+    expect(replacement).toBeEnabled()
+  })
+
+  it('reuses an existing translation only for the model that produced it', async () => {
+    vi.mocked(window.api.translate).mockResolvedValueOnce({
+      success: true,
+      translatedText: 'Existing Gemini result',
+    })
+    act(() => {
+      useAppStore.setState({
+        sourceText: 'Translate this',
+        keyStatus: { gemini: true, claude: false, openai: true, local: false },
+        dynamicModels: {
+          ...useAppStore.getState().dynamicModels,
+          openai: [{ id: 'gpt-4o', name: 'GPT 4o', description: '' }],
+        },
+      })
+    })
+
+    render(<TranslatePage />)
+    fireEvent.click(screen.getByRole('button', { name: /^Translate$/i }))
+    expect(await screen.findByText('Existing Gemini result')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', {
+      name: 'Choose translation models, 1 selected',
+    }))
+    const dialog = screen.getByRole('dialog', { name: 'Translation models' })
+    fireEvent.click(within(dialog).getByRole('button', { name: /GPT 4o.*Select model/i }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Apply 2 models' }))
+
+    const geminiCard = screen.getByRole('article', { name: /Gemini 2.0 Flash.*Google Gemini/i })
+    const openAiCard = screen.getByRole('article', { name: /GPT 4o.*OpenAI/i })
+    expect(within(geminiCard).getByText('Existing Gemini result')).toBeInTheDocument()
+    expect(within(openAiCard).getByText('Choose Translate to run this model.')).toBeInTheDocument()
+    expect(within(openAiCard).queryByText('Existing Gemini result')).not.toBeInTheDocument()
+  })
+
+  it('runs selected provider models in parallel and presents equal result actions', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    })
+    vi.mocked(window.api.translate).mockImplementation(async ({ provider }) => ({
+      success: true,
+      translatedText: provider === 'gemini' ? 'Bản dịch Gemini' : 'Bản dịch OpenAI',
+    }))
+    act(() => {
+      useAppStore.setState({
+        sourceText: 'Translate this',
+        translationModels: [
+          { provider: 'gemini', model: 'gemini-2.0-flash' },
+          { provider: 'openai', model: 'gpt-4o' },
+        ],
+        keyStatus: { gemini: true, claude: false, openai: true, local: false },
+        history: [],
+      })
+    })
+
+    render(<TranslatePage />)
+    fireEvent.click(screen.getByRole('button', { name: 'Translate with 2 models' }))
+
+    await waitFor(() => expect(window.api.translate).toHaveBeenCalledTimes(2))
+    expect(await screen.findByText('Bản dịch Gemini')).toBeInTheDocument()
+    expect(await screen.findByText('Bản dịch OpenAI')).toBeInTheDocument()
+    expect(useAppStore.getState().translatedText).toBe('')
+    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+    expect(screen.getByRole('tablist', { name: 'Translation results' })).toBeInTheDocument()
+
+    const geminiCard = screen.getByRole('article', { name: /Gemini 2.0 Flash.*Google Gemini/i })
+    const openAiCard = screen.getByRole('article', { name: /GPT 4o.*OpenAI/i })
+    expect(within(geminiCard).getByRole('button', {
+      name: /Read aloud: Gemini 2.0 Flash.*Google Gemini/i,
+    })).toBeInTheDocument()
+    expect(within(openAiCard).getByRole('button', {
+      name: /Read aloud: GPT 4o.*OpenAI/i,
+    })).toBeInTheDocument()
+
+    fireEvent.click(within(openAiCard).getByRole('button', { name: /Copy: GPT 4o.*OpenAI/i }))
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith('Bản dịch OpenAI')
+    })
+    expect(within(openAiCard).getByText(/Copied/)).toBeInTheDocument()
+    expect(within(geminiCard).getByText('Copy')).toBeInTheDocument()
+
+    const comparisonHistory = useAppStore.getState().history
+      .filter((item) => item.sourceText === 'Translate this')
+    expect(comparisonHistory).toHaveLength(2)
+    expect(comparisonHistory.map((item) => item.translatedText).sort()).toEqual([
+      'Bản dịch Gemini',
+      'Bản dịch OpenAI',
+    ])
+
+    fireEvent.change(getSourceInput(), { target: { value: 'Translate this updated' } })
+    expect(screen.getByText('The source changed. Translate again to update this result.'))
+      .toBeInTheDocument()
+  })
+
+  it('keeps successful comparison results when one provider fails and retries only that model', async () => {
+    vi.mocked(window.api.translate)
+      .mockImplementationOnce(async () => ({ success: true, translatedText: 'Gemini succeeded' }))
+      .mockImplementationOnce(async () => ({
+        success: false,
+        error: 'rate limited',
+        errorCode: 'RATE_LIMIT',
+      }))
+      .mockImplementationOnce(async () => ({ success: true, translatedText: 'OpenAI recovered' }))
+    act(() => {
+      useAppStore.setState({
+        sourceText: 'Translate this',
+        translationModels: [
+          { provider: 'gemini', model: 'gemini-2.0-flash' },
+          { provider: 'openai', model: 'gpt-4o' },
+        ],
+        keyStatus: { gemini: true, claude: false, openai: true, local: false },
+      })
+    })
+
+    render(<TranslatePage />)
+    fireEvent.click(screen.getByRole('button', { name: 'Translate with 2 models' }))
+
+    expect(await screen.findByText('Gemini succeeded')).toBeInTheDocument()
+    const openAiCard = screen.getByRole('article', { name: /GPT 4o.*OpenAI/i })
+    expect(await within(openAiCard).findByText(TRANSLATIONS.en.chat_error_rate_limit)).toBeInTheDocument()
+    const geminiCard = screen.getByRole('article', { name: /Gemini 2.0 Flash.*Google Gemini/i })
+    expect(within(geminiCard).queryByRole('button', { name: 'Retry this model' }))
+      .not.toBeInTheDocument()
+    const retryButton = within(openAiCard).getByRole('button', { name: 'Retry this model' })
+    await waitFor(() => expect(retryButton).toBeEnabled())
+    fireEvent.click(retryButton)
+
+    expect(await within(openAiCard).findByText('OpenAI recovered')).toBeInTheDocument()
+    expect(window.api.translate).toHaveBeenCalledTimes(3)
+    expect(window.api.translate).toHaveBeenLastCalledWith(expect.objectContaining({
+      provider: 'openai',
+      model: 'gpt-4o',
+    }))
   })
 
   it('shows a safe localized top-right notification when microphone access is denied', async () => {
@@ -439,7 +661,7 @@ describe('TranslatePage', () => {
     expect(screen.getAllByText(/The source changed\. Translate again/i)).not.toHaveLength(0)
   })
 
-  it('supports the manual translate keyboard shortcut without an IME composition', async () => {
+  it('submits translation with Enter without an IME composition', async () => {
     vi.mocked(window.api.translate).mockResolvedValueOnce({
       success: true,
       translatedText: 'Bản dịch',
@@ -449,12 +671,28 @@ describe('TranslatePage', () => {
     })
 
     render(<TranslatePage />)
-    fireEvent.keyDown(getSourceInput(), { key: 'Enter', metaKey: true })
+    const eventContinues = fireEvent.keyDown(getSourceInput(), { key: 'Enter' })
 
+    expect(eventContinues).toBe(false)
     await waitFor(() => expect(window.api.translate).toHaveBeenCalledTimes(1))
   })
 
-  it('does not submit the keyboard shortcut while an IME composition is active', () => {
+  it('keeps Shift+Enter available for a new line', () => {
+    act(() => {
+      useAppStore.setState({ sourceText: 'First line' })
+    })
+
+    render(<TranslatePage />)
+    const eventContinues = fireEvent.keyDown(getSourceInput(), {
+      key: 'Enter',
+      shiftKey: true,
+    })
+
+    expect(eventContinues).toBe(true)
+    expect(window.api.translate).not.toHaveBeenCalled()
+  })
+
+  it('does not submit Enter while an IME composition is active', () => {
     act(() => {
       useAppStore.setState({ sourceText: '入力中' })
     })
@@ -462,7 +700,6 @@ describe('TranslatePage', () => {
     render(<TranslatePage />)
     fireEvent.keyDown(getSourceInput(), {
       key: 'Enter',
-      metaKey: true,
       isComposing: true,
     })
 
@@ -482,11 +719,11 @@ describe('TranslatePage', () => {
     expect(screen.getByRole('button', { name: label, pressed: true })).toBeInTheDocument()
   })
 
-  it('clicking Auto/Manual toggle switches autoTranslate state', () => {
+  it('keeps a stable Auto translate label while switching state', () => {
     render(<TranslatePage />)
     expect(useAppStore.getState().autoTranslate).toBe(false)
 
-    const toggle = screen.getByRole('button', { name: 'Manual translate', pressed: false })
+    const toggle = screen.getByRole('button', { name: 'Auto translate', pressed: false })
     act(() => { fireEvent.click(toggle) })
 
     expect(useAppStore.getState().autoTranslate).toBe(true)
@@ -504,7 +741,7 @@ describe('TranslatePage', () => {
     expect(screen.queryByText(/trong khi gõ/i)).not.toBeInTheDocument()
   })
 
-  it('exposes labelled language controls and dismisses the AI options popover', async () => {
+  it('exposes labelled language controls and keeps model selection separate from AI settings', async () => {
     act(() => {
       useAppStore.setState({
         selectedModels: {
@@ -533,42 +770,24 @@ describe('TranslatePage', () => {
     expect(optionsButton).toHaveAttribute('aria-expanded', 'true')
     const optionsDialog = screen.getByRole('dialog', { name: 'AI settings' })
     expect(optionsDialog).toBeInTheDocument()
-    expect(screen.getByLabelText('Style')).toBeInTheDocument()
-    const reasoningSelect = screen.getByLabelText('Reasoning')
+    const styleSelect = within(optionsDialog).getByRole('combobox', { name: 'Style' })
+    const reasoningSelect = within(optionsDialog).getByRole('combobox', { name: 'Reasoning' })
+    expect(styleSelect).toBeInTheDocument()
     expect(reasoningSelect).toBeEnabled()
+    expect(within(optionsDialog).queryByRole('button', { name: 'Advanced' }))
+      .not.toBeInTheDocument()
+    expect(within(optionsDialog).queryByRole('button', { name: 'Done' }))
+      .not.toBeInTheDocument()
+    expect(within(optionsDialog).queryByRole('button', { name: 'Reset defaults' }))
+      .not.toBeInTheDocument()
+    await waitFor(() => expect(styleSelect).toHaveFocus())
+
     fireEvent.change(reasoningSelect, { target: { value: 'high' } })
     expect(useAppStore.getState().translationReasoningEffort).toBe('high')
-
-    const modelTrigger = optionsDialog.querySelector<HTMLButtonElement>('.model-picker-trigger')
-    expect(modelTrigger).not.toBeNull()
-    expect(modelTrigger).toHaveAttribute('data-control-shape', 'rect')
-    expect(modelTrigger).toHaveAttribute('data-control-appearance', 'outline')
-    fireEvent.click(modelTrigger as HTMLButtonElement)
-    expect(screen.getByRole('dialog', { name: 'Choose model' })).toBe(optionsDialog)
-    const modelGroup = screen.getByRole('group', { name: 'Model' })
-    expect(optionsDialog).toContainElement(modelGroup)
-    await waitFor(() => expect(screen.getByRole('searchbox', { name: 'Search models…' })).toHaveFocus())
-    expect(screen.queryByRole('button', { name: /^Model:/ })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Advanced' })).not.toBeInTheDocument()
-    expect(optionsDialog.querySelector('.model-picker-trigger')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('Style')).not.toBeInTheDocument()
-    fireEvent.pointerDown(modelGroup)
-    expect(optionsDialog).toBeInTheDocument()
-
-    const modelBackButton = screen.getByRole('button', { name: 'Back' })
-    fireEvent.pointerDown(modelBackButton)
-    fireEvent.click(modelBackButton)
-    expect(screen.queryByRole('group', { name: 'Model' })).not.toBeInTheDocument()
-    expect(screen.getByRole('dialog', { name: 'AI settings' })).toBe(optionsDialog)
-    expect(screen.getByLabelText('Style')).toBeInTheDocument()
-    await waitFor(() => {
-      expect(optionsDialog.querySelector('.model-picker-trigger')).toHaveFocus()
-    })
-
-    fireEvent.click(optionsDialog.querySelector<HTMLButtonElement>('.model-picker-trigger') as HTMLButtonElement)
-    fireEvent.keyDown(document, { key: 'Escape' })
-    expect(screen.queryByRole('group', { name: 'Model' })).not.toBeInTheDocument()
-    expect(screen.getByRole('dialog', { name: 'AI settings' })).toBe(optionsDialog)
+    fireEvent.click(within(optionsDialog).getByRole('button', { name: 'Reset defaults' }))
+    expect(useAppStore.getState().translationReasoningEffort).toBe('auto')
+    expect(within(optionsDialog).queryByRole('button', { name: 'Reset defaults' }))
+      .not.toBeInTheDocument()
 
     fireEvent.pointerDown(document.body)
     expect(optionsButton).toHaveAttribute('aria-expanded', 'false')
@@ -582,6 +801,25 @@ describe('TranslatePage', () => {
     fireEvent.click(optionsButton)
     fireEvent.click(screen.getByRole('button', { name: 'Close settings' }))
     expect(screen.queryByRole('dialog', { name: 'AI settings' })).not.toBeInTheDocument()
+    expect(optionsButton).toHaveFocus()
+
+    const modelsButton = screen.getByRole('button', {
+      name: 'Choose translation models, 1 selected',
+    })
+    fireEvent.click(modelsButton)
+    expect(modelsButton).toHaveAttribute('aria-expanded', 'true')
+    const modelsDialog = screen.getByRole('dialog', { name: 'Translation models' })
+    expect(modelsDialog).toHaveAttribute('aria-modal', 'true')
+    expect(modelsDialog).toBeInTheDocument()
+    const modelSearch = within(modelsDialog).getByRole('searchbox', { name: 'Search models…' })
+    expect(modelSearch).toBeInTheDocument()
+    await waitFor(() => expect(modelSearch).toHaveFocus())
+    expect(within(modelsDialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
+    expect(within(modelsDialog).getByRole('button', { name: 'Apply 1 model' })).toBeDisabled()
+    expect(within(modelsDialog).queryByLabelText('Style')).not.toBeInTheDocument()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: 'Translation models' })).not.toBeInTheDocument()
+    await waitFor(() => expect(modelsButton).toHaveFocus())
   })
 
   it('swaps an explicit language pair before a translation exists', () => {
@@ -712,8 +950,8 @@ describe('TranslatePage', () => {
 
   it('shows phonetic toggle button', () => {
     render(<TranslatePage />)
-    openAdvancedConfig()
-    // The phonetic dropdown should be present in the Advanced AI Config popup.
+    openTranslationSettings()
+    // Reading display is available directly in the settings panel.
     expect(screen.getByDisplayValue(/Do not show|Không hiển thị|表示しない/i)).toBeInTheDocument()
   })
 
@@ -732,7 +970,7 @@ describe('TranslatePage', () => {
     })
 
     render(<TranslatePage />)
-    openAdvancedConfig()
+    openTranslationSettings()
 
     act(() => {
       fireEvent.change(screen.getByDisplayValue(/Do not show|Không hiển thị|表示しない/i), { target: { value: 'standard' } })

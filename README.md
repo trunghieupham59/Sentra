@@ -63,7 +63,7 @@ View all versions on the [GitHub Releases page](https://github.com/trunghieupham
 
 | Feature | Description |
 | --- | --- |
-| Text Translation | Translate text with source detection, manual mode, 7 tone styles and phonetic output. |
+| Text Translation | Translate with source detection, tone and phonetic controls, or compare up to three models across providers in one run. |
 | Local AI | Run translation, rewrite and chat through Ollama, LM Studio or llama.cpp without a cloud API key. |
 | Cloud Providers | Use Google Gemini, Anthropic Claude or OpenAI with your own API keys. |
 | Live Translation | Real-time microphone/system-audio transcription, translation and floating subtitles. |
@@ -105,7 +105,7 @@ For cloud providers, open **Settings -> API Keys**, choose a provider, paste you
 
 ### 3. Start Translating
 
-- **Translate**: text translation, tone styles and phonetic mode.
+- **Translate**: fast single-model translation or a manual side-by-side comparison of up to three provider models.
 - **Live**: live subtitles from microphone, system audio or both.
 - **Image**: image OCR-style translation and translated image output where supported.
 - **Chat**: multimodal chat with voice input, saved prompts and optional web search.

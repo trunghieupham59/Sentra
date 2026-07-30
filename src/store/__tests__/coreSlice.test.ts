@@ -25,6 +25,7 @@ beforeEach(() => {
       targetLang: 'vi',
       isTranslating: false,
       translateError: null,
+      translationModels: [{ provider: 'local', model: 'local-auto' }],
       activePage: 'translate',
     })
   })
@@ -157,6 +158,44 @@ describe('setSelectedModel', () => {
     expect(useAppStore.getState().selectedModels.claude).toBe('claude-3-5-sonnet')
     // gemini model should still have its default value
     expect(useAppStore.getState().selectedModels.gemini).toBeTruthy()
+  })
+})
+
+describe('setTranslationModels', () => {
+  it('deduplicates, limits, and synchronizes the first provider model', () => {
+    act(() => useAppStore.getState().setTranslationModels([
+      { provider: 'openai', model: 'gpt-4o' },
+      { provider: 'openai', model: 'gpt-4o' },
+      { provider: 'claude', model: 'claude-sonnet-4' },
+      { provider: 'gemini', model: 'gemini-2.5-flash' },
+      { provider: 'local', model: 'local-auto' },
+    ]))
+
+    const state = useAppStore.getState()
+    expect(state.translationModels).toEqual([
+      { provider: 'openai', model: 'gpt-4o' },
+      { provider: 'claude', model: 'claude-sonnet-4' },
+      { provider: 'gemini', model: 'gemini-2.5-flash' },
+    ])
+    expect(state.selectedProvider).toBe('openai')
+    expect(state.selectedModels.openai).toBe('gpt-4o')
+  })
+
+  it('keeps one valid model when passed an empty selection', () => {
+    act(() => {
+      useAppStore.setState({
+        selectedProvider: 'gemini',
+        selectedModels: {
+          ...useAppStore.getState().selectedModels,
+          gemini: 'gemini-2.5-flash',
+        },
+      })
+      useAppStore.getState().setTranslationModels([])
+    })
+
+    expect(useAppStore.getState().translationModels).toEqual([
+      { provider: 'gemini', model: 'gemini-2.5-flash' },
+    ])
   })
 })
 
