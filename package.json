@@ -79,7 +79,7 @@
     "esbuild": "^0.28.0",
     "jscpd": "^4.1.0",
     "jsdom": "^29.1.1",
-    "markdownlint-cli2": "^0.22.1",
+    "markdownlint-cli2": "^0.23.2",
     "playwright": "^1.60.0",
     "postcss": "^8.4.47",
     "tailwindcss": "^4.3.0",
